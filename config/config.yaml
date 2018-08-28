@@ -1,0 +1,3 @@
+apiVersion: console.openshift.io/v1alpha1
+kind: Console
+projectName: console-operator
