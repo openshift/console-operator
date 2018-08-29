@@ -2,3 +2,11 @@ apiVersion: "console.openshift.io/v1alpha1"
 kind: "Console"
 metadata:
   name: "example"
+spec:
+  # what needs to be customized here?
+  # fewest knobs possible!
+  # this will need to be reflected in the
+  # pkg/apis/console/v1alpha1/types.go file
+  # count is # of replicas
+  count: 1
+  image:  quay.io/spadgett/origin-console@sha256:f9bc2e5d53f8ebde90de58e65ac895f910a5847b23ae13bb8cd50b02916b2e1b
