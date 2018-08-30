@@ -1,7 +1,7 @@
 apiVersion: "console.openshift.io/v1alpha1"
 kind: "Console"
 metadata:
-  name: "example"
+  name: "openshift-console"
 spec:
   # what needs to be customized here?
   # fewest knobs possible!
