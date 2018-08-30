@@ -21,6 +21,7 @@ func NewHandler() sdk.Handler {
 
 type Handler struct {
 	// Fill me
+	// NOTE: none of the example operators seem to fill this.
 }
 
 func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {

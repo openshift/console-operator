@@ -42,8 +42,8 @@ func labelsForConsole() map[string]string {
 
 func sharedMeta() metav1.ObjectMeta {
 	return metav1.ObjectMeta{
-		Name: "openshift-console", // config? or nah
-		Namespace: "bens-project", // config? or nah
+		Name: "openshift-console", 						// ATM no configuration, stable name
+		Namespace: "openshift-console-operator-test", 	// ATM no configuration, "openshift-"
 		// these can be overridden/mutated
 		Labels: sharedLabels(),
 	}
