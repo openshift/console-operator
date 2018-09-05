@@ -1,4 +1,5 @@
 .DS_Store 
+.idea
 
 # Temporary Build Files
 tmp/_output

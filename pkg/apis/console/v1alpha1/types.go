@@ -4,6 +4,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	defaultBaseImage = "quay.io/openshift/origin-console"
+	defaultVersion   = "latest"
+)
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type ConsoleList struct {
@@ -26,8 +31,9 @@ type Console struct {
 type ConsoleSpec struct {
 	// Count is the number of Console replicas
 	// Default: 1
-	Count int32 `json:"count,omitempty"`
-	Image string `json:"image"`
+	Count     int32  `json:"count,omitempty"`
+	BaseImage string `json:"baseImage"`
+	Version   string `json:"version"`
 }
 type ConsoleStatus struct {
 	// Fill me
@@ -39,6 +45,14 @@ func (c *Console) SetDefaults() bool {
 	changed := false
 	if c.Spec.Count == 0 {
 		c.Spec.Count = 1
+		changed = true
+	}
+	if len(c.Spec.BaseImage) == 0 {
+		c.Spec.BaseImage = defaultBaseImage
+		changed = true
+	}
+	if len(c.Spec.Version) == 0 {
+		c.Spec.Version = defaultVersion
 		changed = true
 	}
 	return changed

@@ -32,6 +32,8 @@ func main() {
 	}
 	resyncPeriod := 5
 	logrus.Infof("Watching %s, %s, %s, %d", resource, kind, namespace, resyncPeriod)
+	logrus.Infof("Wheeee.....") // DELETE
+	logrus.Infof("Here we go!") // DELETE
 	// there are additional options available here, if needed:
 	// https://github.com/operator-framework/operator-sdk/blob/master/doc/user-guide.md#options
 	sdk.Watch(resource, kind, namespace, resyncPeriod)
