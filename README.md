@@ -90,3 +90,45 @@ kubectl get consoles.console.openshift.io
 kubectl get consoles.console.openshift.io openshift-console
 ```
 
+## Run Locally 
+
+Its much easier to dev & run the binary locally (rather than build it, 
+put it in a container, push the container, then deploy the container...repeat.)
+
+Follow local dev instructions from `operator-sdk` including a few extras:
+
+```bash 
+# you need a cluster!
+oc cluster up # or minishift, etc
+# you also need a namespace:
+oc create -f deploy/namespace.yaml
+# create the custom resources definitions for the api 
+oc create -f deploy/crd.yaml
+# rbac is a good idea 
+oc create -f deploy/rbac.yaml 
+# 
+# now to get the operator ready to roll
+# generate manifests
+operator-sdk generate k8s 
+# build the binary, etc
+# this will appear in tmp/_output/bin
+operator-sdk build console-operator:vX.X.X
+# run the binary locally 
+operator-sdk up local # this should do the trick
+#
+# finally, create a custom resource for the operator to watch:
+oc create -f deploy/cr.yaml
+# the operator will look at this manifest & use it to generate 
+# all of the deployments, etc that are needed for the resource to function.
+```
+
+## Dependencies
+
+If OpenShift resources are needed (they will be), do the following:
+
+```bash
+# dep ensure will drop these if ran a second time, but no imports
+# exist in the project.
+dep ensure --add github.com/openshift/api
+dep ensure --add github.com/openshift/client-go
+```
