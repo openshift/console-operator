@@ -33,7 +33,7 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 		// err := sdk.Create(newbusyBoxPod(o))
 		err := console.Reconcile(o)
 		if err != nil && !errors.IsAlreadyExists(err) {
-			logrus.Errorf("failed to create busybox pod : %v", err)
+			logrus.Errorf("failed to reconcile origin web console : %v", err)
 			return err
 		}
 	}

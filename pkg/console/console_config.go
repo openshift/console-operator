@@ -20,6 +20,13 @@ package console
 //	consoleConfigPath = "/var/console-config"
 //)
 
+const (
+	consolePortName = "http"
+	consolePort     = 443
+	consoleTargetPort = 8443
+	publicURLName   = "BRIDGE_DEVELOPER_CONSOLE_URL"
+)
+
 type volumeConfig struct {
 	name     string
 	readOnly bool

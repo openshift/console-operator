@@ -218,6 +218,51 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:bd1c931a49e99acf1bcb34ef6ed5dd14a3a7d16c693cdd5ac2b0ff38c16ef726"
+  name = "github.com/openshift/api"
+  packages = [
+    ".",
+    "apps",
+    "apps/v1",
+    "authorization",
+    "authorization/v1",
+    "build",
+    "build/v1",
+    "config",
+    "config/v1",
+    "image",
+    "image/docker10",
+    "image/dockerpre012",
+    "image/v1",
+    "network",
+    "network/v1",
+    "oauth",
+    "oauth/v1",
+    "operator",
+    "operator/v1alpha1",
+    "pkg/serialization",
+    "project",
+    "project/v1",
+    "quota",
+    "quota/v1",
+    "route",
+    "route/v1",
+    "security",
+    "security/v1",
+    "servicecertsigner",
+    "servicecertsigner/v1alpha1",
+    "template",
+    "template/v1",
+    "user",
+    "user/v1",
+    "webconsole",
+    "webconsole/v1",
+  ]
+  pruneopts = ""
+  revision = "5ad8479f64f1b60ee9c62ce8ef1fe6638838725e"
+
+[[projects]]
+  branch = "master"
   digest = "1:1a59805a52477cadd03d2a17a8e72fcbda08ae1e64a7c08657eacc72cbebcea1"
   name = "github.com/operator-framework/operator-sdk"
   packages = [
@@ -633,10 +678,13 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/openshift/api",
     "github.com/operator-framework/operator-sdk/pkg/sdk",
     "github.com/operator-framework/operator-sdk/pkg/util/k8sutil",
     "github.com/operator-framework/operator-sdk/version",
     "github.com/sirupsen/logrus",
+    "gopkg.in/yaml.v2",
+    "k8s.io/api/apps/v1",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/apis/meta/v1",

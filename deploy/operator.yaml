@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: console-operator
-          image: console-operator
+          image: quay.io/benjaminapetersen/console-operator:v0.0.3
           ports:
           - containerPort: 60000
             name: metrics
