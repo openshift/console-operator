@@ -20,7 +20,7 @@ func Reconcile (cr *v1alpha1.Console) (err error) {
 	//
 	// then, will want to check status & do actual
 	// reconciliation work.
-	err = deployConsole(cr)
+	err = deployConsole(cr) // syncConsole(cr) for sync?
 	if err != nil {
 		return err
 	}
