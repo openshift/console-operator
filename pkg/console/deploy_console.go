@@ -58,7 +58,7 @@ func labelsForConsole() map[string]string {
 func sharedMeta() metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Name:      "openshift-console",               // ATM no configuration, stable name
-		Namespace: "openshift-console-operator-test", // ATM no configuration, "openshift-"
+		// Namespace: "openshift-console-operator-test", // ATM no configuration, "openshift-"
 		// these can be overridden/mutated
 		Labels: sharedLabels(),
 	}
@@ -202,9 +202,6 @@ func newConsoleDeployment(cr *v1alpha1.Console) *appsv1.Deployment {
 					Containers: []corev1.Container{
 						consoleContainer(cr),
 					},
-					// TODO: loop this & deduplicate the work done in
-					// consoleContainer().  Its silly to maintain these
-					// separately.
 					Volumes: consoleVolumes(volumeConfigList),
 				},
 			},
@@ -213,6 +210,30 @@ func newConsoleDeployment(cr *v1alpha1.Console) *appsv1.Deployment {
 
 	return deployment
 }
+
+// not sure that the operator is responsible for creating its own
+// namespace?  doesn't hurt to ensure we have it, but can comment out
+// if this is not necessary
+func newConsoleNamespace() {
+	fmt.Println("TODO: create Namespace `openshift-console`?")
+}
+
+func newConsoleConfigMap() {
+	fmt.Println("TODO: create ConfigMap `console-config`")
+}
+
+func newConsoleService() {
+	fmt.Println("TODO: create Service `openshift-console`")
+}
+// openshift api route, not a kube resource
+func newConsoleRoute() {
+	fmt.Println("TODO: create Route `openshift-console`")
+}
+
+// the oauth client can be created after the route, once we have a hostname
+// - will create a client secret
+//   - reference by configmap/deployment
+func newConsoleOauthClient() {}
 
 // Deploy Vault Example:
 // https://github.com/operator-framework/operator-sdk-samples/blob/master/vault-operator/pkg/vault/deploy_vault.go#L39
