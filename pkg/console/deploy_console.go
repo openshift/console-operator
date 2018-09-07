@@ -32,14 +32,6 @@ func newConsoleConfigMap() string {
 	return ""
 }
 
-// the oauth client can be created after the route, once we have a hostname
-// - will create a client secret
-//   - reference by configmap/deployment
-func newConsoleOauthClient() string {
-	logrus.Info("TODO: create cluster scoped OAuth client `openshift-console`")
-	return ""
-}
-
 func logYaml(obj runtime.Object) {
 	// REALLY NOISY, but handy for debugging:
 	// deployJSON, err := json.Marshal(d)
@@ -47,10 +39,7 @@ func logYaml(obj runtime.Object) {
 	if err != nil {
 		logrus.Info("failed to show deployment yaml in log")
 	}
-	// TODO: dev toggle, make this useful if kept :)
-	if(false) {
-		logrus.Infof("Deploying:", string(deployYAML))
-	}
+	logrus.Infof("Deploying:", string(deployYAML))
 }
 
 // Deploy Vault Example:
@@ -61,19 +50,16 @@ func deployConsole(cr *v1alpha1.Console) error {
 	svc := newConsoleService()
 	d := newConsoleDeployment(cr)
 	rt := newConsoleRoute()
-	newConsoleOauthClient()
+	oauthc := newConsoleOauthClient(cr, rt)
 	// logrus.Info("Created stubs", n, cm, svc, rt, oauth)
 	logrus.Info("Created", svc.Kind, svc.ObjectMeta.Name, d.Kind, d.ObjectMeta.Name)
-
-	logYaml(d)
-	logYaml(svc)
-	logYaml(rt)
 
 	if err := sdk.Create(svc); err != nil && !errors.IsAlreadyExists(err) {
 		logrus.Errorf("failed to create console service : %v", err)
 		return err
 	} else {
 		logrus.Info("created console service")
+		// logYaml(svc)
 	}
 
 	if err := sdk.Create(rt); err != nil && !errors.IsAlreadyExists(err) {
@@ -81,6 +67,7 @@ func deployConsole(cr *v1alpha1.Console) error {
 		return err
 	} else {
 		logrus.Info("created console route")
+		logYaml(rt)
 	}
 
 	if err := sdk.Create(d); err != nil && !errors.IsAlreadyExists(err) {
@@ -88,6 +75,15 @@ func deployConsole(cr *v1alpha1.Console) error {
 		return err
 	} else {
 		logrus.Info("created console deployment")
+		// logYaml(d)
+	}
+
+	if err := sdk.Create(oauthc); err != nil && !errors.IsAlreadyExists(err) {
+		logrus.Errorf("failed to create console oauth client : %v", err)
+		return err
+	} else {
+		logrus.Info("created console oauth client")
+		logYaml(oauthc)
 	}
 
 

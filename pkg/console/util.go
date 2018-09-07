@@ -42,7 +42,13 @@ func labelsForConsole() map[string]string {
 
 func sharedMeta() metav1.ObjectMeta {
 	return metav1.ObjectMeta{
+		// TODO: will we always have one console?
+		// if not, then shouldn't our name be more specific?
 		Name: "openshift-console", // ATM no configuration, stable name
+		// NOTE:
+		// namepsace shouldn't be here. it should
+		// create with whatever namespace is set via
+		// the --namespace flag
 		Namespace: "openshift-console-operator-test", // ATM no configuration, "openshift-"
 		// these can be overridden/mutated
 		Labels: sharedLabels(),

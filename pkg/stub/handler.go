@@ -27,12 +27,17 @@ type Handler struct {
 func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 	// Event: Created, Updated, Deleted
 	// but Created + Updated are kind of the same :)
+	// TODO:
+	// - If Delete, don't deploy again :)
+	//   - Delete should be cleanup
+	// - If Paused, skip reconcile loop & do nothing. let the user fiddle manually
+	// - If Changed?  reconcile()
+	//   - make sure object state is honored
 	switch o := event.Object.(type) {
 	case *v1alpha1.Console:
 		// Vault version has some vault.Reconcile function:
 		// https://github.com/operator-framework/operator-sdk-samples/blob/master/vault-operator/pkg/stub/handler.go#L22
 		// this is probably a good idea!
-		// err := sdk.Create(newbusyBoxPod(o))
 		err := console.Reconcile(o)
 		if err != nil && !errors.IsAlreadyExists(err) {
 			logrus.Errorf("failed to reconcile origin web console : %v", err)
