@@ -1,3 +1,5 @@
+// From @enj openshift/origin
+// https://github.com/openshift/origin/tree/9a8a2fb3f9485bf88ebea61e4b5d8bf04dd3c459/pkg/oauthserver/server/crypto
 package crypto
 
 import (
