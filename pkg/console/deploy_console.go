@@ -32,12 +32,6 @@ func newConsoleConfigMap() string {
 	return ""
 }
 
-// openshift api route, not a kube resource
-func newConsoleRoute() string {
-	logrus.Info("TODO: create Route `openshift-console`")
-	return ""
-}
-
 // the oauth client can be created after the route, once we have a hostname
 // - will create a client secret
 //   - reference by configmap/deployment
@@ -66,26 +60,34 @@ func deployConsole(cr *v1alpha1.Console) error {
 	newConsoleConfigMap()
 	svc := newConsoleService()
 	d := newConsoleDeployment(cr)
-	newConsoleRoute()
+	rt := newConsoleRoute()
 	newConsoleOauthClient()
 	// logrus.Info("Created stubs", n, cm, svc, rt, oauth)
 	logrus.Info("Created", svc.Kind, svc.ObjectMeta.Name, d.Kind, d.ObjectMeta.Name)
 
 	logYaml(d)
 	logYaml(svc)
+	logYaml(rt)
 
-
-	// https://github.com/operator-framework/operator-sdk-samples/blob/master/vault-operator/pkg/vault/deploy_vault.go#L98
-	err := sdk.Create(d) // reuse err, so no :=
-	if err != nil && !errors.IsAlreadyExists(err) {
-		logrus.Errorf("failed to create console deployment : %v", err)
-		return err
-	}
-
-	err = sdk.Create(svc) // reuse err, so no :=
-	if err != nil && !errors.IsAlreadyExists(err) {
+	if err := sdk.Create(svc); err != nil && !errors.IsAlreadyExists(err) {
 		logrus.Errorf("failed to create console service : %v", err)
 		return err
+	} else {
+		logrus.Info("created console service")
+	}
+
+	if err := sdk.Create(rt); err != nil && !errors.IsAlreadyExists(err) {
+		logrus.Errorf("failed to create console route : %v", err)
+		return err
+	} else {
+		logrus.Info("created console route")
+	}
+
+	if err := sdk.Create(d); err != nil && !errors.IsAlreadyExists(err) {
+		logrus.Errorf("failed to create console deployment : %v", err)
+		return err
+	} else {
+		logrus.Info("created console deployment")
 	}
 
 

@@ -2,6 +2,7 @@ package console
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,7 +50,7 @@ func newConsoleDeployment(cr *v1alpha1.Console) *appsv1.Deployment {
 			},
 		},
 	}
-
+	logrus.Info("Creating console deployment manifest")
 	return deployment
 }
 
