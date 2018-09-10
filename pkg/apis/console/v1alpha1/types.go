@@ -60,3 +60,13 @@ func (c *Console) SetDefaults() bool {
 
 // may want to create secret names here, etc.
 // https://github.com/operator-framework/operator-sdk-samples/blob/master/vault-operator/pkg/apis/vault/v1alpha1/types.go#L65
+
+// Required actions
+// https://github.com/openshift/elasticsearch-operator/blob/master/pkg/apis/elasticsearch/v1alpha1/types.go#L97
+type ConsoleRequiredAction string
+
+const (
+	ConsoleActionRestartNeeded ConsoleRequiredAction = "RestartNeeded"
+	ConsoleActionInterventionNeeded ConsoleRequiredAction = "InterventionNeeded"
+	ConsoleActionNone ConsoleRequiredAction = "ConsoleOK"
+)
