@@ -13,7 +13,8 @@ func newConsoleRoute() *routev1.Route {
 	weight := int32(100)
 	route := &routev1.Route{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "route.openshift.io/v1",
+			// APIVersion: "route.openshift.io/v1",
+			APIVersion: routev1.GroupVersion.String(),
 			Kind:       "Route",
 		},
 		ObjectMeta: meta,

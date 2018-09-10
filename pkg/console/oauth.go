@@ -15,7 +15,7 @@ import (
 func newConsoleOauthClient(cr *v1alpha1.Console, rt *routev1.Route) *oauthv1.OAuthClient {
 	return &oauthv1.OAuthClient{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "oauth.openshift.io/v1",
+			APIVersion: oauthv1.GroupVersion.String(),
 			Kind: "OAuthClient",
 		},
 		ObjectMeta: v1.ObjectMeta{
@@ -25,7 +25,7 @@ func newConsoleOauthClient(cr *v1alpha1.Console, rt *routev1.Route) *oauthv1.OAu
 			// cluster scoped resources
 			// OwnerReferences:            nil,
 		},
-		Secret:                              crypto.RandomBitsString(256),
+		Secret: crypto.RandomBitsString(256),
 		// TODO: we need to fill this in from our Route, whenever
 		// it gets a .Spec.Host
 		//redirectURIs:
