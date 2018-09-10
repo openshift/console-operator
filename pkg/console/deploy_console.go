@@ -27,11 +27,6 @@ func newConsoleNamespace() string {
 	return ""
 }
 
-func newConsoleConfigMap() string {
-	logrus.Info("TODO: create ConfigMap `console-config`")
-	return ""
-}
-
 func logYaml(obj runtime.Object) {
 	// REALLY NOISY, but handy for debugging:
 	// deployJSON, err := json.Marshal(d)
@@ -46,13 +41,21 @@ func logYaml(obj runtime.Object) {
 // https://github.com/operator-framework/operator-sdk-samples/blob/master/vault-operator/pkg/vault/deploy_vault.go#L39
 func deployConsole(cr *v1alpha1.Console) error {
 	newConsoleNamespace()
-	newConsoleConfigMap()
+	cm := newConsoleConfigMap(cr)
 	svc := newConsoleService()
 	d := newConsoleDeployment(cr)
 	rt := newConsoleRoute()
 	oauthc := newConsoleOauthClient(cr, rt)
 	// logrus.Info("Created stubs", n, cm, svc, rt, oauth)
 	logrus.Info("Created", svc.Kind, svc.ObjectMeta.Name, d.Kind, d.ObjectMeta.Name)
+
+	if err := sdk.Create(cm); err != nil && !errors.IsAlreadyExists(err) {
+		logrus.Errorf("failed to create console configmap : %v", err)
+		return err
+	} else {
+		logrus.Info("created console configmap")
+		logYaml(cm)
+	}
 
 	if err := sdk.Create(svc); err != nil && !errors.IsAlreadyExists(err) {
 		logrus.Errorf("failed to create console service : %v", err)
@@ -67,7 +70,7 @@ func deployConsole(cr *v1alpha1.Console) error {
 		return err
 	} else {
 		logrus.Info("created console route")
-		logYaml(rt)
+		// logYaml(rt)
 	}
 
 	if err := sdk.Create(d); err != nil && !errors.IsAlreadyExists(err) {
