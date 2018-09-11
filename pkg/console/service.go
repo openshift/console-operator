@@ -7,10 +7,18 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+const (
+	// this annotation should generate us a certificate
+	serviceServingCertSignerAnnotationKey = "service.alpha.openshift.io/serving-cert-secret-name"
+)
+
 
 func newConsoleService() *corev1.Service {
 	labels := sharedLabels()
 	meta := sharedMeta()
+	meta.Annotations = map[string]string{
+		serviceServingCertSignerAnnotationKey: consoleServingCertName,
+	}
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",

@@ -25,6 +25,7 @@ const (
 	consolePort     = 443
 	consoleTargetPort = 8443
 	publicURLName   = "BRIDGE_DEVELOPER_CONSOLE_URL"
+	consoleServingCertName = "console-serving-cert"
 )
 
 type volumeConfig struct {
@@ -39,7 +40,7 @@ type volumeConfig struct {
 
 var volumeConfigList = []volumeConfig{
 	{
-		name:     "serving-cert",
+		name:     consoleServingCertName,
 		readOnly: true,
 		path:     "/var/serving-cert",
 		isSecret: true,
