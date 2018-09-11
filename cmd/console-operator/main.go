@@ -4,9 +4,9 @@ import (
 	"context"
 	"runtime"
 
-	stub "github.com/openshift/console-operator/pkg/stub"
-	sdk "github.com/operator-framework/operator-sdk/pkg/sdk"
-	k8sutil "github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
+	"github.com/openshift/console-operator/pkg/stub"
+	"github.com/operator-framework/operator-sdk/pkg/sdk"
+	"github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 
 	"github.com/sirupsen/logrus"
@@ -19,11 +19,7 @@ func printVersion() {
 	logrus.Infof("operator-sdk Version: %v", sdkVersion.Version)
 }
 
-func main() {
-	printVersion()
-
-	sdk.ExposeMetricsPort()
-
+func watchCRD() {
 	resource := "console.openshift.io/v1alpha1"
 	kind := "Console"
 	namespace, err := k8sutil.GetWatchNamespace()
@@ -37,4 +33,12 @@ func main() {
 	sdk.Watch(resource, kind, namespace, resyncPeriod)
 	sdk.Handle(stub.NewHandler())
 	sdk.Run(context.TODO())
+}
+
+func main() {
+	printVersion()
+
+	sdk.ExposeMetricsPort()
+
+	watchCRD()
 }

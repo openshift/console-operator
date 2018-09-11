@@ -75,25 +75,22 @@ func servingInfo() yaml.MapSlice {
 // There may be a better way to do this, lets improve if we can.
 func newConsoleConfigYaml() string {
 	// https://godoc.org/gopkg.in/yaml.v2#MapSlice
-	conf := yaml.MapSlice{}
-	conf = append(conf, yaml.MapItem{
-		Key: consoleConfigYamlFile,
-		Value: yaml.MapSlice{
-			{
-				Key: "Kind", Value: "ConsoleConfig",
-			}, {
-				Key: "ApiVersion", Value: "console.openshift.io/v1beta1",
-			}, {
-				Key: "auth", Value: authServerYaml(),
-			}, {
-				Key: "clusterInfo", Value: clusterInfo(),
-			}, {
-				Key: "customization", Value: customization(),
-			}, {
-				Key: "servingInfo", Value: "",
-			},
+	conf := yaml.MapSlice{
+		{
+			Key: "kind", Value: "ConsoleConfig",
+		}, {
+			Key: "apiVersion", Value: "console.openshift.io/v1beta1",
+		}, {
+			Key: "auth", Value: authServerYaml(),
+		}, {
+			Key: "clusterInfo", Value: clusterInfo(),
+		}, {
+			Key: "customization", Value: customization(),
+		}, {
+			Key: "servingInfo", Value: servingInfo(),
 		},
-	})
+	}
+
 	yml, err := yaml.Marshal(conf)
 	if err != nil {
 		fmt.Printf("Could not create config yaml %v", err)
@@ -109,12 +106,13 @@ func newConsoleConfigMap(cr *v1alpha1.Console) *corev1.ConfigMap {
 
 	return &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: corev1.SchemeGroupVersion.String(),
+			APIVersion: "v1",
 			Kind: "ConfigMap",
 		},
 		ObjectMeta: meta,
 		Data: map[string]string{
-			"console-config.yaml": config,
+			// haha, duplicate!  fix me
+			consoleConfigYamlFile: config,
 		},
 	}
 }

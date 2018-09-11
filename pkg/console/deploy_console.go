@@ -45,7 +45,7 @@ func deployConsole(cr *v1alpha1.Console) error {
 	svc := newConsoleService()
 	d := newConsoleDeployment(cr)
 	rt := newConsoleRoute()
-	oauthc := newConsoleOauthClient(cr, rt)
+	oauthc, oauths := newConsoleOauthClient(cr, rt)
 	// logrus.Info("Created stubs", n, cm, svc, rt, oauth)
 	logrus.Info("Created", svc.Kind, svc.ObjectMeta.Name, d.Kind, d.ObjectMeta.Name)
 
@@ -87,6 +87,14 @@ func deployConsole(cr *v1alpha1.Console) error {
 	} else {
 		logrus.Info("created console oauth client")
 		logYaml(oauthc)
+	}
+
+	if err := sdk.Create(oauths); err != nil && !errors.IsAlreadyExists(err) {
+		logrus.Errorf("failed to create console oauth client secret : %v", err)
+		return err
+	} else {
+		logrus.Info("created console oauth client secret")
+		logYaml(oauths)
 	}
 
 

@@ -11,6 +11,6 @@ spec:
   # count is # of replicas
   count: 1
   # this is the console image
-  baseImage: quay.io/spadgett/origin-console@sha256
-  version: 9db8cd7960744f4178f69319f7aacbae03fe45c090a734158e6ed0292741320e
-
+  baseImage: quay.io/openshift/origin-console
+  # note: this doesnt work well
+  # version: @sha256:20c97ead1f7058772678da1e6a149217c873ab9987fca6dcc6419d17e92f6d67
