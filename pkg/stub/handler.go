@@ -2,6 +2,7 @@ package stub
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 
@@ -13,6 +14,8 @@ import (
 	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	// "k8s.io/apimachinery/pkg/runtime/schema"
 	"github.com/openshift/console-operator/pkg/console"
+
+	routev1 "github.com/openshift/api/route/v1"
 )
 
 func NewHandler() sdk.Handler {
@@ -25,6 +28,7 @@ type Handler struct {
 }
 
 func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
+	fmt.Printf("ConsoleHandler.Handle() %o", event)
 	// Event: Created, Updated, Deleted
 	// but Created + Updated are kind of the same :)
 	// TODO:
@@ -33,6 +37,7 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 	// - If Paused, skip reconcile loop & do nothing. let the user fiddle manually
 	// - If Changed?  reconcile()
 	//   - make sure object state is honored
+	// fmt.Printf("Got a: %o", event.Object.GetObjectKind())
 	switch o := event.Object.(type) {
 	case *v1alpha1.Console:
 		// Vault version has some vault.Reconcile function:
@@ -43,6 +48,9 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 			logrus.Errorf("failed to reconcile origin web console : %v", err)
 			return err
 		}
+	case *routev1.Route:
+		fmt.Printf("Got a route", o)
 	}
+
 	return nil
 }

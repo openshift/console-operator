@@ -1,12 +1,9 @@
 package console
 
 import (
-	"k8s.io/apimachinery/pkg/runtime"
-
 	// "encoding/json" think ill stick with yaml
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 
@@ -27,16 +24,6 @@ func newConsoleNamespace() string {
 	return ""
 }
 
-func logYaml(obj runtime.Object) {
-	// REALLY NOISY, but handy for debugging:
-	// deployJSON, err := json.Marshal(d)
-	deployYAML, err := yaml.Marshal(obj)
-	if err != nil {
-		logrus.Info("failed to show deployment yaml in log")
-	}
-	logrus.Infof("Deploying:", string(deployYAML))
-}
-
 // Deploy Vault Example:
 // https://github.com/operator-framework/operator-sdk-samples/blob/master/vault-operator/pkg/vault/deploy_vault.go#L39
 func deployConsole(cr *v1alpha1.Console) error {
@@ -54,7 +41,7 @@ func deployConsole(cr *v1alpha1.Console) error {
 		return err
 	} else {
 		logrus.Info("created console configmap")
-		logYaml(cm)
+		// logYaml(cm)
 	}
 
 	if err := sdk.Create(svc); err != nil && !errors.IsAlreadyExists(err) {
@@ -86,7 +73,7 @@ func deployConsole(cr *v1alpha1.Console) error {
 		return err
 	} else {
 		logrus.Info("created console oauth client")
-		logYaml(oauthc)
+		// logYaml(oauthc)
 	}
 
 	if err := sdk.Create(oauths); err != nil && !errors.IsAlreadyExists(err) {
@@ -94,7 +81,7 @@ func deployConsole(cr *v1alpha1.Console) error {
 		return err
 	} else {
 		logrus.Info("created console oauth client secret")
-		logYaml(oauths)
+		// logYaml(oauths)
 	}
 
 

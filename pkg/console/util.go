@@ -2,8 +2,10 @@ package console
 
 import (
 	"fmt"
+	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	"github.com/sirupsen/logrus"
-
+	"k8s.io/apimachinery/pkg/runtime"
+	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 )
@@ -57,4 +59,27 @@ func sharedMeta() metav1.ObjectMeta {
 		// these can be overridden/mutated
 		Labels: sharedLabels(),
 	}
+}
+
+
+func logYaml(obj runtime.Object) {
+	// REALLY NOISY, but handy for debugging:
+	// deployJSON, err := json.Marshal(d)
+	deployYAML, err := yaml.Marshal(obj)
+	if err != nil {
+		logrus.Info("failed to show deployment yaml in log")
+	}
+	logrus.Infof("Deploying:", string(deployYAML))
+}
+
+func generateLogLevel(cr *v1alpha1.Console) string {
+	switch cr.Spec.Logging.Level {
+	case 0:
+		return "error"
+	case 1:
+		return "warn"
+	case 2, 3:
+		return "info"
+	}
+	return "debug"
 }

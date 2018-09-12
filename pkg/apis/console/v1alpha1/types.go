@@ -30,13 +30,24 @@ type Console struct {
 // 	operator-sdk generate k8s
 type ConsoleSpec struct {
 	// Count is the number of Console replicas
-	// Default: 1
 	Count     int32  `json:"count,omitempty"`
 	BaseImage string `json:"baseImage"`
 	Version   string `json:"version"`
+	// 0 error, 1 warn 2 info? default debug
+	// aiming at consistency with this for now:
+	// https://github.com/openshift/cluster-image-registry-operator/blob/master/pkg/generate/podtemplatespec.go#L21
+	Logging *LoggingConfig `json:"logging"`
 }
 type ConsoleStatus struct {
 	// Fill me
+}
+
+// TODO: decide on values for this, consider
+// consistency with cluster-image-registry-operator,
+// though it doesn't seem to set a default level if empty
+// https://github.com/openshift/cluster-image-registry-operator/blob/80976754e1467f2303a3ff352fe5955cf58d12f7/pkg/generate/podtemplatespec.go#L21
+type LoggingConfig struct {
+	Level int `json:"level, omitempty"`
 }
 
 // good idea to set the defaults
@@ -54,6 +65,11 @@ func (c *Console) SetDefaults() bool {
 	if len(c.Spec.Version) == 0 {
 		c.Spec.Version = defaultVersion
 		changed = true
+	}
+	if c.Spec.Logging == nil {
+		c.Spec.Logging = &LoggingConfig{
+			Level: 4,
+		}
 	}
 	return changed
 }

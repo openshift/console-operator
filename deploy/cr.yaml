@@ -12,5 +12,9 @@ spec:
   count: 1
   # this is the console image
   baseImage: quay.io/openshift/origin-console
-  # note: this doesnt work well
+  # note: version with a @sha does not work, @ is not valid starting a string in yaml
   # version: @sha256:20c97ead1f7058772678da1e6a149217c873ab9987fca6dcc6419d17e92f6d67
+  #
+  # setting a log level that we can pass down to the components? or just the operator?
+  logging:
+    level: 0
