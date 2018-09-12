@@ -27,6 +27,8 @@ type Handler struct {
 	// NOTE: none of the example operators seem to fill this.
 }
 
+// a fairly robust handler example:
+// https://github.com/openshift/cluster-image-registry-operator/blob/80976754e1467f2303a3ff352fe5955cf58d12f7/pkg/operator/handler.go#L140
 func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 	fmt.Printf("ConsoleHandler.Handle() %o", event)
 	// Event: Created, Updated, Deleted
@@ -48,8 +50,11 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 			logrus.Errorf("failed to reconcile origin web console : %v", err)
 			return err
 		}
+	// we should not have a route until console.Reconcile creates one
+	// so this case can just handle the update
 	case *routev1.Route:
 		fmt.Printf("Got a route", o)
+		console.UpdateOauthClient(o)
 	}
 
 	return nil

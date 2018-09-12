@@ -32,7 +32,7 @@ func deployConsole(cr *v1alpha1.Console) error {
 	svc := newConsoleService()
 	d := newConsoleDeployment(cr)
 	rt := newConsoleRoute()
-	oauthc, oauths := newConsoleOauthClient(cr, rt)
+	oauthc, oauths := newConsoleOauthClient(rt)
 	// logrus.Info("Created stubs", n, cm, svc, rt, oauth)
 	logrus.Info("Created", svc.Kind, svc.ObjectMeta.Name, d.Kind, d.ObjectMeta.Name)
 
