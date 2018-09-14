@@ -83,3 +83,26 @@ func generateLogLevel(cr *v1alpha1.Console) string {
 	}
 	return "debug"
 }
+
+// objects can have more than one ownerRef, potentially
+func addOwnerRef(obj metav1.Object, ownerRef *metav1.OwnerReference) {
+	if obj != nil {
+		if ownerRef != nil {
+			obj.SetOwnerReferences(append(obj.GetOwnerReferences(), *ownerRef))
+		}
+	}
+}
+
+func ownerRefFrom(cr *v1alpha1.Console) *metav1.OwnerReference {
+	if cr != nil {
+		truthy := true
+		return &metav1.OwnerReference{
+			APIVersion: cr.APIVersion,
+			Kind: cr.Kind,
+			Name: cr.Name,
+			UID: cr.UID,
+			Controller: &truthy,
+		}
+	}
+	return nil
+}

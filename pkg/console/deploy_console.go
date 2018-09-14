@@ -28,11 +28,12 @@ func newConsoleNamespace() string {
 // https://github.com/operator-framework/operator-sdk-samples/blob/master/vault-operator/pkg/vault/deploy_vault.go#L39
 func deployConsole(cr *v1alpha1.Console) error {
 	newConsoleNamespace()
-	cm := newConsoleConfigMap(cr)
-	svc := newConsoleService()
+	svc := newConsoleService(cr)
+	rt := newConsoleRoute(cr)
+	cm := newConsoleConfigMap(cr, rt)
+	oauthc, oauths := newConsoleOauthClient(cr, rt)
 	d := newConsoleDeployment(cr)
-	rt := newConsoleRoute()
-	oauthc, oauths := newConsoleOauthClient(rt)
+
 	// logrus.Info("Created stubs", n, cm, svc, rt, oauth)
 	logrus.Info("Created", svc.Kind, svc.ObjectMeta.Name, d.Kind, d.ObjectMeta.Name)
 

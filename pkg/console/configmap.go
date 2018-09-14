@@ -3,12 +3,17 @@ package console
 import (
 	"fmt"
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	"github.com/operator-framework/operator-sdk/pkg/sdk"
+	"gopkg.in/yaml.v2"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"gopkg.in/yaml.v2"
+
+	routev1 "github.com/openshift/api/route/v1"
 )
 
 const (
+	consoleConfigMapName = "console-config"
 	consoleConfigYamlFile = "console-config.yaml"
 	clientSecretFilePath = "/var/oauth-config/clientSecret"
 	oauthEndpointCAFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
@@ -18,6 +23,13 @@ const (
 	certFilePath = "/var/serving-cert/tls.crt"
 	keyFilePath = "/var/serving-cert/tls.key"
 )
+
+func consoleBaseAddr(host string) string {
+	if host != "" {
+		return fmt.Sprintf("https://%s", host)
+	}
+	return ""
+}
 
 func authServerYaml() yaml.MapSlice {
 	return yaml.MapSlice{
@@ -34,14 +46,13 @@ func authServerYaml() yaml.MapSlice {
 }
 
 // TODO: this can take args as we update locations after we generate a router
-func clusterInfo() yaml.MapSlice {
+func clusterInfo(rt *routev1.Route) yaml.MapSlice {
+	host := rt.Spec.Host
 	return yaml.MapSlice{
 		{
-			Key: "consoleBaseAddress", Value: nil,
+			Key: "consoleBaseAddress", Value: consoleBaseAddr(host),
 		}, {
-			Key: "consoleBasePath", Value: nil,
-		}, {
-			Key: "developerConsolePublicURL", Value: nil,
+			Key: "consoleBasePath", Value: "",
 		}, {
 			Key: "masterPublicURL", Value: nil,
 		},
@@ -73,7 +84,7 @@ func servingInfo() yaml.MapSlice {
 
 // Generates our embedded yaml file
 // There may be a better way to do this, lets improve if we can.
-func newConsoleConfigYaml() string {
+func newConsoleConfigYaml(rt *routev1.Route) string {
 	// https://godoc.org/gopkg.in/yaml.v2#MapSlice
 	conf := yaml.MapSlice{
 		{
@@ -83,7 +94,7 @@ func newConsoleConfigYaml() string {
 		}, {
 			Key: "auth", Value: authServerYaml(),
 		}, {
-			Key: "clusterInfo", Value: clusterInfo(),
+			Key: "clusterInfo", Value: clusterInfo(rt),
 		}, {
 			Key: "customization", Value: customization(),
 		}, {
@@ -99,12 +110,12 @@ func newConsoleConfigYaml() string {
 	return string(yml)
 }
 
-func newConsoleConfigMap(cr *v1alpha1.Console) *corev1.ConfigMap {
+func newConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) *corev1.ConfigMap {
 	meta := sharedMeta()
-	meta.Name = "console-config" // expects a different name
-	config := newConsoleConfigYaml()
-
-	return &corev1.ConfigMap{
+	// expects a non-standard name
+	meta.Name = consoleConfigMapName
+	config := newConsoleConfigYaml(rt)
+	configMap := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
 			Kind: "ConfigMap",
@@ -115,4 +126,11 @@ func newConsoleConfigMap(cr *v1alpha1.Console) *corev1.ConfigMap {
 			consoleConfigYamlFile: config,
 		},
 	}
+	addOwnerRef(configMap, ownerRefFrom(cr))
+	return configMap
+}
+
+func UpdateConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) {
+	configMap := newConsoleConfigMap(cr, rt)
+	sdk.Update(configMap)
 }

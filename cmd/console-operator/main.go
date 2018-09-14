@@ -3,12 +3,11 @@ package main
 import (
 	"context"
 	"github.com/openshift/api/route"
-	"runtime"
-
 	"github.com/openshift/console-operator/pkg/stub"
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
+	"runtime"
 
 	"github.com/sirupsen/logrus"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -48,8 +47,6 @@ func main() {
 
 	watch(routev1.GroupVersion.String(), "Route", namespace, resyncPeriod)
 	watch(consoleapi.SchemeGroupVersion.String(), "Console", namespace, resyncPeriod)
-
-
 	sdk.Handle(stub.NewHandler())
 	sdk.Run(context.TODO())
 }

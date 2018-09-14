@@ -1,6 +1,7 @@
 package console
 
 import (
+	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -8,7 +9,7 @@ import (
 )
 
 
-func newConsoleRoute() *routev1.Route {
+func newConsoleRoute(cr *v1alpha1.Console) *routev1.Route {
 	meta := sharedMeta()
 	weight := int32(100)
 	route := &routev1.Route{
@@ -35,5 +36,6 @@ func newConsoleRoute() *routev1.Route {
 		},
 	}
 	logrus.Info("Creating console route manifest")
+	addOwnerRef(route, ownerRefFrom(cr))
 	return route
 }

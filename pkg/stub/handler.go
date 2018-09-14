@@ -3,6 +3,9 @@ package stub
 import (
 	"context"
 	"fmt"
+	"github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
+
+	// "github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
 
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 
@@ -15,6 +18,7 @@ import (
 	// "k8s.io/apimachinery/pkg/runtime/schema"
 	"github.com/openshift/console-operator/pkg/console"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	routev1 "github.com/openshift/api/route/v1"
 )
 
@@ -30,7 +34,14 @@ type Handler struct {
 // a fairly robust handler example:
 // https://github.com/openshift/cluster-image-registry-operator/blob/80976754e1467f2303a3ff352fe5955cf58d12f7/pkg/operator/handler.go#L140
 func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
-	fmt.Printf("ConsoleHandler.Handle() %o", event)
+
+	if event.Deleted {
+		console.DeleteOauthClient()
+		return nil
+	}
+
+	// TODO: paused. should do nothing, ignore the route changes, etc
+
 	// Event: Created, Updated, Deleted
 	// but Created + Updated are kind of the same :)
 	// TODO:
@@ -53,9 +64,37 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 	// we should not have a route until console.Reconcile creates one
 	// so this case can just handle the update
 	case *routev1.Route:
-		fmt.Printf("Got a route", o)
-		console.UpdateOauthClient(o)
+		cr, err := h.getConsole()
+		if err != nil {
+			return err
+		}
+		console.UpdateOauthClient(cr, o)
+		console.UpdateConsoleConfigMap(cr, o)
+		// TODO: update CR status with HOST url as this should be reported back to the user
 	}
 
 	return nil
+}
+
+
+func (h *Handler) getConsole() (*v1alpha1.Console, error) {
+	namespace, _ := k8sutil.GetWatchNamespace()
+	cr := &v1alpha1.Console{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: v1alpha1.SchemeGroupVersion.String(),
+			Kind: "Console",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "openshift-console", // openshiftConsoleName in utils, circular dep?
+			Namespace: namespace,
+		},
+	}
+	err := sdk.Get(cr)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to get console custom resource: %s", err)
+		}
+		return nil, nil
+	}
+	return cr, nil
 }

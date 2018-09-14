@@ -39,7 +39,8 @@ type ConsoleSpec struct {
 	Logging *LoggingConfig `json:"logging"`
 }
 type ConsoleStatus struct {
-	// Fill me
+	// the hostname assigned by the cluster after the route is created
+	Host string `json:"host"`
 }
 
 // TODO: decide on values for this, consider

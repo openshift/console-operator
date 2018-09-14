@@ -50,6 +50,7 @@ func newConsoleDeployment(cr *v1alpha1.Console) *appsv1.Deployment {
 			},
 		},
 	}
+	addOwnerRef(deployment, ownerRefFrom(cr))
 	logrus.Info("Creating console deployment manifest")
 	return deployment
 }
@@ -130,30 +131,3 @@ func consoleContainer(cr *v1alpha1.Console) corev1.Container {
 		VolumeMounts: volumeMounts,
 	}
 }
-
-// might do something with this, if it is meaningful.
-// perhaps reconcile() will need to fiddle? maybe not,
-// cuz pods should be handled by their deployments...
-//func newConsolePod() *corev1.Pod {
-//	labels := sharedLabels() // Didn't add them all here...
-//	meta := sharedMeta()
-//	meta.Labels = labels
-//
-//	pod := &corev1.Pod{
-//		TypeMeta: metav1.TypeMeta{
-//			APIVersion: "apps/v1",
-//			Kind:       "Pod",
-//		},
-//		ObjectMeta: meta,
-//		Spec: corev1.PodSpec{
-//			Containers: []corev1.Container{
-//				{
-//					//Name:    "busybox",
-//					//Image:   "busybox",
-//					//Command: []string{"sleep", "3600"},
-//				},
-//			},
-//		}
-//	}
-//	return pod
-//}

@@ -1,6 +1,7 @@
 package console
 
 import (
+	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,7 +14,7 @@ const (
 )
 
 
-func newConsoleService() *corev1.Service {
+func newConsoleService(cr *v1alpha1.Console) *corev1.Service {
 	labels := sharedLabels()
 	meta := sharedMeta()
 	meta.Annotations = map[string]string{
@@ -39,6 +40,7 @@ func newConsoleService() *corev1.Service {
 			SessionAffinity: "None",
 		},
 	}
+	addOwnerRef(service, ownerRefFrom(cr))
 	logrus.Info("Creating console service manifest")
 	return service
 }
