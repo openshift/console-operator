@@ -70,7 +70,8 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 		}
 		console.UpdateOauthClient(cr, o)
 		console.UpdateConsoleConfigMap(cr, o)
-		// TODO: update CR status with HOST url as this should be reported back to the user
+		cr.UpdateHost(o)
+		sdk.Update(cr)
 	}
 
 	return nil

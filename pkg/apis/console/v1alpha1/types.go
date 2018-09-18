@@ -1,7 +1,9 @@
 package v1alpha1
 
 import (
+	"fmt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	routev1 "github.com/openshift/api/route/v1"
 )
 
 const (
@@ -73,6 +75,11 @@ func (c *Console) SetDefaults() bool {
 		}
 	}
 	return changed
+}
+
+func (c *Console) UpdateHost(route *routev1.Route) {
+	fmt.Printf("updating Console Status with host %s", route.Spec.Host)
+	c.Status.Host = route.Spec.Host
 }
 
 // may want to create secret names here, etc.
