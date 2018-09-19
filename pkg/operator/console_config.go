@@ -1,4 +1,4 @@
-package console
+package operator
 
 const (
 	consolePortName        = "http"

@@ -1,4 +1,4 @@
-package console
+package operator
 
 import (
 	// "encoding/json" think ill stick with yaml

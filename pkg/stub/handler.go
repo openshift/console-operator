@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
-	"github.com/openshift/console-operator/pkg/console"
+	"github.com/openshift/console-operator/pkg/operator"
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
 	"github.com/sirupsen/logrus"
@@ -30,7 +30,7 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 	if event.Deleted {
 		// Garbage collector will take care of most secondary resources
 		// thanks to ownersRefs
-		console.DeleteOauthClient()
+		operator.DeleteOauthClient()
 		return nil
 	}
 
@@ -48,8 +48,8 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 		if err != nil {
 			return err
 		}
-		console.UpdateOauthClient(cr, o)
-		console.UpdateConsoleConfigMap(cr, o)
+		operator.UpdateOauthClient(cr, o)
+		operator.UpdateConsoleConfigMap(cr, o)
 		cr.UpdateHost(o)
 	// TODO: watch & handle each of the secondary resources created.
 	case *corev1.Service:
@@ -67,7 +67,7 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 		logrus.Info("HANDLE: *v1alpha1.Console >>>>>>>>")
 		changed := o.SetDefaults()
 		logrus.Info("Defaults updated:", changed)
-		console.DeployConsole(o)
+		operator.DeployConsole(o)
 	}
 
 	return nil

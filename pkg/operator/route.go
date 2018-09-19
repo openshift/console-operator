@@ -1,4 +1,4 @@
-package console
+package operator
 
 import (
 	routev1 "github.com/openshift/api/route/v1"

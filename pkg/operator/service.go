@@ -1,4 +1,4 @@
-package console
+package operator
 
 import (
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
