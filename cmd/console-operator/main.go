@@ -41,7 +41,7 @@ func main() {
 	if err != nil {
 		logrus.Fatalf("failed to get watch namespace: %v", err)
 	}
-	resyncPeriod := 5
+	resyncPeriod := 60 * 60 * 10 // 10 hours 
 
 	watch(routev1.GroupVersion.String(), "Route", namespace, resyncPeriod)
 	watch(corev1.SchemeGroupVersion.String(), "Service", namespace, resyncPeriod)
