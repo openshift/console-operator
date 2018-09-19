@@ -73,6 +73,34 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 	return nil
 }
 
+
+//type customResourceWrapper struct {
+//
+//}
+//
+//func (crw *customResourceWrapper) Get(namespace, name string) {
+//	cr := &v1alpha1.Console{
+//		TypeMeta: metav1.TypeMeta{
+//			APIVersion: v1alpha1.SchemeGroupVersion.String(),
+//			Kind:       "Console",
+//		},
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name:      "openshift-console", // openshiftConsoleName in utils, circular dep?
+//			Namespace: namespace,
+//		},
+//	}
+//	err := sdk.Get(cr)
+//	if err != nil {
+//		if !errors.IsNotFound(err) {
+//			return nil, fmt.Errorf("failed to get console custom resource: %s", err)
+//		}
+//		return nil, nil
+//	}
+//	return cr, nil
+//}
+
+
+
 func (h *Handler) getConsole() (*v1alpha1.Console, error) {
 	namespace, _ := k8sutil.GetWatchNamespace()
 	cr := &v1alpha1.Console{
