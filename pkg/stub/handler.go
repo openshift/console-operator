@@ -3,23 +3,18 @@ package stub
 import (
 	"context"
 	"fmt"
-	"github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
-
-	// "github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
-
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
-
-	"github.com/operator-framework/operator-sdk/pkg/sdk"
-	"github.com/sirupsen/logrus"
-	// appsv1 "k8s.io/api/apps/v1"
-	// corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	// "k8s.io/apimachinery/pkg/runtime/schema"
 	"github.com/openshift/console-operator/pkg/console"
+	"github.com/operator-framework/operator-sdk/pkg/sdk"
+	"github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
+	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/api/errors"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func NewHandler() sdk.Handler {
@@ -28,42 +23,27 @@ func NewHandler() sdk.Handler {
 
 type Handler struct {
 	// Fill me
-	// NOTE: none of the example operators seem to fill this.
 }
 
-// a fairly robust handler example:
-// https://github.com/openshift/cluster-image-registry-operator/blob/80976754e1467f2303a3ff352fe5955cf58d12f7/pkg/operator/handler.go#L140
 func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 
 	if event.Deleted {
+		// Garbage collector will take care of most secondary resources
+		// thanks to ownersRefs
 		console.DeleteOauthClient()
 		return nil
 	}
 
-	// TODO: paused. should do nothing, ignore the route changes, etc
-
 	// Event: Created, Updated, Deleted
-	// but Created + Updated are kind of the same :)
+	//   Create & Update are similar
 	// TODO:
-	// - If Delete, don't deploy again :)
-	//   - Delete should be cleanup
-	// - If Paused, skip reconcile loop & do nothing. let the user fiddle manually
-	// - If Changed?  reconcile()
+	// - If Paused
+	//   - Skip reconcile loop & do nothing
+	// - If Change
 	//   - make sure object state is honored
-	// fmt.Printf("Got a: %o", event.Object.GetObjectKind())
 	switch o := event.Object.(type) {
-	case *v1alpha1.Console:
-		// Vault version has some vault.Reconcile function:
-		// https://github.com/operator-framework/operator-sdk-samples/blob/master/vault-operator/pkg/stub/handler.go#L22
-		// this is probably a good idea!
-		err := console.Reconcile(o)
-		if err != nil && !errors.IsAlreadyExists(err) {
-			logrus.Errorf("failed to reconcile origin web console : %v", err)
-			return err
-		}
-	// we should not have a route until console.Reconcile creates one
-	// so this case can just handle the update
 	case *routev1.Route:
+		logrus.Info("HANDLE: *routev1.Route >>>>>>>>")
 		cr, err := h.getConsole()
 		if err != nil {
 			return err
@@ -71,22 +51,37 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 		console.UpdateOauthClient(cr, o)
 		console.UpdateConsoleConfigMap(cr, o)
 		cr.UpdateHost(o)
-		sdk.Update(cr)
+	// TODO: watch & handle each of the secondary resources created.
+	case *corev1.Service:
+		logrus.Info("HANDLE: *corev1.Service >>>>>>>>")
+	case *corev1.ConfigMap:
+		logrus.Info("HANDLE: *corev1.ConfigMap >>>>>>>>")
+	case *corev1.Secret:
+		logrus.Info("HANDLE: *corev1.Secret >>>>>>>>")
+	case *appsv1.Deployment:
+		logrus.Info("HANDLE: *appsv1.Deployment >>>>>>>>")
+	case *oauthv1.OAuthClient:
+		// NOTE: this should never fire, it does not exist in our namespace
+		logrus.Info("HANDLE: *oauthv1.OAuthClient >>>>>>>>")
+	case *v1alpha1.Console:
+		logrus.Info("HANDLE: *v1alpha1.Console >>>>>>>>")
+		changed := o.SetDefaults()
+		logrus.Info("Defaults updated:", changed)
+		console.DeployConsole(o)
 	}
 
 	return nil
 }
-
 
 func (h *Handler) getConsole() (*v1alpha1.Console, error) {
 	namespace, _ := k8sutil.GetWatchNamespace()
 	cr := &v1alpha1.Console{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: v1alpha1.SchemeGroupVersion.String(),
-			Kind: "Console",
+			Kind:       "Console",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "openshift-console", // openshiftConsoleName in utils, circular dep?
+			Name:      "openshift-console", // openshiftConsoleName in utils, circular dep?
 			Namespace: namespace,
 		},
 	}

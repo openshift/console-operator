@@ -1,9 +1,10 @@
 package v1alpha1
 
 import (
-	"fmt"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	"github.com/operator-framework/operator-sdk/pkg/sdk"
+	"github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -78,8 +79,12 @@ func (c *Console) SetDefaults() bool {
 }
 
 func (c *Console) UpdateHost(route *routev1.Route) {
-	fmt.Printf("updating Console Status with host %s", route.Spec.Host)
+	logrus.Infof("updating console status with host %s", route.Spec.Host)
 	c.Status.Host = route.Spec.Host
+	err := sdk.Update(c)
+	if err != nil {
+		logrus.Errorf("Failed to update console status with host %s", err)
+	}
 }
 
 // may want to create secret names here, etc.
@@ -90,7 +95,7 @@ func (c *Console) UpdateHost(route *routev1.Route) {
 type ConsoleRequiredAction string
 
 const (
-	ConsoleActionRestartNeeded ConsoleRequiredAction = "RestartNeeded"
+	ConsoleActionRestartNeeded      ConsoleRequiredAction = "RestartNeeded"
 	ConsoleActionInterventionNeeded ConsoleRequiredAction = "InterventionNeeded"
-	ConsoleActionNone ConsoleRequiredAction = "ConsoleOK"
+	ConsoleActionNone               ConsoleRequiredAction = "ConsoleOK"
 )

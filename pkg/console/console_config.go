@@ -1,30 +1,10 @@
 package console
 
-//const (
-//	servingCertVolName = "serving-cert"
-//	// servingCertSecretName = "console-serving-cert"
-//	// mount path for the console https serving certificate
-//	servingCertPath = "/var/serving-cert"
-//)
-//
-//const (
-//	oauthConfigVolName = "oauth-config"
-//	// mount path for configuration for oauth client
-//	oauthConfigPath = "/var/oauth-config"
-//)
-//
-//const (
-//	consoleConfigVolName = "console-config"
-//	// path to the mount point for the ConfigMap containing
-//	// runtime configuration for the console
-//	consoleConfigPath = "/var/console-config"
-//)
-
 const (
-	consolePortName = "http"
-	consolePort     = 443
-	consoleTargetPort = 8443
-	publicURLName   = "BRIDGE_DEVELOPER_CONSOLE_URL"
+	consolePortName        = "http"
+	consolePort            = 443
+	consoleTargetPort      = 8443
+	publicURLName          = "BRIDGE_DEVELOPER_CONSOLE_URL"
 	consoleServingCertName = "console-serving-cert"
 	consoleOauthConfigName = "console-oauth-config"
 )
@@ -48,7 +28,7 @@ var volumeConfigList = []volumeConfig{
 		// defaultMode: 288,
 	},
 	{
-		name:    consoleOauthConfigName,
+		name:     consoleOauthConfigName,
 		readOnly: true,
 		path:     "/var/oauth-config",
 		isSecret: true,

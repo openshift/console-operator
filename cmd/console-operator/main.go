@@ -12,9 +12,10 @@ import (
 	"github.com/sirupsen/logrus"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
-	// openshift additional resources
 	routev1 "github.com/openshift/api/route/v1"
-	// this operator
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+
 	consoleapi "github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 )
 
@@ -24,14 +25,11 @@ func printVersion() {
 	logrus.Infof("operator-sdk Version: %v", sdkVersion.Version)
 }
 
-// https://github.com/openshift/cluster-image-registry-operator/blob/master/cmd/cluster-image-registry-operator/main.go#L27
 func watch(apiVersion, kind, namespace string, resyncPeriod int) {
 	logrus.Infof("Watching %s, %s, %s, %d", apiVersion, kind, namespace, resyncPeriod)
 	sdk.Watch(apiVersion, kind, namespace, resyncPeriod)
 }
 
-// alternatively, add numerous resources if we need them:
-// https://github.com/openshift/cluster-image-registry-operator/blob/master/pkg/apis/dockerregistry/v1alpha1/register.go#L27
 func init() {
 	k8sutil.AddToSDKScheme(route.Install)
 }
@@ -46,8 +44,15 @@ func main() {
 	resyncPeriod := 5
 
 	watch(routev1.GroupVersion.String(), "Route", namespace, resyncPeriod)
+	watch(corev1.SchemeGroupVersion.String(), "Service", namespace, resyncPeriod)
+
+	watch(corev1.SchemeGroupVersion.String(), "ConfigMap", namespace, resyncPeriod)
+	watch(corev1.SchemeGroupVersion.String(), "Secret", namespace, resyncPeriod)
+
+	watch(appsv1.SchemeGroupVersion.String(), "Deployment", namespace, resyncPeriod)
+
 	watch(consoleapi.SchemeGroupVersion.String(), "Console", namespace, resyncPeriod)
+
 	sdk.Handle(stub.NewHandler())
 	sdk.Run(context.TODO())
 }
-

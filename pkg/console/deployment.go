@@ -2,9 +2,11 @@ package console
 
 import (
 	"fmt"
+	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
@@ -54,7 +56,6 @@ func newConsoleDeployment(cr *v1alpha1.Console) *appsv1.Deployment {
 	logrus.Info("Creating console deployment manifest")
 	return deployment
 }
-
 
 // deduplication, use the same volume config to generate
 // Volumes, and VolumeMounts
@@ -129,5 +130,15 @@ func consoleContainer(cr *v1alpha1.Console) corev1.Container {
 		}},
 		// terminationMessagePolicy
 		VolumeMounts: volumeMounts,
+	}
+}
+
+func CreateConsoleDeployment(cr *v1alpha1.Console) {
+	d := newConsoleDeployment(cr)
+	if err := sdk.Create(d); err != nil && !errors.IsAlreadyExists(err) {
+		logrus.Errorf("failed to create console deployment : %v", err)
+	} else {
+		logrus.Info("created console deployment")
+		// logYaml(d)
 	}
 }

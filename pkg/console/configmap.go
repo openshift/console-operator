@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,15 +15,15 @@ import (
 )
 
 const (
-	consoleConfigMapName = "console-config"
-	consoleConfigYamlFile = "console-config.yaml"
-	clientSecretFilePath = "/var/oauth-config/clientSecret"
+	consoleConfigMapName    = "console-config"
+	consoleConfigYamlFile   = "console-config.yaml"
+	clientSecretFilePath    = "/var/oauth-config/clientSecret"
 	oauthEndpointCAFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-	documentationBaseURL = "https://docs.okd.io/3.11/"
-	brandingDefault = "okd"
+	documentationBaseURL    = "https://docs.okd.io/3.11/"
+	brandingDefault         = "okd"
 	// serving info
 	certFilePath = "/var/serving-cert/tls.crt"
-	keyFilePath = "/var/serving-cert/tls.key"
+	keyFilePath  = "/var/serving-cert/tls.key"
 )
 
 func consoleBaseAddr(host string) string {
@@ -83,7 +85,7 @@ func servingInfo() yaml.MapSlice {
 }
 
 // Generates our embedded yaml file
-// There may be a better way to do this, lets improve if we can.
+// There is a better way to do this I am sure
 func newConsoleConfigYaml(rt *routev1.Route) string {
 	// https://godoc.org/gopkg.in/yaml.v2#MapSlice
 	conf := yaml.MapSlice{
@@ -118,7 +120,7 @@ func newConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) *corev1.Config
 	configMap := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
-			Kind: "ConfigMap",
+			Kind:       "ConfigMap",
 		},
 		ObjectMeta: meta,
 		Data: map[string]string{
@@ -128,6 +130,16 @@ func newConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) *corev1.Config
 	}
 	addOwnerRef(configMap, ownerRefFrom(cr))
 	return configMap
+}
+
+func CreateConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) {
+	configMap := newConsoleConfigMap(cr, rt)
+	if err := sdk.Create(configMap); err != nil && !errors.IsAlreadyExists(err) {
+		logrus.Errorf("failed to create console configmap : %v", err)
+	} else {
+		logrus.Info("created console configmap")
+		// logYaml(cm)
+	}
 }
 
 func UpdateConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) {

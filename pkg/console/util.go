@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	"github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/runtime"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
@@ -17,7 +16,7 @@ const (
 // This should return the public url provided for us by the ROUTE or Ingress...
 func consoleURL() string {
 	// This will need to do some work to generate the real path
-	logrus.Info("Console container BRIDGE_DEVELOPER_CONSOLE_URL is HARD-CODED value for now")
+	logrus.Warn("Console container BRIDGE_DEVELOPER_CONSOLE_URL is HARD-CODED value for now")
 	return fmt.Sprintf("https://%s/console/", "api.ui-preserve.origin-gce.dev.openshift.com")
 }
 
@@ -27,7 +26,6 @@ func sharedLabels() map[string]string {
 	}
 }
 
-// similar to how I did this with the helm chart
 func labelsForConsole() map[string]string {
 	baseLabels := sharedLabels()
 
@@ -60,7 +58,6 @@ func sharedMeta() metav1.ObjectMeta {
 		Labels: sharedLabels(),
 	}
 }
-
 
 func logYaml(obj runtime.Object) {
 	// REALLY NOISY, but handy for debugging:
@@ -98,9 +95,9 @@ func ownerRefFrom(cr *v1alpha1.Console) *metav1.OwnerReference {
 		truthy := true
 		return &metav1.OwnerReference{
 			APIVersion: cr.APIVersion,
-			Kind: cr.Kind,
-			Name: cr.Name,
-			UID: cr.UID,
+			Kind:       cr.Kind,
+			Name:       cr.Name,
+			UID:        cr.UID,
 			Controller: &truthy,
 		}
 	}
