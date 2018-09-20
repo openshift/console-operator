@@ -54,6 +54,28 @@ func (h *handler) Handle(_ context.Context, _ sdk.Event) error {
 		return nil
 	}
 
+	// operator.Reconcile(cr)
+	// at this point we need to do the following:
+	//   create deployment if not exists
+	//   create service if not exists
+	//   create route if not exists
+	//   create configmap if not exists
+	//   create oauthclient if not exists
+	// 		which will look something like this:
+	//        sdk.Get(the-client)
+	//        if !exists
+	//          sdk.Get(the-route)
+	//          addRouteHostIfWeGotIt(the-client)
+	//          sdk.Create(the-client)
+	//        else
+	//          sdk.Get(the-route)
+	//          addRouteHostIfWeGotIt(the-client)
+	//          sdk.Update(the-client)
+	//   create oauthclient-secret if not exists
+	// but also
+	//   sync random secret between oauthclient & oauthclient-secret
+	//   sync route.host between route, oauthclient.redirectURIs & configmap.baseAddress
+	operator.CreateConsoleDeployment(cr)
 	logrus.Info("Time to do real things now!  Nothing is deleted, nothing is paused....")
 	return nil
 }
@@ -81,6 +103,17 @@ func getCR() (*v1alpha1.Console, error) {
 }
 
 func isDeleted(object runtime.Object, err error) bool {
+	logrus.Info("isDeleted() ?")
+	logrus.Printf("isDeleted() ?")
+	logrus.Printf("isDeleted() ? %#v", object)
+	logrus.Printf("isDeleted() ? %s", object)
+	logrus.Printf("isDeleted() ?")
+	logrus.Printf("isDeleted() ?")
+
+	if object == nil {
+		return true
+	}
+
 	// 404 deleted
 	if errors.IsNotFound(err) {
 		return true
@@ -91,6 +124,18 @@ func isDeleted(object runtime.Object, err error) bool {
 	}
 	// in process of being deleted
 	obj, err := meta.Accessor(object)
+
+	logrus.Printf("What is this nonsense %#v", obj)
+
+	if obj == nil {
+		logrus.Print("I dunno, its nil er something....")
+		return true
+	}
+
+	//if err != nil || obj == nil {
+	//	return false
+	//}
+
 	if obj.GetDeletionTimestamp() != nil {
 		return false
 	}

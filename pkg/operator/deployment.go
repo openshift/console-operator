@@ -2,6 +2,7 @@ package operator
 
 import (
 	"fmt"
+
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
