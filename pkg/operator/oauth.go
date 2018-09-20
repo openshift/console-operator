@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	oauthClientName = "console-oauth-client"
+	OAuthClientName = "console-oauth-client"
 )
 
 func randomStringForSecret() string {
@@ -64,7 +64,7 @@ func newConsoleOauthClient(cr *v1alpha1.Console) *oauthv1.OAuthClient {
 			Kind:       "OAuthClient",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: oauthClientName,
+			Name: OAuthClientName,
 		},
 	}
 	return oauthclient

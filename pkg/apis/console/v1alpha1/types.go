@@ -32,6 +32,7 @@ type Console struct {
 // if/when changed, be sure to regenerate generated code:
 // 	operator-sdk generate k8s
 type ConsoleSpec struct {
+	Paused bool `json:"paused"`
 	// Count is the number of Console replicas
 	Count     int32  `json:"count,omitempty"`
 	BaseImage string `json:"baseImage"`
@@ -42,6 +43,7 @@ type ConsoleSpec struct {
 	Logging *LoggingConfig `json:"logging"`
 }
 type ConsoleStatus struct {
+	Paused bool `json:"paused"`
 	// the hostname assigned by the cluster after the route is created
 	Host string `json:"host"`
 }

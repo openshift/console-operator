@@ -1,9 +1,11 @@
 apiVersion: "console.openshift.io/v1alpha1"
 kind: "Console"
 metadata:
+  # do not change the name
   name: "openshift-console"
   namespace: openshift-console-operator-test
 spec:
+  paused: false
   # what needs to be customized here?
   # fewest knobs possible!
   # this will need to be reflected in the

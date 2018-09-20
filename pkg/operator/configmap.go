@@ -2,6 +2,7 @@ package operator
 
 import (
 	"fmt"
+
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/sirupsen/logrus"
@@ -15,7 +16,7 @@ import (
 )
 
 const (
-	consoleConfigMapName    = "console-config"
+	ConsoleConfigMapName    = "console-config"
 	consoleConfigYamlFile   = "console-config.yaml"
 	clientSecretFilePath    = "/var/oauth-config/clientSecret"
 	oauthEndpointCAFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
@@ -36,7 +37,7 @@ func consoleBaseAddr(host string) string {
 func authServerYaml() yaml.MapSlice {
 	return yaml.MapSlice{
 		{
-			Key: "clientID", Value: openshiftConsoleName,
+			Key: "clientID", Value: OpenShiftConsoleName,
 		}, {
 			Key: "clientSecretFile", Value: clientSecretFilePath,
 		}, {
@@ -115,7 +116,7 @@ func newConsoleConfigYaml(rt *routev1.Route) string {
 func newConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) *corev1.ConfigMap {
 	meta := sharedMeta()
 	// expects a non-standard name
-	meta.Name = consoleConfigMapName
+	meta.Name = ConsoleConfigMapName
 	config := newConsoleConfigYaml(rt)
 	configMap := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{

@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	openshiftConsoleName = "openshift-console"
+	OpenShiftConsoleName = "openshift-console"
 )
 
 // This should return the public url provided for us by the ROUTE or Ingress...
@@ -22,7 +22,7 @@ func consoleURL() string {
 
 func sharedLabels() map[string]string {
 	return map[string]string{
-		"app": openshiftConsoleName,
+		"app": OpenShiftConsoleName,
 	}
 }
 
@@ -48,7 +48,7 @@ func sharedMeta() metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		// TODO: will we always have one console?
 		// if not, then shouldn't our name be more specific?
-		Name: openshiftConsoleName, // ATM no configuration, stable name
+		Name: OpenShiftConsoleName, // ATM no configuration, stable name
 		// NOTE:
 		// namepsace shouldn't be here. it should
 		// create with whatever namespace is set via
