@@ -2,6 +2,7 @@ package operator
 
 import (
 	"fmt"
+
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -10,7 +11,8 @@ import (
 )
 
 const (
-	OpenShiftConsoleName = "openshift-console"
+	OpenShiftConsoleName      = "openshift-console"
+	OpenShiftConsoleShortName = "console"
 )
 
 // This should return the public url provided for us by the ROUTE or Ingress...

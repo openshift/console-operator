@@ -78,7 +78,11 @@ func getCR() (*v1alpha1.Console, error) {
 // that isn't nil, but when obj.GetDeletionTimestamp() is called it
 // will throw a nil error.
 func isDeleted(object runtime.Object, err error) bool {
+
+	logrus.Printf("isDeleted() %v", object)
+
 	if object == nil {
+		logrus.Errorf("object is already nil %v", object)
 		return true
 	}
 

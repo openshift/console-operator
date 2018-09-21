@@ -1,6 +1,9 @@
 package operator
 
-import "github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+import (
+	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	"github.com/operator-framework/operator-sdk/pkg/sdk"
+)
 
 // operator.Reconcile(cr)
 // at this point we need to do the following:
@@ -28,6 +31,9 @@ func ReconcileConsole(cr *v1alpha1.Console) {
 	CreateService(cr)
 	rt, _ := CreateRoute(cr)
 
+	// fetching the route to get it with a host annotation
+	_ = sdk.Get(rt)
+
 	CreateConsoleConfigMap(cr, rt)
 	CreateOAuthClient(cr, rt)
 
@@ -36,4 +42,5 @@ func ReconcileConsole(cr *v1alpha1.Console) {
 	// ensure these stay in sync.
 	// can probably dedupe some work here
 	UpdateOauthClient(cr, rt)
+
 }

@@ -1,7 +1,7 @@
 package operator
 
 const (
-	consolePortName        = "http"
+	consolePortName        = "https"
 	consolePort            = 443
 	consoleTargetPort      = 8443
 	publicURLName          = "BRIDGE_DEVELOPER_CONSOLE_URL"

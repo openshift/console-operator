@@ -20,7 +20,7 @@ const (
 	consoleConfigYamlFile   = "console-config.yaml"
 	clientSecretFilePath    = "/var/oauth-config/clientSecret"
 	oauthEndpointCAFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-	documentationBaseURL    = "https://docs.okd.io/3.11/"
+	documentationBaseURL    = "https://docs.okd.io/4.0/"
 	brandingDefault         = "okd"
 	// serving info
 	certFilePath = "/var/serving-cert/tls.crt"
@@ -29,6 +29,7 @@ const (
 
 func consoleBaseAddr(host string) string {
 	if host != "" {
+		logrus.Infof("console configmap base addr set to https://%v", host)
 		return fmt.Sprintf("https://%s", host)
 	}
 	return ""

@@ -16,8 +16,9 @@ const (
 )
 
 func newConsoleService(cr *v1alpha1.Console) *corev1.Service {
-	labels := sharedLabels()
+	labels := labelsForConsole()
 	meta := sharedMeta()
+	meta.Name = OpenShiftConsoleShortName
 	meta.Annotations = map[string]string{
 		serviceServingCertSignerAnnotationKey: consoleServingCertName,
 	}

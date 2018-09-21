@@ -16,6 +16,7 @@ import (
 
 const (
 	OAuthClientName = "console-oauth-client"
+	// OAuthClientName = "openshift-web-console"
 )
 
 func randomStringForSecret() string {
@@ -44,15 +45,20 @@ func newOauthConfigSecret(cr *v1alpha1.Console, randomSecret string) *corev1.Sec
 }
 
 func https(host string) string {
-	return fmt.Sprintf("https://%s", host)
+	if host != "" {
+		logrus.Infof("oauth redirect URI set to https://%v", host)
+		return fmt.Sprintf("https://%s", host)
+	}
+	logrus.Infof("route host is not yet available for oauth callback")
+	return ""
 }
 
 func addRedirectURI(oauth *oauthv1.OAuthClient, rt *routev1.Route) {
 	if rt != nil {
-		if oauth.RedirectURIs != nil {
-			oauth.RedirectURIs = []string{}
-		}
+		oauth.RedirectURIs = []string{}
 		oauth.RedirectURIs = append(oauth.RedirectURIs, https(rt.Spec.Host))
+		// TODO: remove, only here for dev
+		oauth.RedirectURIs = append(oauth.RedirectURIs, "https://127.0.0.1:8443/console/", "https://localhost:9000")
 	}
 }
 
@@ -77,9 +83,9 @@ func newConsoleOauthClient(cr *v1alpha1.Console) *oauthv1.OAuthClient {
 
 func CreateOAuthClient(cr *v1alpha1.Console, rt *routev1.Route) error {
 	randomBits := randomStringForSecret()
-
 	authClient := newConsoleOauthClient(cr)
 	addSecretToOauthClient(authClient, &randomBits)
+	addRedirectURI(authClient, rt)
 
 	authSecret := newOauthConfigSecret(cr, randomBits)
 

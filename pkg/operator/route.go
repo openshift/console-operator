@@ -12,6 +12,7 @@ import (
 
 func newConsoleRoute(cr *v1alpha1.Console) *routev1.Route {
 	meta := sharedMeta()
+	meta.Name = OpenShiftConsoleShortName
 	weight := int32(100)
 	route := &routev1.Route{
 		TypeMeta: metav1.TypeMeta{
