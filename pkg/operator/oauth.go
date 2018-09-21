@@ -2,6 +2,7 @@ package operator
 
 import (
 	"fmt"
+
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
@@ -21,6 +22,12 @@ func randomStringForSecret() string {
 	return crypto.RandomBitsString(256)
 }
 
+func updateOauthConfigSecret(configSecret *corev1.Secret, randomSecret string) {
+	configSecret.StringData = map[string]string{
+		"clientSecret": randomSecret,
+	}
+}
+
 func newOauthConfigSecret(cr *v1alpha1.Console, randomSecret string) *corev1.Secret {
 	meta := sharedMeta()
 	meta.Name = consoleOauthConfigName
@@ -30,10 +37,8 @@ func newOauthConfigSecret(cr *v1alpha1.Console, randomSecret string) *corev1.Sec
 			Kind:       "Secret",
 		},
 		ObjectMeta: meta,
-		StringData: map[string]string{
-			"clientSecret": randomSecret,
-		},
 	}
+	updateOauthConfigSecret(oauthConfigSecret, randomSecret)
 	addOwnerRef(oauthConfigSecret, ownerRefFrom(cr))
 	return oauthConfigSecret
 }
@@ -83,37 +88,68 @@ func CreateOAuthClient(cr *v1alpha1.Console, rt *routev1.Route) error {
 		return err
 	} else {
 		logrus.Info("created console oauth client with secret ", randomBits)
-		// logYaml(oauthc)
 	}
 
 	if err := sdk.Create(authSecret); err != nil && !errors.IsAlreadyExists(err) {
 		logrus.Errorf("failed to create console oauth client secret : %v", err)
 		return err
 	} else {
-		logrus.Info("created console oauth client secret ", randomBits)
-		// logYaml(oauths)
+		logrus.Info("created console oauth secret ", randomBits)
 	}
 	return nil
 }
 
-func UpdateOauthClient(cr *v1alpha1.Console, rt *routev1.Route) {
+func fetchAndUpdateOauthClient(cr *v1alpha1.Console, rt *routev1.Route, randomBits string) error {
 	authClient := newConsoleOauthClient(cr)
 	err := sdk.Get(authClient)
-	fmt.Printf("Updating OAUTH client, using existing secret >>> %s", authClient.Secret)
 	if err != nil {
 		logrus.Errorf("failed to retrieve oauth client in order to update callback url")
+		return err
 	}
+	addSecretToOauthClient(authClient, &randomBits)
 	addRedirectURI(authClient, rt)
+
 	err = sdk.Update(authClient)
 	if err != nil {
-		logrus.Errorf("failed to update oauth client callback url")
+		logrus.Errorf("failed to update oauth client with secret & callback url")
 	}
+	return err
 }
 
-func DeleteOauthClient() {
+func fetchAndUpdateOauthSecret(cr *v1alpha1.Console, randomBits string) error {
+	authSecret := newOauthConfigSecret(cr, "")
+	err := sdk.Get(authSecret)
+	if err != nil {
+		logrus.Errorf("failed to retrieve oauth secret in order to update callback url")
+		return err
+	}
+	updateOauthConfigSecret(authSecret, randomBits)
+
+	err = sdk.Update(authSecret)
+	if err != nil {
+		logrus.Errorf("failed to update oauth secret with client secret")
+	}
+	return err
+}
+
+func UpdateOauthClient(cr *v1alpha1.Console, rt *routev1.Route) error {
+	randomBits := randomStringForSecret()
+	err := fetchAndUpdateOauthClient(cr, rt, randomBits)
+	if err != nil {
+		return err
+	}
+	err = fetchAndUpdateOauthSecret(cr, randomBits)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func DeleteOauthClient() error {
 	oauthClient := newConsoleOauthClient(nil)
 	err := sdk.Delete(oauthClient)
 	if err != nil {
-		logrus.Error("Failed to delete oauth client")
+		logrus.Infof("Failed to delete oauth client %v", err)
 	}
+	return err
 }

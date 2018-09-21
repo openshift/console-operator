@@ -106,10 +106,17 @@ func consoleVolumeMounts(vc []volumeConfig) []corev1.VolumeMount {
 	return volMountList
 }
 
+func image(base string, version string) string {
+	if version != "" {
+		return fmt.Sprintf("%s:%s", base, version)
+	}
+	return fmt.Sprintf("%s", base)
+}
+
 func consoleContainer(cr *v1alpha1.Console) corev1.Container {
 	volumeMounts := consoleVolumeMounts(volumeConfigList)
 	return corev1.Container{
-		Image: fmt.Sprintf("%s:%s", cr.Spec.BaseImage, cr.Spec.Version),
+		Image: image(cr.Spec.BaseImage, cr.Spec.Version),
 		Name:  "openshift-console",
 		Command: []string{
 			"/opt/bridge/bin/bridge",
