@@ -30,10 +30,6 @@ type handler struct {
 }
 
 func (h *handler) Handle(_ context.Context, event sdk.Event) error {
-	if event.Deleted {
-		cleanup()
-		return nil
-	}
 
 	cr, err := getCR()
 	if err != nil {
