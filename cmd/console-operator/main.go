@@ -3,6 +3,7 @@ package main
 import (
 	// standard lib
 	"context"
+	"flag"
 	"runtime"
 
 	// 3rd party
@@ -40,6 +41,7 @@ func init() {
 }
 
 func main() {
+	flag.Parse() // suppress an annoying notification :/
 	printVersion()
 	// prometheus metrics
 	sdk.ExposeMetricsPort()

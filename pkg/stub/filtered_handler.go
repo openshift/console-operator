@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 
 	"github.com/openshift/console-operator/pkg/operator"
@@ -24,9 +26,13 @@ import (
 func NewFilteredHandler(handler sdk.Handler) sdk.Handler {
 	// all secondary resources have this name
 	validNames := sets.NewString(
+		operator.OpenShiftConsoleName,
+		operator.OpenShiftConsoleShortName,
 		operator.ConsoleConfigMapName,
 		operator.OAuthClientName,
-		operator.OpenShiftConsoleName,
+		operator.ConsoleConfigMapName,
+		operator.ConsoleServingCertName,
+		operator.ConsoleOauthConfigName,
 	)
 	// Casting an anonymous function as a HandlerFunc to
 	// filter out irrelevant events before they hit our handler
@@ -66,6 +72,7 @@ func NewFilteredHandler(handler sdk.Handler) sdk.Handler {
 			// we don't care about these.
 			// someone deployed something unexpected
 			// in our namespace
+			logrus.Warnf("ignoring resource %v named %v", object.GetSelfLink(), object.GetName())
 			return nil
 		}
 

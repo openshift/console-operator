@@ -52,3 +52,13 @@ func CreateRoute(cr *v1alpha1.Console) (*routev1.Route, error) {
 		return rt, nil
 	}
 }
+
+func CreateRouteIfNotPresent(cr *v1alpha1.Console) (*routev1.Route, error) {
+	rt := newConsoleRoute(cr)
+	err := sdk.Get(rt)
+
+	if err != nil {
+		return CreateRoute(cr)
+	}
+	return rt, nil
+}

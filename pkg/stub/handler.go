@@ -2,13 +2,8 @@ package stub
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/sirupsen/logrus"
-
-	"k8s.io/apimachinery/pkg/api/meta"
-
-	"k8s.io/apimachinery/pkg/runtime"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -30,16 +25,17 @@ type handler struct {
 }
 
 func (h *handler) Handle(_ context.Context, event sdk.Event) error {
-
 	cr, err := getCR()
-	if err != nil {
-		return err
-	}
-	if isDeleted(cr, err) {
-		logrus.Info("console has been deleted")
+	if isDeleted(err) {
+		logrus.Info("console has been deleted.")
 		cleanup()
 		return nil
 	}
+	// some kind of non-404 error?
+	if err != nil {
+		return err
+	}
+
 	if isPaused(cr) {
 		logrus.Info("console has been paused.")
 		return nil
@@ -49,7 +45,8 @@ func (h *handler) Handle(_ context.Context, event sdk.Event) error {
 	// then ensure they are in the correct state
 	// enforcing shared secrets, route.Host, etc
 	operator.ReconcileConsole(cr)
-	return nil
+
+	return err
 }
 
 func getCR() (*v1alpha1.Console, error) {
@@ -65,46 +62,7 @@ func getCR() (*v1alpha1.Console, error) {
 		},
 	}
 	err := sdk.Get(cr)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to get console custom resource: %s", err)
-		}
-		return nil, nil
-	}
-	return cr, nil
-}
-
-// NOTE: this is a bit messy, and meta.Accessor() can return an object
-// that isn't nil, but when obj.GetDeletionTimestamp() is called it
-// will throw a nil error.
-func isDeleted(object runtime.Object, err error) bool {
-
-	logrus.Printf("isDeleted() %v", object)
-
-	if object == nil {
-		logrus.Errorf("object is already nil %v", object)
-		return true
-	}
-
-	// 404 deleted
-	if errors.IsNotFound(err) {
-		return true
-	}
-	// this is an error on the get request
-	if err != nil {
-		return false
-	}
-	// in process of being deleted
-	obj, err := meta.Accessor(object)
-
-	if obj == nil {
-		return true
-	}
-
-	if obj.GetDeletionTimestamp() != nil {
-		return false
-	}
-	return false
+	return cr, err
 }
 
 func isPaused(console *v1alpha1.Console) bool {
@@ -112,6 +70,16 @@ func isPaused(console *v1alpha1.Console) bool {
 		return true
 	}
 	return false
+}
+
+func isDeleted(err error) bool {
+	//if err != nil {
+	//	if !errors.IsNotFound(err) {
+	//		return true
+	//	}
+	//	return false
+	//}
+	return errors.IsNotFound(err)
 }
 
 func cleanup() {

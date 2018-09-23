@@ -2,6 +2,7 @@ package operator
 
 import (
 	"fmt"
+	"strings"
 
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -15,8 +16,8 @@ import (
 )
 
 const (
-	OAuthClientName = "console-oauth-client"
-	// OAuthClientName = "openshift-web-console"
+	// OAuthClientName = "console-oauth-client"
+	OAuthClientName = "openshift-web-console"
 )
 
 func randomStringForSecret() string {
@@ -31,7 +32,7 @@ func updateOauthConfigSecret(configSecret *corev1.Secret, randomSecret string) {
 
 func newOauthConfigSecret(cr *v1alpha1.Console, randomSecret string) *corev1.Secret {
 	meta := sharedMeta()
-	meta.Name = consoleOauthConfigName
+	meta.Name = ConsoleOauthConfigName
 	oauthConfigSecret := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -81,7 +82,8 @@ func newConsoleOauthClient(cr *v1alpha1.Console) *oauthv1.OAuthClient {
 	return oauthclient
 }
 
-func CreateOAuthClient(cr *v1alpha1.Console, rt *routev1.Route) error {
+// note: this returns 3 items
+func CreateOAuthClient(cr *v1alpha1.Console, rt *routev1.Route) (*oauthv1.OAuthClient, *corev1.Secret, error) {
 	randomBits := randomStringForSecret()
 	authClient := newConsoleOauthClient(cr)
 	addSecretToOauthClient(authClient, &randomBits)
@@ -91,18 +93,63 @@ func CreateOAuthClient(cr *v1alpha1.Console, rt *routev1.Route) error {
 
 	if err := sdk.Create(authClient); err != nil && !errors.IsAlreadyExists(err) {
 		logrus.Errorf("failed to create console oauth client : %v", err)
-		return err
+		return nil, nil, err
 	} else {
 		logrus.Info("created console oauth client with secret ", randomBits)
 	}
 
 	if err := sdk.Create(authSecret); err != nil && !errors.IsAlreadyExists(err) {
 		logrus.Errorf("failed to create console oauth client secret : %v", err)
-		return err
+		return nil, nil, err
 	} else {
 		logrus.Info("created console oauth secret ", randomBits)
 	}
-	return nil
+	return authClient, authSecret, nil
+}
+
+func CreateOauthClientIfNotPresent(cr *v1alpha1.Console, rt *routev1.Route) (*oauthv1.OAuthClient, *corev1.Secret, error) {
+	authClient := newConsoleOauthClient(cr)
+	err := sdk.Get(authClient)
+
+	if err != nil {
+		return CreateOAuthClient(cr, rt)
+	}
+	// if exists, get the matching secret & return both
+	authSecret := newOauthConfigSecret(cr, "")
+	// this should not error if we got to this point
+	_ = sdk.Get(authSecret)
+	return authClient, authSecret, nil
+}
+
+func stringSecretsMatch(str1 string, str2 string) bool {
+	return strings.Compare(str1, str2) == 0
+}
+
+func UpdateOauthClientIfNotInSync(cr *v1alpha1.Console, rt *routev1.Route) (*oauthv1.OAuthClient, *corev1.Secret, error) {
+	authClient := newConsoleOauthClient(cr)
+	_ = sdk.Get(authClient)
+	authClientSecretString := authClient.Secret
+
+	authConfigSecret := newOauthConfigSecret(cr, "")
+	_ = sdk.Get(authConfigSecret)
+	authConfigSecretData := authConfigSecret.Data["clientSecret"]
+	authConfigSecretString := string(authConfigSecretData)
+
+	if !stringSecretsMatch(authClientSecretString, authConfigSecretString) {
+		randomBits := randomStringForSecret()
+		addSecretToOauthClient(authClient, &randomBits)
+		updateOauthConfigSecret(authConfigSecret, randomBits)
+		err := sdk.Update(authClient)
+		if err != nil {
+			fmt.Printf("oauth client update error %v \n", err)
+		}
+		err = sdk.Update(authConfigSecret)
+		if err != nil {
+			fmt.Printf("oauth client secret update error %v \n", err)
+		}
+		return authClient, authConfigSecret, nil
+	}
+	return authClient, authConfigSecret, nil
 }
 
 func fetchAndUpdateOauthClient(cr *v1alpha1.Console, rt *routev1.Route, randomBits string) error {

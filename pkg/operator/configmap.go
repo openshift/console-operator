@@ -20,8 +20,9 @@ const (
 	consoleConfigYamlFile   = "console-config.yaml"
 	clientSecretFilePath    = "/var/oauth-config/clientSecret"
 	oauthEndpointCAFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-	documentationBaseURL    = "https://docs.okd.io/4.0/"
-	brandingDefault         = "okd"
+	// TODO: should this be configurable?  likely so.
+	documentationBaseURL = "https://docs.okd.io/4.0/"
+	brandingDefault      = "okd"
 	// serving info
 	certFilePath = "/var/serving-cert/tls.crt"
 	keyFilePath  = "/var/serving-cert/tls.key"
@@ -38,7 +39,8 @@ func consoleBaseAddr(host string) string {
 func authServerYaml() yaml.MapSlice {
 	return yaml.MapSlice{
 		{
-			Key: "clientID", Value: OpenShiftConsoleName,
+			// Key: "clientID", Value: OpenShiftConsoleName,
+			Key: "clientID", Value: OAuthClientName,
 		}, {
 			Key: "clientSecretFile", Value: clientSecretFilePath,
 		}, {
@@ -134,17 +136,29 @@ func newConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) *corev1.Config
 	return configMap
 }
 
-func CreateConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) {
+func CreateConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) (*corev1.ConfigMap, error) {
 	configMap := newConsoleConfigMap(cr, rt)
 	if err := sdk.Create(configMap); err != nil && !errors.IsAlreadyExists(err) {
 		logrus.Errorf("failed to create console configmap : %v", err)
+		return nil, err
 	} else {
 		logrus.Info("created console configmap")
-		// logYaml(cm)
+		return configMap, nil
 	}
 }
 
-func UpdateConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) {
+func UpdateConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) (*corev1.ConfigMap, error) {
 	configMap := newConsoleConfigMap(cr, rt)
-	sdk.Update(configMap)
+	err := sdk.Update(configMap)
+	return configMap, err
+}
+
+func CreateConsoleConfigMapIfNotPresent(cr *v1alpha1.Console, rt *routev1.Route) (*corev1.ConfigMap, error) {
+	configMap := newConsoleConfigMap(cr, rt)
+	err := sdk.Get(configMap)
+
+	if err != nil {
+		return CreateConsoleConfigMap(cr, rt)
+	}
+	return configMap, nil
 }
