@@ -1,8 +1,10 @@
 apiVersion: "console.openshift.io/v1alpha1"
 kind: "Console"
 metadata:
-  # do not change the name
+  # do not change the name, this is required to match within the operator
   name: "openshift-console"
+  # namespace: openshift-console
+  # for dev:
   namespace: openshift-console-operator-test
 spec:
   paused: false

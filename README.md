@@ -110,24 +110,35 @@ Follow local dev instructions from `operator-sdk` including a few extras:
 
 ```bash 
 # you need a cluster!
-oc cluster up # or minishift, etc
-# you also need a namespace:
+oc cluster up --public-hostname=<your.ip.address>
+# create your operator namespace 
+# for development, I have been deploying both the operator & the 
+# console into one namespace called "openshift-console-operator-test"
 oc create -f deploy/namespace.yaml
-# create the custom resources definitions for the api 
+# however, long term, these will probably be broken out into:
+oc create -f deploy/cr-namespace.yaml 
+oc create -f deploy/operator-namespace.yaml 
+# now, deploy the custom resource definition into your cluster: 
 oc create -f deploy/crd.yaml
-# rbac is a good idea 
+# and create the necessary RBAC resources:
 oc create -f deploy/rbac.yaml 
-# 
-# now to get the operator ready to roll
-# generate manifests
+# this is probably not necessary but feel free to run it.
+# consult the sdk docs for more info:
 operator-sdk generate k8s 
 # build the binary, etc
 # this will appear in tmp/_output/bin
-operator-sdk build console-operator:vX.X.X
-# run the binary locally 
+operator-sdk build openshift/console-operator:v0.0.X
+# optionally re-tag it to match a registry repo you can push to:
+docker tag openshift/console-operator:v0.0.X \ 
+   quay.io/<your.name>/console-operator:v0.0.X   # (or :latest)
+# push it, if you are not running `operator-sdk up local`
+docker push quay.io/<your.name>/console-operator:v0.0.X
+# but it is probabaly easier to run locally for dev:
 operator-sdk up local # this should do the trick
-#
 # finally, create a custom resource for the operator to watch:
+# be sure you are within the `namespace` that your operator is watching. 
+# for dev, if you did `oc create -f deploy/namespace.yaml`, then you should 
+# be in `openshift-console-operator-test`
 oc create -f deploy/cr.yaml
 # the operator will look at this manifest & use it to generate 
 # all of the deployments, etc that are needed for the resource to function.
