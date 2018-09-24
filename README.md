@@ -1,7 +1,8 @@
 # Console Operator 
 
-An operator for OpenShift Console built
-using the operator-sdk.
+An operator for OpenShift Console built using the operator-sdk.
+
+The console-operator installs and maintains the web console on a cluster.
 
 ## Setup
 
