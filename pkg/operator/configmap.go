@@ -39,12 +39,12 @@ func consoleBaseAddr(host string) string {
 func authServerYaml() yaml.MapSlice {
 	return yaml.MapSlice{
 		{
-			// Key: "clientID", Value: OpenShiftConsoleName,
-			Key: "clientID", Value: OAuthClientName,
+			Key: "clientID", Value: OpenShiftConsoleName,
+			// Key: "clientID", Value: OAuthClientName,
 		}, {
 			Key: "clientSecretFile", Value: clientSecretFilePath,
 		}, {
-			Key: "logoutRedirect", Value: nil,
+			Key: "logoutRedirect", Value: "",
 		}, {
 			Key: "oauthEndpointCAFile", Value: oauthEndpointCAFilePath,
 		},
@@ -59,9 +59,9 @@ func clusterInfo(rt *routev1.Route) yaml.MapSlice {
 			Key: "consoleBaseAddress", Value: consoleBaseAddr(host),
 		}, {
 			Key: "consoleBasePath", Value: "",
-		}, {
-			Key: "masterPublicURL", Value: nil,
-		},
+		}, // {
+		// Key: "masterPublicURL", Value: nil,
+		// },
 	}
 }
 

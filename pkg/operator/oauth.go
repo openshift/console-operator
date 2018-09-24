@@ -17,7 +17,8 @@ import (
 
 const (
 	// OAuthClientName = "console-oauth-client"
-	OAuthClientName = "openshift-web-console"
+	// OAuthClientName = "openshift-web-console"
+	OAuthClientName = OpenShiftConsoleName
 )
 
 func randomStringForSecret() string {
