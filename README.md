@@ -96,6 +96,16 @@ kubectl get consoles.console.openshift.io openshift-console
 Its much easier to dev & run the binary locally (rather than build it, 
 put it in a container, push the container, then deploy the container...repeat.)
 
+If you are running with `oc cluster up`:
+ 
+ - You may need to use a 3.9 or 3.10 release of `oc`
+ - Make sure you provide a `--public-hostname` flag in order for the console to properly find the 
+master public URL.  something like `oc cluster up --public-hostname=<your.ip.address>`
+should suffice. 
+- if you are running the `console` locally, then `export OPENSHIFT_API="<your.ip.address>"`
+should match your `--public-hostname` flag (above)
+
+
 Follow local dev instructions from `operator-sdk` including a few extras:
 
 ```bash 
