@@ -1,6 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  # the operator currently runs in this namespace,
-  # next to openshift-console, which is the console's own namespace
-  name: openshift-console-operator

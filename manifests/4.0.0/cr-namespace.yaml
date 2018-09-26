@@ -1,6 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  # the namespace for the console
-  # the console-operator will watch here for changes to the CR
-  name: openshift-console

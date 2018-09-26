@@ -1,6 +1,9 @@
 .DS_Store 
 .idea
 
+# tools output reports into _output
+_output
+
 # Temporary Build Files
 tmp/_output
 tmp/_test

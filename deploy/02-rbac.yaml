@@ -2,6 +2,7 @@ kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: console-operator
+  namespace: openshift-console
 rules:
 - apiGroups:
   - console.openshift.io
@@ -37,6 +38,7 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: default-account-console-operator
+  namespace: openshift-console
 subjects:
 - kind: ServiceAccount
   name: default

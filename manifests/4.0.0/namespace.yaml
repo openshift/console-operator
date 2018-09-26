@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-    # local testing namespace
-    # this will go away
-    # I have been deploying both the operator & the console into this namespace
-    # for development purposes
-    name: openshift-console-operator-test

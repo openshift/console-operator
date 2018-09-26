@@ -1,8 +1,6 @@
 package operator
 
 import (
-	"fmt"
-
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/sirupsen/logrus"
@@ -52,7 +50,7 @@ func newConsoleService(cr *v1alpha1.Console) *corev1.Service {
 func CreateService(cr *v1alpha1.Console) (*corev1.Service, error) {
 	svc := newConsoleService(cr)
 	if err := sdk.Create(svc); err != nil && !errors.IsAlreadyExists(err) {
-		fmt.Errorf("failed to create console service : %v", err)
+		logrus.Errorf("failed to create console service : %v", err)
 		return nil, err
 	}
 	logrus.Info("created console service")
