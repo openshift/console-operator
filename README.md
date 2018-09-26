@@ -154,7 +154,3 @@ If OpenShift resources are needed (they will be), do the following:
 dep ensure --add github.com/openshift/api
 dep ensure --add github.com/openshift/client-go
 ```
-
-
-
-hi

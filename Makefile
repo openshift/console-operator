@@ -15,7 +15,7 @@ generate:
 # operator-sdk script to build operator binary
 # operator-sdk script to put binary into a container
 build:
-    # hack/build.sh 
+    # hack/build.sh
 	./tmp/build/build.sh
 .PHONY: build
 
