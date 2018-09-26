@@ -53,7 +53,7 @@ type ConsoleStatus struct {
 // though it doesn't seem to set a default level if empty
 // https://github.com/openshift/cluster-image-registry-operator/blob/80976754e1467f2303a3ff352fe5955cf58d12f7/pkg/generate/podtemplatespec.go#L21
 type LoggingConfig struct {
-	Level int `json:"level, omitempty"`
+	Level int `json:"level,omitempty"`
 }
 
 // good idea to set the defaults

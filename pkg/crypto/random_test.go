@@ -17,6 +17,10 @@ func TestFakeThing(t *testing.T) {
 	//}
 }
 
+// quick and dirty, how to test in golang:
+// https://blog.alexellis.io/golang-writing-unit-tests/
+//
+//
 // test at least one of these just to kick off tests quick:
 // https://github.com/openshift/origin/blob/9a8a2fb3f9485bf88ebea61e4b5d8bf04dd3c459/pkg/oauthserver/server/crypto/random.go
 // a quick test example:

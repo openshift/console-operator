@@ -23,6 +23,9 @@ function govet_blacklist_contains() {
 	return 1
 }
 
+TEST_DIRS=$(os::util::list_go_src_dirs)
+echo "'go vet' running against the following directories: ${TEST_DIRS}"
+
 for test_dir in $(os::util::list_go_src_dirs); do
 	if ! result="$(go vet "${test_dir}" 2>&1)"; then
 		while read -r line; do

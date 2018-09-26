@@ -68,7 +68,7 @@ func logYaml(obj runtime.Object) {
 	if err != nil {
 		logrus.Info("failed to show deployment yaml in log")
 	}
-	logrus.Infof("Deploying:", string(deployYAML))
+	logrus.Infof("Deploying: %v", string(deployYAML))
 }
 
 func generateLogLevel(cr *v1alpha1.Console) string {
