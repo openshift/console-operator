@@ -1,6 +1,18 @@
-#!/usr/bin/env bash
+#!/bin/bash
+source "$(dirname "${BASH_SOURCE}")/lib/init.sh"
 
-echo "Running unit tests"
+os::log::info "Running unit tests"
 
-# a quick hack test
-go test github.com/openshift/console-operator/pkg/crypto
+
+PACKAGES_TO_TEST=(
+    "github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+    "github.com/openshift/console-operator/pkg/crypto"
+    "github.com/openshift/console-operator/pkg/operator"
+    "github.com/openshift/console-operator/pkg/stub"
+)
+
+for PACKAGE in "${PACKAGES_TO_TEST[@]}"
+do
+    os::log::info "Testing ${PACKAGE}"
+    go test $PACKAGE
+done

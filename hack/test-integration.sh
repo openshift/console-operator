@@ -1,3 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
+source "$(dirname "${BASH_SOURCE}")/lib/init.sh"
 
-echo "Running integration tests (noop)"
+os::log::info "Running integration tests (noop)"

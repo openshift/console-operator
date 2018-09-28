@@ -1,3 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
+source "$(dirname "${BASH_SOURCE}")/lib/init.sh"
 
-echo "Running e2e tests (noop)"
+os::log::info "Running e2e tests (noop)"
