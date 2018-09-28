@@ -1,3 +1,6 @@
-#!/usr/bin/env bash
+#!/bin/bash
+source "$(dirname "${BASH_SOURCE}")/lib/init.sh"
 
-echo "Clean is noop"
+os::log::info "Cleaning (noop)"
+
+# TODO: perhaps delete the _output dir

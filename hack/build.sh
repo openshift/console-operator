@@ -1,5 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/bash
+source "$(dirname "${BASH_SOURCE}")/lib/init.sh"
 
-# for now using the operator-sdk generated build via:
-# 	./tmp/build/build.sh
-# See Makefile for commands run by CI
+os::log::info "Building console-operator binary to _output/"
+# delegate to the operator-sdk generated build scripts
+# to build the binary
+DIR=$( cd "$( dirname ${BASH_SOURCE[0]} )" && pwd )
+source "$DIR/../tmp/build/build.sh"
