@@ -16,7 +16,12 @@ COPY deploy/00-crd.yaml \
     deploy/03-operator.yaml \
     /manifests/
 
-# to enable install integration
+LABEL io.k8s.display-name="OpenShift console-operator" \
+      io.k8s.description="This is a component of OpenShift Container Platform and manages the lifecycle of the web console." \
+      io.openshift.tags="openshift" \
+      maintainer="Benjamin A. Petersen <bpeterse@redhat.com>"
+
+# to enable install integration, can add to the set of labels above when ready
 #LABEL io.openshift.release.operator true
 
 # entrypoint specified in 03-operator.yaml as `console-operator`
