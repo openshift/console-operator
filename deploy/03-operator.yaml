@@ -14,18 +14,18 @@ spec:
         name: console-operator
     spec:
       containers:
-        - name: console-operator
-          image: quay.io/benjaminapetersen/console-operator:v0.0.4
-          ports:
-          - containerPort: 60000
-            name: metrics
-          command:
-          - console-operator
-          imagePullPolicy: Always
-          env:
-            - name: WATCH_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: OPERATOR_NAME
-              value: "console-operator"
+      - name: console-operator
+        image: openshift/origin-console-operator:latest
+        ports:
+        - containerPort: 60000
+          name: metrics
+        command:
+        - console-operator
+        imagePullPolicy: Always
+        env:
+        - name: WATCH_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: OPERATOR_NAME
+          value: "console-operator"
