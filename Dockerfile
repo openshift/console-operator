@@ -38,4 +38,4 @@ RUN useradd console-operator
 USER console-operator
 
 ENTRYPOINT []
-CMD ["/usr/bin/cluster-samples-operator"]
+CMD ["/usr/bin/console-operator"]
