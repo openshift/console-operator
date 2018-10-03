@@ -13,6 +13,7 @@ spec:
       labels:
         name: console-operator
     spec:
+      serviceAccountName: console-operator
       containers:
       - name: console-operator
         image: openshift/origin-console-operator:latest
