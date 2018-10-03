@@ -12,8 +12,10 @@ COPY --from=builder /go/src/github.com/openshift/console-operator/tmp/_output/bi
 # these manifests are necessary for the installer
 COPY deploy/00-crd.yaml \
     deploy/01-namespace.yaml \
-    deploy/02-rbac.yaml \
-    deploy/03-operator.yaml \
+    deploy/02-sa.yaml \
+    deploy/03-rbac-role.yaml \
+    deploy/04-rbac-rolebinding.yaml \
+    deploy/05-operator.yaml \
     /manifests/
 
 LABEL io.k8s.display-name="OpenShift console-operator" \

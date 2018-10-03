@@ -15,8 +15,6 @@ rules:
   resources:
   - pods
   - services
-  - endpoints
-  - persistentvolumeclaims
   - events
   - configmaps
   - secrets
@@ -26,23 +24,23 @@ rules:
   - apps
   resources:
   - deployments
-  - daemonsets
-  - replicasets
-  - statefulsets
   verbs:
   - "*"
-
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - "*"
 ---
-
-kind: RoleBinding
+kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: default-account-console-operator
-  namespace: openshift-console
-subjects:
-- kind: ServiceAccount
-  name: default
-roleRef:
-  kind: Role
   name: console-operator
-  apiGroup: rbac.authorization.k8s.io
+rules:
+- apiGroups:
+  - oauth.openshift.io
+  resources:
+  - oauthclients
+  verbs:
+  - "*"
