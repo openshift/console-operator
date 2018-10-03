@@ -96,14 +96,14 @@ func CreateOAuthClient(cr *v1alpha1.Console, rt *routev1.Route) (*oauthv1.OAuthC
 		logrus.Errorf("failed to create console oauth client : %v", err)
 		return nil, nil, err
 	} else {
-		logrus.Info("created console oauth client with secret ", randomBits)
+		logrus.Info("created console oauth client with secret")
 	}
 
 	if err := sdk.Create(authSecret); err != nil && !errors.IsAlreadyExists(err) {
 		logrus.Errorf("failed to create console oauth client secret : %v", err)
 		return nil, nil, err
 	} else {
-		logrus.Info("created console oauth secret ", randomBits)
+		logrus.Info("created console oauth secret")
 	}
 	return authClient, authSecret, nil
 }
