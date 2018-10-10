@@ -10,13 +10,7 @@ USER console-operator
 COPY --from=builder /go/src/github.com/openshift/console-operator/tmp/_output/bin/console-operator /usr/bin
 
 # these manifests are necessary for the installer
-COPY deploy/00-crd.yaml \
-    deploy/01-namespace.yaml \
-    deploy/02-sa.yaml \
-    deploy/03-rbac-role.yaml \
-    deploy/04-rbac-rolebinding.yaml \
-    deploy/05-operator.yaml \
-    /manifests/
+COPY manifests /manifests
 
 LABEL io.k8s.display-name="OpenShift console-operator" \
       io.k8s.description="This is a component of OpenShift Container Platform and manages the lifecycle of the web console." \

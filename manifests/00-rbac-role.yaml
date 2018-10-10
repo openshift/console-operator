@@ -1,5 +1,5 @@
 kind: Role
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: console-operator
   namespace: openshift-console
@@ -7,34 +7,53 @@ rules:
 - apiGroups:
   - console.openshift.io
   resources:
-  - "*"
+  - consoles
   verbs:
-  - "*"
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
 - apiGroups:
   - ""
   resources:
-  - pods
   - services
   - events
   - configmaps
   - secrets
   verbs:
-  - "*"
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
 - apiGroups:
   - apps
   resources:
   - deployments
   verbs:
-  - "*"
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
 - apiGroups:
   - route.openshift.io
   resources:
   - routes
   verbs:
-  - "*"
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: console-operator
 rules:
@@ -43,4 +62,7 @@ rules:
   resources:
   - oauthclients
   verbs:
-  - "*"
+  - get
+  - update
+  resourceNames:
+  - openshift-console
