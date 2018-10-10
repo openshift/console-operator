@@ -117,6 +117,7 @@ func newConsoleConfigYaml(rt *routev1.Route) string {
 }
 
 func newConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) *corev1.ConfigMap {
+	// TODO: handle null route
 	meta := sharedMeta()
 	// expects a non-standard name
 	meta.Name = ConsoleConfigMapName
