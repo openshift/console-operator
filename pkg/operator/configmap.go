@@ -142,10 +142,9 @@ func CreateConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) (*corev1.Co
 	if err := sdk.Create(configMap); err != nil && !errors.IsAlreadyExists(err) {
 		logrus.Errorf("failed to create console configmap : %v", err)
 		return nil, err
-	} else {
-		logrus.Info("created console configmap")
-		return configMap, nil
 	}
+	logrus.Infof("created console configmap '%s'", configMap.ObjectMeta.Name)
+	return configMap, nil
 }
 
 func UpdateConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) (*corev1.ConfigMap, error) {
