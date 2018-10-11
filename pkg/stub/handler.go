@@ -2,33 +2,71 @@ package stub
 
 import (
 	"context"
-
 	"github.com/sirupsen/logrus"
 
+	// TODO: use when swapping up to client from Handler
+	// "k8s.io/api/apps/v1"
+	// "k8s.io/client-go/rest"
+	// v12 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	// k8sv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	// TODO: use when swapping up to client from Handler
+	// "github.com/openshift/origin/pkg/route/apis/route"
 
+	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	"github.com/openshift/console-operator/pkg/operator"
 
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
 )
 
+// TODO: use when swapping up to client from Handler
+// TODO: pass in the namespace
+// TODO: create speific clients
+// TODO: rename "default" objects that are currently being
+//   created manually then mutated via sdk.Get(obj), sdk.Update(obj), etc
+//   the clients in the rest of the todo's do NOT mutate the obj passed in
+//   instead they will return a new obj as would be a little more
 func NewHandler() sdk.Handler {
-	// andy bootstrapping? if so, we can do it here.
 	return &handler{}
+
+	// TODO: use when swapping up to client from Handler
+	//conf, err := rest.InClusterConfig()
+	//
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	// k8sv1Client := k8sv1.NewForConfigOrDie(conf)
+	// v12Client := v12.NewForConfigOrDie(conf)
+	// routeClient
+	//
+	//return &handler{
+	//	// configMapClient
+	//	deploymentsClient: v12Client.Deployments(namespace),
+	//	eventsClient: k8sv1Client.Events(namespace),
+	//	// routesClient:
+	//	secretsClient: k8sv1Client.Secrets(namespace),
+	//	servicesClient: k8sv1Client.Services(namespace),
+	//}
 }
 
 type handler struct {
+	// TODO: use when swapping up to client from Handler
+	// configMapClient
+	// deploymentsClient v12.DeploymentInterface
+	// eventsClient k8sv1.EventInterface
+	// routesClient
+	// secretsClient k8sv1.SecretInterface
+	// servicesClient k8sv1.ServiceInterface
 }
 
 func (h *handler) Handle(_ context.Context, event sdk.Event) error {
 	cr, err := getCR()
 	if isDeleted(err) {
 		logrus.Info("console has been deleted.")
-		cleanup()
 		return nil
 	}
 	// some kind of non-404 error?
@@ -44,9 +82,7 @@ func (h *handler) Handle(_ context.Context, event sdk.Event) error {
 	// create all of the resources if they do not exist
 	// then ensure they are in the correct state
 	// enforcing shared secrets, route.Host, etc
-	operator.ReconcileConsole(cr)
-
-	return err
+	return operator.ReconcileConsole(cr)
 }
 
 func getCR() (*v1alpha1.Console, error) {
@@ -80,10 +116,4 @@ func isDeleted(err error) bool {
 	//	return false
 	//}
 	return errors.IsNotFound(err)
-}
-
-func cleanup() {
-	logrus.Info("console has been deleted.")
-	// Garbage collector cleans up most via ownersRefs
-	operator.DeleteOauthClient()
 }

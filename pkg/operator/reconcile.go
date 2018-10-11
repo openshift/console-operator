@@ -1,8 +1,11 @@
 package operator
 
 import (
+	// TODO: use when swapping up to client from Handler
+	// "k8s.io/client-go/kubernetes/typed/core/v1"
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 )
+
 
 // operator.Reconcile(cr)
 // so ignore "resource exists", GET the resource, diff against expected, if not, UPDATE resource, loop.
@@ -18,13 +21,12 @@ import (
 //   create service if not exists
 //   create route if not exists
 //   create configmap if not exists
-//   create oauthclient if not exists
 // 		which will look something like this:
 //        sdk.Get(the-client)
 //        if !exists
 //          sdk.Get(the-route)
 //          addRouteHostIfWeGotIt(the-client)
-//          sdk.Create(the-client)
+//           sdk.Create(the-client)
 //        else
 //          sdk.Get(the-route)
 //          addRouteHostIfWeGotIt(the-client)
@@ -33,29 +35,36 @@ import (
 // but also
 //   sync random secret between oauthclient & oauthclient-secret
 //   sync route.host between route, oauthclient.redirectURIs & configmap.baseAddress
-func ReconcileConsole(cr *v1alpha1.Console) {
 
-	CreateServiceIfNotPresent(cr)
-	rt, _ := CreateRouteIfNotPresent(cr)
-	CreateConsoleConfigMapIfNotPresent(cr, rt)
-	CreateOauthClientIfNotPresent(cr, rt)
-	CreateConsoleDeploymentIfNotPresent(cr)
+// func ReconcileConsole(cr *v1alpha1.Console, secretClient v1.SecretInterface) error {
+// TODO: use when swapping up to client from Handler
+func ReconcileConsole(cr *v1alpha1.Console) error {
+	_, err := CreateServiceIfNotPresent(cr)
+	if err != nil {
+		return err
+	}
 
-	UpdateOauthClientIfNotInSync(cr, rt)
+	rt, err := CreateRouteIfNotPresent(cr)
+	if err != nil {
+		return err
+	}
 
-	//rt, _ := CreateRoute(cr)
-	//
-	//// fetching the route to get it with a host annotation
-	//_ = sdk.Get(rt)
-	//
-	//CreateConsoleConfigMap(cr, rt)
-	//CreateOAuthClient(cr, rt)
-	//
-	//CreateConsoleDeployment(cr)
-	//
-	//// ensure these stay in sync.
-	//// can probably dedupe some work here
-	// UpdateOauthClient(cr, rt)
-	//
-	//// this should prob return errors :)
+	_, err = CreateConsoleConfigMapIfNotPresent(cr, rt)
+	if err != nil {
+		return err
+	}
+
+	_, err = CreateConsoleDeploymentIfNotPresent(cr)
+	if err != nil {
+		return err
+	}
+
+	// TODO: use when swapping up to clients from Handler
+	// _, _, err = UpdateOauthClientIfNotInSync(cr, rt, secretClient)
+	_, _, err = UpdateOauthClientIfNotInSync(cr, rt)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
