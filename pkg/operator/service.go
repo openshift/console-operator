@@ -53,7 +53,7 @@ func CreateService(cr *v1alpha1.Console) (*corev1.Service, error) {
 		logrus.Errorf("failed to create console service : %v", err)
 		return nil, err
 	}
-	logrus.Info("created console service")
+	logrus.Infof("created console service '%s'", svc.ObjectMeta.Name)
 	return svc, nil
 }
 

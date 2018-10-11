@@ -47,10 +47,9 @@ func CreateRoute(cr *v1alpha1.Console) (*routev1.Route, error) {
 	if err := sdk.Create(rt); err != nil && !errors.IsAlreadyExists(err) {
 		logrus.Errorf("failed to create console route : %v", err)
 		return nil, err
-	} else {
-		logrus.Info("created console route")
-		return rt, nil
 	}
+	logrus.Infof("created console route '%s'", rt.ObjectMeta.Name)
+	return rt, nil
 }
 
 func CreateRouteIfNotPresent(cr *v1alpha1.Console) (*routev1.Route, error) {
