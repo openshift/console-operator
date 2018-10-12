@@ -1,0 +1,9 @@
+apiVersion: oauth.openshift.io/v1
+kind: OAuthClient
+metadata:
+  name: openshift-console
+  # name: openshift-web-console
+  annotations:
+    foo: bar
+grantMethod: auto
+respondWithChallenges: false
