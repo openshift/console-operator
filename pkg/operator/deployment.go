@@ -179,7 +179,7 @@ func CreateConsoleDeployment(cr *v1alpha1.Console) (*appsv1.Deployment, error) {
 		logrus.Errorf("failed to create console deployment : %v", err)
 		return nil, err
 	}
-	logrus.Info("created console deployment")
+	logrus.Infof("created console deployment '%s'", d.ObjectMeta.Name)
 	return d, nil
 }
 
