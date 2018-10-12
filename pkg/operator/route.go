@@ -48,7 +48,7 @@ func CreateRoute(cr *v1alpha1.Console) (*routev1.Route, error) {
 		logrus.Errorf("failed to create console route : %v", err)
 		return nil, err
 	} else {
-		logrus.Info("created console route")
+		logrus.Infof("created console service '%s'", rt.ObjectMeta.Name)
 		return rt, nil
 	}
 }
