@@ -1,4 +1,3 @@
-
 FROM openshift/origin-release:golang-1.10 as builder
 WORKDIR /go/src/github.com/openshift/console-operator
 COPY . .
@@ -15,10 +14,9 @@ COPY manifests /manifests/
 LABEL io.k8s.display-name="OpenShift console-operator" \
       io.k8s.description="This is a component of OpenShift Container Platform and manages the lifecycle of the web console." \
       io.openshift.tags="openshift" \
-      maintainer="Benjamin A. Petersen <bpeterse@redhat.com>"
+      maintainer="Benjamin A. Petersen <bpetersen@redhat.com>"
 
-# to enable install integration, can add to the set of labels above when ready
-#LABEL io.openshift.release.operator true
+LABEL io.openshift.release.operator true
 
 # entrypoint specified in 03-operator.yaml as `console-operator`
 CMD ["/usr/bin/console-operator"]
