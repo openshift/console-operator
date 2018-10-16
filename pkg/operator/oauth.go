@@ -2,7 +2,6 @@ package operator
 
 import (
 	"fmt"
-	"strings"
 
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -19,6 +18,49 @@ const (
 	// OAuthClientName = "openshift-web-console"
 	OAuthClientName = OpenShiftConsoleName
 )
+
+func ApplyOAuth(cr *v1alpha1.Console, rt *routev1.Route) (*oauthv1.OAuthClient, *corev1.Secret, error) {
+
+	authClient := defaultOAuthClient(cr)
+	_ = sdk.Get(authClient)
+	if !hasRedirectUri(authClient, rt) {
+		addRedirectURI(authClient, rt)
+		if err := sdk.Update(authClient); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	authClientSecretString := authClient.Secret
+	authConfigSecret := newOauthConfigSecret(cr, "")
+	// ensure we have created a secret before we compare the values for updates
+	authConfigSecret, err := getOrCreateSecret(authConfigSecret)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	authConfigSecretData := authConfigSecret.Data["clientSecret"]
+	authConfigSecretString := string(authConfigSecretData)
+
+	if !stringSecretsMatch(authClientSecretString, authConfigSecretString) {
+		randomBits := randomStringForSecret()
+		addSecretToOauthClient(authClient, &randomBits)
+		updateOauthConfigSecret(authConfigSecret, randomBits)
+		if err := sdk.Update(authClient); err != nil {
+			logrus.Printf("oauthclient \"%v\" update error %v \n", authClient.ObjectMeta.Name, err)
+			return nil, nil, err
+		}
+		logrus.Infof("oauthclient \"%s\" updated", authClient.ObjectMeta.Name)
+
+		if err = sdk.Update(authConfigSecret); err != nil {
+			logrus.Printf("secret \"%v\" update error %v \n", authConfigSecret.ObjectMeta.Name, err)
+			return nil, nil, err
+		}
+		logrus.Infof("secret \"%s\" updated", authConfigSecret.ObjectMeta.Name)
+		return authClient, authConfigSecret, nil
+	}
+
+	return authClient, authConfigSecret, nil
+}
 
 func randomStringForSecret() string {
 	return crypto.RandomBitsString(256)
@@ -78,7 +120,7 @@ func addSecretToOauthClient(client *oauthv1.OAuthClient, randomBits *string) {
 	}
 }
 
-func newConsoleOauthClient(cr *v1alpha1.Console) *oauthv1.OAuthClient {
+func defaultOAuthClient(cr *v1alpha1.Console) *oauthv1.OAuthClient {
 	oauthclient := &oauthv1.OAuthClient{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: oauthv1.GroupVersion.String(),
@@ -106,63 +148,5 @@ func stringSecretsMatch(str1 string, str2 string) bool {
 	if str1 == "" {
 		return false
 	}
-	if str2 == "" {
-		return false
-	}
-	return strings.Compare(str1, str2) == 0
-}
-
-func UpdateOauthClientIfNotInSync(cr *v1alpha1.Console, rt *routev1.Route) (*oauthv1.OAuthClient, *corev1.Secret, error) {
-	authClient := newConsoleOauthClient(cr)
-	_ = sdk.Get(authClient)
-	if !hasRedirectUri(authClient, rt) {
-		addRedirectURI(authClient, rt)
-		err := sdk.Update(authClient)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
-	authClientSecretString := authClient.Secret
-
-	authConfigSecret := newOauthConfigSecret(cr, "")
-	authConfigSecret, err := getOrCreateSecret(authConfigSecret)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	authConfigSecretData := authConfigSecret.Data["clientSecret"]
-	authConfigSecretString := string(authConfigSecretData)
-
-	if !stringSecretsMatch(authClientSecretString, authConfigSecretString) {
-		randomBits := randomStringForSecret()
-		addSecretToOauthClient(authClient, &randomBits)
-		updateOauthConfigSecret(authConfigSecret, randomBits)
-		err := sdk.Update(authClient)
-		if err != nil {
-			logrus.Printf("oauthclient \"%v\" update error %v \n", authClient.ObjectMeta.Name, err)
-			return nil, nil, err
-		}
-		logrus.Infof("oauthclient \"%s\" updated", authClient.ObjectMeta.Name)
-		err = sdk.Update(authConfigSecret)
-		if err != nil {
-			logrus.Printf("secret \"%v\" update error %v \n", authConfigSecret.ObjectMeta.Name, err)
-			return nil, nil, err
-		}
-		logrus.Infof("secret \"%s\" updated", authConfigSecret.ObjectMeta.Name)
-		return authClient, authConfigSecret, nil
-	}
-
-	return authClient, authConfigSecret, nil
-}
-
-// NOTE: the oauthclient is now created via manifests, the operator
-// should likely no longer be responsible for deleting it.
-func DeleteOauthClient() error {
-	oauthClient := newConsoleOauthClient(nil)
-	err := sdk.Delete(oauthClient)
-	if err != nil {
-		logrus.Infof("Failed to delete oauth client %v", err)
-	}
-	return err
+	return str1 == str2
 }
