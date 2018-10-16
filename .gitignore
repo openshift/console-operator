@@ -1,5 +1,6 @@
 .DS_Store 
 .idea
+./deploy
 
 # tools output reports into _output
 _output
