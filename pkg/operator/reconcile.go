@@ -35,28 +35,24 @@ import (
 //   sync route.host between route, oauthclient.redirectURIs & configmap.baseAddress
 func ReconcileConsole(cr *v1alpha1.Console) error {
 
-	_, err := CreateServiceIfNotPresent(cr)
+	if _, err := ApplyService(cr); err != nil {
+		return err
+	}
+
+	rt, err := ApplyRoute(cr)
 	if err != nil {
 		return err
 	}
 
-	rt, err := CreateRouteIfNotPresent(cr)
-	if err != nil {
+	if _, err := ApplyConfigMap(cr, rt); err != nil {
 		return err
 	}
 
-	_, err = CreateConsoleConfigMapIfNotPresent(cr, rt)
-	if err != nil {
+	if _, err := ApplyDeployment(cr); err != nil {
 		return err
 	}
 
-	_, err = CreateConsoleDeploymentIfNotPresent(cr)
-	if err != nil {
-		return err
-	}
-
-	_, _, err = UpdateOauthClientIfNotInSync(cr, rt)
-	if err != nil {
+	if _, _, err := ApplyOAuth(cr, rt); err != nil {
 		return err
 	}
 

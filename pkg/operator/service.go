@@ -43,7 +43,6 @@ func newConsoleService(cr *v1alpha1.Console) *corev1.Service {
 		},
 	}
 	addOwnerRef(service, ownerRefFrom(cr))
-	logrus.Info("Creating console service manifest")
 	return service
 }
 
@@ -57,7 +56,7 @@ func CreateService(cr *v1alpha1.Console) (*corev1.Service, error) {
 	return svc, nil
 }
 
-func CreateServiceIfNotPresent(cr *v1alpha1.Console) (*corev1.Service, error) {
+func ApplyService(cr *v1alpha1.Console) (*corev1.Service, error) {
 	svc := newConsoleService(cr)
 	err := sdk.Get(svc)
 
