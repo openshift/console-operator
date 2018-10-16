@@ -135,7 +135,7 @@ dep ensure --add github.com/openshift/client-go
 ## Deploy to an Existing Cluster
 
 To deploy the console to a cluster, simply create the manifests in the
-`manifests` directory and the custom reason in the `deploy` directory:
+`manifests` directory and the custom resource in the `deploy` directory:
 
 ```bash
 $ oc create -f manifests/
