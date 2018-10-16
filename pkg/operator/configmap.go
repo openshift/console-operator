@@ -153,7 +153,7 @@ func UpdateConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) (*corev1.Co
 	return configMap, err
 }
 
-func CreateConsoleConfigMapIfNotPresent(cr *v1alpha1.Console, rt *routev1.Route) (*corev1.ConfigMap, error) {
+func ApplyConfigMap(cr *v1alpha1.Console, rt *routev1.Route) (*corev1.ConfigMap, error) {
 	configMap := newConsoleConfigMap(cr, rt)
 	err := sdk.Get(configMap)
 

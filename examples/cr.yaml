@@ -1,3 +1,5 @@
+# the console-operator will create a console if one does not exist
+# this is an example of a CR for a console resource
 apiVersion: "console.openshift.io/v1alpha1"
 kind: "Console"
 metadata:

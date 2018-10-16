@@ -28,7 +28,6 @@ func (h *handler) Handle(_ context.Context, event sdk.Event) error {
 	cr, err := getCR()
 	if isDeleted(err) {
 		logrus.Info("console has been deleted.")
-		cleanup()
 		return nil
 	}
 	// some kind of non-404 error?
@@ -80,10 +79,4 @@ func isDeleted(err error) bool {
 	//	return false
 	//}
 	return errors.IsNotFound(err)
-}
-
-func cleanup() {
-	logrus.Info("console has been deleted.")
-	// Garbage collector cleans up most via ownersRefs
-	operator.DeleteOauthClient()
 }

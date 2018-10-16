@@ -33,29 +33,29 @@ import (
 // but also
 //   sync random secret between oauthclient & oauthclient-secret
 //   sync route.host between route, oauthclient.redirectURIs & configmap.baseAddress
-func ReconcileConsole(cr *v1alpha1.Console) {
+func ReconcileConsole(cr *v1alpha1.Console) error {
 
-	CreateServiceIfNotPresent(cr)
-	rt, _ := CreateRouteIfNotPresent(cr)
-	CreateConsoleConfigMapIfNotPresent(cr, rt)
-	CreateOauthClientIfNotPresent(cr, rt)
-	CreateConsoleDeploymentIfNotPresent(cr)
+	if _, err := ApplyService(cr); err != nil {
+		return err
+	}
 
-	UpdateOauthClientIfNotInSync(cr, rt)
+	rt, err := ApplyRoute(cr)
+	if err != nil {
+		return err
+	}
 
-	//rt, _ := CreateRoute(cr)
-	//
-	//// fetching the route to get it with a host annotation
-	//_ = sdk.Get(rt)
-	//
-	//CreateConsoleConfigMap(cr, rt)
-	//CreateOAuthClient(cr, rt)
-	//
-	//CreateConsoleDeployment(cr)
-	//
-	//// ensure these stay in sync.
-	//// can probably dedupe some work here
-	// UpdateOauthClient(cr, rt)
-	//
-	//// this should prob return errors :)
+	if _, err := ApplyConfigMap(cr, rt); err != nil {
+		return err
+	}
+
+	if _, err := ApplyDeployment(cr); err != nil {
+		return err
+	}
+
+	if _, _, err := ApplyOAuth(cr, rt); err != nil {
+		return err
+	}
+
+	return nil
+
 }

@@ -37,7 +37,6 @@ func newConsoleRoute(cr *v1alpha1.Console) *routev1.Route {
 			WildcardPolicy: routev1.WildcardPolicyNone,
 		},
 	}
-	logrus.Info("Creating console route manifest")
 	addOwnerRef(route, ownerRefFrom(cr))
 	return route
 }
@@ -53,7 +52,7 @@ func CreateRoute(cr *v1alpha1.Console) (*routev1.Route, error) {
 	}
 }
 
-func CreateRouteIfNotPresent(cr *v1alpha1.Console) (*routev1.Route, error) {
+func ApplyRoute(cr *v1alpha1.Console) (*routev1.Route, error) {
 	rt := newConsoleRoute(cr)
 	err := sdk.Get(rt)
 
