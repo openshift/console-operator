@@ -1,10 +1,13 @@
 package v1alpha1
 
 import (
-	routev1 "github.com/openshift/api/route/v1"
-	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/sirupsen/logrus"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	routev1 "github.com/openshift/api/route/v1"
+
+	"github.com/operator-framework/operator-sdk/pkg/sdk"
 )
 
 const (
@@ -60,6 +63,10 @@ type LoggingConfig struct {
 // https://github.com/operator-framework/operator-sdk-samples/blob/master/vault-operator/pkg/apis/vault/v1alpha1/types.go#L39
 func (c *Console) SetDefaults() bool {
 	changed := false
+	if len(c.Spec.BaseImage) == 0 {
+		c.Spec.BaseImage = "docker.io/openshift/origin-console"
+		changed = true
+	}
 	if c.Spec.Count == 0 {
 		c.Spec.Count = 1
 		changed = true
@@ -74,7 +81,7 @@ func (c *Console) SetDefaults() bool {
 	}
 	if c.Spec.Logging == nil {
 		c.Spec.Logging = &LoggingConfig{
-			Level: 4,
+			Level: 0,
 		}
 	}
 	return changed

@@ -16,12 +16,14 @@ spec:
       serviceAccountName: console-operator
       containers:
       - name: console-operator
-        image: openshift/origin-console-operator:latest
+        image: docker.io/openshift/origin-console-operator:latest
         ports:
         - containerPort: 60000
           name: metrics
         command:
         - console-operator
+        args:
+        - "-create-default-console=true"
         imagePullPolicy: Always
         env:
         - name: WATCH_NAMESPACE

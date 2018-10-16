@@ -17,9 +17,9 @@ spec:
   # count is # of replicas
   count: 1
   # this is the console image
-  baseImage: quay.io/openshift/origin-console
+  baseImage: docker.io/openshift/origin-console
   # note: version with a @sha does not work, @ is not valid starting a string in yaml
-  # version:
+  version: latest
   # location of the master should NOT be needed, the console should automatically use
   # the service for the cluster API w/o us having to declare anything
   # masterPublicURL:
