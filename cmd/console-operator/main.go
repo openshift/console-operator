@@ -23,6 +23,7 @@ import (
 
 	// operator
 	consoleapi "github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	"github.com/openshift/console-operator/pkg/operator"
 )
 
 func printVersion() {
@@ -41,7 +42,8 @@ func init() {
 }
 
 func main() {
-	flag.Parse() // suppress an annoying notification :/
+	defaultConsoleFlag := flag.Bool("create-default-console", false, "Create a Console custom resource if `true`")
+	flag.Parse()
 	printVersion()
 	// prometheus metrics
 	sdk.ExposeMetricsPort()
@@ -60,7 +62,12 @@ func main() {
 	watch(appsv1.SchemeGroupVersion.String(), "Deployment", namespace, resyncPeriod)
 
 	watch(consoleapi.SchemeGroupVersion.String(), "Console", namespace, resyncPeriod)
-	// i should be watching the oauth client i made :)
+
+	if *defaultConsoleFlag {
+		if _, err := operator.ApplyConsole(); err != nil {
+			logrus.Fatalf("Failed to create default console %v", err)
+		}
+	}
 
 	sdk.Handle(
 		stub.NewFilteredHandler(

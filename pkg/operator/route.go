@@ -1,13 +1,17 @@
 package operator
 
 import (
-	routev1 "github.com/openshift/api/route/v1"
-	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
-	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/sirupsen/logrus"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	routev1 "github.com/openshift/api/route/v1"
+
+	"github.com/operator-framework/operator-sdk/pkg/sdk"
+
+	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 )
 
 func newConsoleRoute(cr *v1alpha1.Console) *routev1.Route {
