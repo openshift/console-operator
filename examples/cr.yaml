@@ -1,29 +1,23 @@
-# the console-operator will create a console if one does not exist
-# this is an example of a CR for a console resource
+# The console-operator will create a console automatically on startup if one does not exist.
+# This file is an example of a console resource.
+# You may edit this file and `oc apply -f cr.yaml` to make changes to the console.
 apiVersion: "console.openshift.io/v1alpha1"
 kind: "Console"
 metadata:
-  # do not change the name, this is required to match within the operator
+  # Do not change the name, the operator explicitly requires this name to match as the console is a singleton.
   name: openshift-console
-  # namespace: openshift-console
-  # for dev:
   namespace: openshift-console
 spec:
-  paused: false
-  # what needs to be customized here?
-  # fewest knobs possible!
-  # this will need to be reflected in the
-  # pkg/apis/console/v1alpha1/types.go file
-  # count is # of replicas
+  # openshift/api/operator/v1alpha1/types.go
+  # managementState indicates whether the operator is:
+  # - Managed indicates the operator fully manages the state of the console and its sub-resources
+  # - Unmanaged indicates that the operator should idle and ignore the console and its sub-resources
+  # - Removed indicates that the operator should delete all of the sub-resources of the console
+  managementState: Managed
+  # there should be only one console at this time
   count: 1
   # this is the console image
   baseImage: docker.io/openshift/origin-console
-  # note: version with a @sha does not work, @ is not valid starting a string in yaml
   version: latest
-  # location of the master should NOT be needed, the console should automatically use
-  # the service for the cluster API w/o us having to declare anything
-  # masterPublicURL:
-  # the log level for the operator itself.
-  # note: should there be a lvl for the components as well?
   logging:
     level: 0

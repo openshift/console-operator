@@ -65,3 +65,9 @@ func ApplyService(cr *v1alpha1.Console) (*corev1.Service, error) {
 	}
 	return svc, nil
 }
+
+// Deletes the Console Service when the Console ManagementState is set to Removed
+func DeleteService(cr *v1alpha1.Console) error {
+	svc := newConsoleService(cr)
+	return sdk.Delete(svc)
+}

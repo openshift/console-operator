@@ -4,6 +4,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	operatorv1alpha1 "github.com/openshift/api/operator/v1alpha1"
+
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
@@ -16,8 +18,11 @@ func defaultConsole() *v1alpha1.Console {
 			Kind:       "Console",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      OpenshiftConsoleNamespace,
+			Name:      OpenShiftConsoleName,
 			Namespace: OpenshiftConsoleNamespace,
+		},
+		Spec: v1alpha1.ConsoleSpec{
+			ManagementState: operatorv1alpha1.Managed,
 		},
 	}
 	console.SetDefaults()

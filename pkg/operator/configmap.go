@@ -92,20 +92,24 @@ func servingInfo() yaml.MapSlice {
 // There is a better way to do this I am sure
 func newConsoleConfigYaml(rt *routev1.Route) string {
 	// https://godoc.org/gopkg.in/yaml.v2#MapSlice
-	conf := yaml.MapSlice{
-		{
-			Key: "kind", Value: "ConsoleConfig",
-		}, {
-			Key: "apiVersion", Value: "console.openshift.io/v1beta1",
-		}, {
-			Key: "auth", Value: authServerYaml(),
-		}, {
-			Key: "clusterInfo", Value: clusterInfo(rt),
-		}, {
-			Key: "customization", Value: customization(),
-		}, {
-			Key: "servingInfo", Value: servingInfo(),
-		},
+	conf := yaml.MapSlice{}
+
+	if rt != nil {
+		conf = yaml.MapSlice{
+			{
+				Key: "kind", Value: "ConsoleConfig",
+			}, {
+				Key: "apiVersion", Value: "console.openshift.io/v1beta1",
+			}, {
+				Key: "auth", Value: authServerYaml(),
+			}, {
+				Key: "clusterInfo", Value: clusterInfo(rt),
+			}, {
+				Key: "customization", Value: customization(),
+			}, {
+				Key: "servingInfo", Value: servingInfo(),
+			},
+		}
 	}
 
 	yml, err := yaml.Marshal(conf)
@@ -136,23 +140,25 @@ func newConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) *corev1.Config
 	return configMap
 }
 
+// Creates a Console ConfigMap
 func CreateConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) (*corev1.ConfigMap, error) {
 	configMap := newConsoleConfigMap(cr, rt)
 	if err := sdk.Create(configMap); err != nil && !errors.IsAlreadyExists(err) {
 		logrus.Errorf("failed to create console configmap : %v", err)
 		return nil, err
-	} else {
-		logrus.Infof("created console configmap '%s'", configMap.ObjectMeta.Name)
-		return configMap, nil
 	}
+	logrus.Infof("created console configmap '%s'", configMap.ObjectMeta.Name)
+	return configMap, nil
 }
 
+// Updates an existing Console ConfigMap
 func UpdateConsoleConfigMap(cr *v1alpha1.Console, rt *routev1.Route) (*corev1.ConfigMap, error) {
 	configMap := newConsoleConfigMap(cr, rt)
 	err := sdk.Update(configMap)
 	return configMap, err
 }
 
+// Creates a new or updates an existing ConfigMap for the Console
 func ApplyConfigMap(cr *v1alpha1.Console, rt *routev1.Route) (*corev1.ConfigMap, error) {
 	configMap := newConsoleConfigMap(cr, rt)
 	err := sdk.Get(configMap)
@@ -161,4 +167,10 @@ func ApplyConfigMap(cr *v1alpha1.Console, rt *routev1.Route) (*corev1.ConfigMap,
 		return CreateConsoleConfigMap(cr, rt)
 	}
 	return configMap, nil
+}
+
+// Deletes the Console ConfigMap when the Console ManagementState is set to Removed
+func DeleteConfigMap(cr *v1alpha1.Console) error {
+	configMap := newConsoleConfigMap(cr, nil)
+	return sdk.Delete(configMap)
 }

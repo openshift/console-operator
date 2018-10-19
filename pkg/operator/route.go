@@ -65,3 +65,9 @@ func ApplyRoute(cr *v1alpha1.Console) (*routev1.Route, error) {
 	}
 	return rt, nil
 }
+
+// Deletes the Console Route when the Console ManagementState is set to Removed
+func DeleteRoute(cr *v1alpha1.Console) error {
+	rt := newConsoleRoute(cr)
+	return sdk.Delete(rt)
+}

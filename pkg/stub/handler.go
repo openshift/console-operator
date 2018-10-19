@@ -2,18 +2,20 @@ package stub
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/sirupsen/logrus"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-
-	"github.com/openshift/console-operator/pkg/operator"
+	operatorv1alpha1 "github.com/openshift/api/operator/v1alpha1"
 
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
+
+	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	"github.com/openshift/console-operator/pkg/operator"
 )
 
 func NewHandler() sdk.Handler {
@@ -26,8 +28,14 @@ type handler struct {
 
 func (h *handler) Handle(_ context.Context, event sdk.Event) error {
 	cr, err := getCR()
-	if isDeleted(err) {
-		logrus.Info("console has been deleted.")
+
+	// if the CR is deleted, the operator will immediately create a
+	// new one.
+	if errors.IsNotFound(err) {
+		fmt.Printf("Console does not exist, creating default console \n")
+		if _, err := operator.ApplyConsole(); !errors.IsAlreadyExists(err) {
+			logrus.Infof("Console deleted, attempting to recreate %v", err)
+		}
 		return nil
 	}
 	// some kind of non-404 error?
@@ -35,10 +43,20 @@ func (h *handler) Handle(_ context.Context, event sdk.Event) error {
 		return err
 	}
 
-	if isPaused(cr) {
-		logrus.Info("console has been paused.")
+	fmt.Printf("management state is - %v \n", cr.Spec.ManagementState)
+
+	switch cr.Spec.ManagementState {
+	case operatorv1alpha1.Managed:
+		// handled below
+	case operatorv1alpha1.Unmanaged:
 		return nil
+	case operatorv1alpha1.Removed:
+		return operator.DeleteAllResources(cr)
+	default:
+		// TODO should update status
+		return fmt.Errorf("unknown management state: %v \n", cr.Spec.ManagementState)
 	}
+
 	logrus.Info("reconciling console...")
 	// create all of the resources if they do not exist
 	// then ensure they are in the correct state
@@ -62,21 +80,4 @@ func getCR() (*v1alpha1.Console, error) {
 	}
 	err := sdk.Get(cr)
 	return cr, err
-}
-
-func isPaused(console *v1alpha1.Console) bool {
-	if console.Spec.Paused {
-		return true
-	}
-	return false
-}
-
-func isDeleted(err error) bool {
-	//if err != nil {
-	//	if !errors.IsNotFound(err) {
-	//		return true
-	//	}
-	//	return false
-	//}
-	return errors.IsNotFound(err)
 }

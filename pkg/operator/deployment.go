@@ -191,3 +191,9 @@ func ApplyDeployment(cr *v1alpha1.Console) (*appsv1.Deployment, error) {
 	}
 	return d, nil
 }
+
+// Deletes the Console Deployment when the Console ManagementState is set to Removed
+func DeleteDeployment(cr *v1alpha1.Console) error {
+	d := newConsoleDeployment(cr)
+	return sdk.Delete(d)
+}
