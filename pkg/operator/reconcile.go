@@ -1,6 +1,9 @@
 package operator
 
 import (
+	"k8s.io/apimachinery/pkg/api/errors"
+	errutil "k8s.io/apimachinery/pkg/util/errors"
+
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 )
 
@@ -55,7 +58,21 @@ func ReconcileConsole(cr *v1alpha1.Console) error {
 	if _, _, err := ApplyOAuth(cr, rt); err != nil {
 		return err
 	}
-
 	return nil
+}
 
+func DeleteAllResources(cr *v1alpha1.Console) error {
+	var errs []error
+	for _, fn := range []func(*v1alpha1.Console) error{
+		DeleteService,
+		DeleteRoute,
+		DeleteConfigMap,
+		DeleteDeployment,
+		DeleteOAuthSecret,
+		// we don't own it and can't create or delete it. however, we can update it
+		NeutralizeOAuthClient,
+	} {
+		errs = append(errs, fn(cr))
+	}
+	return errutil.FilterOut(errutil.NewAggregate(errs), errors.IsNotFound)
 }

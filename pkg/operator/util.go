@@ -48,7 +48,7 @@ func sharedMeta() metav1.ObjectMeta {
 	}
 }
 
-func logYaml(obj runtime.Object) {
+func LogYaml(obj runtime.Object) {
 	// REALLY NOISY, but handy for debugging:
 	// deployJSON, err := json.Marshal(d)
 	deployYAML, err := yaml.Marshal(obj)

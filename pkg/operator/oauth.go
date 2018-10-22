@@ -22,7 +22,9 @@ const (
 func ApplyOAuth(cr *v1alpha1.Console, rt *routev1.Route) (*oauthv1.OAuthClient, *corev1.Secret, error) {
 
 	authClient := defaultOAuthClient(cr)
-	_ = sdk.Get(authClient)
+	if err := sdk.Get(authClient); err != nil {
+		return nil, nil, err
+	}
 	if !hasRedirectUri(authClient, rt) {
 		addRedirectURI(authClient, rt)
 		if err := sdk.Update(authClient); err != nil {
@@ -60,6 +62,29 @@ func ApplyOAuth(cr *v1alpha1.Console, rt *routev1.Route) (*oauthv1.OAuthClient, 
 	}
 
 	return authClient, authConfigSecret, nil
+}
+
+// Deletes the Console Auth Secret when the Console ManagementState is set to Removed
+func DeleteOAuthSecret(cr *v1alpha1.Console) error {
+	authConfigSecret := newOauthConfigSecret(cr, "")
+	return sdk.Delete(authConfigSecret)
+}
+
+// deletes secret & eliminates redirectUris
+func NeutralizeOAuthClient(cr *v1alpha1.Console) error {
+	authClient := defaultOAuthClient(cr)
+	if err := sdk.Get(authClient); err != nil {
+		return err
+	}
+	unusedSecret := randomStringForSecret()
+	addSecretToOauthClient(authClient, &unusedSecret)
+	authClient.RedirectURIs = []string{}
+
+	if err := sdk.Update(authClient); err != nil {
+		logrus.Printf("oauthclient \"%v\" update error %v \n", authClient.ObjectMeta.Name, err)
+		return err
+	}
+	return nil
 }
 
 func randomStringForSecret() string {
