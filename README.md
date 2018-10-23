@@ -54,7 +54,7 @@ Finally, you can create an instance of your custom resource (CR).
 Once an instance exists, your operator will take over managing it.
 
 ```bash
-$ oc create -f deploy/cr.yaml
+$ oc create -f examples/cr.yaml
 ```
 
 Now check to ensure that your operator creates all of the resource that you
@@ -66,11 +66,11 @@ $ oc get all
 ```
 
 You can now declaratively make changes to your custom resource on the fly by
-updating `deploy/cr.yaml`. For example, update the number of replicas generated
+updating `examples/cr.yaml`. For example, update the number of replicas generated
 by changing spec.count.
 
 ```bash
-$ oc apply -f deploy/cr.yaml
+$ oc apply -f examples/cr.yaml
 ```
 
 Do the same verification check to ensure your change was applied and everything
@@ -117,7 +117,7 @@ Finally, create a custom resource for the operator to watch. Be sure you are
 within the `namespace` that your operator is watching.
 
 ```bash
-$ oc create -f deploy/cr.yaml
+$ oc create -f examples/cr.yaml
 ```
 
 The operator will look at this manifest and use it to generate all of the
@@ -139,5 +139,5 @@ To deploy the console to a cluster, simply create the manifests in the
 
 ```bash
 $ oc create -f manifests/
-$ oc create -f deploy/cr.yaml
+$ oc create -f examples/cr.yaml
 ```
