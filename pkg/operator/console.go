@@ -19,7 +19,7 @@ func defaultConsole() *v1alpha1.Console {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      OpenShiftConsoleName,
-			Namespace: OpenshiftConsoleNamespace,
+			Namespace: OpenShiftConsoleNamespace,
 		},
 		Spec: v1alpha1.ConsoleSpec{
 			ManagementState: operatorv1alpha1.Managed,

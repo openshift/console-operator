@@ -34,8 +34,10 @@ type Console struct {
 // if/when changed, be sure to regenerate generated code:
 // 	operator-sdk generate k8s
 type ConsoleSpec struct {
+	operatorv1alpha1.OperatorSpec
+	// EMBEDDED FROM ABOVE, can remove
 	// ManagementState must be one of the above values to describe how the operator should behave
-	ManagementState operatorv1alpha1.ManagementState `json:"managementState"`
+	// ManagementState operatorv1alpha1.ManagementState `json:"managementState"`
 	// Count is the number of Console replicas
 	Count     int32  `json:"count,omitempty"`
 	BaseImage string `json:"baseImage"`
@@ -47,6 +49,7 @@ type ConsoleSpec struct {
 }
 
 type ConsoleStatus struct {
+	operatorv1alpha1.OperatorStatus
 	// the hostname assigned by the cluster after the route is created
 	Host string `json:"host"`
 }
@@ -59,6 +62,7 @@ type LoggingConfig struct {
 	Level int `json:"level,omitempty"`
 }
 
+// TODO: this does not belong here.
 // SetDefaults ensures that the necessary default values are present on the Console Spec
 func (c *Console) SetDefaults() bool {
 	changed := false
@@ -91,6 +95,7 @@ func (c *Console) SetDefaults() bool {
 	return changed
 }
 
+// TODO: this does not belong here.
 // UpdateHost will set the host value on the Console status once its route has been given a host
 func (c *Console) UpdateHost(route *routev1.Route) {
 	logrus.Infof("updating console status with host %s", route.Spec.Host)
