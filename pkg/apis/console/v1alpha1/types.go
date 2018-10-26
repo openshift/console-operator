@@ -35,9 +35,6 @@ type Console struct {
 // 	operator-sdk generate k8s
 type ConsoleSpec struct {
 	operatorv1alpha1.OperatorSpec
-	// EMBEDDED FROM ABOVE, can remove
-	// ManagementState must be one of the above values to describe how the operator should behave
-	// ManagementState operatorv1alpha1.ManagementState `json:"managementState"`
 	// Count is the number of Console replicas
 	Count     int32  `json:"count,omitempty"`
 	BaseImage string `json:"baseImage"`

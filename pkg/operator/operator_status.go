@@ -29,23 +29,6 @@ func defaultOperatorStatus() *statusv1.ClusterOperator {
 		},
 	}
 
-	// status := &statusv1.ClusterOperator{
-	//TypeMeta: metav1.TypeMeta{
-	//	APIVersion: "operatorstatus.openshift.io/v1",
-	//	Kind:       "ClusterOperator",
-	//},
-	//ObjectMeta: metav1.ObjectMeta{
-	//	Name:      OpenShiftConsoleName,
-	//	Namespace: OpenShiftConsoleNamespace,
-	//},
-	//Spec: operatorstatus.ClusterOperatorSpec{},
-	//Status: operatorstatus.ClusterOperatorStatus{
-	//	Conditions: nil,
-	//	Version:    "",
-	//	Extension:  nil,
-	//},
-	// }
-
 	return status
 }
 
@@ -71,15 +54,30 @@ func defaultOperatorStatus() *statusv1.ClusterOperator {
 //message: available and not waiting for a change
 //status: 'False'
 //	 type: Progressing
-func ApplyClusterOperatorStatus(console v1alpha1.Console) error {
+func ApplyClusterOperatorStatus(console *v1alpha1.Console) error {
 	status := defaultOperatorStatus()
-
-	// get or create, but don't return unless error.
-	// then do the updates.
+	// ensure it exists
 	if err := sdk.Get(status); errors.IsNotFound(err) {
 		if sdk.Create(status); err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return nil
+	status.Status.Conditions = []statusv1.ClusterOperatorStatusCondition{
+		{
+			Type:               statusv1.OperatorAvailable,
+			Status:             statusv1.ConditionUnknown,
+			LastTransitionTime: metav1.Now(),
+		},
+		{
+			Type:               statusv1.OperatorProgressing,
+			Status:             statusv1.ConditionUnknown,
+			LastTransitionTime: metav1.Now(),
+		},
+		{
+			Type:               statusv1.OperatorFailing,
+			Status:             statusv1.ConditionUnknown,
+			LastTransitionTime: metav1.Now(),
+		},
+	}
+	return sdk.Update(status)
 }

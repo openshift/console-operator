@@ -22,7 +22,9 @@ func defaultConsole() *v1alpha1.Console {
 			Namespace: OpenShiftConsoleNamespace,
 		},
 		Spec: v1alpha1.ConsoleSpec{
-			ManagementState: operatorv1alpha1.Managed,
+			OperatorSpec: operatorv1alpha1.OperatorSpec{
+				ManagementState: operatorv1alpha1.Managed,
+			},
 		},
 	}
 	console.SetDefaults()

@@ -59,13 +59,15 @@ func ReconcileConsole(cr *v1alpha1.Console) error {
 		return err
 	}
 
-	// now, update the CR.Status to represent
-	// what has happened thus far
-	updatedCR := UpdateStatus(cr)
+	// TODO: update status on the Console CR to indicate
+	// state of the above resources.
+	updatedCR, err := UpdateStatus(cr)
+	if err != nil {
+		return err
+	}
 
-	// finally, Apply/Create/Update a ClusterStatus
-	// resource that has filled out all the conditions
-	// that represent the state of the CR
+	// TODO: translate the Console CR status into the
+	// 3 fields on the ClusterOperator status
 	ApplyClusterOperatorStatus(updatedCR)
 
 	return nil
