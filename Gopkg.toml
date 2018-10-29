@@ -50,3 +50,7 @@ required = [
 [[constraint]]
   branch = "master"
   name = "github.com/openshift/api"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/openshift/cluster-version-operator"

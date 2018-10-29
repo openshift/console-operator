@@ -58,6 +58,18 @@ func ReconcileConsole(cr *v1alpha1.Console) error {
 	if _, _, err := ApplyOAuth(cr, rt); err != nil {
 		return err
 	}
+
+	// TODO: update status on the Console CR to indicate
+	// state of the above resources.
+	updatedCR, err := UpdateStatus(cr)
+	if err != nil {
+		return err
+	}
+
+	// TODO: translate the Console CR status into the
+	// 3 fields on the ClusterOperator status
+	ApplyClusterOperatorStatus(updatedCR)
+
 	return nil
 }
 

@@ -11,7 +11,7 @@ import (
 const (
 	OpenShiftConsoleName      = "openshift-console"
 	OpenShiftConsoleShortName = "console"
-	OpenshiftConsoleNamespace = "openshift-console"
+	OpenShiftConsoleNamespace = "openshift-console"
 )
 
 func sharedLabels() map[string]string {
@@ -43,7 +43,7 @@ func sharedMeta() metav1.ObjectMeta {
 		// TODO: will we always have one console?
 		// if not, then shouldn't our name be more specific?
 		Name:      OpenShiftConsoleName,
-		Namespace: OpenshiftConsoleNamespace,
+		Namespace: OpenShiftConsoleNamespace,
 		Labels:    sharedLabels(),
 	}
 }
