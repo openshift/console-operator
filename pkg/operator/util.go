@@ -6,6 +6,7 @@ import (
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"os"
 )
 
 const (
@@ -91,4 +92,10 @@ func ownerRefFrom(cr *v1alpha1.Console) *metav1.OwnerReference {
 		}
 	}
 	return nil
+}
+
+// borrowed from library-go
+// https://github.com/openshift/library-go/blob/master/pkg/operator/v1alpha1helpers/helpers.go
+func GetImageEnv() string {
+	return os.Getenv("IMAGE")
 }

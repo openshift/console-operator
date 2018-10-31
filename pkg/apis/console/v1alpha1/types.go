@@ -36,9 +36,7 @@ type Console struct {
 type ConsoleSpec struct {
 	operatorv1alpha1.OperatorSpec
 	// Count is the number of Console replicas
-	Count     int32  `json:"count,omitempty"`
-	BaseImage string `json:"baseImage"`
-	Version   string `json:"version"`
+	Count int32 `json:"count,omitempty"`
 	// 0 error, 1 warn 2 info? default debug
 	// aiming at consistency with this for now:
 	// https://github.com/openshift/cluster-image-registry-operator/blob/master/pkg/generate/podtemplatespec.go#L21
@@ -63,16 +61,8 @@ type LoggingConfig struct {
 // SetDefaults ensures that the necessary default values are present on the Console Spec
 func (c *Console) SetDefaults() bool {
 	changed := false
-	if len(c.Spec.BaseImage) == 0 {
-		c.Spec.BaseImage = "docker.io/openshift/origin-console"
-		changed = true
-	}
 	if c.Spec.Count == 0 {
 		c.Spec.Count = 1
-		changed = true
-	}
-	if len(c.Spec.BaseImage) == 0 {
-		c.Spec.BaseImage = defaultBaseImage
 		changed = true
 	}
 	if len(c.Spec.Version) == 0 {
