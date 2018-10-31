@@ -137,7 +137,7 @@ func consoleContainer(cr *v1alpha1.Console) corev1.Container {
 	volumeMounts := consoleVolumeMounts(volumeConfigList)
 
 	return corev1.Container{
-		Image:           image(cr.Spec.BaseImage, cr.Spec.Version),
+		Image:           GetImageEnv(),
 		ImagePullPolicy: corev1.PullPolicy("IfNotPresent"),
 		Name:            OpenShiftConsoleShortName,
 		Command: []string{

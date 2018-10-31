@@ -6,3 +6,8 @@ spec:
     from:
       kind: DockerImage
       name: docker.io/openshift/origin-console-operator:latest
+  - name: console
+    from:
+      kind: DockerImage
+      name: docker.io/openshift/origin-console:latest
+

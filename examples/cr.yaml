@@ -16,8 +16,5 @@ spec:
   managementState: Managed
   # there should be only one console at this time
   count: 1
-  # this is the console image
-  baseImage: docker.io/openshift/origin-console
-  version: latest
   logging:
     level: 0
