@@ -11,133 +11,55 @@ The console-operator installs and maintains the web console on a cluster.
 
 ## Build and Run
 
-When you make changes be sure to run the command to generate code:
+When you make changes to any of the source be sure to also run this command to generate code:
 
 ```bash
+# this will not always change source
 $ operator-sdk generate k8s
 ```
 
-Then use the sdk to build your image. I've tended to build with a
-simple name, then re-tag to push to hub.docker, quay.io or gitlab registry:
+The output should be included in any git commit.
 
-```bash
-$ operator-sdk build openshift/console-operator:v0.0.1
+## Run on a 4.0.0 cluster
+
+The console operator is installed by default and will automatically maintain a console.  
+
+## Run locally
+
+If using `oc cluster up` on a `< 4.0.0` cluster you will need the `--public-hostname` flag when you cluster up. The
+`--server-loglevel` flag is helpful for debugging. OAuth issues will not be visible unless set to at least `3`.
+
+```bash 
+# there are a variety of ways to get your machine IP address
+# this example works on OSX
+oc cluster up --public-hostname=$(ipconfig getifaddr en0) --server-loglevel 3 
 ```
 
-If it's going to the official registry on quay:
+Then, create the manifests:
 
 ```bash
-$ docker tag openshift/console-operator:v0.0.1 quay.io/openshift/console-operator:latest
+# pre 4.0.0 needs this, but it is not part of the post 4.0.0 manifests payload
+oc create -f ./examples/crd-clusteroperator.yaml
+# standard 4.0.0 deploy of the operator
+oc create -f ./manifests
+# to run the operator locally, delete the deployment and follow instructions below
+oc delete -f ./manifests/05-operator.yaml 
 ```
 
-If you are going to your own for testing:
-(just be sure you update your yaml files to reference your image)
+And finally run the operator:
 
-```bash
-$ docker tag openshift/console-operator:v0.0.1 \
-   quay.io/benjaminapetersen/console-operator:latest
+```bash 
+IMAGE=docker.io/openshift/origin-console:latest \ 
+    operator-sdk up local \ 
+    --namespace=openshift-console \
+    --operator-flags="--create-default-console=true"
 ```
 
-Then push the image to the registry of your choice:
+Explanation:
 
-```bash
-$ docker push quay.io/benjaminapetersen/console-operator:latest
-```
+- The `IMAGE` env var is needed to declare what console image to deploy.  The `manifests/05-operator.yaml` shows this var as well
+- The `--operator-flags` flag is used to pass flags to the operator binary
+    - `--create-default-console true` tells the operator binary to create a console CR if one does not exist on startup.
 
-Create the manifests:
-
-```bash
-$ oc create -f manfiests/
-```
-
-Finally, you can create an instance of your custom resource (CR).
-Once an instance exists, your operator will take over managing it.
-
-```bash
-$ oc create -f deploy/cr.yaml
-```
-
-Now check to ensure that your operator creates all of the resource that you
-expect for your custom resource to function.  For the console, this should be
-at least a deployment, service, route, configmap, and a secret.
-
-```bash
-$ oc get all
-```
-
-You can now declaratively make changes to your custom resource on the fly by
-updating `deploy/cr.yaml`. For example, update the number of replicas generated
-by changing spec.count.
-
-```bash
-$ oc apply -f deploy/cr.yaml
-```
-
-Do the same verification check to ensure your change was applied and everything
-is happy:
-
-```bash
-$ oc get console/<name-of-console-pod> -o yaml
-```
-
-## Run Locally
-
-It's much easier to dev & run the binary locally (rather than build it, put it
-in a container, push the container, then deploy the container...repeat.)
-
-If you are running with `oc cluster up`, make sure you provide a
-`--public-hostname` flag in order for the console to properly find the master
-public URL. Something like `oc cluster up --public-hostname=<your.ip.address>`
-should suffice.
-
-Follow local dev instructions from `operator-sdk` including a few extras:
-
-```bash
-$ oc cluster up --public-hostname=<your.ip.address>
-```
-
-Create the manifests:
-
-```bash
-$ oc create -f manifests/
-```
-Build the binary, etc. This will appear in `tmp/_output/bin`.
-
-```bash
-$ operator-sdk build openshift/console-operator:v0.0.X
-```
-
-Run locally for dev:
-
-```bash
-$ operator-sdk up local
-```
-
-Finally, create a custom resource for the operator to watch. Be sure you are
-within the `namespace` that your operator is watching.
-
-```bash
-$ oc create -f deploy/cr.yaml
-```
-
-The operator will look at this manifest and use it to generate all of the
-deployments, etc that are needed for the resource to function.
-
-## OpenShift Dependencies
-
-Run the following to add OpenShift dependencies, which are required by the operator:
-
-```bash
-dep ensure --add github.com/openshift/api
-dep ensure --add github.com/openshift/client-go
-```
-
-## Deploy to an Existing Cluster
-
-To deploy the console to a cluster, simply create the manifests in the
-`manifests` directory and the custom resource in the `deploy` directory:
-
-```bash
-$ oc create -f manifests/
-$ oc create -f deploy/cr.yaml
-```
+The `IMAGE` env var exists so that when the console-operator is packaged up for a release, we can replace the value
+with a final image.  See CVO documentation for details. 
