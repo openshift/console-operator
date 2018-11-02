@@ -37,7 +37,7 @@ import (
 //   sync random secret between oauthclient & oauthclient-secret
 //   sync route.host between route, oauthclient.redirectURIs & configmap.baseAddress
 func ReconcileConsole(cr *v1alpha1.Console) error {
-
+	// TODO: aggregate this, just like DeleteAllResources()
 	if _, err := ApplyService(cr); err != nil {
 		return err
 	}
@@ -47,11 +47,12 @@ func ReconcileConsole(cr *v1alpha1.Console) error {
 		return err
 	}
 
-	if _, err := ApplyConfigMap(cr, rt); err != nil {
+	cm, err := ApplyConfigMap(cr, rt)
+	if err != nil {
 		return err
 	}
 
-	if _, err := ApplyDeployment(cr); err != nil {
+	if _, err := ApplyDeployment(cr, cm); err != nil {
 		return err
 	}
 
