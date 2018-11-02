@@ -1,20 +1,25 @@
 package operator
 
 import (
+	// standard lib
 	"fmt"
-
+	// 3rd party
 	"github.com/sirupsen/logrus"
-
+	// kubernetes
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-
+	// openshift
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
-
+	// operator
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+)
+
+const (
+	configMapResourceVersionAnnotation = "console.openshift.io/configmapversion"
 )
 
 func newConsoleDeployment(cr *v1alpha1.Console) *appsv1.Deployment {
@@ -41,6 +46,9 @@ func newConsoleDeployment(cr *v1alpha1.Console) *appsv1.Deployment {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   OpenShiftConsoleShortName,
 					Labels: labels,
+					Annotations: map[string]string{
+						configMapResourceVersionAnnotation: "",
+					},
 				},
 				Spec: corev1.PodSpec{
 					// NodeSelector:  corev1.NodeSelector{},
@@ -172,6 +180,35 @@ func consoleContainer(cr *v1alpha1.Console) corev1.Container {
 
 }
 
+func UpdateDeployment(cr *v1alpha1.Console, cm *corev1.ConfigMap) (*appsv1.Deployment, error) {
+	d := newConsoleDeployment(cr)
+	changed := false
+	if err := sdk.Get(d); err != nil {
+		return nil, err
+	}
+
+	if d.Spec.Template.ObjectMeta.Annotations == nil {
+		d.Spec.Template.ObjectMeta.Annotations = map[string]string{}
+		changed = true
+	}
+
+	currentConfigMapVersion := d.Spec.Template.ObjectMeta.Annotations[configMapResourceVersionAnnotation]
+
+	if currentConfigMapVersion != cm.ObjectMeta.GetResourceVersion() {
+		// If the configmap is updated, we want to rollout a new pod.
+		// setting an annotation is sufficient for this task.
+		d.Spec.Template.ObjectMeta.Annotations[configMapResourceVersionAnnotation] = cm.ObjectMeta.GetResourceVersion()
+		changed = true
+	}
+
+	if changed {
+		if err := sdk.Update(d); err != nil {
+			return nil, err
+		}
+	}
+	return d, nil
+}
+
 func CreateConsoleDeployment(cr *v1alpha1.Console) (*appsv1.Deployment, error) {
 	d := newConsoleDeployment(cr)
 	if err := sdk.Create(d); err != nil && !errors.IsAlreadyExists(err) {
@@ -182,14 +219,14 @@ func CreateConsoleDeployment(cr *v1alpha1.Console) (*appsv1.Deployment, error) {
 	return d, nil
 }
 
-func ApplyDeployment(cr *v1alpha1.Console) (*appsv1.Deployment, error) {
+func ApplyDeployment(cr *v1alpha1.Console, cm *corev1.ConfigMap) (*appsv1.Deployment, error) {
 	d := newConsoleDeployment(cr)
 	err := sdk.Get(d)
 
 	if err != nil {
 		return CreateConsoleDeployment(cr)
 	}
-	return d, nil
+	return UpdateDeployment(cr, cm)
 }
 
 // Deletes the Console Deployment when the Console ManagementState is set to Removed
