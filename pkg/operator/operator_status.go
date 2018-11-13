@@ -15,7 +15,7 @@ func defaultOperatorStatus() *statusv1.ClusterOperator {
 
 	status := &statusv1.ClusterOperator{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "operatorstatus.openshift.io/v1",
+			APIVersion: "config.openshift.io/v1",
 			Kind:       "ClusterOperator",
 		},
 		ObjectMeta: metav1.ObjectMeta{
