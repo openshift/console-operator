@@ -19,8 +19,7 @@ func defaultOperatorStatus() *statusv1.ClusterOperator {
 			Kind:       "ClusterOperator",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      OpenShiftConsoleName,
-			Namespace: OpenShiftConsoleNamespace,
+			Name: OpenShiftConsoleName,
 		},
 		Spec: statusv1.ClusterOperatorSpec{},
 		Status: statusv1.ClusterOperatorStatus{
