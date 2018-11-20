@@ -16,5 +16,5 @@ spec:
     listKind: ClusterOperatorList
     plural: clusteroperators
     singular: clusteroperator
-  scope: Namespaced
+  scope: Cluster
   version: v1
