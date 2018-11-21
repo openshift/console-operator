@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 )
 
 // Page describes the contents of the top-level godoc webpage.
@@ -17,10 +16,9 @@ type Page struct {
 	Title    string
 	Tabtitle string
 	Subtitle string
-	SrcPath  string
 	Query    string
 	Body     []byte
-	GoogleCN bool // page is being served from golang.google.cn
+	Share    bool
 
 	// filled in by servePage
 	SearchBox  bool
@@ -52,25 +50,19 @@ func (p *Presentation) ServeError(w http.ResponseWriter, r *http.Request, relpat
 		Title:    "File " + relpath,
 		Subtitle: relpath,
 		Body:     applyTemplate(p.ErrorHTML, "errorHTML", err),
-		GoogleCN: googleCN(r),
+		Share:    allowShare(r),
 	})
 }
 
-var onAppengine = false // overridden in appengine.go when on app engine
+var onAppengine = false // overriden in appengine.go when on app engine
 
-func googleCN(r *http.Request) bool {
-	if r.FormValue("googlecn") != "" {
-		return true
-	}
+func allowShare(r *http.Request) bool {
 	if !onAppengine {
-		return false
-	}
-	if strings.HasSuffix(r.Host, ".cn") {
 		return true
 	}
 	switch r.Header.Get("X-AppEngine-Country") {
 	case "", "ZZ", "CN":
-		return true
+		return false
 	}
-	return false
+	return true
 }

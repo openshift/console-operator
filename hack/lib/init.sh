@@ -30,7 +30,7 @@ function os::util::absolute_path() {
 readonly -f os::util::absolute_path
 
 # find the absolute path to the root of the Origin source tree
-init_source="$( dirname "${BASH_SOURCE[0]}" )/../.."
+init_source="$( dirname "${BASH_SOURCE}" )/../.."
 OS_ROOT="$( os::util::absolute_path "${init_source}" )"
 export OS_ROOT
 cd "${OS_ROOT}"

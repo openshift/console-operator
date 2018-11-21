@@ -36,11 +36,6 @@ func TestPluralNamer(t *testing.T) {
 		expectedPublic  string
 	}{
 		{
-			"I",
-			"i",
-			"I",
-		},
-		{
 			"Pod",
 			"pods",
 			"Pods",

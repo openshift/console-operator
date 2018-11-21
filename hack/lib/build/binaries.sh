@@ -83,7 +83,14 @@ function os::build::setup_env() {
   # a version number, so we skip this check on Travis.  It's unnecessary
   # there anyway.
   if [[ "${TRAVIS:-}" != "true" ]]; then
-    os::golang::verify_go_version
+    local go_version
+    go_version=($(go version))
+    local expected_order=$(printf "%s\n%s\n" "${OS_REQUIRED_GO_VERSION}" "${go_version[2]}")
+    local actual_order=$(echo "${expected_order}" | sort --version-sort)
+    if [[ "${actual_order}" != "${expected_order}" ]]; then
+      os::log::fatal "Detected Go version: ${go_version[*]}.
+Builds require Go version ${OS_REQUIRED_GO_VERSION} or greater."
+    fi
   fi
   # For any tools that expect this to be set (it is default in golang 1.6),
   # force vendor experiment.
@@ -174,7 +181,6 @@ os::build::internal::build_binaries() {
     local goflags
     # Use eval to preserve embedded quoted strings.
     eval "goflags=(${OS_GOFLAGS:-})"
-    gogcflags="${GOGCFLAGS:-}"
 
     local arg
     for arg; do
@@ -238,7 +244,6 @@ os::build::internal::build_binaries() {
           -tags "${OS_GOFLAGS_TAGS-} ${!platform_gotags_envvar:-}" \
           -ldflags="${local_ldflags}" \
           "${goflags[@]:+${goflags[@]}}" \
-          -gcflags "${gogcflags}" \
           "${nonstatics[@]}"
 
         # GOBIN is not supported on cross-compile in Go 1.5+ - move to the correct target
@@ -264,8 +269,6 @@ os::build::internal::build_binaries() {
           "$(dirname ${test})"
       done
     done
-
-    os::build::check_binaries
 }
 readonly -f os::build::build_binaries
 
@@ -282,7 +285,7 @@ function os::build::export_targets() {
       targets+=("${arg}")
     fi
   done
-
+  
   binaries=($(os::build::binaries_from_targets "${targets[@]-}"))
 }
 readonly -f os::build::export_targets
@@ -329,110 +332,13 @@ function os::build::place_bins() {
           binaries+=("${binary}")
         fi
       done
-
-      # Link binaries that we want to link (eg. oc->kubectl)
-      local suffix=""
-      if [[ $platform == "windows/amd64" ]]; then
-        suffix=".exe"
-      fi
-      for linkname in "${OC_BINARY_COPY[@]}"; do
-        local src="${OS_OUTPUT_BINPATH}/${platform}/oc${suffix}"
-        if [[ -f "${src}" ]]; then
-          ln -f "$src" "${OS_OUTPUT_BINPATH}/${platform}/${linkname}${suffix}"
-        fi
-      done
-
-      # If no release archive was requested, we're done.
-      if [[ "${OS_RELEASE_ARCHIVE-}" == "" ]]; then
-        continue
-      fi
-
-      # Create a temporary bin directory containing only the binaries marked for release.
-      local release_binpath=$(mktemp -d openshift.release.${OS_RELEASE_ARCHIVE}.XXX)
-      for binary in "${binaries[@]}"; do
-        cp "${OS_OUTPUT_BINPATH}/${platform}/${binary}" "${release_binpath}/"
-      done
-
-      # Create binary copies where specified.
-      for linkname in "${OC_BINARY_COPY[@]}"; do
-        local src="${release_binpath}/oc${suffix}"
-        if [[ -f "${src}" ]]; then
-          cp -f "${release_binpath}/oc${suffix}" "${release_binpath}/${linkname}${suffix}"
-        fi
-      done
-
-      # Create the release archive.
-      platform="$( os::build::host_platform_friendly "${platform}" )"
-      if [[ ${OS_RELEASE_ARCHIVE} == "openshift-origin" ]]; then
-        for file in "${OS_BINARY_RELEASE_CLIENT_EXTRA[@]}"; do
-          cp "${file}" "${release_binpath}/"
-        done
-        if [[ $platform == "windows" ]]; then
-          OS_RELEASE_ARCHIVE="openshift-origin-client-tools" os::build::archive::zip "${OS_BINARY_RELEASE_CLIENT_WINDOWS[@]}"
-        elif [[ $platform == "mac" ]]; then
-          OS_RELEASE_ARCHIVE="openshift-origin-client-tools" os::build::archive::zip "${OS_BINARY_RELEASE_CLIENT_MAC[@]}"
-        elif [[ $platform == "linux-32bit" ]]; then
-          OS_RELEASE_ARCHIVE="openshift-origin-client-tools" os::build::archive::tar "${OS_BINARY_RELEASE_CLIENT_LINUX[@]}"
-        elif [[ $platform == "linux-64bit" ]]; then
-          OS_RELEASE_ARCHIVE="openshift-origin-client-tools" os::build::archive::tar "${OS_BINARY_RELEASE_CLIENT_LINUX[@]}"
-          OS_RELEASE_ARCHIVE="openshift-origin-server" os::build::archive::tar "${OS_BINARY_RELEASE_SERVER_LINUX[@]}"
-        elif [[ $platform == "linux-powerpc64" ]]; then
-          OS_RELEASE_ARCHIVE="openshift-origin-client-tools" os::build::archive::tar "${OS_BINARY_RELEASE_CLIENT_LINUX[@]}"
-          OS_RELEASE_ARCHIVE="openshift-origin-server" os::build::archive::tar "${OS_BINARY_RELEASE_SERVER_LINUX[@]}"
-        elif [[ $platform == "linux-arm64" ]]; then
-          OS_RELEASE_ARCHIVE="openshift-origin-client-tools" os::build::archive::tar "${OS_BINARY_RELEASE_CLIENT_LINUX[@]}"
-          OS_RELEASE_ARCHIVE="openshift-origin-server" os::build::archive::tar "${OS_BINARY_RELEASE_SERVER_LINUX[@]}"
-        elif [[ $platform == "linux-s390" ]]; then
-          OS_RELEASE_ARCHIVE="openshift-origin-client-tools" os::build::archive::tar "${OS_BINARY_RELEASE_CLIENT_LINUX[@]}"
-          OS_RELEASE_ARCHIVE="openshift-origin-server" os::build::archive::tar "${OS_BINARY_RELEASE_SERVER_LINUX[@]}"
-        else
-          echo "++ ERROR: No release type defined for $platform"
-        fi
-      else
-        if [[ $platform == "linux-64bit" || $platform == "linux-powerpc64" || $platform == "linux-arm64" || $platform == "linux-s390" ]]; then
-          os::build::archive::tar "./*"
-        else
-          echo "++ ERROR: No release type defined for $platform"
-        fi
-      fi
-      rm -rf "${release_binpath}"
     done
   )
 }
 readonly -f os::build::place_bins
 
-# os::build::release_sha calculates a SHA256 checksum over the contents of the
-# built release directory.
-function os::build::release_sha() {
-  pushd "${OS_OUTPUT_RELEASEPATH}" &> /dev/null
-  find . -maxdepth 1 -type f | xargs sha256sum > CHECKSUM
-  popd &> /dev/null
-}
-readonly -f os::build::release_sha
-
-# os::build::make_openshift_binary_symlinks makes symlinks for the openshift
-# binary in _output/local/bin/${platform}
-function os::build::make_openshift_binary_symlinks() {
-  platform=$(os::build::host_platform)
-  if [[ -f "${OS_OUTPUT_BINPATH}/${platform}/openshift" ]]; then
-    if [[ -n "${OPENSHIFT_BINARY_SYMLINKS-}" ]]; then
-      for linkname in "${OPENSHIFT_BINARY_SYMLINKS[@]}"; do
-        ln -sf openshift "${OS_OUTPUT_BINPATH}/${platform}/${linkname}"
-      done
-    fi
-  fi
-  if [[ -f "${OS_OUTPUT_BINPATH}/${platform}/oc" ]]; then
-    for linkname in "${OC_BINARY_SYMLINKS[@]}"; do
-      ln -sf oc "${OS_OUTPUT_BINPATH}/${platform}/${linkname}"
-    done
-    for linkname in "${OC_BINARY_COPY[@]}"; do
-      ln -sf oc "${OS_OUTPUT_BINPATH}/${platform}/${linkname}"
-    done
-  fi
-}
-readonly -f os::build::make_openshift_binary_symlinks
-
-# DEPRECATED: will be removed
+# os::build::ldflag() abstracts ldflag inconsistency across Go versions.
+# TODO: remove
 function os::build::ldflag() {
   local key=${1}
   local val=${2}

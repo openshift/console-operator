@@ -209,7 +209,7 @@ func (s *sanity) checkInstr(idx int, instr Instruction) {
 	// enclosing Function or Package.
 }
 
-func (s *sanity) checkFinalInstr(instr Instruction) {
+func (s *sanity) checkFinalInstr(idx int, instr Instruction) {
 	switch instr := instr.(type) {
 	case *If:
 		if nsuccs := len(s.block.Succs); nsuccs != 2 {
@@ -324,7 +324,7 @@ func (s *sanity) checkBlock(b *BasicBlock, index int) {
 		if j < n-1 {
 			s.checkInstr(j, instr)
 		} else {
-			s.checkFinalInstr(instr)
+			s.checkFinalInstr(j, instr)
 		}
 
 		// Check Instruction.Operands.
@@ -351,9 +351,7 @@ func (s *sanity) checkBlock(b *BasicBlock, index int) {
 			// Check that Operands that are also Instructions belong to same function.
 			// TODO(adonovan): also check their block dominates block b.
 			if val, ok := val.(Instruction); ok {
-				if val.Block() == nil {
-					s.errorf("operand %d of %s is an instruction (%s) that belongs to no block", i, instr, val)
-				} else if val.Parent() != s.fn {
+				if val.Parent() != s.fn {
 					s.errorf("operand %d of %s is an instruction (%s) from function %s", i, instr, val, val.Parent())
 				}
 			}

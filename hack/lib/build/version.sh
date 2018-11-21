@@ -26,9 +26,6 @@ function os::build::version::git_vars() {
 		return 0
  	fi
 
-	os::build::version::kubernetes_vars
-	os::build::version::etcd_vars
-
 	local git=(git --work-tree "${OS_ROOT}")
 
 	if [[ -n ${OS_GIT_COMMIT-} ]] || OS_GIT_COMMIT=$("${git[@]}" rev-parse --short "HEAD^{commit}" 2>/dev/null); then
@@ -71,36 +68,6 @@ function os::build::version::git_vars() {
 }
 readonly -f os::build::version::git_vars
 
-function os::build::version::etcd_vars() {
-	ETCD_GIT_VERSION=$(go run "${OS_ROOT}/tools/godepversion/godepversion.go" "${OS_ROOT}/Godeps/Godeps.json" "github.com/coreos/etcd/etcdserver" "comment")
-	ETCD_GIT_COMMIT=$(go run "${OS_ROOT}/tools/godepversion/godepversion.go" "${OS_ROOT}/Godeps/Godeps.json" "github.com/coreos/etcd/etcdserver")
-}
-readonly -f os::build::version::etcd_vars
-
-# os::build::version::kubernetes_vars returns the version of Kubernetes we have
-# vendored.
-function os::build::version::kubernetes_vars() {
-	KUBE_GIT_VERSION=$(go run "${OS_ROOT}/tools/godepversion/godepversion.go" "${OS_ROOT}/Godeps/Godeps.json" "k8s.io/kubernetes/pkg/api" "comment")
-	KUBE_GIT_COMMIT=$(go run "${OS_ROOT}/tools/godepversion/godepversion.go" "${OS_ROOT}/Godeps/Godeps.json" "k8s.io/kubernetes/pkg/api")
-
-	# This translates the "git describe" to an actual semver.org
-	# compatible semantic version that looks something like this:
-	#   v1.1.0-alpha.0.6+84c76d1142ea4d
-	#
-	# TODO: We continue calling this "git version" because so many
-	# downstream consumers are expecting it there.
-	KUBE_GIT_VERSION=$(echo "${KUBE_GIT_VERSION}" | sed "s/-\([0-9]\{1,\}\)-g\([0-9a-f]\{7,40\}\)$/\+\2/")
-
-	# Try to match the "git describe" output to a regex to try to extract
-	# the "major" and "minor" versions and whether this is the exact tagged
-	# version or whether the tree is between two tagged versions.
-	if [[ "${KUBE_GIT_VERSION}" =~ ^v([0-9]+)\.([0-9]+)\. ]]; then
-		KUBE_GIT_MAJOR=${BASH_REMATCH[1]}
-		KUBE_GIT_MINOR="${BASH_REMATCH[2]}+"
-	fi
-}
-readonly -f os::build::version::kubernetes_vars
-
 # Saves the environment flags to $1
 function os::build::version::save_vars() {
 	cat <<EOF
@@ -110,12 +77,6 @@ OS_GIT_VERSION='${OS_GIT_VERSION-}'
 OS_GIT_MAJOR='${OS_GIT_MAJOR-}'
 OS_GIT_MINOR='${OS_GIT_MINOR-}'
 OS_GIT_PATCH='${OS_GIT_PATCH-}'
-KUBE_GIT_MAJOR='${KUBE_GIT_MAJOR-}'
-KUBE_GIT_MINOR='${KUBE_GIT_MINOR-}'
-KUBE_GIT_COMMIT='${KUBE_GIT_COMMIT-}'
-KUBE_GIT_VERSION='${KUBE_GIT_VERSION-}'
-ETCD_GIT_VERSION='${ETCD_GIT_VERSION-}'
-ETCD_GIT_COMMIT='${ETCD_GIT_COMMIT-}'
 EOF
 }
 readonly -f os::build::version::save_vars
