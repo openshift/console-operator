@@ -1,9 +1,9 @@
-FROM openshift/origin-release:golang-1.10 as builder
+FROM registry.svc.ci.openshift.org/openshift/release:golang-1.10 AS builder
 WORKDIR /go/src/github.com/openshift/console-operator
 COPY . .
 RUN make build
 
-FROM centos:7
+FROM registry.svc.ci.openshift.org/openshift/origin-v4.0:base
 RUN useradd console-operator
 USER console-operator
 COPY --from=builder /go/src/github.com/openshift/console-operator/_output/local/bin/linux/amd64/console /usr/bin
