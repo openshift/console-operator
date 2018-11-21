@@ -20,4 +20,4 @@ LABEL io.openshift.release.operator true
 
 # entrypoint specified in 03-operator.yaml as `console-operator`
 # CMD ["/usr/bin/console", "operator", "--kubeconfig", "path/to/config", "--config", "./install/config.yaml", "--v", "4"]
-CMD ["/usr/bin/console", "operator", "--v", "4"]
+# CMD ["/usr/bin/console", "operator", "--v", "4"]
