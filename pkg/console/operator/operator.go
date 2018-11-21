@@ -48,7 +48,6 @@ const (
 
 var CreateDefaultConsoleFlag bool
 
-
 // the ConsoleOperator uses specific, strongly-typed clients
 // for each resource that it interacts with.
 func NewConsoleOperator(
@@ -270,7 +269,3 @@ func (c *ConsoleOperator) defaultConsole() *consolev1alpha1.Console {
 		},
 	}
 }
-
-
-
-

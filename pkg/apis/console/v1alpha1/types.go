@@ -19,8 +19,6 @@ type Console struct {
 
 type ConsoleSpec struct {
 	v1alpha1.OperatorSpec
-	// TODO: delete this, its no longer needed
-	Value string `json:"value,omitempty"`
 	// Count is the number of Console replicas
 	Count int32 `json:"count,omitempty"`
 	// take a look @:
@@ -34,7 +32,7 @@ type ConsoleStatus struct {
 	v1alpha1.OperatorStatus
 	// set once the router has a default host name
 	DefaultHostName string `json:"defaultHostName"`
-	OAuthSecret     string `json""oauthSecret"`
+	OAuthSecret     string `json:"oauthSecret"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

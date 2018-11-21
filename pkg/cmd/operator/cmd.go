@@ -13,7 +13,6 @@ import (
 
 func NewOperator() *cobra.Command {
 
-
 	cmd := controllercmd.
 		NewControllerCommandConfig(
 			"console-operator",

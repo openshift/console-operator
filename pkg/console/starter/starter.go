@@ -159,6 +159,3 @@ func (p *operatorStatusProvider) CurrentStatus() (operatorv1alpha1.OperatorStatu
 
 	return instance.Status.OperatorStatus, nil
 }
-
-
-
