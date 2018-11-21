@@ -42,9 +42,12 @@ import (
 const (
 	// workQueueKey is the singleton key shared by all events
 	// the value is irrelevant
-	workQueueKey   = "console-operator-queue-key"
+	workQueueKey   = "sync-queue"
 	controllerName = "Console"
 )
+
+var CreateDefaultConsoleFlag bool
+
 
 // the ConsoleOperator uses specific, strongly-typed clients
 // for each resource that it interacts with.
@@ -153,7 +156,7 @@ func (c *ConsoleOperator) sync(_ interface{}) error {
 	// all we need to worry about is reconciling the state back to what we expect
 	operatorConfig, err := c.operatorClient.Get(controller.ResourceName, metav1.GetOptions{})
 
-	if errors.IsNotFound(err) {
+	if errors.IsNotFound(err) && CreateDefaultConsoleFlag {
 		_, err := c.operatorClient.Create(c.defaultConsole())
 		return err
 	}
@@ -267,3 +270,7 @@ func (c *ConsoleOperator) defaultConsole() *consolev1alpha1.Console {
 		},
 	}
 }
+
+
+
+

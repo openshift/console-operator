@@ -80,20 +80,20 @@ make build
 # temporaily add the binary to path so we can call it below
 export PATH="$PATH:$HOME/gopaths/consoleoperator/src/github.com/openshift/console-operator/_output/local/bin/darwin/amd64"
 
-IMAGE=docker.io/openshift/origin-console:latest \
-    console operator \
-    --kubeconfig $HOME/.kube/config \
-    --config examples/config.yaml \
-    --v 4
-
-echo "TODO: support --create-default-console again!"
-# TODO: GET BACK TO THIS:
 #IMAGE=docker.io/openshift/origin-console:latest \
 #    console operator \
 #    --kubeconfig $HOME/.kube/config \
 #    --config examples/config.yaml \
-#    --create-default-console \
 #    --v 4
+
+echo "TODO: support --create-default-console again!"
+# TODO: GET BACK TO THIS:
+IMAGE=docker.io/openshift/origin-console:latest \
+    console operator \
+    --kubeconfig $HOME/.kube/config \
+    --config examples/config.yaml \
+    --create-default-console \
+    --v 4
 
 # NOT creating the CR as the operator should create one automatically.
 # echo "Creating the CR to activate the operator"

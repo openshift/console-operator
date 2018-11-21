@@ -1,6 +1,7 @@
 package operator
 
 import (
+	"github.com/openshift/console-operator/pkg/console/operator"
 	// 3rd party
 	"github.com/spf13/cobra"
 	// kube / openshift
@@ -11,6 +12,8 @@ import (
 )
 
 func NewOperator() *cobra.Command {
+
+
 	cmd := controllercmd.
 		NewControllerCommandConfig(
 			"console-operator",
@@ -24,5 +27,15 @@ func NewOperator() *cobra.Command {
 	// https://github.com/spf13/cobra#create-rootcmd
 	cmd.Long = `An Operator for a web console for OpenShift.
 				`
+	cmd.Flags().BoolVarP(
+		&operator.CreateDefaultConsoleFlag,
+		"create-default-console",
+		"d",
+		false,
+		`Instructs the operator to create a console
+        custom resource on startup if one does not exist. 
+        `,
+	)
+
 	return cmd
 }
