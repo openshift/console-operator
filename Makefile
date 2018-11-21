@@ -72,6 +72,9 @@ verify-commits:
 	hack/verify-upstream-commits.sh
 .PHONY: verify-commits
 
+test: test-unit test-integration test-e2e
+.PHONY: test
+
 # Run unit tests.
 #
 # Args:
@@ -84,9 +87,22 @@ verify-commits:
 # Example:
 #   make test-unit
 #   make test-unit WHAT=pkg/build TESTFLAGS=-v
+#test-unit:
+#	GOTEST_FLAGS="$(TESTFLAGS)" hack/test-go.sh $(WHAT) $(TESTS)
+#.PHONY: test-unit
+# TODO: swap up to the above test-unit command instead(?)
 test-unit:
-	GOTEST_FLAGS="$(TESTFLAGS)" hack/test-go.sh $(WHAT) $(TESTS)
+	hack/test-unit.sh
 .PHONY: test-unit
+
+test-integration:
+	hack/test-integration.sh
+.PHONY: test-integration
+
+test-e2e:
+	hack/test-e2e.sh
+.PHONY: test-e2e
+
 
 # Remove all build artifacts.
 #
