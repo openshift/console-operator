@@ -1,35 +1,41 @@
 package v1alpha1
 
 import (
-	sdkK8sutil "github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-)
 
-const (
-	version   = "v1alpha1"
-	groupName = "console.openshift.io"
+	configv1 "github.com/openshift/api/config/v1"
+	operatorsv1alpha1api "github.com/openshift/api/operator/v1alpha1"
 )
 
 var (
-	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
-	AddToScheme   = SchemeBuilder.AddToScheme
-	// SchemeGroupVersion is the group version used to register these objects.
-	SchemeGroupVersion = schema.GroupVersion{Group: groupName, Version: version}
+	GroupName     = "console.openshift.io"
+	GroupVersion  = schema.GroupVersion{Group: GroupName, Version: "v1alpha1"}
+	schemeBuilder = runtime.NewSchemeBuilder(addKnownTypes, configv1.Install, operatorsv1alpha1api.Install)
+	// Install is a function which adds this version to a scheme
+	Install = schemeBuilder.AddToScheme
+
+	// SchemeGroupVersion generated code relies on this name
+	// Deprecated
+	SchemeGroupVersion = GroupVersion
+	// AddToScheme exists solely to keep the old generators creating valid code
+	// DEPRECATED
+	AddToScheme = schemeBuilder.AddToScheme
 )
 
-func init() {
-	sdkK8sutil.AddToSDKScheme(AddToScheme)
+// Resource generated code relies on this being here, but it logically belongs to the group
+// DEPRECATED
+func Resource(resource string) schema.GroupResource {
+	return schema.GroupResource{Group: GroupName, Resource: resource}
 }
 
-// addKnownTypes adds the set of types defined in this package to the supplied scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
-	scheme.AddKnownTypes(SchemeGroupVersion,
+	scheme.AddKnownTypes(GroupVersion,
 		&Console{},
 		&ConsoleList{},
 	)
-	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
+	metav1.AddToGroupVersion(scheme, GroupVersion)
+
 	return nil
 }

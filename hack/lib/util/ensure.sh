@@ -93,24 +93,3 @@ function os::util::ensure::gopath_binary_exists() {
 	fi
 }
 readonly -f os::util::ensure::gopath_binary_exists
-
-# os::util::ensure::iptables_privileges_exist tests if the
-# testing machine has iptables available and in PATH. Also
-# tests that the user can list iptables rules, trying with
-# `sudo` if it fails without.
-#
-# Globals:
-#  None
-# Arguments:
-#  None
-# Returns:
-#  None
-function os::util::ensure::iptables_privileges_exist() {
-	os::util::ensure::system_binary_exists 'iptables'
-
-	if ! iptables --list >/dev/null 2>&1 && ! sudo iptables --list >/dev/null 2>&1; then
-		os::log::fatal "You do not have \`iptables\` or \`sudo\` privileges. Kubernetes services will not work
-without \`iptables\` access. See https://github.com/kubernetes/kubernetes/issues/1859."
-	fi
-}
-readonly -f os::util::ensure::iptables_privileges_exist

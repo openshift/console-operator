@@ -228,14 +228,6 @@ func (p *parser) parseField(pkg *types.Package) (field *types.Var, tag string) {
 // Param = Name ["..."] Type .
 func (p *parser) parseParam(pkg *types.Package) (param *types.Var, isVariadic bool) {
 	name := p.parseName()
-	if p.tok == '<' && p.scanner.Peek() == 'e' {
-		// EscInfo = "<esc:" int ">" . (optional and ignored)
-		p.next()
-		p.expectKeyword("esc")
-		p.expect(':')
-		p.expect(scanner.Int)
-		p.expect('>')
-	}
 	if p.tok == '.' {
 		p.next()
 		p.expect('.')
@@ -587,13 +579,13 @@ func (p *parser) parseInterfaceType(pkg *types.Package) types.Type {
 	p.expectKeyword("interface")
 
 	var methods []*types.Func
-	var embeddeds []types.Type
+	var typs []*types.Named
 
 	p.expect('{')
 	for p.tok != '}' && p.tok != scanner.EOF {
 		if p.tok == '?' {
 			p.next()
-			embeddeds = append(embeddeds, p.parseType(pkg))
+			typs = append(typs, p.parseType(pkg).(*types.Named))
 		} else {
 			method := p.parseFunc(pkg)
 			methods = append(methods, method)
@@ -602,7 +594,7 @@ func (p *parser) parseInterfaceType(pkg *types.Package) types.Type {
 	}
 	p.expect('}')
 
-	return newInterface(methods, embeddeds)
+	return types.NewInterface(methods, typs)
 }
 
 // PointerType = "*" ("any" | Type) .
@@ -749,7 +741,7 @@ func (p *parser) discardDirectiveWhileParsingTypes(pkg *types.Package) {
 		case ';':
 			return
 		case '<':
-			p.parseType(pkg)
+			p.parseType(p.pkg)
 		case scanner.EOF:
 			p.error("unexpected EOF")
 		default:

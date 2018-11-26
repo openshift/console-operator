@@ -104,7 +104,6 @@ var importerTests = []importerTest{
 	{pkgpath: "unicode", name: "IsUpper", want: "func IsUpper(r rune) bool"},
 	{pkgpath: "unicode", name: "MaxRune", want: "const MaxRune untyped rune", wantval: "1114111"},
 	{pkgpath: "imports", wantinits: []string{"imports..import", "fmt..import", "math..import"}},
-	{pkgpath: "escapeinfo", name: "NewT", want: "func NewT(data []byte) *T"},
 }
 
 func TestGoxImporter(t *testing.T) {
@@ -144,13 +143,6 @@ func TestObjImporter(t *testing.T) {
 
 	for _, test := range importerTests {
 		gofile := filepath.Join("testdata", test.pkgpath+".go")
-
-		if _, err := os.Stat(gofile); err != nil {
-			// There is a .gox file but no .go file,
-			// so there is nothing to compile.
-			continue
-		}
-
 		ofile := filepath.Join(tmpdir, test.pkgpath+".o")
 		afile := filepath.Join(artmpdir, "lib"+test.pkgpath+".a")
 
@@ -160,10 +152,6 @@ func TestObjImporter(t *testing.T) {
 			t.Logf("%s", out)
 			t.Fatalf("gccgo %s failed: %s", gofile, err)
 		}
-
-		// The expected initializations are version dependent,
-		// so don't check for them.
-		test.wantinits = nil
 
 		runImporterTest(t, imp, initmap, &test)
 

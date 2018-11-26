@@ -14,7 +14,7 @@
 # is consulted to find the $GOROOT.
 #
 # The script creates a .zip file representing the $GOROOT file system
-# and computes the corresponding search index files. These files are then
+# and computes the correspondig search index files. These files are then
 # copied to $APPDIR. A corresponding godoc configuration file is created
 # in $APPDIR/appconfig.go.
 
@@ -76,7 +76,7 @@ makeAppYaml() {
 application: godoc
 version: 1
 runtime: go
-api_version: go1
+api_version: go1.4beta
 
 handlers:
 - url: /.*

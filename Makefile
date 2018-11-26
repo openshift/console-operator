@@ -1,36 +1,96 @@
-#!/usr/bin/env bash
+# Old-skool build tools.
+#
+# Targets (see each target for more information):
+#   all: Build code.
+#   build: Build code.
+#   check: Run verify, build, unit tests and cmd tests.
+#   test: Run all tests.
+#   run: Run all-in-one server
+#   clean: Clean up.
 
-# NOTE: Makefile MUST use a "tab", not "spaces as tabs" inside
-# commands, else it will error with cryptic:
-#     Makefile:<line-#>: *** missing separator.  Stop.
-# IMAGE ?= docker.io/openshift/console-operator:latest
-# PROG  := console-operator
+OUT_DIR = _output
+OS_OUTPUT_GOPATH ?= 1
 
-all: generate build build-image test
+export GOFLAGS
+export TESTFLAGS
+# If set to 1, create an isolated GOPATH inside _output using symlinks to avoid
+# other packages being accidentally included. Defaults to on.
+export OS_OUTPUT_GOPATH
+# May be used to set additional arguments passed to the image build commands for
+# mounting secrets specific to a build environment.
+export OS_BUILD_IMAGE_ARGS
 
-generate:
-	operator-sdk generate k8s
-.PHONY: generate
+# Tests run using `make` are most often run by the CI system, so we are OK to
+# assume the user wants jUnit output and will turn it off if they don't.
+JUNIT_REPORT ?= true
 
-# operator-sdk script to build operator binary
-# operator-sdk script to put binary into a container
-build:
-    # hack/build.sh
-	./tmp/build/build.sh
-.PHONY: build
+# Build code.
+#
+# Args:
+#   WHAT: Directory names to build.  If any of these directories has a 'main'
+#     package, the build will produce executable files under $(OUT_DIR)/local/bin.
+#     If not specified, "everything" will be built.
+#   GOFLAGS: Extra flags to pass to 'go' when building.
+#   TESTFLAGS: Extra flags that should only be passed to hack/test-go.sh
+#
+# Example:
+#   make
+#   make all
+#   make all WHAT=cmd/oc GOFLAGS=-v
+all build:
+	hack/build-go.sh $(WHAT) $(GOFLAGS)
+.PHONY: all build
 
-build-image:
-	 IMAGE=docker.io/openshift/console-operator ./tmp/build/docker_build.sh
-.PHONY: build-image
+# Run core verification and all self contained tests.
+#
+# Example:
+#   make check
+check: | verify test-unit
+.PHONY: check
 
-build-all:
-	./tmp/build/build.sh
-	IMAGE=docker.io/openshift/console-operator ./tmp/build/docker_build.sh
-.PHONY: build-all
+
+# Verify code conventions are properly setup.
+#
+# Example:
+#   make verify
+verify:
+	{ \
+	hack/verify-gofmt.sh ||r=1;\
+	hack/verify-govet.sh ||r=1;\
+	hack/verify-imports.sh ||r=1;\
+	hack/verify-codegen.sh ||r=1;\
+	exit $$r ;\
+	}
+.PHONY: verify
+
+
+# Verify commit comments.
+#
+# Example:
+#   make verify-commits
+verify-commits:
+	hack/verify-upstream-commits.sh
+.PHONY: verify-commits
 
 test: test-unit test-integration test-e2e
 .PHONY: test
 
+# Run unit tests.
+#
+# Args:
+#   WHAT: Directory names to test.  All *_test.go files under these
+#     directories will be run.  If not specified, "everything" will be tested.
+#   TESTS: Same as WHAT.
+#   GOFLAGS: Extra flags to pass to 'go' when building.
+#   TESTFLAGS: Extra flags that should only be passed to hack/test-go.sh
+#
+# Example:
+#   make test-unit
+#   make test-unit WHAT=pkg/build TESTFLAGS=-v
+#test-unit:
+#	GOTEST_FLAGS="$(TESTFLAGS)" hack/test-go.sh $(WHAT) $(TESTS)
+#.PHONY: test-unit
+# TODO: swap up to the above test-unit command instead(?)
 test-unit:
 	hack/test-unit.sh
 .PHONY: test-unit
@@ -43,12 +103,57 @@ test-e2e:
 	hack/test-e2e.sh
 .PHONY: test-e2e
 
-verify:
-	hack/verify-gofmt.sh
-	hack/verify-golint.sh -m
-	hack/verify-govet.sh
-.PHONY: verify
 
+# Remove all build artifacts.
+#
+# Example:
+#   make clean
 clean:
-	hack/clean.sh
+	rm -rf $(OUT_DIR)
 .PHONY: clean
+
+# Build the cross compiled release binaries
+#
+# Example:
+#   make build-cross
+build-cross:
+	hack/build-cross.sh
+.PHONY: build-cross
+
+# Build RPMs only for the Linux AMD64 target
+#
+# Args:
+#
+# Example:
+#   make build-rpms
+build-rpms:
+	OS_ONLY_BUILD_PLATFORMS='linux/amd64' hack/build-rpms.sh
+.PHONY: build-rpms
+
+# Build images from the official RPMs
+#
+# Args:
+#
+# Example:
+#   make build-images
+build-images:
+	hack/build-images.sh
+.PHONY: build-images
+
+# Update vendored dependencies
+#
+# Example:
+#	make update-deps
+update-deps:
+	hack/update-deps.sh
+.PHONY: update-deps
+
+# Update generated code
+#
+# Args:
+#
+# Example:
+#   make update-codegen
+update-codegen:
+	hack/update-codegen.sh
+.PHONY: update-codegen

@@ -12,7 +12,6 @@
 #  - ARTIFACT_DIR
 #  - SKIP_CLEANUP
 #  - SKIP_TEARDOWN
-#  - SKIP_IMAGE_CLEANUP
 # Arguments:
 #  None
 # Returns:
@@ -28,83 +27,15 @@ function os::cleanup::all() {
 	set +o errexit
 
 	os::log::info "[CLEANUP] Beginning cleanup routines..."
-	os::cleanup::dump_events
-	os::cleanup::dump_etcd
 	os::cleanup::dump_container_logs
-	os::cleanup::dump_pprof_output
-	os::cleanup::find_cache_alterations
 	os::cleanup::truncate_large_logs
 
 	if [[ -z "${SKIP_TEARDOWN:-}" ]]; then
 		os::cleanup::containers
 		os::cleanup::processes
-		os::cleanup::prune_etcd
 	fi
 }
 readonly -f os::cleanup::all
-
-# os::cleanup::dump_etcd dumps the full contents of etcd to a file.
-#
-# Globals:
-#  - ARTIFACT_DIR
-#  - API_SCHEME
-#  - API_HOST
-#  - ETCD_PORT
-# Arguments:
-#  None
-# Returns:
-#  None
-function os::cleanup::dump_etcd() {
-	if [[ -n "${API_SCHEME:-}" && -n "${API_HOST:-}" && -n "${ETCD_PORT:-}" ]]; then
-		local dump_dir="${ARTIFACT_DIR}/etcd"
-		mkdir -p "${dump_dir}"
-		os::log::info "[CLEANUP] Dumping etcd contents to $( os::util::repository_relative_path "${dump_dir}" )"
-		os::util::curl_etcd "/v2/keys/?recursive=true" > "${dump_dir}/v2_dump.json"
-		os::cleanup::internal::dump_etcd_v3 > "${dump_dir}/v3_dump.json"
-	fi
-}
-readonly -f os::cleanup::dump_etcd
-
-# os::cleanup::internal::dump_etcd_v3 dumps the full contents of etcd v3 to a file.
-#
-# Globals:
-#  - ARTIFACT_DIR
-#  - API_SCHEME
-#  - API_HOST
-#  - ETCD_PORT
-# Arguments:
-#  None
-# Returns:
-#  None
-function os::cleanup::internal::dump_etcd_v3() {
-	local full_url="${API_SCHEME}://${API_HOST}:${ETCD_PORT}"
-
-	local etcd_client_cert="${MASTER_CONFIG_DIR}/master.etcd-client.crt"
-	local etcd_client_key="${MASTER_CONFIG_DIR}/master.etcd-client.key"
-	local ca_bundle="${MASTER_CONFIG_DIR}/ca-bundle.crt"
-
-	os::util::ensure::built_binary_exists 'etcdhelper' >&2
-
-	etcdhelper --cert "${etcd_client_cert}" --key "${etcd_client_key}" \
-	           --cacert "${ca_bundle}" --endpoint "${full_url}" dump
-}
-readonly -f os::cleanup::internal::dump_etcd_v3
-
-# os::cleanup::prune_etcd removes the etcd data store from disk.
-#
-# Globals:
-#  ARTIFACT_DIR
-# Arguments:
-#  None
-# Returns:
-#  None
-function os::cleanup::prune_etcd() {
-	if [[ -n "${ETCD_DATA_DIR:-}" ]]; then
-		os::log::info "[CLEANUP] Pruning etcd data directory"
-		${USE_SUDO:+sudo} rm -rf "${ETCD_DATA_DIR}"
-	fi
-}
-readonly -f os::cleanup::prune_etcd
 
 # os::cleanup::containers operates on our containers to stop the containers
 # and optionally remove the containers and any volumes they had attached.
@@ -166,35 +97,6 @@ function os::cleanup::dump_container_logs() {
 }
 readonly -f os::cleanup::dump_container_logs
 
-# os::cleanup::internal::list_our_containers returns a space-delimited list of
-# docker containers that belonged to some part of the Origin deployment.
-#
-# Globals:
-#  None
-# Arguments:
-#  None
-# Returns:
-#  None
-function os::cleanup::internal::list_our_containers() {
-	os::cleanup::internal::list_containers '^/origin$'
-	os::cleanup::internal::list_k8s_containers
-}
-readonly -f os::cleanup::internal::list_our_containers
-
-# os::cleanup::internal::list_k8s_containers returns a space-delimited list of
-# docker containers that belonged to k8s.
-#
-# Globals:
-#  None
-# Arguments:
-#  None
-# Returns:
-#  None
-function os::cleanup::internal::list_k8s_containers() {
-	os::cleanup::internal::list_containers '^/k8s_.*'
-}
-readonly -f os::cleanup::internal::list_k8s_containers
-
 # os::cleanup::internal::list_containers returns a space-delimited list of
 # docker containers that match a name regex.
 #
@@ -244,58 +146,6 @@ function os::cleanup::tmpdir() {
 	done
 }
 readonly -f os::cleanup::tmpdir
-
-# os::cleanup::dump_events dumps all the events from a cluster to a file.
-#
-# Globals:
-#  ARTIFACT_DIR
-# Arguments:
-#  None
-# Returns:
-#  None
-function os::cleanup::dump_events() {
-	os::log::info "[CLEANUP] Dumping cluster events to $( os::util::repository_relative_path "${ARTIFACT_DIR}/events.txt" )"
-	local kubeconfig
-	if [[ -n "${ADMIN_KUBECONFIG:-}" ]]; then
-		kubeconfig="--config=${ADMIN_KUBECONFIG}"
-	fi
-	oc login -u system:admin ${kubeconfig:-}
-	oc get events --all-namespaces ${kubeconfig:-} > "${ARTIFACT_DIR}/events.txt" 2>&1
-}
-readonly -f os::cleanup::dump_events
-
-# os::cleanup::find_cache_alterations ulls information out of the server
-# log so that we can get failure management in jenkins to highlight it
-# and really have it smack people in their logs. This is a severe
-# correctness problem.
-#
-# Globals:
-#  - LOG_DIR
-# Arguments:
-#  None
-# Returns:
-#  None
-function os::cleanup::find_cache_alterations() {
-	grep -ra5 "CACHE.*ALTERED" "${LOG_DIR}" || true
-}
-readonly -f os::cleanup::find_cache_alterations
-
-# os::cleanup::dump_pprof_output dumps profiling output for the
-# `openshift` binary
-#
-# Globals:
-#  - LOG_DIR
-# Arguments:
-#  None
-# Returns:
-#  None
-function os::cleanup::dump_pprof_output() {
-	if go tool -n pprof >/dev/null 2>&1 && [[ -s cpu.pprof ]]; then
-		os::log::info "[CLEANUP] \`pprof\` output logged to $( os::util::repository_relative_path "${LOG_DIR}/pprof.out" )"
-		go tool pprof -text "./_output/local/bin/$(os::build::host_platform)/openshift" cpu.pprof >"${LOG_DIR}/pprof.out" 2>&1
-	fi
-}
-readonly -f os::cleanup::dump_pprof_output
 
 # os::cleanup::truncate_large_logs truncates very large files under
 # $LOG_DIR and $ARTIFACT_DIR so we do not upload them to cloud storage

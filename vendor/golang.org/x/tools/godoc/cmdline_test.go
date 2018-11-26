@@ -172,10 +172,6 @@ func First() {
 // Second function is second.
 func Second() {
 }
-
-// unexported function is third.
-func unexported() {
-}
 `,
 		"src/gen/gen.go": `// Package gen
 package gen
@@ -206,7 +202,7 @@ package main
 		p:       p,
 		c:       c,
 		pattern: "/cmd/",
-		fsRoot:  "/src",
+		fsRoot:  "/src/cmd",
 	}
 	p.pkgHandler = handlerServer{
 		p:       p,
@@ -224,7 +220,6 @@ package main
 	for _, tc := range []struct {
 		desc string
 		args []string
-		all  bool
 		exp  string
 		err  bool
 	}{
@@ -259,18 +254,6 @@ package main
 			exp:  "// Second function is second.\nfunc Second() {\n}",
 		},
 		{
-			desc: "package w. unexported filter",
-			args: []string{"foo", "unexported"},
-			all:  true,
-			exp:  "PACKAGE \nfunc unexported()\n    unexported function is third.\n",
-		},
-		{
-			desc: "package w. unexported filter",
-			args: []string{"foo", "unexported"},
-			all:  false,
-			exp:  "PACKAGE ",
-		},
-		{
 			desc: "package w. //line comments",
 			args: []string{"gen", "F"},
 			exp:  "PACKAGE \nfunc F()\n    F doc //line 1 should appear line 2 should appear\n",
@@ -301,12 +284,11 @@ package main
 			exp:  "",
 		},
 	} {
-		p.AllMode = tc.all
 		w := new(bytes.Buffer)
 		err := CommandLine(w, fs, p, tc.args)
 		if got, want := w.String(), tc.exp; got != want || tc.err == (err == nil) {
-			t.Errorf("%s: CommandLine(%v), All(%v) = %q (%v); want %q (%v)",
-				tc.desc, tc.args, tc.all, got, err, want, tc.err)
+			t.Errorf("%s: CommandLine(%v) = %q (%v); want %q (%v)",
+				tc.desc, tc.args, got, err, want, tc.err)
 		}
 	}
 }

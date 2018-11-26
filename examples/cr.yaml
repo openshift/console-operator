@@ -5,7 +5,8 @@ apiVersion: "console.openshift.io/v1alpha1"
 kind: "Console"
 metadata:
   # Do not change the name, the operator explicitly requires this name to match as the console is a singleton.
-  name: openshift-console
+  # must match name defined in pkg/controller/api.go
+  name: console-operator-resource
   namespace: openshift-console
 spec:
   # openshift/api/operator/v1alpha1/types.go
@@ -15,6 +16,11 @@ spec:
   # - Removed indicates that the operator should delete all of the sub-resources of the console
   managementState: Managed
   # there should be only one console at this time
+  # this could be used to support leader election if desired
   count: 1
   logging:
     level: 0
+  # artifact of base operator
+  version: 4.0.0
+  # going away
+  value: "panda-bears-are-awesome-and-this-should-be-a-console-instead-woot"

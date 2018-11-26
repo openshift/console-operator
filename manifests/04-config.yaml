@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: openshift-console
+  name: console-operator-config
+data:
+  controller-config.yaml: |
+    apiVersion: operator.openshift.io/v1alpha1
+    kind: GenericOperatorConfig
+    leaderElection:
+      namespace: openshift-console

@@ -14,6 +14,10 @@ spec:
         name: console-operator
     spec:
       serviceAccountName: console-operator
+      #
+      # TODO: UPDATE ME ONCE THE VOLUMEMOUNT FOR THE CONFIG.YAML
+      # IS IRONED OUT VIA THE examples/05-operator-alt-image.yaml
+      #
       containers:
       - name: console-operator
         image: docker.io/openshift/origin-console-operator:latest
@@ -21,10 +25,17 @@ spec:
         - containerPort: 60000
           name: metrics
         command:
-        - console-operator
+        - console
+        - operator
         args:
-        - "-create-default-console=true"
+        - "-v=4"
+        - "--create-default-console=true"
+        # 04-config.yaml provides this config for the operator
+        - "--config=/var/run/configmaps/config/controller-config.yaml"
         imagePullPolicy: Always
+        volumeMounts:
+        - mountPath: /var/run/configmaps/config
+          name: config
         env:
         - name: WATCH_NAMESPACE
           valueFrom:
@@ -34,3 +45,7 @@ spec:
           value: docker.io/openshift/origin-console:latest
         - name: OPERATOR_NAME
           value: "console-operator"
+      volumes:
+      - name: config
+        configMap:
+          name: console-operator-config

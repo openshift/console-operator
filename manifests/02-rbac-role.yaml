@@ -65,6 +65,9 @@ rules:
   - oauthclients
   verbs:
   - get
+  - list
   - update
+  - watch
   resourceNames:
   - openshift-console
+

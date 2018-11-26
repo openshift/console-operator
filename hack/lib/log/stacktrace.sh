@@ -77,8 +77,11 @@ function os::log::stacktrace::print() {
         bash_source="$( os::util::repository_relative_path "${BASH_SOURCE[$i]}" )"
         if [[ -z "${preamble_finished:-}" ]]; then
             preamble_finished=true
-            os::log::error "${bash_source}:${BASH_LINENO[$i-1]}: \`${last_command}\` exited with status ${return_code}." >&2
-            exit "${return_code}"
+            os::log::error "PID ${BASHPID:-$$}: ${bash_source}:${BASH_LINENO[$i-1]}: \`${last_command}\` exited with status ${return_code}." >&2
+            os::log::info $'\t\t'"Stack Trace: "  >&2
+            os::log::info $'\t\t'"  ${stack_index}: ${bash_source}:${BASH_LINENO[$i-1]}: \`${last_command}\`" >&2
+        else
+            os::log::info $'\t\t'"  ${stack_index}: ${bash_source}:${BASH_LINENO[$i-1]}: ${FUNCNAME[$i-1]}" >&2
         fi
         stack_index=$(( stack_index + 1 ))
     done

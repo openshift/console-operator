@@ -31,10 +31,6 @@ import (
 const (
 	testdataDir          = "./testdata"
 	inputDir             = testdataDir + "/listtype"
-	outputBase           = "pkg"
-	outputPackage        = "generated"
-	outputBaseFilename   = "openapi_generated"
-	reportFilename       = "test.report"
 	generatedSwaggerFile = "generated.json"
 	goldenSwaggerFile    = "golden.json"
 	timeoutSeconds       = 5.0
@@ -62,7 +58,7 @@ var _ = Describe("Open API Definitions Generation", func() {
 		Expect(berr).ShouldNot(HaveOccurred())
 		// Run the OpenAPI code generator, creating OpenAPIDefinition code
 		// to be compiled into builder.
-		command := exec.Command(binary_path, "-i", inputDir, "-o", outputBase, "-p", outputPackage, "-O", outputBaseFilename, "-r", reportFilename)
+		command := exec.Command(binary_path, inputDir)
 		session, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
 		Expect(err).ShouldNot(HaveOccurred())
 		Eventually(session, timeoutSeconds).Should(gexec.Exit(0))

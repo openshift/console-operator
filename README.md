@@ -1,33 +1,27 @@
 # Console Operator
 
-An operator for OpenShift Console built using the operator-sdk.
+An operator for OpenShift Console.
 
 The console-operator installs and maintains the web console on a cluster.
-
-## Setup
-
-* Install Go -- https://golang.org/doc/install
-* Install the Operator SDK -- https://github.com/operator-framework/operator-sdk
-
-## Build and Run
-
-When you make changes to any of the source be sure to also run this command to generate code:
-
-```bash
-# this will not always change source
-$ operator-sdk generate k8s
-```
-
-The output should be included in any git commit.
 
 ## Run on a 4.0.0 cluster
 
 The console operator is installed by default and will automatically maintain a console.  
 
-## Run locally
+## Development Setup
 
-If using `oc cluster up` on a `< 4.0.0` cluster you will need the `--public-hostname` flag when you cluster up. The
-`--server-loglevel` flag is helpful for debugging. OAuth issues will not be visible unless set to at least `3`.
+* Install Go -- https://golang.org/doc/install
+
+
+<!-- 
+TODO: create the gopaths/path/to/here setup
+-->
+
+## Development on a < 4.0.0 cluster 
+
+If using `oc cluster up` on a `< 4.0.0` cluster you will need the `--public-hostname` flag 
+when you cluster up. The `--server-loglevel` flag is helpful for debugging. OAuth issues 
+will not be visible unless set to at least `3`.
 
 ```bash 
 # there are a variety of ways to get your machine IP address
@@ -46,13 +40,41 @@ oc create -f ./manifests
 oc delete -f ./manifests/05-operator.yaml 
 ```
 
-And finally run the operator:
+If you don't know where your `kubeconfig` file is:
 
 ```bash 
+# just a high number
+oc whoami --loglevel=100
+# likely output will be $HOME/.kube/config 
+```
+
+Build the console operator binary:
+
+```bash 
+make update-codegen
+make
+make verify 
+# add the binary to your path 
+# arc will be "linux" or "darwin", etc
+export PATH="_output/local/bin/<arc>/amd64:${PATH}"
+```
+
+Now, run the console operator locally:
+
+```bash
 IMAGE=docker.io/openshift/origin-console:latest \ 
-    operator-sdk up local \ 
-    --namespace=openshift-console \
-    --operator-flags="--create-default-console=true"
+    console operator \
+    --kubeconfig $HOME/.kube/config \
+    --config examples/config.yaml \
+    --create-default-console \ 
+    --v 4
+```
+
+Check for the existence of expected resources:
+
+```bash 
+oc get console 
+# etc
 ```
 
 Explanation:
@@ -63,3 +85,4 @@ Explanation:
 
 The `IMAGE` env var exists so that when the console-operator is packaged up for a release, we can replace the value
 with a final image.  See CVO documentation for details. 
+

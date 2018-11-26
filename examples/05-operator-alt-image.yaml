@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: console-operator
+  namespace: openshift-console
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: console-operator
+  template:
+    metadata:
+      labels:
+        name: console-operator
+    spec:
+      serviceAccountName: console-operator
+      containers:
+      - name: console-operator
+        # image: quay.io/benjaminapetersen/console-operator:v4.0.0.6
+        # image: quay.io/benjaminapetersen/console-operator-2:v4.1.0
+        image: quay.io/benjaminapetersen/console-operator-2:v4.1.2
+        ports:
+        - containerPort: 60000
+          name: metrics
+        command:
+        - console
+        - operator
+        args:
+        - "-v=4"
+        - "--create-default-console=true"
+        # 04-config.yaml provides this config for the operator
+        - "--config=/var/run/configmaps/config/controller-config.yaml"
+        imagePullPolicy: Always
+        volumeMounts:
+        - mountPath: /var/run/configmaps/config
+          name: config
+        env:
+        - name: WATCH_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: IMAGE
+          value: docker.io/openshift/origin-console:latest
+        - name: OPERATOR_NAME
+          value: "console-operator"
+      volumes:
+      - name: config
+        configMap:
+          name: console-operator-config
