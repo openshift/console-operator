@@ -6,12 +6,13 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/client-go/tools/cache"
-	// "k8s.io/client-go/dynamic"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 
+	"github.com/openshift/library-go/pkg/operator/status"
 	authclient "github.com/openshift/client-go/oauth/clientset/versioned"
 	// clients
 	routesclient "github.com/openshift/client-go/route/clientset/versioned"
@@ -29,10 +30,10 @@ import (
 func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
 	// TODO: reenable this after upgradeing library-go
 	// only for the ClusterStatus, everything else has a specific client
-	//dynamicClient, err := dynamic.NewForConfig(clientConfig)
-	//if err != nil {
-	//	return err
-	//}
+	dynamicClient, err := dynamic.NewForConfig(clientConfig)
+	if err != nil {
+		return err
+	}
 
 	// creates a new kube clientset
 	// clientConfig is a REST config
@@ -132,15 +133,15 @@ func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
 	// TODO: turn this back on!
 	// for now its just creating noise.... as we need to update library-go for it to work correctly
 	// our version of library-go has the old group
-	//clusterOperatorStatus := status.NewClusterOperatorStatusController(
-	//	controller.TargetNamespace,
-	//	controller.ResourceName,
-	//	// no idea why this is dynamic & not a strongly typed client.
-	//	dynamicClient,
-	//	&operatorStatusProvider{informers: consoleOperatorInformers},
-	//)
+	clusterOperatorStatus := status.NewClusterOperatorStatusController(
+		controller.TargetNamespace,
+		controller.ResourceName,
+		// no idea why this is dynamic & not a strongly typed client.
+		dynamicClient,
+		&operatorStatusProvider{informers: consoleOperatorInformers},
+	)
 	//// TODO: will have a series of Run() funcs here
-	//go clusterOperatorStatus.Run(1, stopCh)
+	go clusterOperatorStatus.Run(1, stopCh)
 
 	<-stopCh
 
