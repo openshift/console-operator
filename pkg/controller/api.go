@@ -16,4 +16,5 @@ const (
 	OpenShiftConsoleName      = "openshift-console"
 	OpenShiftConsoleShortName = "console"
 	OpenShiftConsoleNamespace = "openshift-console"
+	OAuthClientName           = OpenShiftConsoleName
 )

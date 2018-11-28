@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/tools/cache"
 	// "k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
@@ -19,7 +20,7 @@ import (
 	oauthinformers "github.com/openshift/client-go/oauth/informers/externalversions"
 	routesinformers "github.com/openshift/client-go/route/informers/externalversions"
 	"github.com/openshift/console-operator/pkg/generated/informers/externalversions"
-
+	// operator
 	operatorv1alpha1 "github.com/openshift/api/operator/v1alpha1"
 	"github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/console-operator/pkg/controller"
@@ -69,6 +70,10 @@ func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
 		// options.FieldSelector = fields.OneTermEqualSelector("metadata.name", operator.ResourceName).String()
 	}
 
+	tweakOAuthListOptions := func(options *v1.ListOptions) {
+		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", controller.OAuthClientName).String()
+	}
+
 	kubeInformersNamespaced := informers.NewSharedInformerFactoryWithOptions(
 		// takes a client
 		kubeClient,
@@ -99,7 +104,7 @@ func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
 	oauthInformers := oauthinformers.NewSharedInformerFactoryWithOptions(
 		oauthClient,
 		resync,
-		oauthinformers.WithTweakListOptions(tweakListOptions),
+		oauthinformers.WithTweakListOptions(tweakOAuthListOptions),
 	)
 
 	consoleOperator := operator.NewConsoleOperator(

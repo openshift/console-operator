@@ -74,7 +74,7 @@ func Stub() *oauthv1.OAuthClient {
 	// we cannot set an ownerRef on the OAuthClient as it is cluster scoped
 	return &oauthv1.OAuthClient{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: controller.OpenShiftConsoleName,
+			Name: controller.OAuthClientName,
 		},
 	}
 }
