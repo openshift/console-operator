@@ -12,7 +12,7 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 	// operator
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
-	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/console-operator/pkg/console/resource/util"
 	"github.com/openshift/console-operator/pkg/controller"
 )
 

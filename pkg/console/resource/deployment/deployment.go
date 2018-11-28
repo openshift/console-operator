@@ -2,7 +2,7 @@ package deployment
 
 import (
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
-	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/console-operator/pkg/console/resource/util"
 	"github.com/openshift/console-operator/pkg/controller"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"

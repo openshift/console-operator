@@ -21,12 +21,12 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 	// operator
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
-	configmapsub "github.com/openshift/console-operator/pkg/console/subresource/configmap"
-	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
-	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
-	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
-	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
-	servicesub "github.com/openshift/console-operator/pkg/console/subresource/service"
+	configmapsub "github.com/openshift/console-operator/pkg/console/resource/configmap"
+	deploymentsub "github.com/openshift/console-operator/pkg/console/resource/deployment"
+	oauthsub "github.com/openshift/console-operator/pkg/console/resource/oauthclient"
+	routesub "github.com/openshift/console-operator/pkg/console/resource/route"
+	secretsub "github.com/openshift/console-operator/pkg/console/resource/secret"
+	servicesub "github.com/openshift/console-operator/pkg/console/resource/service"
 )
 
 func sync_v400(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.Console, error) {

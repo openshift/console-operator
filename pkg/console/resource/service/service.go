@@ -2,7 +2,7 @@ package service
 
 import (
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
-	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/console-operator/pkg/console/resource/util"
 	"github.com/openshift/console-operator/pkg/controller"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"

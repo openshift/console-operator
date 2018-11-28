@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
-	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/console-operator/pkg/console/resource/util"
 	"github.com/openshift/console-operator/pkg/controller"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"

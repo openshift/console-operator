@@ -4,7 +4,7 @@ import (
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	"github.com/openshift/api/route/v1"
 	oauthclient "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
-	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/console-operator/pkg/console/resource/util"
 	"github.com/openshift/console-operator/pkg/controller"
 	"github.com/openshift/console-operator/pkg/crypto"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
