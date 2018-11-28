@@ -3,12 +3,6 @@ package operator
 import (
 	// standard lib
 	"fmt"
-	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
-	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
-	"github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
-	"github.com/openshift/console-operator/pkg/console/subresource/route"
-	"github.com/openshift/console-operator/pkg/console/subresource/secret"
-	"github.com/openshift/console-operator/pkg/console/subresource/service"
 
 	// 3rd party
 	"github.com/blang/semver"
@@ -37,6 +31,13 @@ import (
 	appsinformersv1 "k8s.io/client-go/informers/apps/v1"
 	// clients
 	"github.com/openshift/console-operator/pkg/generated/clientset/versioned/typed/console/v1alpha1"
+
+	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
+	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
+	"github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
+	"github.com/openshift/console-operator/pkg/console/subresource/route"
+	"github.com/openshift/console-operator/pkg/console/subresource/secret"
+	"github.com/openshift/console-operator/pkg/console/subresource/service"
 )
 
 const (
@@ -52,38 +53,40 @@ var CreateDefaultConsoleFlag bool
 // for each resource that it interacts with.
 func NewConsoleOperator(
 	// informers
-	coi consoleinformers.ConsoleInformer,
+	consoles consoleinformers.ConsoleInformer,
 	coreV1 v1.Interface,
-	appsV1 appsinformersv1.Interface,
-	routesV1 routesinformersv1.Interface,
-	oauthV1 oauthinformersv1.Interface,
+	deployments appsinformersv1.DeploymentInformer,
+	routes routesinformersv1.RouteInformer,
+	oauthClients oauthinformersv1.OAuthClientInformer,
 	// clients
-	operatorClient v1alpha1.ConsoleInterface,
+	operatorClient v1alpha1.ConsolesGetter,
 	corev1Client coreclientv1.CoreV1Interface,
-	appsv1Client appsv1.AppsV1Interface,
-	routev1Client routeclientv1.RouteV1Interface,
-	oauthv1Client oauthclientv1.OauthV1Interface) *ConsoleOperator {
-
+	deploymentClient appsv1.DeploymentsGetter,
+	routev1Client routeclientv1.RoutesGetter,
+	oauthv1Client oauthclientv1.OAuthClientsGetter,
+) *ConsoleOperator {
 	c := &ConsoleOperator{
 		// operator
-		operatorClient: operatorClient,
+		operatorClient: operatorClient.Consoles(controller.TargetNamespace),
 		// core kube
 		secretsClient:    corev1Client,
 		configMapClient:  corev1Client,
 		serviceClient:    corev1Client,
-		deploymentClient: appsv1Client,
+		deploymentClient: deploymentClient,
 		// openshift
 		routeClient: routev1Client,
 		oauthClient: oauthv1Client,
 	}
 
-	operatorInformer := coi.Informer()
+	operatorInformer := consoles.Informer()
+
 	secretsInformer := coreV1.Secrets().Informer()
-	deploymentInformer := appsV1.Deployments().Informer()
 	configMapInformer := coreV1.ConfigMaps().Informer()
 	serviceInformer := coreV1.Services().Informer()
-	routeInformer := routesV1.Routes().Informer()
-	oauthInformer := oauthV1.OAuthClientAuthorizations().Informer()
+	deploymentInformer := deployments.Informer()
+
+	routeInformer := routes.Informer()
+	oauthInformer := oauthClients.Informer()
 
 	// we do not really need to wait for our informers to sync since we only watch a single resource
 	// and make live reads but it does not hurt anything and guarantees we have the correct behavior
