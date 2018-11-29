@@ -146,7 +146,7 @@ IMAGE=docker.io/openshift/origin-console:latest \
 
 NOTE: your `--kubeconfig` may be in another location.
 
-### Deploy an alternative image 
+### Deploy an Alternative Image 
 
 To build a new container image and then deploy it do the following:
 
@@ -256,8 +256,15 @@ oc whoami --loglevel=100
 # likely output will be $HOME/.kube/config 
 ``` 
 
+## Updating Vendored Dependencies
 
+```bash
+# DO: 
+make update-deps
+# DONT:
+glide update
 
+```
 
 
 
