@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: openshift-service-ca
+  name: service-ca-config
+data:
+  controller-config.yaml:
