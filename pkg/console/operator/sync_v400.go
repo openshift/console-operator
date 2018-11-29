@@ -7,7 +7,6 @@ import (
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	// kube
 	oauthv1 "github.com/openshift/api/oauth/v1"
-	operatorv1alpha1 "github.com/openshift/api/operator/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	oauthclientv1 "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -18,7 +17,6 @@ import (
 	"github.com/openshift/console-operator/pkg/controller"
 	"github.com/openshift/console-operator/pkg/crypto"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
-	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 	// operator
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	configmapsub "github.com/openshift/console-operator/pkg/console/subresource/configmap"
@@ -95,13 +93,11 @@ func sync_v400(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 
 	// we don't want to thrash our deployment, but we also need to force rollout the pod whenever anything critical changes
 	defaultDeployment := deploymentsub.DefaultDeployment(consoleConfig)
-	versionAvailability := &operatorv1alpha1.VersionAvailability{
-		Version: consoleConfig.Spec.Version,
-	}
-	deploymentGeneration := resourcemerge.ExpectedDeploymentGeneration(defaultDeployment, versionAvailability)
+	// we don't care about generation atm
+	dummyGeneration := int64(0)
 	// if configMap or secrets change, we need to deploy a new pod
 	redeployPods := cmChanged || secretChanged
-	_, depChanged, depErr := resourceapply.ApplyDeployment(co.deploymentClient, defaultDeployment, deploymentGeneration, redeployPods)
+	_, depChanged, depErr := resourceapply.ApplyDeployment(co.deploymentClient, defaultDeployment, dummyGeneration, redeployPods)
 	if depErr != nil {
 		logrus.Errorf("%q: %v \n", "deployment", depErr)
 		allErrors = append(allErrors, depErr)
