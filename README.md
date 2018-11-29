@@ -263,8 +263,10 @@ oc whoami --loglevel=100
 make update-deps
 # DONT:
 glide update
-
 ```
+
+If something goes haywire, you may want to run `glide cache-clear` and 
+repeat `make update-deps`.  
 
 
 
