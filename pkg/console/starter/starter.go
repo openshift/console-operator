@@ -2,7 +2,6 @@ package starter
 
 import (
 	"fmt"
-	"github.com/openshift/console-operator/pkg/controller"
 	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,6 +22,7 @@ import (
 
 	operatorv1alpha1 "github.com/openshift/api/operator/v1alpha1"
 	"github.com/openshift/console-operator/pkg/console/operator"
+	"github.com/openshift/console-operator/pkg/controller"
 )
 
 func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
@@ -106,11 +106,11 @@ func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
 		// informers
 		consoleOperatorInformers.Console().V1alpha1().Consoles(), // Console
 		kubeInformersNamespaced.Core().V1(),                      // Secrets, ConfigMaps, Service
-		kubeInformersNamespaced.Apps().V1(),                      // Deployments
-		routesInformersNamespaced.Route().V1(),                   // Route
-		oauthInformers.Oauth().V1(),                              // oauth
+		kubeInformersNamespaced.Apps().V1().Deployments(),        // Deployments
+		routesInformersNamespaced.Route().V1().Routes(),          // Route
+		oauthInformers.Oauth().V1().OAuthClients(),               // OAuth clients
 		// clients
-		consoleOperatorClient.ConsoleV1alpha1().Consoles(controller.TargetNamespace),
+		consoleOperatorClient.ConsoleV1alpha1(),
 		kubeClient.CoreV1(), // Secrets, ConfigMaps, Service
 		kubeClient.AppsV1(),
 		routesClient.RouteV1(),
