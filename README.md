@@ -144,6 +144,8 @@ IMAGE=docker.io/openshift/origin-console:latest \
     --v 4
 ```
 
+NOTE: your `--kubeconfig` may be in another location.
+
 ### Deploy an alternative image 
 
 To build a new container image and then deploy it do the following:
@@ -168,7 +170,44 @@ oc create -f ./examples/05-operator-alt-image.yaml
 
 ## Running Against a 4.0.0 Cluster
 
-The console operator is installed by default and will automatically maintain a console.
+The console operator is installed by default and will automatically maintain a console. For development,
+if you want to run the console-operator locally against a 4.0 cluster with the appropriate 
+capabilities (not as `system:admin` but rather using the correct service account) do the following:
+
+```bash 
+# if you want to remove the existing console entirely to start fresh
+oc login -u system:admin
+oc delete project openshift-console 
+
+# then recreate ensure all the necessary resources (including the namespace)
+# rolebindings, service account, etc
+oc create -f manifests/00*.yaml
+oc create -f manifests/01*.yaml
+oc create -f manifests/02*.yaml
+oc create -f manifests/03*.yaml
+oc create -f manifests/04*.yaml
+```
+
+Then to correctly run the operator you will want to login using the token from the 
+service account:
+
+```bash 
+oc login --token=$(oc sa get-token console-operator -n openshift-console)
+```
+
+After doing the above steps, you can run the operator locally with the following:
+
+```bash 
+# if you make changes, be sure to rebuild the binary with `make`
+IMAGE=docker.io/openshift/origin-console:latest \
+    console operator \
+    --kubeconfig $HOME/.kube/config \
+    --config examples/config.yaml \
+    --create-default-console \
+    --v 4
+```
+
+NOTE: your `--kubeconfig` may be in another location.
 
 ## Running against a < 4.0.0 Cluster (min 3.11 Recommended)
 
