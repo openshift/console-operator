@@ -4,26 +4,22 @@ import (
 	// standard lib
 	"fmt"
 
-	// 3rd party
-	"github.com/blang/semver"
 	"github.com/sirupsen/logrus"
 	// kube
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/informers/core/v1"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	// openshift
-	operatorsv1alpha1 "github.com/openshift/api/operator/v1alpha1"
+	operatorv1 "github.com/openshift/api/operator/v1"
 	oauthclientv1 "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
 	oauthinformersv1 "github.com/openshift/client-go/oauth/informers/externalversions/oauth/v1"
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	"github.com/openshift/console-operator/pkg/controller"
-	"github.com/openshift/library-go/pkg/operator/versioning"
 	// informers
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	consolev1alpha1 "github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
@@ -31,7 +27,7 @@ import (
 	appsinformersv1 "k8s.io/client-go/informers/apps/v1"
 	// clients
 	"github.com/openshift/console-operator/pkg/generated/clientset/versioned/typed/console/v1alpha1"
-
+	// operator
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	"github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
@@ -167,61 +163,28 @@ func (c *ConsoleOperator) sync(_ interface{}) error {
 	}
 
 	switch operatorConfig.Spec.ManagementState {
-	case operatorsv1alpha1.Managed:
+	case operatorv1.Managed:
 		fmt.Println("Console is in a managed state.")
 		// handled below
-	case operatorsv1alpha1.Unmanaged:
+	case operatorv1.Unmanaged:
 		fmt.Println("Console is in an unmanaged state.")
 		return nil
 	// take a look @ https://github.com/openshift/service-serving-cert-signer/blob/master/pkg/operator/operator.go#L86
-	case operatorsv1alpha1.Removed:
+	case operatorv1.Removed:
 		fmt.Println("Console has been removed.")
 		return c.deleteAllResources(operatorConfig)
+	// TODO:
+	// case operatorv1.Force
 	default:
 		// TODO should update status
 		return fmt.Errorf("unknown state: %v", operatorConfig.Spec.ManagementState)
 	}
 
-	var currentActualVersion *semver.Version
-
-	// TODO: ca.yaml needs a version, update the v1alpha1.Console to include version field
-	if ca := operatorConfig.Status.CurrentAvailability; ca != nil {
-		ver, err := semver.Parse(ca.Version)
-		if err != nil {
-			utilruntime.HandleError(err)
-		} else {
-			currentActualVersion = &ver
-		}
-	}
-	// not yet using, we target only 4.0.0
-	desiredVersion, err := semver.Parse(operatorConfig.Spec.Version)
-	if err != nil {
-		// TODO report failing status, we may actually attempt to do this in the "normal" error handling
-		return err
-	}
-
-	// this is arbitrary, but we need a placeholder. we will have to handle versioning appropriately at some point
-	v311_to_401 := versioning.NewRangeOrDie("3.11.0", "4.0.1")
-
 	outConfig := operatorConfig.DeepCopy()
 	var errs []error
-
-	switch {
-	// v4.0.0 or nil
-	case v311_to_401.BetweenOrEmpty(currentActualVersion):
-		logrus.Println("Sync-4.0.0")
-		outConfig, err = sync_v400(c, outConfig)
-		errs = append(errs, err)
-		if err == nil {
-			outConfig.Status.TaskSummary = "sync-4.0.0"
-			outConfig.Status.CurrentAvailability = &operatorsv1alpha1.VersionAvailability{
-				Version: desiredVersion.String(),
-			}
-		}
-	default:
-		logrus.Printf("Unrecognized version. Desired %s, Actual %s", desiredVersion, currentActualVersion)
-		outConfig.Status.TaskSummary = "unrecognized"
-	}
+	logrus.Println("Sync-4.0.0")
+	outConfig, err = sync_v400(c, outConfig)
+	errs = append(errs, err)
 
 	// TODO: this should do better apply logic or similar, maybe use SetStatusFromAvailability
 	_, err = c.operatorClient.Update(outConfig)
@@ -261,11 +224,9 @@ func (c *ConsoleOperator) defaultConsole() *consolev1alpha1.Console {
 			Namespace: controller.OpenShiftConsoleNamespace,
 		},
 		Spec: consolev1alpha1.ConsoleSpec{
-			OperatorSpec: operatorsv1alpha1.OperatorSpec{
+			OperatorSpec: operatorv1.OperatorSpec{
 				// by default the console is managed
 				ManagementState: "Managed",
-				// if Verison is not 4.0.0 our reconcile loop will not pick it up
-				Version: "4.0.0",
 			},
 			// one replica is created
 			Count: 1,
