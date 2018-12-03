@@ -2,16 +2,17 @@ package starter
 
 import (
 	"fmt"
+	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 
 	operatorv1 "github.com/openshift/api/operator/v1"
+	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/status"
 
 	// clients
@@ -26,11 +27,18 @@ import (
 	"github.com/openshift/console-operator/pkg/generated/informers/externalversions"
 
 	// operator
-	"github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/console-operator/pkg/controller"
+	"github.com/openshift/console-operator/pkg/console/operator"
+	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
+	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
+	"github.com/openshift/console-operator/pkg/console/subresource/secret"
+	"github.com/openshift/console-operator/pkg/console/subresource/service"
 )
 
-func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
+func RunOperator(ctx *controllercmd.ControllerContext) error {
+	clientConfig := ctx.KubeConfig
+	stopCh := ctx.StopCh
+
 	// for the OperatorStatus
 	configClient, err := configclient.NewForConfig(clientConfig)
 	if err != nil {
@@ -110,6 +118,28 @@ func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
 		oauthinformers.WithTweakListOptions(tweakOAuthListOptions),
 	)
 
+	// event recorders
+	configMapEventRecorder := events.NewRecorder(
+		kubeClient.CoreV1().Events(controller.TargetNamespace),
+		controller.ResourceName,
+		configmap.Ref(),
+	)
+	serviceEventRecorder := events.NewRecorder(
+		kubeClient.CoreV1().Events(controller.TargetNamespace),
+		controller.ResourceName,
+		service.Ref(),
+	)
+	secretEventRecorder := events.NewRecorder(
+		kubeClient.CoreV1().Events(controller.TargetNamespace),
+		controller.ResourceName,
+		secret.Ref(),
+	)
+	deploymentEventRecorder := events.NewRecorder(
+		kubeClient.CoreV1().Events(controller.TargetNamespace),
+		controller.ResourceName,
+		deployment.Ref(),
+	)
+
 	consoleOperator := operator.NewConsoleOperator(
 		// informers
 		consoleOperatorInformers.Console().V1alpha1().Consoles(), // Console
@@ -123,6 +153,11 @@ func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
 		kubeClient.AppsV1(),
 		routesClient.RouteV1(),
 		oauthClient.OauthV1(),
+		// recorders
+		configMapEventRecorder,
+		deploymentEventRecorder,
+		serviceEventRecorder,
+		secretEventRecorder,
 	)
 
 	kubeInformersNamespaced.Start(stopCh)

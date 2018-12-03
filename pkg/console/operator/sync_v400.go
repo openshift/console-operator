@@ -34,7 +34,7 @@ func sync_v400(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 	toUpdate := false
 
 	// apply service
-	_, svcChanged, svcErr := resourceapply.ApplyService(co.serviceClient, servicesub.DefaultService(consoleConfig))
+	_, svcChanged, svcErr := resourceapply.ApplyService(co.serviceClient, co.serviceRecorder, servicesub.DefaultService(consoleConfig))
 	if svcErr != nil {
 		logrus.Errorf("%q: %v \n", "service", svcErr)
 		allErrors = append(allErrors, svcErr)
@@ -55,7 +55,7 @@ func sync_v400(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 	toUpdate = toUpdate || rtIsNew
 
 	// apply configmap (needs route)
-	_, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, configmapsub.DefaultConfigMap(consoleConfig, rt))
+	_, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, co.configMapRecorder, configmapsub.DefaultConfigMap(consoleConfig, rt))
 	if cmErr != nil {
 		logrus.Errorf("%q: %v \n", "configmap", cmErr)
 		allErrors = append(allErrors, cmErr)
@@ -82,7 +82,7 @@ func sync_v400(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 		toUpdate = toUpdate || oauthChanged
 
 		// apply secret
-		_, secretChanged, secErr := resourceapply.ApplySecret(co.secretsClient, secretsub.DefaultSecret(consoleConfig, sharedOAuthSecretBits))
+		_, secretChanged, secErr := resourceapply.ApplySecret(co.secretsClient, co.secretRecorder, secretsub.DefaultSecret(consoleConfig, sharedOAuthSecretBits))
 		if secErr != nil {
 			logrus.Errorf("sec error: %v", secErr)
 			logrus.Errorf("%q: %v \n", "secret", secErr)
@@ -97,7 +97,7 @@ func sync_v400(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 	dummyGeneration := int64(0)
 	// if configMap or secrets change, we need to deploy a new pod
 	redeployPods := cmChanged || secretChanged
-	_, depChanged, depErr := resourceapply.ApplyDeployment(co.deploymentClient, defaultDeployment, dummyGeneration, redeployPods)
+	_, depChanged, depErr := resourceapply.ApplyDeployment(co.deploymentClient, co.deploymentRecorder, defaultDeployment, dummyGeneration, redeployPods)
 	if depErr != nil {
 		logrus.Errorf("%q: %v \n", "deployment", depErr)
 		allErrors = append(allErrors, depErr)

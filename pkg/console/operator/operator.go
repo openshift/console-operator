@@ -4,6 +4,8 @@ import (
 	// standard lib
 	"fmt"
 
+	"github.com/openshift/library-go/pkg/operator/events"
+
 	"github.com/sirupsen/logrus"
 	// kube
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -57,10 +59,16 @@ func NewConsoleOperator(
 	// clients
 	operatorClient v1alpha1.ConsolesGetter,
 	corev1Client coreclientv1.CoreV1Interface,
+
 	deploymentClient appsv1.DeploymentsGetter,
 	routev1Client routeclientv1.RoutesGetter,
 	oauthv1Client oauthclientv1.OAuthClientsGetter,
+	configMapEventRecorder events.Recorder,
+	deploymentEventRecorder events.Recorder,
+	serviceEventRecorder events.Recorder,
+	secretEventRecorder events.Recorder,
 ) *ConsoleOperator {
+
 	c := &ConsoleOperator{
 		// operator
 		operatorClient: operatorClient.Consoles(controller.TargetNamespace),
@@ -72,6 +80,10 @@ func NewConsoleOperator(
 		// openshift
 		routeClient: routev1Client,
 		oauthClient: oauthv1Client,
+		configMapRecorder: configMapEventRecorder,
+		deploymentRecorder: deploymentEventRecorder,
+		serviceRecorder: serviceEventRecorder,
+		secretRecorder: secretEventRecorder,
 	}
 
 	operatorInformer := consoles.Informer()
@@ -135,6 +147,11 @@ type ConsoleOperator struct {
 	// openshift
 	routeClient routeclientv1.RoutesGetter
 	oauthClient oauthclientv1.OAuthClientsGetter
+	// event recorders
+	configMapRecorder events.Recorder
+	deploymentRecorder events.Recorder
+	serviceRecorder events.Recorder
+	secretRecorder events.Recorder
 	// controller
 	controller *controller.Controller
 }
@@ -180,6 +197,10 @@ func (c *ConsoleOperator) sync(_ interface{}) error {
 		return fmt.Errorf("unknown state: %v", operatorConfig.Spec.ManagementState)
 	}
 
+	// NOTE: Previously we had a switch statement here to handle versions, desired verison vs current version.
+	// However, the version logic is in flux as the OperatorStatus (which held version) has changed.  For now,
+	// we have one version, v4.0.0, but will add back the switch statement on the version when we have
+	// something stable to work with.
 	outConfig := operatorConfig.DeepCopy()
 	var errs []error
 	logrus.Println("Sync-4.0.0")
