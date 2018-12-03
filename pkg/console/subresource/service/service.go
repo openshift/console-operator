@@ -57,3 +57,12 @@ func Stub() *v1.Service {
 	}
 	return service
 }
+
+func Ref() *v1.ObjectReference {
+	stub := Stub()
+	return &v1.ObjectReference{
+		Kind: "Service",
+		Namespace: stub.ObjectMeta.Namespace,
+		Name: stub.ObjectMeta.Name,
+	}
+}

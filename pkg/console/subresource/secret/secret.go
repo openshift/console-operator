@@ -39,6 +39,15 @@ func Stub() *corev1.Secret {
 	return secret
 }
 
+func Ref() *corev1.ObjectReference {
+	stub := Stub()
+	return &corev1.ObjectReference{
+		Kind: "Secret",
+		Namespace: stub.ObjectMeta.Namespace,
+		Name: stub.ObjectMeta.Name,
+	}
+}
+
 func GetSecretString(secret *corev1.Secret) string {
 	return string(secret.Data[ClientSecretKey])
 }

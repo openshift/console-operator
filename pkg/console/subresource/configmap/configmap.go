@@ -50,6 +50,15 @@ func Stub() *corev1.ConfigMap {
 	return configMap
 }
 
+func Ref() *corev1.ObjectReference {
+	stub := Stub()
+	return &corev1.ObjectReference{
+		Kind: "ConfigMap",
+		Namespace: stub.ObjectMeta.Namespace,
+		Name: stub.ObjectMeta.Name,
+	}
+}
+
 func NewYamlConfigString(host string) string {
 	return string(NewYamlConfig(host))
 }

@@ -96,6 +96,15 @@ func Stub() *appsv1.Deployment {
 	return dep
 }
 
+func Ref() *corev1.ObjectReference {
+	stub := Stub()
+	return &corev1.ObjectReference{
+		Kind: "Deployment",
+		Namespace: stub.ObjectMeta.Namespace,
+		Name: stub.ObjectMeta.Name,
+	}
+}
+
 // deduplication, use the same volume config to generate Volumes, and VolumeMounts
 func consoleVolumes(vc []volumeConfig) []corev1.Volume {
 	vols := make([]corev1.Volume, len(vc))
