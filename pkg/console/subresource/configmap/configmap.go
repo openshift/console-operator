@@ -2,11 +2,12 @@ package configmap
 
 import (
 	"fmt"
-	"github.com/openshift/api/route/v1"
+
+	v1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	"github.com/openshift/console-operator/pkg/controller"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -24,12 +25,6 @@ const (
 )
 
 func DefaultConfigMap(cr *v1alpha1.Console, rt *v1.Route) *corev1.ConfigMap {
-	// NOTE: this should probably just take the route.Spec.Host string.
-	// without the host, the CR should not be created, it is essential for
-	// the deployment to be created correctly.
-	if rt == nil {
-		return nil
-	}
 	host := rt.Spec.Host
 	config := NewYamlConfigString(host)
 	configMap := Stub()

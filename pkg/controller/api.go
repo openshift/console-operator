@@ -1,7 +1,5 @@
 package controller
 
-// atm dumping ground for consts
-
 const (
 	// TargetNamespace could be made configurable if desired
 	TargetNamespace = "openshift-console"

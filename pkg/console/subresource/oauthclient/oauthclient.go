@@ -2,12 +2,13 @@ package oauthclient
 
 import (
 	oauthv1 "github.com/openshift/api/oauth/v1"
-	"github.com/openshift/api/route/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	oauthclient "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	"github.com/openshift/console-operator/pkg/controller"
 	"github.com/openshift/console-operator/pkg/crypto"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -25,35 +26,36 @@ func ApplyOAuth(client oauthclient.OAuthClientsGetter, required *oauthv1.OAuthCl
 	if err != nil {
 		return nil, false, err
 	}
+	// TODO: if this is going to be PR'd to library-go, we have to handle all of these fields :/
 	// Unfortunately data is all top level so its a little more
 	// tedious to manually copy things over
 	modified := resourcemerge.BoolPtr(false)
 	resourcemerge.EnsureObjectMeta(modified, &existing.ObjectMeta, required.ObjectMeta)
+	// at present, we only care about these two fields. this is NOT generic to all oauth clients
+	secretSame := equality.Semantic.DeepEqual(existing.Secret, required.Secret)
+	redirectsSame := equality.Semantic.DeepEqual(existing.RedirectURIs, required.RedirectURIs)
+	// nothing changed, so don't update
+	if secretSame && redirectsSame && !*modified {
+		// per ApplyService, etc, if nothing changed, return nil.
+		return nil, false, nil
+	}
 	existing.Secret = required.Secret
-	existing.AdditionalSecrets = required.AdditionalSecrets
-	existing.RespondWithChallenges = required.RespondWithChallenges
+	// existing.AdditionalSecrets = required.AdditionalSecrets
+	// existing.RespondWithChallenges = required.RespondWithChallenges
 	existing.RedirectURIs = required.RedirectURIs
-	existing.GrantMethod = required.GrantMethod
-	existing.ScopeRestrictions = required.ScopeRestrictions
-	existing.AccessTokenMaxAgeSeconds = required.AccessTokenMaxAgeSeconds
-	existing.AccessTokenInactivityTimeoutSeconds = required.AccessTokenInactivityTimeoutSeconds
-
+	// existing.GrantMethod = required.GrantMethod
+	// existing.ScopeRestrictions = required.ScopeRestrictions
+	// existing.AccessTokenMaxAgeSeconds = required.AccessTokenMaxAgeSeconds
+	// existing.AccessTokenInactivityTimeoutSeconds = required.AccessTokenInactivityTimeoutSeconds
 	actual, err := client.OAuthClients().Update(existing)
 	return actual, true, err
 }
 
 // registers the console on the oauth client as a valid application
-func RegisterConsoleToOAuthClient(client *oauthv1.OAuthClient, route *v1.Route, randomBits string) *oauthv1.OAuthClient {
-	// without a route, we cannot create a usable oauth client
-	if route == nil {
-		return nil
-	}
-	// we are the only application for this client
-	// in the future we may accept multiple routes
-	client.RedirectURIs = []string{}
-	client.RedirectURIs = append(client.RedirectURIs, util.HTTPS(route.Spec.Host))
+func RegisterConsoleToOAuthClient(client *oauthv1.OAuthClient, route *routev1.Route, randomBits string) *oauthv1.OAuthClient {
+	SetRedirectURI(client, route)
 	// client.Secret = randomBits
-	client.Secret = string(randomBits)
+	SetSecretString(client, randomBits)
 	return client
 }
 
@@ -81,4 +83,19 @@ func Stub() *oauthv1.OAuthClient {
 
 func GetSecretString(client *oauthv1.OAuthClient) string {
 	return client.Secret
+}
+
+func SetSecretString(client *oauthv1.OAuthClient, randomBits string) *oauthv1.OAuthClient {
+	client.Secret = string(randomBits)
+	return client
+}
+
+// we are the only application for this client
+// in the future we may accept multiple routes
+// for now, we can clobber the slice & reset the entire thing
+func SetRedirectURI(client *oauthv1.OAuthClient, route *routev1.Route) *oauthv1.OAuthClient {
+	uri := route.Spec.Host
+	client.RedirectURIs = []string{}
+	client.RedirectURIs = append(client.RedirectURIs, util.HTTPS(uri))
+	return client
 }
