@@ -1,14 +1,17 @@
 package deployment
 
 import (
-	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
-	"github.com/openshift/console-operator/pkg/console/subresource/util"
-	"github.com/openshift/console-operator/pkg/controller"
+	"github.com/sirupsen/logrus"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/console-operator/pkg/controller"
 )
 
 const (
@@ -18,6 +21,11 @@ const (
 	publicURLName          = "BRIDGE_DEVELOPER_CONSOLE_URL"
 	ConsoleServingCertName = "console-serving-cert"
 	ConsoleOauthConfigName = "console-oauth-config"
+)
+
+const (
+	configMapResourceVersionAnnotation = "console.openshift.io/consoleconfigversion"
+	secretResourceVersionAnnotation    = "console.openshift.io/oauthsecretversion"
 )
 
 type volumeConfig struct {
@@ -50,7 +58,7 @@ var volumeConfigList = []volumeConfig{
 	},
 }
 
-func DefaultDeployment(cr *v1alpha1.Console) *appsv1.Deployment {
+func DefaultDeployment(cr *v1alpha1.Console, cm *corev1.ConfigMap, sec *corev1.Secret) *appsv1.Deployment {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
@@ -66,9 +74,12 @@ func DefaultDeployment(cr *v1alpha1.Console) *appsv1.Deployment {
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        controller.OpenShiftConsoleShortName,
-					Labels:      labels,
-					Annotations: map[string]string{},
+					Name:   controller.OpenShiftConsoleShortName,
+					Labels: labels,
+					Annotations: map[string]string{
+						configMapResourceVersionAnnotation: cm.GetResourceVersion(),
+						secretResourceVersionAnnotation:    sec.GetResourceVersion(),
+					},
 				},
 				Spec: corev1.PodSpec{
 					// TODO: NodeSelector: corev1.NodeSelector{},
@@ -196,4 +207,26 @@ func livenessProbe() *corev1.Probe {
 	probe := defaultProbe()
 	probe.InitialDelaySeconds = 30
 	return probe
+}
+
+func ConfigMapResourceVersionChanged(dep *appsv1.Deployment, cm *corev1.ConfigMap) bool {
+	currentVersion := dep.Spec.Template.Annotations[configMapResourceVersionAnnotation]
+	logrus.Infof("%v changed? %v (%v vs %v)", configMapResourceVersionAnnotation, cm.GetResourceVersion() != currentVersion, cm.GetResourceVersion(), currentVersion)
+	return cm.GetResourceVersion() != currentVersion
+}
+
+func SecretResourceVersionChanged(dep *appsv1.Deployment, sec *corev1.Secret) bool {
+	currentVersion := dep.Spec.Template.Annotations[secretResourceVersionAnnotation]
+	logrus.Infof("%v changed? %v (%v vs %v)", secretResourceVersionAnnotation, sec.GetResourceVersion() != currentVersion, sec.GetResourceVersion(), currentVersion)
+	return sec.GetResourceVersion() != currentVersion
+}
+
+func ResourceVersionsChanged(dep *appsv1.Deployment, cm *corev1.ConfigMap, sec *corev1.Secret) bool {
+	return SecretResourceVersionChanged(dep, sec) || ConfigMapResourceVersionChanged(dep, cm)
+}
+
+func UpdateResourceVersions(dep *appsv1.Deployment, cm *corev1.ConfigMap, sec *corev1.Secret) *appsv1.Deployment {
+	dep.Spec.Template.Annotations[configMapResourceVersionAnnotation] = cm.GetResourceVersion()
+	dep.Spec.Template.Annotations[secretResourceVersionAnnotation] = sec.GetResourceVersion()
+	return dep
 }
