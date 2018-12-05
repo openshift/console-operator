@@ -54,7 +54,7 @@ func sync_v400(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 	}
 	toUpdate = toUpdate || svcChanged
 
-	_, cmChanged, cmErr := SyncConfigMap(co, consoleConfig, rt)
+	cm, cmChanged, cmErr := SyncConfigMap(co, consoleConfig, rt)
 	if cmErr != nil {
 		return consoleConfig, toUpdate, cmErr
 	}
@@ -72,7 +72,7 @@ func sync_v400(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 	}
 	toUpdate = toUpdate || oauthChanged
 
-	_, depChanged, depErr := SyncDeployment(co, consoleConfig, cmChanged || secChanged)
+	_, depChanged, depErr := SyncDeployment(co, consoleConfig, cm, sec)
 	if depErr != nil {
 		return consoleConfig, toUpdate, depErr
 	}
@@ -89,7 +89,7 @@ func sync_v400(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 
 	// if any of our resources have changed, we should update the consoleConfig.Status. otherwise, skip this step.
 	if toUpdate {
-		logrus.Infof("Sync_v400: To update Spec? %v", toUpdate)
+		logrus.Infof("Sync_v400: To update Spec: %v", toUpdate)
 		// TODO: set the status.
 		// setStatus(consoleConfig.Status, svc, rt, cm, dep, oa, sec)
 	}
@@ -100,16 +100,14 @@ func sync_v400(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 	return consoleConfig, toUpdate, nil
 }
 
-func SyncDeployment(co *ConsoleOperator, consoleConfig *v1alpha1.Console, redeployPods bool) (*appsv1.Deployment, bool, error) {
-	// we don't want to thrash our deployment, but we also need to force rollout the pod whenever anything critical changes
-	// therefore we have redeployPods T|F
-	defaultDeployment := deploymentsub.DefaultDeployment(consoleConfig)
+func SyncDeployment(co *ConsoleOperator, consoleConfig *v1alpha1.Console, cm *corev1.ConfigMap, sec *corev1.Secret) (*appsv1.Deployment, bool, error) {
+	defaultDeployment := deploymentsub.DefaultDeployment(consoleConfig, cm, sec)
 	versionAvailability := &operatorv1alpha1.VersionAvailability{
 		Version: consoleConfig.Spec.Version,
 	}
 	deploymentGeneration := resourcemerge.ExpectedDeploymentGeneration(defaultDeployment, versionAvailability)
 	// first establish, do we have a deployment?
-	origDeployment, getDepErr := co.deploymentClient.Deployments(controller.TargetNamespace).Get(deploymentsub.Stub().Name, metav1.GetOptions{})
+	existingDeployment, getDepErr := co.deploymentClient.Deployments(controller.TargetNamespace).Get(deploymentsub.Stub().Name, metav1.GetOptions{})
 
 	// if not, create it, first pass
 	if apierrors.IsNotFound(getDepErr) {
@@ -124,16 +122,18 @@ func SyncDeployment(co *ConsoleOperator, consoleConfig *v1alpha1.Console, redepl
 		return nil, false, getDepErr
 	}
 
-	// otherwise, we may need to force a rollout, if the configMap changed
-	if redeployPods {
-		updatedDeployment, depChanged, updateErr := resourceapply.ApplyDeployment(co.deploymentClient, defaultDeployment, deploymentGeneration, redeployPods)
+	// otherwise, we may need to update or force a rollout
+	if deploymentsub.ResourceVersionsChanged(existingDeployment, cm, sec) {
+		toUpdate := deploymentsub.UpdateResourceVersions(existingDeployment, cm, sec)
+		updatedDeployment, depChanged, updateErr := resourceapply.ApplyDeployment(co.deploymentClient, toUpdate, deploymentGeneration, true)
 		if updateErr != nil {
 			logrus.Errorf("%q: %v \n", "deployment", updateErr)
 			return nil, false, updateErr
 		}
 		return updatedDeployment, depChanged, nil
 	}
-	return origDeployment, false, nil
+
+	return existingDeployment, false, nil
 }
 
 // applies changes to the oauthclient
