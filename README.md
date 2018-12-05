@@ -46,17 +46,17 @@ Then the familiar path for source code `src/github.com/openshift/console-operato
 
 ```bash
 # specifically for this repo
-mkdir -p $HOME/gopaths/consoleoperator/src/github.com/openshift/console-operator
-cd $HOME/gopaths/consoleoperator/src/github.com/openshift/console-operator
+mkdir -p $HOME/gopaths/consoleoperator/src/github.com/openshift
+cd $HOME/gopaths/consoleoperator/src/github.com/openshift
 
 ```
 
 Now clone (or fork, then clone) into this directory:
 
 ```bash 
-git@github.com:openshift/console-operator.git 
+git clone git@github.com:openshift/console-operator.git 
 # or your fork 
-git@github.com:<your-fork>/console-operator.git
+git clone git@github.com:<your-fork>/console-operator.git
 ```
 
 ### Gopath
@@ -65,7 +65,7 @@ Note that we created `$HOME/gopaths`.  This implies that each project will have
 its own gopath, so you will need to set that while working:
 
 ```bash 
-export $GOPATH=$HOME/gopaths/consoleoperator
+export GOPATH=$HOME/gopaths/consoleoperator
 ``` 
 
 If you have multiple goprojects and don't want to fuss with maintaining this when
