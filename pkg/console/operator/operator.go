@@ -7,16 +7,18 @@ import (
 	// 3rd party
 	"github.com/blang/semver"
 	"github.com/sirupsen/logrus"
+
 	// kube
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/informers/core/v1"
+	corev1 "k8s.io/client-go/informers/core/v1"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+
 	// openshift
 	operatorsv1alpha1 "github.com/openshift/api/operator/v1alpha1"
 	oauthclientv1 "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
@@ -24,11 +26,13 @@ import (
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	"github.com/openshift/console-operator/pkg/controller"
 	"github.com/openshift/library-go/pkg/operator/versioning"
+
 	// informers
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	consolev1alpha1 "github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	consoleinformers "github.com/openshift/console-operator/pkg/generated/informers/externalversions/console/v1alpha1"
 	appsinformersv1 "k8s.io/client-go/informers/apps/v1"
+
 	// clients
 	"github.com/openshift/console-operator/pkg/generated/clientset/versioned/typed/console/v1alpha1"
 
@@ -54,7 +58,7 @@ var CreateDefaultConsoleFlag bool
 func NewConsoleOperator(
 	// informers
 	consoles consoleinformers.ConsoleInformer,
-	coreV1 v1.Interface,
+	coreV1 corev1.Interface,
 	deployments appsinformersv1.DeploymentInformer,
 	routes routesinformersv1.RouteInformer,
 	oauthClients oauthinformersv1.OAuthClientInformer,
@@ -206,11 +210,12 @@ func (c *ConsoleOperator) sync(_ interface{}) error {
 	outConfig := operatorConfig.DeepCopy()
 	var errs []error
 
+	configChanged := false
 	switch {
 	// v4.0.0 or nil
 	case v311_to_401.BetweenOrEmpty(currentActualVersion):
 		logrus.Println("Sync-4.0.0")
-		outConfig, err = sync_v400(c, outConfig)
+		outConfig, configChanged, err = sync_v400(c, outConfig)
 		errs = append(errs, err)
 		if err == nil {
 			outConfig.Status.TaskSummary = "sync-4.0.0"
@@ -223,9 +228,11 @@ func (c *ConsoleOperator) sync(_ interface{}) error {
 		outConfig.Status.TaskSummary = "unrecognized"
 	}
 
-	// TODO: this should do better apply logic or similar, maybe use SetStatusFromAvailability
-	_, err = c.operatorClient.Update(outConfig)
-	errs = append(errs, err)
+	if configChanged {
+		// TODO: this should do better apply logic or similar, maybe use SetStatusFromAvailability
+		_, err = c.operatorClient.Update(outConfig)
+		errs = append(errs, err)
+	}
 
 	return utilerrors.NewAggregate(errs)
 }

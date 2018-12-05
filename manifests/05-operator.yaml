@@ -14,10 +14,6 @@ spec:
         name: console-operator
     spec:
       serviceAccountName: console-operator
-      #
-      # TODO: UPDATE ME ONCE THE VOLUMEMOUNT FOR THE CONFIG.YAML
-      # IS IRONED OUT VIA THE examples/05-operator-alt-image.yaml
-      #
       containers:
       - name: console-operator
         image: docker.io/openshift/origin-console-operator:latest
