@@ -51,6 +51,10 @@ const (
 	controllerName = "Console"
 )
 
+const (
+	minimumConsoleReplicas = 3
+)
+
 var CreateDefaultConsoleFlag bool
 
 // the ConsoleOperator uses specific, strongly-typed clients
@@ -270,12 +274,11 @@ func (c *ConsoleOperator) defaultConsole() *consolev1alpha1.Console {
 		Spec: consolev1alpha1.ConsoleSpec{
 			OperatorSpec: operatorsv1alpha1.OperatorSpec{
 				// by default the console is managed
-				ManagementState: "Managed",
+				ManagementState: operatorsv1alpha1.Managed,
 				// if Verison is not 4.0.0 our reconcile loop will not pick it up
 				Version: "4.0.0",
 			},
-			// one replica is created
-			Count: 1,
+			Count: minimumConsoleReplicas,
 		},
 	}
 }
