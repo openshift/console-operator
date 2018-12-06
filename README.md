@@ -171,11 +171,23 @@ oc create -f ./examples/05-operator-alt-image.yaml
 ## Running Against a 4.0.0 Cluster
 
 The console operator is installed by default and will automatically maintain a console. For development,
-if you want to run the console-operator locally against a 4.0 cluster with the appropriate 
-capabilities (not as `system:admin` but rather using the correct service account) do the following:
+you want to run the console-operator locally against a 4.0 cluster.
+
+To disable the default console, do the following:
+
+```bash
+oc login -u system:admin
+# permanently tell CVO to not reconcile the operator itself
+oc apply -f ./dev/cvo-disable-operator.yaml
+# then scale down the operator deployment (preferred to deletion)
+oc scale --replicas=0 deployment console-operator -n openshift-console 
+```
+
+If you do not do this step, CVO will continually reconcile the operator.
+
+Now, if you want to redeploy everything from scratch, do the following:
 
 ```bash 
-# if you want to remove the existing console entirely to start fresh
 oc login -u system:admin
 oc delete project openshift-console 
 
@@ -189,7 +201,7 @@ oc create -f manifests/04*.yaml
 ```
 
 Then to correctly run the operator you will want to login using the token from the 
-service account:
+service account.  Running the operator with `system:admin` is not recommended.
 
 ```bash 
 oc login --token=$(oc sa get-token console-operator -n openshift-console)
@@ -233,7 +245,10 @@ Once you have a running cluster, you can deploy everything like this:
 ```bash 
 oc create -f manifests
 ```
-But if you want to run the operator locally instead of the deployed container, remove the deployment:
+But if you want to run the operator locally instead of the deployed container, remove the deployment.
+
+CVO will reconcile the operator itself, much like a Deployment ensures a Pod always exists
+and is in the correct state.  That means, if you do the following:
 
 ```bash 
 oc delete -f manifests/05-operator.yaml

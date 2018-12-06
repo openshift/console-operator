@@ -1,0 +1,14 @@
+apiVersion: config.openshift.io/v1
+kind: ClusterVersion
+metadata:
+  namespace: openshift-cluster-version
+  name: version
+spec:
+  overrides:
+  # once this override is applied, you can scale or delete
+  # the operator and CVO will no longer reconcile it
+  - kind: Deployment
+    # group: console.openshift.io
+    name: console-operator
+    namespace: openshift-console
+    unmanaged: true

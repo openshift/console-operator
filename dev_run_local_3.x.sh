@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# NOTE: the operator is designed for a 4.0 cluster
+
 # we need to be system admin to install these
 oc login -u system:admin
 
