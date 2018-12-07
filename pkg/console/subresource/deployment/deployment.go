@@ -213,12 +213,10 @@ func consoleContainer(cr *v1alpha1.Console) corev1.Container {
 		TerminationMessagePath:   "/dev/termination-log",
 		TerminationMessagePolicy: corev1.TerminationMessagePolicy("File"),
 		Resources: corev1.ResourceRequirements{
-			Limits: map[corev1.ResourceName]resource.Quantity{
-				// TODO: fill these out
-				//	"cpu": int64(100),
-				//	"memory": int64(100)
+			Requests: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceCPU:    resource.MustParse("100m"),
+				corev1.ResourceMemory: resource.MustParse("100Mi"),
 			},
-			Requests: map[corev1.ResourceName]resource.Quantity{},
 		},
 	}
 }
