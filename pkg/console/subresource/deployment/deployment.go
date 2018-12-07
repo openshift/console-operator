@@ -82,7 +82,33 @@ func DefaultDeployment(cr *v1alpha1.Console, cm *corev1.ConfigMap, sec *corev1.S
 					},
 				},
 				Spec: corev1.PodSpec{
-					// TODO: NodeSelector: corev1.NodeSelector{},
+					// we want to deploy on master nodes
+					NodeSelector: map[string]string{
+						// empty string is correct
+						"node-role.kubernetes.io/master": "",
+					},
+					Affinity: &corev1.Affinity{
+						// spread out across master nodes rather than congregate on one
+						PodAntiAffinity: &corev1.PodAntiAffinity{
+							PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+								Weight: 100,
+								PodAffinityTerm: corev1.PodAffinityTerm{
+									LabelSelector: &metav1.LabelSelector{
+										MatchLabels: util.SharedLabels(),
+									},
+									TopologyKey: "kubernetes.io/hostname",
+								},
+							}},
+						},
+					},
+					// toleration is a taint override. we can and should be scheduled on a master node.
+					Tolerations: []corev1.Toleration{
+						{
+							Key:      "node-role.kubernetes.io/master",
+							Operator: corev1.TolerationOpExists,
+							Effect:   corev1.TaintEffectNoSchedule,
+						},
+					},
 					RestartPolicy:                 corev1.RestartPolicyAlways,
 					SchedulerName:                 corev1.DefaultSchedulerName,
 					TerminationGracePeriodSeconds: &gracePeriod,
