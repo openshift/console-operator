@@ -15,12 +15,9 @@ spec:
   # - Unmanaged indicates that the operator should idle and ignore the console and its sub-resources
   # - Removed indicates that the operator should delete all of the sub-resources of the console
   managementState: Managed
-  # there should be only one console at this time
-  # this could be used to support leader election if desired
-  count: 1
+  # there should be the same number of console replicas as the number of masters, minimum 2
+  count: 3
   logging:
     level: 0
   # artifact of base operator
   version: 4.0.0
-  # going away
-  value: "panda-bears-are-awesome-and-this-should-be-a-console-instead-woot"
