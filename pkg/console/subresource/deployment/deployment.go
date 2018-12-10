@@ -11,6 +11,7 @@ import (
 
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
@@ -24,8 +25,9 @@ const (
 )
 
 const (
-	configMapResourceVersionAnnotation = "console.openshift.io/consoleconfigversion"
-	secretResourceVersionAnnotation    = "console.openshift.io/oauthsecretversion"
+	configMapResourceVersionAnnotation          = "console.openshift.io/console-config-version"
+	serviceCAConfigMapResourceVersionAnnotation = "console.openshift.io/service-ca-config-version"
+	secretResourceVersionAnnotation             = "console.openshift.io/oauth-secret-version"
 )
 
 type volumeConfig struct {
@@ -51,14 +53,20 @@ var volumeConfigList = []volumeConfig{
 		isSecret: true,
 	},
 	{
-		name:        "console-config",
+		name:        configmap.ConsoleConfigMapName,
 		readOnly:    true,
 		path:        "/var/console-config",
 		isConfigMap: true,
 	},
+	{
+		name:        configmap.ServiceCAConfigMapName,
+		readOnly:    true,
+		path:        "/var/service-ca",
+		isConfigMap: true,
+	},
 }
 
-func DefaultDeployment(cr *v1alpha1.Console, cm *corev1.ConfigMap, sec *corev1.Secret) *appsv1.Deployment {
+func DefaultDeployment(cr *v1alpha1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) *appsv1.Deployment {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
@@ -77,8 +85,9 @@ func DefaultDeployment(cr *v1alpha1.Console, cm *corev1.ConfigMap, sec *corev1.S
 					Name:   api.OpenShiftConsoleShortName,
 					Labels: labels,
 					Annotations: map[string]string{
-						configMapResourceVersionAnnotation: cm.GetResourceVersion(),
-						secretResourceVersionAnnotation:    sec.GetResourceVersion(),
+						configMapResourceVersionAnnotation:          cm.GetResourceVersion(),
+						serviceCAConfigMapResourceVersionAnnotation: serviceCAConfigMap.GetResourceVersion(),
+						secretResourceVersionAnnotation:             sec.GetResourceVersion(),
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -186,6 +195,7 @@ func consoleContainer(cr *v1alpha1.Console) corev1.Container {
 			"/opt/bridge/bin/bridge",
 			"--public-dir=/opt/bridge/static",
 			"--config=/var/console-config/console-config.yaml",
+			"--service-ca-file=/var/service-ca/service-ca.crt",
 		},
 		// TODO: can probably remove, this is used for local dev
 		//Env: []corev1.EnvVar{{
@@ -241,18 +251,25 @@ func ConfigMapResourceVersionChanged(dep *appsv1.Deployment, cm *corev1.ConfigMa
 	return cm.GetResourceVersion() != currentVersion
 }
 
+func ServiceCAConfigMapResourceVersionChanged(dep *appsv1.Deployment, serviceCAConfigMap *corev1.ConfigMap) bool {
+	currentVersion := dep.Spec.Template.Annotations[serviceCAConfigMapResourceVersionAnnotation]
+	logrus.Infof("%v changed? %v (%v vs %v)", serviceCAConfigMapResourceVersionAnnotation, serviceCAConfigMap.GetResourceVersion() != currentVersion, serviceCAConfigMap.GetResourceVersion(), currentVersion)
+	return serviceCAConfigMap.GetResourceVersion() != currentVersion
+}
+
 func SecretResourceVersionChanged(dep *appsv1.Deployment, sec *corev1.Secret) bool {
 	currentVersion := dep.Spec.Template.Annotations[secretResourceVersionAnnotation]
 	logrus.Infof("%v changed? %v (%v vs %v)", secretResourceVersionAnnotation, sec.GetResourceVersion() != currentVersion, sec.GetResourceVersion(), currentVersion)
 	return sec.GetResourceVersion() != currentVersion
 }
 
-func ResourceVersionsChanged(dep *appsv1.Deployment, cm *corev1.ConfigMap, sec *corev1.Secret) bool {
-	return SecretResourceVersionChanged(dep, sec) || ConfigMapResourceVersionChanged(dep, cm)
+func ResourceVersionsChanged(dep *appsv1.Deployment, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) bool {
+	return ConfigMapResourceVersionChanged(dep, cm) || ServiceCAConfigMapResourceVersionChanged(dep, serviceCAConfigMap) || SecretResourceVersionChanged(dep, sec)
 }
 
-func UpdateResourceVersions(dep *appsv1.Deployment, cm *corev1.ConfigMap, sec *corev1.Secret) *appsv1.Deployment {
+func UpdateResourceVersions(dep *appsv1.Deployment, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) *appsv1.Deployment {
 	dep.Spec.Template.Annotations[configMapResourceVersionAnnotation] = cm.GetResourceVersion()
+	dep.Spec.Template.Annotations[serviceCAConfigMapResourceVersionAnnotation] = serviceCAConfigMap.GetResourceVersion()
 	dep.Spec.Template.Annotations[secretResourceVersionAnnotation] = sec.GetResourceVersion()
 	return dep
 }

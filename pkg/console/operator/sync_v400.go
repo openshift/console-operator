@@ -62,6 +62,12 @@ func sync_v400(co *consoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 	}
 	toUpdate = toUpdate || cmChanged
 
+	serviceCAConfigMap, serviceCAConfigMapChanged, serviceCAConfigMapErr := SyncServiceCAConfigMap(co, consoleConfig)
+	if serviceCAConfigMapErr != nil {
+		return consoleConfig, toUpdate, serviceCAConfigMapErr
+	}
+	toUpdate = toUpdate || serviceCAConfigMapChanged
+
 	sec, secChanged, secErr := SyncSecret(co, consoleConfig)
 	if secErr != nil {
 		return consoleConfig, toUpdate, secErr
@@ -74,7 +80,7 @@ func sync_v400(co *consoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 	}
 	toUpdate = toUpdate || oauthChanged
 
-	_, depChanged, depErr := SyncDeployment(co, consoleConfig, cm, sec)
+	_, depChanged, depErr := SyncDeployment(co, consoleConfig, cm, serviceCAConfigMap, sec)
 	if depErr != nil {
 		return consoleConfig, toUpdate, depErr
 	}
@@ -103,9 +109,9 @@ func sync_v400(co *consoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 	return consoleConfig, toUpdate, nil
 }
 
-func SyncDeployment(co *consoleOperator, consoleConfig *v1alpha1.Console, cm *corev1.ConfigMap, sec *corev1.Secret) (*appsv1.Deployment, bool, error) {
+func SyncDeployment(co *consoleOperator, consoleConfig *v1alpha1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) (*appsv1.Deployment, bool, error) {
 	logrus.Printf("validating console deployment...")
-	defaultDeployment := deploymentsub.DefaultDeployment(consoleConfig, cm, sec)
+	defaultDeployment := deploymentsub.DefaultDeployment(consoleConfig, cm, serviceCAConfigMap, sec)
 	versionAvailability := &operatorv1alpha1.VersionAvailability{
 		Version: consoleConfig.Spec.Version,
 	}
@@ -127,8 +133,8 @@ func SyncDeployment(co *consoleOperator, consoleConfig *v1alpha1.Console, cm *co
 	}
 
 	// otherwise, we may need to update or force a rollout
-	if deploymentsub.ResourceVersionsChanged(existingDeployment, cm, sec) {
-		toUpdate := deploymentsub.UpdateResourceVersions(existingDeployment, cm, sec)
+	if deploymentsub.ResourceVersionsChanged(existingDeployment, cm, serviceCAConfigMap, sec) {
+		toUpdate := deploymentsub.UpdateResourceVersions(existingDeployment, cm, serviceCAConfigMap, sec)
 		updatedDeployment, depChanged, updateErr := resourceapply.ApplyDeployment(co.deploymentClient, toUpdate, deploymentGeneration, true)
 		if updateErr != nil {
 			logrus.Errorf("%q: %v \n", "deployment", updateErr)
@@ -194,6 +200,42 @@ func SyncConfigMap(co *consoleOperator, consoleConfig *v1alpha1.Console, rt *rou
 	}
 	logrus.Println("configmap exists and is in the correct state")
 	return cm, cmChanged, cmErr
+}
+
+// apply service-ca configmap
+func SyncServiceCAConfigMap(co *consoleOperator, consoleConfig *v1alpha1.Console) (*corev1.ConfigMap, bool, error) {
+	logrus.Printf("validating service-ca configmap...")
+	required := configmapsub.DefaultServiceCAConfigMap(consoleConfig)
+	// we can't use `resourceapply.ApplyConfigMap` since it compares data, and the service serving cert operator injects the data
+	existing, err := co.configMapClient.ConfigMaps(required.Namespace).Get(required.Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(required)
+		if err == nil {
+			logrus.Println("service-ca configmap created")
+		} else {
+			logrus.Errorf("%q: %v \n", "service-ca configmap", err)
+		}
+		return actual, true, err
+	}
+	if err != nil {
+		logrus.Errorf("%q: %v \n", "service-ca configmap", err)
+		return nil, false, err
+	}
+
+	modified := resourcemerge.BoolPtr(false)
+	resourcemerge.EnsureObjectMeta(modified, &existing.ObjectMeta, required.ObjectMeta)
+	if !*modified {
+		logrus.Println("service-ca configmap exists and is in the correct state")
+		return existing, false, nil
+	}
+
+	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(existing)
+	if err == nil {
+		logrus.Println("service-ca configmap updated")
+	} else {
+		logrus.Errorf("%q: %v \n", "service-ca configmap", err)
+	}
+	return actual, true, err
 }
 
 // apply service
