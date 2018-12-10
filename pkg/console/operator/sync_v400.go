@@ -278,11 +278,11 @@ func setStatus(cs v1alpha1.ConsoleStatus, svc *corev1.Service, rt *routev1.Route
 	}
 
 	if secretAndOauthMatch(sec, oa) {
-		cs.OAuthSecret = "valid"
-		logrus.Printf("status.OAuthSecret is valid")
+		cs.OAuthSecretValid = v1alpha1.OAuthSecretValid
+		logrus.Printf("OAuthSecret is valid and in sync")
 	} else {
-		cs.OAuthSecret = "mismatch"
-		logrus.Printf("status.OAuthSecret is mismatch")
+		cs.OAuthSecretValid = v1alpha1.OAuthSecretInvalid
+		logrus.Printf("OAuthSecret is invalid and/or not in sync")
 	}
 
 }

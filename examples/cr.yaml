@@ -21,3 +21,9 @@ spec:
     level: 0
   # artifact of base operator
   version: 4.0.0
+  defaultRoute: true
+  routes:
+  - name: my-custom-route
+    hostName: https://www.example.com
+    secretName: tls-info-in-this-secret
+  logoutPublicURL: https://www.example.com/logout

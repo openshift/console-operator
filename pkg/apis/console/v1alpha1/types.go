@@ -19,20 +19,24 @@ type Console struct {
 
 type ConsoleSpec struct {
 	v1alpha1.OperatorSpec
-	// Count is the number of Console replicas
-	Count int32 `json:"count,omitempty"`
-	// take a look @:
-	// https://github.com/openshift/cluster-image-registry-operator/blob/master/pkg/apis/imageregistry/v1alpha1/types.go#L91-L92
-	// DefaultRoute: T|F
-	// additional routes config w/secrets
-	// Route[]
+	// Replicas is the number of Console replicas
+	Replicas int32 `json:"count,omitempty"`
+	// default generated route
+	DefaultRoute bool `json:"defaultRoute,omitempty"`
+	// there may potentially be musltiple custom host names
+	Routes []ConsoleConfigRoute `json:"routes,omitempty"`
+	// if authenticating with Request Header, OAuth or OpenID identity providers,
+	// an external URL is required to destroy single sign-on sessions
+	LogoutPublicURL string `json:logoutPublicURL,omitempty`
 }
 
 type ConsoleStatus struct {
 	v1alpha1.OperatorStatus
 	// set once the router has a default host name
 	DefaultHostName string `json:"defaultHostName"`
-	OAuthSecret     string `json:"oauthSecret"`
+	// list of all hostnames as there may be mulitple serving the console
+	HostNames        []ConsoleConfigRoute
+	OAuthSecretValid OAuthSecretValidationStatus `json:"oauthSecretValid"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -40,6 +44,23 @@ type ConsoleStatus struct {
 type ConsoleList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-
-	Items []Console `json:"items"`
+	Items           []Console `json:"items"`
 }
+
+// For each custom host name, we will need a config.
+// a route/host will reference a secret in the `openshift-managed` namespace,
+// which will contain all of the tls cert information.  The certs will
+// need to be read out of the secret and inlined on the route created for
+// the specific hostname.
+type ConsoleConfigRoute struct {
+	Name       string `json:"name"`
+	Hostname   string `json:"hostname"`
+	SecretName string `json:"secretName"`
+}
+
+type OAuthSecretValidationStatus string
+
+const (
+	OAuthSecretValid   OAuthSecretValidationStatus = "valid"
+	OAuthSecretInvalid OAuthSecretValidationStatus = "invalid"
+)

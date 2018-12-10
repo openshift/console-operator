@@ -278,7 +278,7 @@ func (c *ConsoleOperator) defaultConsole() *consolev1alpha1.Console {
 				// if Verison is not 4.0.0 our reconcile loop will not pick it up
 				Version: "4.0.0",
 			},
-			Count: minimumConsoleReplicas,
+			Replicas: minimumConsoleReplicas,
 		},
 	}
 }
