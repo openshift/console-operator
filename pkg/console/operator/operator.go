@@ -3,6 +3,7 @@ package operator
 import (
 	// standard lib
 	"fmt"
+	"time"
 
 	// 3rd party
 	"github.com/blang/semver"
@@ -152,6 +153,8 @@ type ConsoleOperator struct {
 }
 
 func (c *ConsoleOperator) Run(stopCh <-chan struct{}) {
+	logrus.Info("starting console operator")
+	defer logrus.Info("shutting down console operator")
 	// only start one worker because we only have one key name in our queue
 	// since this operator works on a singleton, it does not make sense to ever run more than one worker
 	c.controller.Run(1, stopCh)
@@ -160,7 +163,12 @@ func (c *ConsoleOperator) Run(stopCh <-chan struct{}) {
 // sync() is the handler() function equivalent from the sdk
 // this is the big switch statement.
 // TODO: clean this up a bit, its messy
-func (c *ConsoleOperator) sync(_ interface{}) error {
+func (c *ConsoleOperator) sync(key interface{}) error {
+	startTime := time.Now()
+	logrus.Infof("started syncing operator %q (%v)", key, startTime)
+	defer func() {
+		logrus.Infof("finished syncing operator %q (%v) \n\n", key, time.Since(startTime))
+	}()
 	// we ignore the passed in key because it will always be workQueueKey
 	// it does not matter how the sync loop was triggered
 	// all we need to worry about is reconciling the state back to what we expect
@@ -176,14 +184,14 @@ func (c *ConsoleOperator) sync(_ interface{}) error {
 
 	switch operatorConfig.Spec.ManagementState {
 	case operatorsv1alpha1.Managed:
-		fmt.Println("Console is in a managed state.")
+		logrus.Println("console is in a managed state.")
 		// handled below
 	case operatorsv1alpha1.Unmanaged:
-		fmt.Println("Console is in an unmanaged state.")
+		logrus.Println("console is in an unmanaged state.")
 		return nil
 	// take a look @ https://github.com/openshift/service-serving-cert-signer/blob/master/pkg/operator/operator.go#L86
 	case operatorsv1alpha1.Removed:
-		fmt.Println("Console has been removed.")
+		logrus.Println("console has been removed.")
 		return c.deleteAllResources(operatorConfig)
 	default:
 		// TODO should update status
@@ -218,7 +226,6 @@ func (c *ConsoleOperator) sync(_ interface{}) error {
 	switch {
 	// v4.0.0 or nil
 	case v311_to_401.BetweenOrEmpty(currentActualVersion):
-		logrus.Println("Sync-4.0.0")
 		outConfig, configChanged, err = sync_v400(c, outConfig)
 		errs = append(errs, err)
 		if err == nil {
@@ -228,7 +235,7 @@ func (c *ConsoleOperator) sync(_ interface{}) error {
 			}
 		}
 	default:
-		logrus.Printf("Unrecognized version. Desired %s, Actual %s", desiredVersion, currentActualVersion)
+		logrus.Printf("unrecognized version. desired %s, actual %s", desiredVersion, currentActualVersion)
 		outConfig.Status.TaskSummary = "unrecognized"
 	}
 
@@ -243,6 +250,8 @@ func (c *ConsoleOperator) sync(_ interface{}) error {
 
 // this may need to move to sync_v400 if versions ever have custom delete logic
 func (c *ConsoleOperator) deleteAllResources(cr *consolev1alpha1.Console) error {
+	logrus.Info("deleting console resources")
+	defer logrus.Info("finished deleting console resources")
 	var errs []error
 	// service
 	errs = append(errs, c.serviceClient.Services(controller.TargetNamespace).Delete(service.Stub().Name, &metav1.DeleteOptions{}))
@@ -266,6 +275,7 @@ func (c *ConsoleOperator) deleteAllResources(cr *consolev1alpha1.Console) error 
 // this may need to eventually live under each sync version, depending on if there is
 // custom sync logic
 func (c *ConsoleOperator) defaultConsole() *consolev1alpha1.Console {
+	logrus.Info("creating console CR with default values")
 	return &consolev1alpha1.Console{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      controller.ResourceName,
