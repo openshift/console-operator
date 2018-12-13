@@ -230,6 +230,16 @@ func SyncRoute(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*routev1.R
 		logrus.Errorf("%q: %v \n", "route", rtErr)
 		return nil, false, errors.New("waiting on route.spec.host")
 	}
+
+	if validatedRoute, changed := routesub.Validate(rt); changed {
+		if _, err := co.routeClient.Routes(controller.TargetNamespace).Update(validatedRoute); err != nil {
+			logrus.Errorf("%q: %v \n", "route", err)
+			return nil, false, err
+		}
+		errMsg := fmt.Errorf("route is invalid, correcting route state")
+		logrus.Error(errMsg)
+		return nil, true, errMsg
+	}
 	// only returns the route if we hit the happy path, we cannot make progress w/o the host
 	logrus.Println("route exists and is in the correct state")
 	return rt, rtIsNew, rtErr
