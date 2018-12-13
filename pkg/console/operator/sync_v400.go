@@ -200,13 +200,31 @@ func SyncConfigMap(co *ConsoleOperator, consoleConfig *v1alpha1.Console, rt *rou
 // there is nothing special about our service, so no additional error handling is needed here.
 func SyncService(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*corev1.Service, bool, error) {
 	logrus.Printf("validating console service...")
-	svc, svcChanged, svcErr := resourceapply.ApplyService(co.serviceClient, servicesub.DefaultService(consoleConfig))
-	if svcErr != nil {
-		logrus.Errorf("%q: %v \n", "service", svcErr)
-		return nil, false, svcErr
+	svc, getErr := co.serviceClient.Services(controller.TargetNamespace).Get(servicesub.Stub().Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(getErr) {
+		_, svcChanged, svcErr := resourceapply.ApplyService(co.serviceClient, servicesub.DefaultService(consoleConfig))
+		return nil, svcChanged, fmt.Errorf("service not found, creating new service, create err = %v", svcErr)
+	}
+	if getErr != nil {
+		logrus.Errorf("%q: %v \n", "service", getErr)
+		return nil, false, getErr
+	}
+
+	if validatedService, changed := servicesub.Validate(svc); changed {
+		// ideally we would use resourceapply.ApplyService, however the current iteration
+		// only handles selector, type & EnsureObjectMeta.
+		// we need ports & sessionAffinity as well.
+		// TODO: PR upstream to ApplyService() to fix the above, so we can ajust here.
+		if _, err := co.serviceClient.Services(controller.TargetNamespace).Update(validatedService); err != nil {
+			logrus.Errorf("%q: %v \n", "service", err)
+			return nil, false, err
+		}
+		errMsg := fmt.Errorf("service is invalid, correcting service state")
+		logrus.Error(errMsg)
+		return nil, changed, errMsg
 	}
 	logrus.Println("service exists and is in the correct state")
-	return svc, svcChanged, svcErr
+	return svc, false, getErr
 }
 
 // apply route
