@@ -2,14 +2,15 @@ package util
 
 import (
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	"github.com/openshift/console-operator/pkg/controller"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	yaml "gopkg.in/yaml.v2"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"os"
-	"strings"
 )
 
 func SharedLabels() map[string]string {
@@ -99,6 +100,5 @@ func HTTPS(host string) string {
 		return host
 	}
 	secured := fmt.Sprintf("%s%s", protocol, host)
-	logrus.Infof("util.HTTPS(): from %s to %s", host, secured)
 	return secured
 }
