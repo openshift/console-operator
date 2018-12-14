@@ -237,13 +237,13 @@ func livenessProbe() *corev1.Probe {
 
 func ConfigMapResourceVersionChanged(dep *appsv1.Deployment, cm *corev1.ConfigMap) bool {
 	currentVersion := dep.Spec.Template.Annotations[configMapResourceVersionAnnotation]
-	logrus.Infof("%v changed? %v (%v vs %v)", configMapResourceVersionAnnotation, cm.GetResourceVersion() != currentVersion, cm.GetResourceVersion(), currentVersion)
+	logrus.Infof("pod template annotation [%v] changed? %v (%v vs %v)", configMapResourceVersionAnnotation, cm.GetResourceVersion() != currentVersion, cm.GetResourceVersion(), currentVersion)
 	return cm.GetResourceVersion() != currentVersion
 }
 
 func SecretResourceVersionChanged(dep *appsv1.Deployment, sec *corev1.Secret) bool {
 	currentVersion := dep.Spec.Template.Annotations[secretResourceVersionAnnotation]
-	logrus.Infof("%v changed? %v (%v vs %v)", secretResourceVersionAnnotation, sec.GetResourceVersion() != currentVersion, sec.GetResourceVersion(), currentVersion)
+	logrus.Infof("pod template annotation [%v] changed? %v (%v vs %v)", secretResourceVersionAnnotation, sec.GetResourceVersion() != currentVersion, sec.GetResourceVersion(), currentVersion)
 	return sec.GetResourceVersion() != currentVersion
 }
 
