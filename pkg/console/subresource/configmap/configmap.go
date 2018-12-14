@@ -45,6 +45,12 @@ func Stub() *corev1.ConfigMap {
 	return configMap
 }
 
+func Validate(cm *corev1.ConfigMap) (*corev1.ConfigMap, bool) {
+	// noop, there is no validation needed for the configmap.
+	// the sync loop naturally ensures the configmap is in the correct state.
+	return cm, false
+}
+
 func NewYamlConfigString(host string) string {
 	return string(NewYamlConfig(host))
 }
@@ -124,4 +130,8 @@ func authServerYaml() yaml.MapSlice {
 
 func consoleBaseAddr(host string) string {
 	return util.HTTPS(host)
+}
+
+func GetConsoleConfig(cm *corev1.ConfigMap) string {
+	return cm.Data[consoleConfigYamlFile]
 }

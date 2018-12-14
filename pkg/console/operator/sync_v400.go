@@ -192,7 +192,20 @@ func SyncConfigMap(co *ConsoleOperator, consoleConfig *v1alpha1.Console, rt *rou
 		logrus.Errorf("%q: %v \n", "configmap", cmErr)
 		return nil, false, cmErr
 	}
+
+	if validatedConfig, changed := configmapsub.Validate(cm); changed {
+		_, _, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, validatedConfig)
+		if cmErr != nil {
+			logrus.Errorf("%q: %v \n", "service", cmErr)
+			return nil, false, cmErr
+		}
+		errMsg := fmt.Errorf("configmap is invalid, correcting configmap state")
+		logrus.Error(errMsg)
+		return nil, true, errMsg
+	}
+
 	logrus.Println("configmap exists and is in the correct state")
+	logrus.Printf("existing config:\n%v", configmapsub.GetConsoleConfig(cm))
 	return cm, cmChanged, cmErr
 }
 
