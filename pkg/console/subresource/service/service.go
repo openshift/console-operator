@@ -1,11 +1,12 @@
 package service
 
 import (
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+
+	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
-	"github.com/openshift/console-operator/pkg/controller"
-	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -23,7 +24,7 @@ const (
 func DefaultService(cr *v1alpha1.Console) *v1.Service {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
-	meta.Name = controller.OpenShiftConsoleShortName
+	meta.Name = api.OpenShiftConsoleShortName
 	meta.Annotations = map[string]string{
 		ServingCertSecretAnnotation: ConsoleServingCertName,
 	}
@@ -48,7 +49,7 @@ func DefaultService(cr *v1alpha1.Console) *v1.Service {
 
 func Stub() *v1.Service {
 	meta := util.SharedMeta()
-	meta.Name = controller.OpenShiftConsoleShortName
+	meta.Name = api.OpenShiftConsoleShortName
 	meta.Annotations = map[string]string{
 		ServingCertSecretAnnotation: ConsoleServingCertName,
 	}

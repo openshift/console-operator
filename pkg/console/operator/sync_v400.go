@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/openshift/console-operator/pkg/controller"
+	"github.com/openshift/console-operator/pkg/api"
 
 	// 3rd party
 	"github.com/sirupsen/logrus"
@@ -38,7 +38,7 @@ import (
 // The next loop will pick up where they previous left off and move the process forward one step.
 // This ensures the logic is simpler as we do not have to handle coordination between objects within
 // the loop.
-func sync_v400(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.Console, bool, error) {
+func sync_v400(co *consoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.Console, bool, error) {
 	logrus.Println("running sync loop 4.0.0")
 
 	// track changes, may trigger ripples & update consoleConfig.Status
@@ -103,7 +103,7 @@ func sync_v400(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 	return consoleConfig, toUpdate, nil
 }
 
-func SyncDeployment(co *ConsoleOperator, consoleConfig *v1alpha1.Console, cm *corev1.ConfigMap, sec *corev1.Secret) (*appsv1.Deployment, bool, error) {
+func SyncDeployment(co *consoleOperator, consoleConfig *v1alpha1.Console, cm *corev1.ConfigMap, sec *corev1.Secret) (*appsv1.Deployment, bool, error) {
 	logrus.Printf("validating console deployment...")
 	defaultDeployment := deploymentsub.DefaultDeployment(consoleConfig, cm, sec)
 	versionAvailability := &operatorv1alpha1.VersionAvailability{
@@ -111,7 +111,7 @@ func SyncDeployment(co *ConsoleOperator, consoleConfig *v1alpha1.Console, cm *co
 	}
 	deploymentGeneration := resourcemerge.ExpectedDeploymentGeneration(defaultDeployment, versionAvailability)
 	// first establish, do we have a deployment?
-	existingDeployment, getDepErr := co.deploymentClient.Deployments(controller.TargetNamespace).Get(deploymentsub.Stub().Name, metav1.GetOptions{})
+	existingDeployment, getDepErr := co.deploymentClient.Deployments(api.TargetNamespace).Get(deploymentsub.Stub().Name, metav1.GetOptions{})
 
 	// if not, create it, first pass
 	if apierrors.IsNotFound(getDepErr) {
@@ -142,7 +142,7 @@ func SyncDeployment(co *ConsoleOperator, consoleConfig *v1alpha1.Console, cm *co
 
 // applies changes to the oauthclient
 // should not be called until route & secret dependencies are verified
-func SyncOAuthClient(co *ConsoleOperator, consoleConfig *v1alpha1.Console, sec *corev1.Secret, rt *routev1.Route) (*oauthv1.OAuthClient, bool, error) {
+func SyncOAuthClient(co *consoleOperator, consoleConfig *v1alpha1.Console, sec *corev1.Secret, rt *routev1.Route) (*oauthv1.OAuthClient, bool, error) {
 	logrus.Printf("validating oauthclient...")
 	oauthClient, err := co.oauthClient.OAuthClients().Get(oauthsub.Stub().Name, metav1.GetOptions{})
 	if err != nil {
@@ -165,9 +165,9 @@ func SyncOAuthClient(co *ConsoleOperator, consoleConfig *v1alpha1.Console, sec *
 // give me a good secret or die
 // we want the sync loop to die if we have to create.  thats fine, next pass will fix the rest of things.
 // adopt this pattern so we dont have to deal with too much complexity.
-func SyncSecret(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*corev1.Secret, bool, error) {
+func SyncSecret(co *consoleOperator, consoleConfig *v1alpha1.Console) (*corev1.Secret, bool, error) {
 	logrus.Printf("validating oauth secret...")
-	secret, err := co.secretsClient.Secrets(controller.TargetNamespace).Get(secretsub.Stub().Name, metav1.GetOptions{})
+	secret, err := co.secretsClient.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name, metav1.GetOptions{})
 	// if we have to create it, or if the actual Secret is empty/invalid, then we want to return an error
 	// to kill this round of the sync loop. The next round can pick up and make progress.
 	if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) == "" {
@@ -185,7 +185,7 @@ func SyncSecret(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*corev1.S
 // apply configmap (needs route)
 // by the time we get to the configmap, we can assume the route exits & is configured properly
 // therefore no additional error handling is needed here.
-func SyncConfigMap(co *ConsoleOperator, consoleConfig *v1alpha1.Console, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
+func SyncConfigMap(co *consoleOperator, consoleConfig *v1alpha1.Console, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
 	logrus.Printf("validating console configmap...")
 	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, configmapsub.DefaultConfigMap(consoleConfig, rt))
 	if cmErr != nil {
@@ -198,7 +198,7 @@ func SyncConfigMap(co *ConsoleOperator, consoleConfig *v1alpha1.Console, rt *rou
 
 // apply service
 // there is nothing special about our service, so no additional error handling is needed here.
-func SyncService(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*corev1.Service, bool, error) {
+func SyncService(co *consoleOperator, consoleConfig *v1alpha1.Console) (*corev1.Service, bool, error) {
 	logrus.Printf("validating console service...")
 	svc, svcChanged, svcErr := resourceapply.ApplyService(co.serviceClient, servicesub.DefaultService(consoleConfig))
 	if svcErr != nil {
@@ -214,7 +214,7 @@ func SyncService(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*corev1.
 //   default host name set by the server, or any other values. The ApplyRoute()
 //   logic will have to be sound.
 // - update to ApplyRoute() once the logic is settled
-func SyncRoute(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*routev1.Route, bool, error) {
+func SyncRoute(co *consoleOperator, consoleConfig *v1alpha1.Console) (*routev1.Route, bool, error) {
 	logrus.Printf("validating console route...")
 	rt, rtIsNew, rtErr := routesub.GetOrCreate(co.routeClient, routesub.DefaultRoute(consoleConfig))
 	// rt, rtChanged, rtErr := routesub.ApplyRoute(co.routeClient, routesub.DefaultRoute(consoleConfig))
@@ -232,7 +232,7 @@ func SyncRoute(co *ConsoleOperator, consoleConfig *v1alpha1.Console) (*routev1.R
 	}
 
 	if validatedRoute, changed := routesub.Validate(rt); changed {
-		if _, err := co.routeClient.Routes(controller.TargetNamespace).Update(validatedRoute); err != nil {
+		if _, err := co.routeClient.Routes(api.TargetNamespace).Update(validatedRoute); err != nil {
 			logrus.Errorf("%q: %v \n", "route", err)
 			return nil, false, err
 		}

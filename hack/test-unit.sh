@@ -18,7 +18,6 @@ PACKAGES_TO_TEST=(
     "github.com/openshift/console-operator/pkg/console/subresource/service"
     "github.com/openshift/console-operator/pkg/console/subresource/util"
     "github.com/openshift/console-operator/pkg/console/version"
-    "github.com/openshift/console-operator/pkg/controller"
     "github.com/openshift/console-operator/pkg/crypto"
     # "github.com/openshift/console-operator/pkg/generated"
 )

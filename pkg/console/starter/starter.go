@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/openshift/console-operator/pkg/api"
+
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/tools/cache"
+
 	// "k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -16,14 +19,15 @@ import (
 	// clients
 	routesclient "github.com/openshift/client-go/route/clientset/versioned"
 	"github.com/openshift/console-operator/pkg/generated/clientset/versioned"
+
 	// informers
 	oauthinformers "github.com/openshift/client-go/oauth/informers/externalversions"
 	routesinformers "github.com/openshift/client-go/route/informers/externalversions"
 	"github.com/openshift/console-operator/pkg/generated/informers/externalversions"
+
 	// operator
 	operatorv1alpha1 "github.com/openshift/api/operator/v1alpha1"
 	"github.com/openshift/console-operator/pkg/console/operator"
-	"github.com/openshift/console-operator/pkg/controller"
 )
 
 func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
@@ -71,7 +75,7 @@ func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
 	}
 
 	tweakOAuthListOptions := func(options *v1.ListOptions) {
-		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", controller.OAuthClientName).String()
+		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OAuthClientName).String()
 	}
 
 	kubeInformersNamespaced := informers.NewSharedInformerFactoryWithOptions(
@@ -80,7 +84,7 @@ func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
 		resync,
 		// takes an unlimited number of additional "options" arguments, which are functions,
 		// that take a sharedInformerFactory and return a sharedInformerFactory
-		informers.WithNamespace(controller.TargetNamespace),
+		informers.WithNamespace(api.TargetNamespace),
 		informers.WithTweakListOptions(tweakListOptions),
 	)
 
@@ -89,14 +93,14 @@ func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
 		consoleOperatorClient,
 		resync,
 		// and the same set of optional transform functions
-		externalversions.WithNamespace(controller.TargetNamespace),
+		externalversions.WithNamespace(api.TargetNamespace),
 		externalversions.WithTweakListOptions(tweakListOptions),
 	)
 
 	routesInformersNamespaced := routesinformers.NewSharedInformerFactoryWithOptions(
 		routesClient,
 		resync,
-		routesinformers.WithNamespace(controller.TargetNamespace),
+		routesinformers.WithNamespace(api.TargetNamespace),
 		routesinformers.WithTweakListOptions(tweakListOptions),
 	)
 
@@ -157,7 +161,7 @@ func (p *operatorStatusProvider) Informer() cache.SharedIndexInformer {
 }
 
 func (p *operatorStatusProvider) CurrentStatus() (operatorv1alpha1.OperatorStatus, error) {
-	instance, err := p.informers.Console().V1alpha1().Consoles().Lister().Consoles(controller.TargetNamespace).Get(controller.ResourceName)
+	instance, err := p.informers.Console().V1alpha1().Consoles().Lister().Consoles(api.TargetNamespace).Get(api.ResourceName)
 	if err != nil {
 		return operatorv1alpha1.OperatorStatus{}, err
 	}

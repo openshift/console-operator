@@ -3,12 +3,14 @@ package configmap
 import (
 	"fmt"
 
-	v1 "github.com/openshift/api/route/v1"
+	yaml "gopkg.in/yaml.v2"
+
+	corev1 "k8s.io/api/core/v1"
+
+	routev1 "github.com/openshift/api/route/v1"
+	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
-	"github.com/openshift/console-operator/pkg/controller"
-	yaml "gopkg.in/yaml.v2"
-	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -24,7 +26,7 @@ const (
 	keyFilePath  = "/var/serving-cert/tls.key"
 )
 
-func DefaultConfigMap(cr *v1alpha1.Console, rt *v1.Route) *corev1.ConfigMap {
+func DefaultConfigMap(cr *v1alpha1.Console, rt *routev1.Route) *corev1.ConfigMap {
 	host := rt.Spec.Host
 	config := NewYamlConfigString(host)
 	configMap := Stub()
@@ -111,7 +113,7 @@ func clusterInfo(host string) yaml.MapSlice {
 func authServerYaml() yaml.MapSlice {
 	return yaml.MapSlice{
 		{
-			Key: "clientID", Value: controller.OpenShiftConsoleName,
+			Key: "clientID", Value: api.OpenShiftConsoleName,
 		}, {
 			Key: "clientSecretFile", Value: clientSecretFilePath,
 		}, {

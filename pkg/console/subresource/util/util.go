@@ -5,17 +5,19 @@ import (
 	"os"
 	"strings"
 
-	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
-	"github.com/openshift/console-operator/pkg/controller"
 	"github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
+
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 )
 
 func SharedLabels() map[string]string {
 	return map[string]string{
-		"app": controller.OpenShiftConsoleName,
+		"app": api.OpenShiftConsoleName,
 	}
 }
 
@@ -39,8 +41,8 @@ func LabelsForConsole() map[string]string {
 
 func SharedMeta() v1.ObjectMeta {
 	return v1.ObjectMeta{
-		Name:      controller.OpenShiftConsoleName,
-		Namespace: controller.OpenShiftConsoleName,
+		Name:      api.OpenShiftConsoleName,
+		Namespace: api.OpenShiftConsoleName,
 		Labels:    SharedLabels(),
 	}
 }

@@ -1,7 +1,7 @@
 package route
 
 import (
-
+	"github.com/openshift/console-operator/pkg/api"
 	// kube
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -16,7 +16,6 @@ import (
 	// operator
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
-	"github.com/openshift/console-operator/pkg/controller"
 )
 
 // We can't blindly ApplyRoute() as we need the server to annotate the
@@ -95,7 +94,7 @@ func DefaultRoute(cr *v1alpha1.Console) *routev1.Route {
 
 func Stub() *routev1.Route {
 	meta := util.SharedMeta()
-	meta.Name = controller.OpenShiftConsoleShortName
+	meta.Name = api.OpenShiftConsoleShortName
 	return &routev1.Route{
 		ObjectMeta: meta,
 	}
@@ -134,7 +133,7 @@ func Validate(route *routev1.Route) (*routev1.Route, bool) {
 
 func routeMeta() metav1.ObjectMeta {
 	meta := util.SharedMeta()
-	meta.Name = controller.OpenShiftConsoleShortName
+	meta.Name = api.OpenShiftConsoleShortName
 	return meta
 }
 

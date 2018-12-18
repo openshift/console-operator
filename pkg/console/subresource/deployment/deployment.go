@@ -9,9 +9,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
-	"github.com/openshift/console-operator/pkg/controller"
 )
 
 const (
@@ -74,7 +74,7 @@ func DefaultDeployment(cr *v1alpha1.Console, cm *corev1.ConfigMap, sec *corev1.S
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   controller.OpenShiftConsoleShortName,
+					Name:   api.OpenShiftConsoleShortName,
 					Labels: labels,
 					Annotations: map[string]string{
 						configMapResourceVersionAnnotation: cm.GetResourceVersion(),
@@ -181,7 +181,7 @@ func consoleContainer(cr *v1alpha1.Console) corev1.Container {
 	return corev1.Container{
 		Image:           util.GetImageEnv(),
 		ImagePullPolicy: corev1.PullPolicy("IfNotPresent"),
-		Name:            controller.OpenShiftConsoleShortName,
+		Name:            api.OpenShiftConsoleShortName,
 		Command: []string{
 			"/opt/bridge/bin/bridge",
 			"--public-dir=/opt/bridge/static",
