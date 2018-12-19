@@ -41,6 +41,10 @@ spec:
           value: docker.io/openshift/origin-console:latest
         - name: OPERATOR_NAME
           value: "console-operator"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
       volumes:
       - name: config
         configMap:
