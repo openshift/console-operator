@@ -5,9 +5,9 @@ spec:
   - name: console-operator
     from:
       kind: DockerImage
-      name: docker.io/openshift/origin-console-operator:latest
+      name: docker.io/openshift/origin-console-operator:v4.0
   - name: console
     from:
       kind: DockerImage
-      name: docker.io/openshift/origin-console:latest
+      name: docker.io/openshift/origin-console:v4.0
 
