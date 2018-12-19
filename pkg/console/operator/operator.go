@@ -26,6 +26,7 @@ import (
 	oauthinformersv1 "github.com/openshift/client-go/oauth/informers/externalversions/oauth/v1"
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	"github.com/openshift/console-operator/pkg/boilerplate/operator"
+	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/versioning"
 
 	// informers
@@ -71,6 +72,8 @@ type consoleOperator struct {
 	// openshift
 	routeClient routeclientv1.RoutesGetter
 	oauthClient oauthclientv1.OAuthClientsGetter
+	// recorder
+	recorder events.Recorder
 }
 
 // the consoleOperator uses specific, strongly-typed clients
@@ -88,8 +91,9 @@ func NewConsoleOperator(
 	deploymentClient appsv1.DeploymentsGetter,
 	routev1Client routeclientv1.RoutesGetter,
 	oauthv1Client oauthclientv1.OAuthClientsGetter,
+	// recorder
+	recorder events.Recorder,
 ) operator.Runner {
-
 	c := &consoleOperator{
 		// operator
 		operatorClient: operatorClient.Consoles(api.TargetNamespace),
@@ -101,6 +105,8 @@ func NewConsoleOperator(
 		// openshift
 		routeClient: routev1Client,
 		oauthClient: oauthv1Client,
+		// recorder
+		recorder: recorder,
 	}
 
 	secretsInformer := coreV1.Secrets()

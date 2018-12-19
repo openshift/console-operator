@@ -20,6 +20,7 @@ import (
 	// openshift
 
 	"github.com/openshift/console-operator/pkg/crypto"
+	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 
@@ -40,6 +41,7 @@ import (
 // the loop.
 func sync_v400(co *consoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.Console, bool, error) {
 	logrus.Println("running sync loop 4.0.0")
+	recorder := co.recorder
 
 	// track changes, may trigger ripples & update consoleConfig.Status
 	toUpdate := false
@@ -50,13 +52,13 @@ func sync_v400(co *consoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 	}
 	toUpdate = toUpdate || rtChanged
 
-	_, svcChanged, svcErr := SyncService(co, consoleConfig)
+	_, svcChanged, svcErr := SyncService(co, recorder, consoleConfig)
 	if svcErr != nil {
 		return consoleConfig, toUpdate, svcErr
 	}
 	toUpdate = toUpdate || svcChanged
 
-	cm, cmChanged, cmErr := SyncConfigMap(co, consoleConfig, rt)
+	cm, cmChanged, cmErr := SyncConfigMap(co, recorder, consoleConfig, rt)
 	if cmErr != nil {
 		return consoleConfig, toUpdate, cmErr
 	}
@@ -68,7 +70,7 @@ func sync_v400(co *consoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 	}
 	toUpdate = toUpdate || serviceCAConfigMapChanged
 
-	sec, secChanged, secErr := SyncSecret(co, consoleConfig)
+	sec, secChanged, secErr := SyncSecret(co, recorder, consoleConfig)
 	if secErr != nil {
 		return consoleConfig, toUpdate, secErr
 	}
@@ -80,7 +82,7 @@ func sync_v400(co *consoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 	}
 	toUpdate = toUpdate || oauthChanged
 
-	_, depChanged, depErr := SyncDeployment(co, consoleConfig, cm, serviceCAConfigMap, sec)
+	_, depChanged, depErr := SyncDeployment(co, recorder, consoleConfig, cm, serviceCAConfigMap, sec)
 	if depErr != nil {
 		return consoleConfig, toUpdate, depErr
 	}
@@ -109,20 +111,20 @@ func sync_v400(co *consoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 	return consoleConfig, toUpdate, nil
 }
 
-func SyncDeployment(co *consoleOperator, consoleConfig *v1alpha1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) (*appsv1.Deployment, bool, error) {
+func SyncDeployment(co *consoleOperator, recorder events.Recorder, consoleConfig *v1alpha1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) (*appsv1.Deployment, bool, error) {
 	logrus.Printf("validating console deployment...")
 	defaultDeployment := deploymentsub.DefaultDeployment(consoleConfig, cm, serviceCAConfigMap, sec)
 	versionAvailability := &operatorv1alpha1.VersionAvailability{
 		Version: consoleConfig.Spec.Version,
 	}
-	deploymentGeneration := resourcemerge.ExpectedDeploymentGeneration(defaultDeployment, versionAvailability)
+	deploymentGeneration := resourcemerge.ExpectedDeploymentGenerationV1alpha1(defaultDeployment, versionAvailability)
 	// first establish, do we have a deployment?
 	existingDeployment, getDepErr := co.deploymentClient.Deployments(api.TargetNamespace).Get(deploymentsub.Stub().Name, metav1.GetOptions{})
 
 	// if not, create it, first pass
 	if apierrors.IsNotFound(getDepErr) {
 		logrus.Print("deployment not found, creating new deployment")
-		_, depCreated, createdErr := resourceapply.ApplyDeployment(co.deploymentClient, defaultDeployment, deploymentGeneration, true)
+		_, depCreated, createdErr := resourceapply.ApplyDeployment(co.deploymentClient, recorder, defaultDeployment, deploymentGeneration, true)
 		// kill the sync loop
 		return nil, depCreated, fmt.Errorf("deployment not found, creating new deployment, create error = %v", createdErr)
 	}
@@ -135,7 +137,7 @@ func SyncDeployment(co *consoleOperator, consoleConfig *v1alpha1.Console, cm *co
 	// otherwise, we may need to update or force a rollout
 	if deploymentsub.ResourceVersionsChanged(existingDeployment, cm, serviceCAConfigMap, sec) {
 		toUpdate := deploymentsub.UpdateResourceVersions(existingDeployment, cm, serviceCAConfigMap, sec)
-		updatedDeployment, depChanged, updateErr := resourceapply.ApplyDeployment(co.deploymentClient, toUpdate, deploymentGeneration, true)
+		updatedDeployment, depChanged, updateErr := resourceapply.ApplyDeployment(co.deploymentClient, recorder, toUpdate, deploymentGeneration, true)
 		if updateErr != nil {
 			logrus.Errorf("%q: %v \n", "deployment", updateErr)
 			return nil, false, updateErr
@@ -171,13 +173,13 @@ func SyncOAuthClient(co *consoleOperator, consoleConfig *v1alpha1.Console, sec *
 // give me a good secret or die
 // we want the sync loop to die if we have to create.  thats fine, next pass will fix the rest of things.
 // adopt this pattern so we dont have to deal with too much complexity.
-func SyncSecret(co *consoleOperator, consoleConfig *v1alpha1.Console) (*corev1.Secret, bool, error) {
+func SyncSecret(co *consoleOperator, recorder events.Recorder, consoleConfig *v1alpha1.Console) (*corev1.Secret, bool, error) {
 	logrus.Printf("validating oauth secret...")
 	secret, err := co.secretsClient.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name, metav1.GetOptions{})
 	// if we have to create it, or if the actual Secret is empty/invalid, then we want to return an error
 	// to kill this round of the sync loop. The next round can pick up and make progress.
 	if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) == "" {
-		_, secChanged, secErr := resourceapply.ApplySecret(co.secretsClient, secretsub.DefaultSecret(consoleConfig, crypto.Random256BitsString()))
+		_, secChanged, secErr := resourceapply.ApplySecret(co.secretsClient, recorder, secretsub.DefaultSecret(consoleConfig, crypto.Random256BitsString()))
 		return nil, secChanged, fmt.Errorf("secret not found, creating new secret, create error = %v", secErr)
 	}
 	if err != nil {
@@ -191,9 +193,9 @@ func SyncSecret(co *consoleOperator, consoleConfig *v1alpha1.Console) (*corev1.S
 // apply configmap (needs route)
 // by the time we get to the configmap, we can assume the route exits & is configured properly
 // therefore no additional error handling is needed here.
-func SyncConfigMap(co *consoleOperator, consoleConfig *v1alpha1.Console, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
+func SyncConfigMap(co *consoleOperator, recorder events.Recorder, consoleConfig *v1alpha1.Console, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
 	logrus.Printf("validating console configmap...")
-	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, configmapsub.DefaultConfigMap(consoleConfig, rt))
+	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, recorder, configmapsub.DefaultConfigMap(consoleConfig, rt))
 	if cmErr != nil {
 		logrus.Errorf("%q: %v \n", "configmap", cmErr)
 		return nil, false, cmErr
@@ -240,9 +242,9 @@ func SyncServiceCAConfigMap(co *consoleOperator, consoleConfig *v1alpha1.Console
 
 // apply service
 // there is nothing special about our service, so no additional error handling is needed here.
-func SyncService(co *consoleOperator, consoleConfig *v1alpha1.Console) (*corev1.Service, bool, error) {
+func SyncService(co *consoleOperator, recorder events.Recorder, consoleConfig *v1alpha1.Console) (*corev1.Service, bool, error) {
 	logrus.Printf("validating console service...")
-	svc, svcChanged, svcErr := resourceapply.ApplyService(co.serviceClient, servicesub.DefaultService(consoleConfig))
+	svc, svcChanged, svcErr := resourceapply.ApplyService(co.serviceClient, recorder, servicesub.DefaultService(consoleConfig))
 	if svcErr != nil {
 		logrus.Errorf("%q: %v \n", "service", svcErr)
 		return nil, false, svcErr
