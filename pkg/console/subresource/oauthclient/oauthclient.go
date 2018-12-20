@@ -1,16 +1,18 @@
 package oauthclient
 
 import (
-	oauthv1 "github.com/openshift/api/oauth/v1"
-	routev1 "github.com/openshift/api/route/v1"
-	oauthclient "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
-	"github.com/openshift/console-operator/pkg/console/subresource/util"
-	"github.com/openshift/console-operator/pkg/controller"
-	"github.com/openshift/console-operator/pkg/crypto"
-	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	oauthv1 "github.com/openshift/api/oauth/v1"
+	routev1 "github.com/openshift/api/route/v1"
+	oauthclient "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
+	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
+
+	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/console-operator/pkg/crypto"
 )
 
 // TODO: ApplyOauth should be a generic Apply that could be used for any oauth-client
@@ -76,7 +78,7 @@ func Stub() *oauthv1.OAuthClient {
 	// we cannot set an ownerRef on the OAuthClient as it is cluster scoped
 	return &oauthv1.OAuthClient{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: controller.OAuthClientName,
+			Name: api.OAuthClientName,
 		},
 	}
 }

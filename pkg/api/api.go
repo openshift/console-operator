@@ -1,4 +1,4 @@
-package controller
+package api
 
 const (
 	// TargetNamespace could be made configurable if desired
