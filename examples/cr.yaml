@@ -15,7 +15,8 @@ spec:
   # - Unmanaged indicates that the operator should idle and ignore the console and its sub-resources
   # - Removed indicates that the operator should delete all of the sub-resources of the console
   managementState: Managed
-  # there should be the same number of console replicas as the number of masters, minimum 2
+  # there should be the same number of console replicas as the number of masters, minimum 3,
+  # unless deploying in a dev environment with a unique configuration, such as a single node setup.
   count: 3
   logging:
     level: 0
