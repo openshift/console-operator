@@ -110,7 +110,7 @@ func NewConsoleOperator(
 	return operator.New(controllerName, c,
 		operator.WithInformer(consoles, operator.FilterByNames(api.ResourceName)),
 		operator.WithInformer(deployments, operator.FilterByNames(api.OpenShiftConsoleName)),
-		operator.WithInformer(configMapInformer, operator.FilterByNames(configmap.ConsoleConfigMapName)),
+		operator.WithInformer(configMapInformer, operator.FilterByNames(configmap.ConsoleConfigMapName, configmap.ServiceCAConfigMapName)),
 		operator.WithInformer(secretsInformer, operator.FilterByNames(deployment.ConsoleOauthConfigName)),
 		operator.WithInformer(routes, operator.FilterByNames(api.OpenShiftConsoleShortName)),
 		operator.WithInformer(serviceInformer, operator.FilterByNames(api.OpenShiftConsoleShortName)),
