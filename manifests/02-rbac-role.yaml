@@ -20,6 +20,7 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - pods
   - services
   - events
   - configmaps
@@ -35,6 +36,7 @@ rules:
   - apps
   resources:
   - deployments
+  - replicasets
   verbs:
   - get
   - list
