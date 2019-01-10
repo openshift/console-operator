@@ -2,30 +2,29 @@ package controllercmd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apiserver/pkg/util/logs"
 
 	operatorv1alpha1 "github.com/openshift/api/operator/v1alpha1"
+	"github.com/openshift/library-go/pkg/config/configdefaults"
+	"github.com/openshift/library-go/pkg/crypto"
 	"github.com/openshift/library-go/pkg/serviceability"
-)
 
-var (
-	configScheme = runtime.NewScheme()
+	// for metrics
+	_ "github.com/openshift/library-go/pkg/controller/metrics"
 )
-
-func init() {
-	if err := operatorv1alpha1.AddToScheme(configScheme); err != nil {
-		panic(err)
-	}
-}
 
 // ControllerCommandConfig holds values required to construct a command to run.
 type ControllerCommandConfig struct {
@@ -65,7 +64,7 @@ func (c *ControllerCommandConfig) NewCommand() *cobra.Command {
 				glog.Fatal(err)
 			}
 
-			if err := c.StartController(); err != nil {
+			if err := c.StartController(wait.NeverStop); err != nil {
 				glog.Fatal(err)
 			}
 		},
@@ -76,19 +75,99 @@ func (c *ControllerCommandConfig) NewCommand() *cobra.Command {
 	return cmd
 }
 
+func hasServiceServingCerts(certDir string) bool {
+	if _, err := os.Stat(filepath.Join(certDir, "tls.crt")); os.IsNotExist(err) {
+		return false
+	}
+	if _, err := os.Stat(filepath.Join(certDir, "tls.key")); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
 // StartController runs the controller
-func (c *ControllerCommandConfig) StartController() error {
-	uncastConfig, err := c.basicFlags.ToConfigObj(configScheme, operatorv1alpha1.SchemeGroupVersion)
+func (c *ControllerCommandConfig) StartController(stopCh <-chan struct{}) error {
+	unstructuredConfig, err := c.basicFlags.ToConfigObj()
 	if err != nil {
 		return err
 	}
-	config, ok := uncastConfig.(*operatorv1alpha1.GenericOperatorConfig)
-	if !ok {
-		return fmt.Errorf("unexpected config: %T", uncastConfig)
+	config := &operatorv1alpha1.GenericOperatorConfig{}
+	if unstructuredConfig != nil {
+		// make a copy we can mutate
+		configCopy := unstructuredConfig.DeepCopy()
+		// force the config to our version to read it
+		configCopy.SetGroupVersionKind(operatorv1alpha1.GroupVersion.WithKind("GenericOperatorConfig"))
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(configCopy.Object, config); err != nil {
+			return err
+		}
 	}
+
+	certDir := "/var/run/secrets/serving-cert"
+
+	observedFiles := []string{
+		c.basicFlags.ConfigFile,
+		// We observe these, so we they are created or modified by service serving cert signer, we can react and restart the process
+		// that will pick these up instead of generating the self-signed certs.
+		// NOTE: We are not observing the temporary, self-signed certificates.
+		filepath.Join(certDir, "tls.crt"),
+		filepath.Join(certDir, "tls.key"),
+	}
+
+	// if we don't have any serving cert/key pairs specified and the defaults are not present, generate a self-signed set
+	// TODO maybe this should be optional?  It's a little difficult to come up with a scenario where this is worse than nothing though.
+	if len(config.ServingInfo.CertFile) == 0 && len(config.ServingInfo.KeyFile) == 0 {
+		servingInfoCopy := config.ServingInfo.DeepCopy()
+		configdefaults.SetRecommendedHTTPServingInfoDefaults(servingInfoCopy)
+
+		if hasServiceServingCerts(certDir) {
+			glog.Infof("Using service-serving-cert provided certificates")
+			config.ServingInfo.CertFile = filepath.Join(certDir, "tls.crt")
+			config.ServingInfo.KeyFile = filepath.Join(certDir, "tls.key")
+		} else {
+			glog.Warningf("Using insecure, self-signed certificates")
+			temporaryCertDir, err := ioutil.TempDir("", "serving-cert-")
+			if err != nil {
+				return err
+			}
+			signerName := fmt.Sprintf("%s-signer@%d", c.componentName, time.Now().Unix())
+			ca, err := crypto.MakeCA(
+				filepath.Join(temporaryCertDir, "serving-signer.crt"),
+				filepath.Join(temporaryCertDir, "serving-signer.key"),
+				filepath.Join(temporaryCertDir, "serving-signer.serial"),
+				signerName,
+				0,
+			)
+			if err != nil {
+				return err
+			}
+			certDir = temporaryCertDir
+
+			// force the values to be set to where we are writing the certs
+			config.ServingInfo.CertFile = filepath.Join(certDir, "tls.crt")
+			config.ServingInfo.KeyFile = filepath.Join(certDir, "tls.key")
+			// nothing can trust this, so we don't really care about hostnames
+			_, err = ca.MakeAndWriteServerCert(config.ServingInfo.CertFile, config.ServingInfo.KeyFile, sets.NewString("localhost"), 30)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	exitOnChangeReactorCh := make(chan struct{})
+	stopChannelCombined := make(chan struct{})
+	go func() {
+		select {
+		case <-exitOnChangeReactorCh:
+			close(stopChannelCombined)
+		case <-stopCh:
+			close(stopChannelCombined)
+		}
+	}()
 
 	return NewController(c.componentName, c.startFunc).
 		WithKubeConfigFile(c.basicFlags.KubeConfigFile, nil).
 		WithLeaderElection(config.LeaderElection, "", c.componentName+"-lock").
-		Run()
+		WithServer(config.ServingInfo, config.Authentication, config.Authorization).
+		WithRestartOnChange(exitOnChangeReactorCh, observedFiles...).
+		Run(unstructuredConfig, stopChannelCombined)
 }

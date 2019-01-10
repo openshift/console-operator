@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/openshift/console-operator/pkg/api"
-
+	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/tools/cache"
@@ -13,7 +13,6 @@ import (
 	// "k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 
 	authclient "github.com/openshift/client-go/oauth/clientset/versioned"
 	// clients
@@ -30,36 +29,36 @@ import (
 	"github.com/openshift/console-operator/pkg/console/operator"
 )
 
-func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
+func RunOperator(ctx *controllercmd.ControllerContext) error {
 	// TODO: reenable this after upgradeing library-go
 	// only for the ClusterStatus, everything else has a specific client
-	//dynamicClient, err := dynamic.NewForConfig(clientConfig)
+	//dynamicClient, err := dynamic.NewForConfig(ctx.KubeConfig)
 	//if err != nil {
 	//	return err
 	//}
 
 	// creates a new kube clientset
-	// clientConfig is a REST config
+	// ctx.KubeConfig is a REST config
 	// a clientSet contains clients for groups.
 	// each group has one version included in the set.
-	kubeClient, err := kubernetes.NewForConfig(clientConfig)
+	kubeClient, err := kubernetes.NewForConfig(ctx.KubeConfig)
 	if err != nil {
 		return err
 	}
 
 	// pkg/apis/console/v1alpha1/types.go has a `genclient` annotation,
 	// that creates the expected functions for the type.
-	consoleOperatorClient, err := versioned.NewForConfig(clientConfig)
+	consoleOperatorClient, err := versioned.NewForConfig(ctx.KubeConfig)
 	if err != nil {
 		return err
 	}
 
-	routesClient, err := routesclient.NewForConfig(clientConfig)
+	routesClient, err := routesclient.NewForConfig(ctx.KubeConfig)
 	if err != nil {
 		return err
 	}
 
-	oauthClient, err := authclient.NewForConfig(clientConfig)
+	oauthClient, err := authclient.NewForConfig(ctx.KubeConfig)
 	if err != nil {
 		return err
 	}
@@ -111,6 +110,9 @@ func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
 		oauthinformers.WithTweakListOptions(tweakOAuthListOptions),
 	)
 
+	// TODO: Replace this with real event recorder (use ControllerContext).
+	recorder := ctx.EventRecorder
+
 	consoleOperator := operator.NewConsoleOperator(
 		// informers
 		consoleOperatorInformers.Console().V1alpha1().Consoles(), // Console
@@ -124,14 +126,15 @@ func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
 		kubeClient.AppsV1(),
 		routesClient.RouteV1(),
 		oauthClient.OauthV1(),
+		recorder,
 	)
 
-	kubeInformersNamespaced.Start(stopCh)
-	consoleOperatorInformers.Start(stopCh)
-	routesInformersNamespaced.Start(stopCh)
-	oauthInformers.Start(stopCh)
+	kubeInformersNamespaced.Start(ctx.StopCh)
+	consoleOperatorInformers.Start(ctx.StopCh)
+	routesInformersNamespaced.Start(ctx.StopCh)
+	oauthInformers.Start(ctx.StopCh)
 
-	go consoleOperator.Run(stopCh)
+	go consoleOperator.Run(ctx.StopCh)
 
 	// TODO: turn this back on!
 	// for now its just creating noise.... as we need to update library-go for it to work correctly
@@ -146,7 +149,7 @@ func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
 	//// TODO: will have a series of Run() funcs here
 	//go clusterOperatorStatus.Run(1, stopCh)
 
-	<-stopCh
+	<-ctx.StopCh
 
 	return fmt.Errorf("stopped")
 }

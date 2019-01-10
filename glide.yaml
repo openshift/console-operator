@@ -1,4 +1,4 @@
-package: github.com/enj/console-operator
+package: github.com/openshift/console-operator
 import:
 
 # kube
