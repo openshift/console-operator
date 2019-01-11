@@ -10,14 +10,16 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 
 	// openshift
-
+	v1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
+	"github.com/openshift/library-go/pkg/operator/status"
 
 	// clients
-	// configv1client "github.com/openshift/client-go/config/clientset/versioned"
+	configv1client "github.com/openshift/client-go/config/clientset/versioned"
 	authclient "github.com/openshift/client-go/oauth/clientset/versioned"
 	routesclient "github.com/openshift/client-go/route/clientset/versioned"
 	"github.com/openshift/console-operator/pkg/generated/clientset/versioned"
@@ -32,10 +34,10 @@ import (
 )
 
 func RunOperator(ctx *controllercmd.ControllerContext) error {
-	//configClient, err := configv1client.NewForConfig(ctx.KubeConfig)
-	//if err != nil {
-	//	return err
-	//}
+	configClient, err := configv1client.NewForConfig(ctx.KubeConfig)
+	if err != nil {
+		return err
+	}
 	kubeClient, err := kubernetes.NewForConfig(ctx.KubeConfig)
 	if err != nil {
 		return err
@@ -128,14 +130,14 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 
 	go consoleOperator.Run(ctx.StopCh)
 
-	//clusterOperatorStatus := status.NewClusterOperatorStatusController(
-	//	api.ResourceName,
-	//	configClient.ConfigV1(),
-	//	operatorStatusProvider{informers: consoleOperatorInformers},
-	//	ctx.EventRecorder,
-	//)
+	clusterOperatorStatus := status.NewClusterOperatorStatusController(
+		api.ResourceName,
+		configClient.ConfigV1(),
+		operatorStatusProvider{informers: consoleOperatorInformers},
+		ctx.EventRecorder,
+	)
 
-	//go clusterOperatorStatus.Run(1, ctx.StopCh)
+	go clusterOperatorStatus.Run(1, ctx.StopCh)
 
 	<-ctx.StopCh
 
@@ -143,19 +145,19 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 }
 
 //// I'd prefer this in a /console/status/ package, but other operators keep it here.
-//type operatorStatusProvider struct {
-//	informers externalversions.SharedInformerFactory
-//}
-//
-//func (p operatorStatusProvider) Informer() cache.SharedIndexInformer {
-//	return p.informers.Console().V1alpha1().Consoles().Informer()
-//}
-//
-//func (p operatorStatusProvider) CurrentStatus() (v1.OperatorStatus, error) {
-//	instance, err := p.informers.Console().V1alpha1().Consoles().Lister().Consoles(api.TargetNamespace).Get(api.ResourceName)
-//	if err != nil {
-//		return v1.OperatorStatus{}, err
-//	}
-//
-//	return instance.Status.OperatorStatus, nil
-//}
+type operatorStatusProvider struct {
+	informers externalversions.SharedInformerFactory
+}
+
+func (p operatorStatusProvider) Informer() cache.SharedIndexInformer {
+	return p.informers.Console().V1().Consoles().Informer()
+}
+
+func (p operatorStatusProvider) CurrentStatus() (v1.OperatorStatus, error) {
+	instance, err := p.informers.Console().V1().Consoles().Lister().Consoles(api.TargetNamespace).Get(api.ResourceName)
+	if err != nil {
+		return v1.OperatorStatus{}, err
+	}
+
+	return instance.Status.OperatorStatus, nil
+}
