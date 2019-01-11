@@ -8,11 +8,11 @@ import (
 	"github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	consolev1 "github.com/openshift/console-operator/pkg/apis/console/v1"
 )
 
 func SharedLabels() map[string]string {
@@ -39,8 +39,8 @@ func LabelsForConsole() map[string]string {
 	return allLabels
 }
 
-func SharedMeta() v1.ObjectMeta {
-	return v1.ObjectMeta{
+func SharedMeta() metav1.ObjectMeta {
+	return metav1.ObjectMeta{
 		Name:      api.OpenShiftConsoleName,
 		Namespace: api.OpenShiftConsoleName,
 		Labels:    SharedLabels(),
@@ -58,7 +58,7 @@ func LogYaml(obj runtime.Object) {
 }
 
 // objects can have more than one ownerRef, potentially
-func AddOwnerRef(obj v1.Object, ownerRef *v1.OwnerReference) {
+func AddOwnerRef(obj metav1.Object, ownerRef *metav1.OwnerReference) {
 	// TODO: find the library-go equivalent of this and replace
 	// currently errs out with something like:
 	// failed with: ConfigMap "console-config" is invalid: [metadata.ownerReferences.apiVersion: Invalid value: "": version must not be empty, metadata.ownerReferences.kind: Invalid value: "": kind must not be empty]
@@ -70,11 +70,11 @@ func AddOwnerRef(obj v1.Object, ownerRef *v1.OwnerReference) {
 }
 
 // func RemoveOwnerRef
-func OwnerRefFrom(cr *v1alpha1.Console) *v1.OwnerReference {
+func OwnerRefFrom(cr *consolev1.Console) *metav1.OwnerReference {
 
 	if cr != nil {
 		truthy := true
-		return &v1.OwnerReference{
+		return &metav1.OwnerReference{
 			APIVersion: cr.APIVersion,
 			Kind:       cr.Kind,
 			Name:       cr.Name,

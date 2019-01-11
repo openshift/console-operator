@@ -1,7 +1,6 @@
 package route
 
 import (
-	"github.com/openshift/console-operator/pkg/api"
 	// kube
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -14,7 +13,8 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 
 	// operator
-	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	"github.com/openshift/console-operator/pkg/api"
+	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
@@ -80,7 +80,7 @@ func ApplyRoute(client routeclient.RoutesGetter, required *routev1.Route) (*rout
 	return actual, true, err
 }
 
-func DefaultRoute(cr *v1alpha1.Console) *routev1.Route {
+func DefaultRoute(cr *v1.Console) *routev1.Route {
 	route := Stub()
 	route.Spec = routev1.RouteSpec{
 		To:             toService(),
