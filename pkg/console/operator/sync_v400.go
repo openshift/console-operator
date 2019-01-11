@@ -4,13 +4,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/openshift/console-operator/pkg/api"
+	v1 "github.com/openshift/api/operator/v1"
 
 	// 3rd party
 	"github.com/sirupsen/logrus"
 	// kube
 	oauthv1 "github.com/openshift/api/oauth/v1"
-	operatorv1alpha1 "github.com/openshift/api/operator/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -25,7 +24,8 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 
 	// operator
-	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	"github.com/openshift/console-operator/pkg/api"
+	consolev1 "github.com/openshift/console-operator/pkg/apis/console/v1"
 	configmapsub "github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
@@ -39,7 +39,7 @@ import (
 // The next loop will pick up where they previous left off and move the process forward one step.
 // This ensures the logic is simpler as we do not have to handle coordination between objects within
 // the loop.
-func sync_v400(co *consoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.Console, bool, error) {
+func sync_v400(co *consoleOperator, consoleConfig *consolev1.Console) (*consolev1.Console, bool, error) {
 	logrus.Println("running sync loop 4.0.0")
 	recorder := co.recorder
 
@@ -111,20 +111,22 @@ func sync_v400(co *consoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 	return consoleConfig, toUpdate, nil
 }
 
-func SyncDeployment(co *consoleOperator, recorder events.Recorder, consoleConfig *v1alpha1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) (*appsv1.Deployment, bool, error) {
+func SyncDeployment(co *consoleOperator, recorder events.Recorder, consoleConfig *consolev1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) (*appsv1.Deployment, bool, error) {
 	logrus.Printf("validating console deployment...")
 	defaultDeployment := deploymentsub.DefaultDeployment(consoleConfig, cm, serviceCAConfigMap, sec)
-	versionAvailability := &operatorv1alpha1.VersionAvailability{
-		Version: consoleConfig.Spec.Version,
-	}
-	deploymentGeneration := resourcemerge.ExpectedDeploymentGenerationV1alpha1(defaultDeployment, versionAvailability)
+
+	// we are not really concerned about the generation but need it for ApplyDeployment
+	depGens := &[]v1.GenerationStatus{}
+	resourcemerge.SetDeploymentGeneration(depGens, defaultDeployment)
+	currentGen := resourcemerge.ExpectedDeploymentGeneration(defaultDeployment, *depGens)
+
 	// first establish, do we have a deployment?
 	existingDeployment, getDepErr := co.deploymentClient.Deployments(api.TargetNamespace).Get(deploymentsub.Stub().Name, metav1.GetOptions{})
 
 	// if not, create it, first pass
 	if apierrors.IsNotFound(getDepErr) {
 		logrus.Print("deployment not found, creating new deployment")
-		_, depCreated, createdErr := resourceapply.ApplyDeployment(co.deploymentClient, recorder, defaultDeployment, deploymentGeneration, true)
+		_, depCreated, createdErr := resourceapply.ApplyDeployment(co.deploymentClient, recorder, defaultDeployment, currentGen, true)
 		// kill the sync loop
 		return nil, depCreated, fmt.Errorf("deployment not found, creating new deployment, create error = %v", createdErr)
 	}
@@ -137,7 +139,7 @@ func SyncDeployment(co *consoleOperator, recorder events.Recorder, consoleConfig
 	// otherwise, we may need to update or force a rollout
 	if deploymentsub.ResourceVersionsChanged(existingDeployment, cm, serviceCAConfigMap, sec) {
 		toUpdate := deploymentsub.UpdateResourceVersions(existingDeployment, cm, serviceCAConfigMap, sec)
-		updatedDeployment, depChanged, updateErr := resourceapply.ApplyDeployment(co.deploymentClient, recorder, toUpdate, deploymentGeneration, true)
+		updatedDeployment, depChanged, updateErr := resourceapply.ApplyDeployment(co.deploymentClient, recorder, toUpdate, currentGen, true)
 		if updateErr != nil {
 			logrus.Errorf("%q: %v \n", "deployment", updateErr)
 			return nil, false, updateErr
@@ -150,7 +152,7 @@ func SyncDeployment(co *consoleOperator, recorder events.Recorder, consoleConfig
 
 // applies changes to the oauthclient
 // should not be called until route & secret dependencies are verified
-func SyncOAuthClient(co *consoleOperator, consoleConfig *v1alpha1.Console, sec *corev1.Secret, rt *routev1.Route) (*oauthv1.OAuthClient, bool, error) {
+func SyncOAuthClient(co *consoleOperator, consoleConfig *consolev1.Console, sec *corev1.Secret, rt *routev1.Route) (*oauthv1.OAuthClient, bool, error) {
 	logrus.Printf("validating oauthclient...")
 	oauthClient, err := co.oauthClient.OAuthClients().Get(oauthsub.Stub().Name, metav1.GetOptions{})
 	if err != nil {
@@ -173,7 +175,7 @@ func SyncOAuthClient(co *consoleOperator, consoleConfig *v1alpha1.Console, sec *
 // give me a good secret or die
 // we want the sync loop to die if we have to create.  thats fine, next pass will fix the rest of things.
 // adopt this pattern so we dont have to deal with too much complexity.
-func SyncSecret(co *consoleOperator, recorder events.Recorder, consoleConfig *v1alpha1.Console) (*corev1.Secret, bool, error) {
+func SyncSecret(co *consoleOperator, recorder events.Recorder, consoleConfig *consolev1.Console) (*corev1.Secret, bool, error) {
 	logrus.Printf("validating oauth secret...")
 	secret, err := co.secretsClient.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name, metav1.GetOptions{})
 	// if we have to create it, or if the actual Secret is empty/invalid, then we want to return an error
@@ -193,7 +195,7 @@ func SyncSecret(co *consoleOperator, recorder events.Recorder, consoleConfig *v1
 // apply configmap (needs route)
 // by the time we get to the configmap, we can assume the route exits & is configured properly
 // therefore no additional error handling is needed here.
-func SyncConfigMap(co *consoleOperator, recorder events.Recorder, consoleConfig *v1alpha1.Console, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
+func SyncConfigMap(co *consoleOperator, recorder events.Recorder, consoleConfig *consolev1.Console, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
 	logrus.Printf("validating console configmap...")
 	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, recorder, configmapsub.DefaultConfigMap(consoleConfig, rt))
 	if cmErr != nil {
@@ -205,7 +207,7 @@ func SyncConfigMap(co *consoleOperator, recorder events.Recorder, consoleConfig 
 }
 
 // apply service-ca configmap
-func SyncServiceCAConfigMap(co *consoleOperator, consoleConfig *v1alpha1.Console) (*corev1.ConfigMap, bool, error) {
+func SyncServiceCAConfigMap(co *consoleOperator, consoleConfig *consolev1.Console) (*corev1.ConfigMap, bool, error) {
 	logrus.Printf("validating service-ca configmap...")
 	required := configmapsub.DefaultServiceCAConfigMap(consoleConfig)
 	// we can't use `resourceapply.ApplyConfigMap` since it compares data, and the service serving cert operator injects the data
@@ -242,7 +244,7 @@ func SyncServiceCAConfigMap(co *consoleOperator, consoleConfig *v1alpha1.Console
 
 // apply service
 // there is nothing special about our service, so no additional error handling is needed here.
-func SyncService(co *consoleOperator, recorder events.Recorder, consoleConfig *v1alpha1.Console) (*corev1.Service, bool, error) {
+func SyncService(co *consoleOperator, recorder events.Recorder, consoleConfig *consolev1.Console) (*corev1.Service, bool, error) {
 	logrus.Printf("validating console service...")
 	svc, svcChanged, svcErr := resourceapply.ApplyService(co.serviceClient, recorder, servicesub.DefaultService(consoleConfig))
 	if svcErr != nil {
@@ -258,7 +260,7 @@ func SyncService(co *consoleOperator, recorder events.Recorder, consoleConfig *v
 //   default host name set by the server, or any other values. The ApplyRoute()
 //   logic will have to be sound.
 // - update to ApplyRoute() once the logic is settled
-func SyncRoute(co *consoleOperator, consoleConfig *v1alpha1.Console) (*routev1.Route, bool, error) {
+func SyncRoute(co *consoleOperator, consoleConfig *consolev1.Console) (*routev1.Route, bool, error) {
 	logrus.Printf("validating console route...")
 	rt, rtIsNew, rtErr := routesub.GetOrCreate(co.routeClient, routesub.DefaultRoute(consoleConfig))
 	// rt, rtChanged, rtErr := routesub.ApplyRoute(co.routeClient, routesub.DefaultRoute(consoleConfig))
@@ -335,7 +337,7 @@ func secretAndOauthMatch(secret *corev1.Secret, client *oauthv1.OAuthClient) boo
 // update cluster operator status... i believe this
 // should be automatic so long as the CR.Status is
 // properly filled out with the appropriate values.
-func setStatus(cs v1alpha1.ConsoleStatus, svc *corev1.Service, rt *routev1.Route, cm *corev1.ConfigMap, dep *appsv1.Deployment, oa *oauthv1.OAuthClient, sec *corev1.Secret) {
+func setStatus(cs consolev1.ConsoleStatus, svc *corev1.Service, rt *routev1.Route, cm *corev1.ConfigMap, dep *appsv1.Deployment, oa *oauthv1.OAuthClient, sec *corev1.Secret) {
 	// TODO: handle custom hosts as well
 	if rt.Spec.Host != "" {
 		cs.DefaultHostName = rt.Spec.Host
