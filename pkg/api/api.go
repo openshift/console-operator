@@ -11,8 +11,10 @@ const (
 
 // consts to maintain existing names of various sub-resources
 const (
-	OpenShiftConsoleName      = "openshift-console"
-	OpenShiftConsoleShortName = "console"
-	OpenShiftConsoleNamespace = "openshift-console"
-	OAuthClientName           = OpenShiftConsoleName
+	OpenShiftConsoleName              = "openshift-console"
+	OpenShiftConsoleShortName         = "console"
+	OpenShiftConsoleNamespace         = "openshift-console"
+	OpenShiftConsoleOperatorNamespace = "openshift-console"
+	OpenShiftConsoleOperator          = "console-operator"
+	OAuthClientName                   = OpenShiftConsoleName
 )
