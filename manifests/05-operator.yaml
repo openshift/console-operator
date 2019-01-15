@@ -4,7 +4,7 @@ metadata:
   name: console-operator
   namespace: openshift-console
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       name: console-operator
