@@ -51,6 +51,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
+        resources:
+          requests:
+            memory: "100Mi"
+            cpu: "100m"
       volumes:
       - name: config
         configMap:
