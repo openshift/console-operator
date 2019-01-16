@@ -144,7 +144,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	return fmt.Errorf("stopped")
 }
 
-//// I'd prefer this in a /console/status/ package, but other operators keep it here.
+// I'd prefer this in a /console/status/ package, but other operators keep it here.
 type operatorStatusProvider struct {
 	informers externalversions.SharedInformerFactory
 }
