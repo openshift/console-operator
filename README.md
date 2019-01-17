@@ -136,6 +136,7 @@ it only controls leader election and provides nothing interesting to configure.
 Run:
 
 ```bash 
+POD_NAME=openshift-console \
 IMAGE=docker.io/openshift/origin-console:latest \
     console operator \
     --kubeconfig $HOME/.kube/config \
