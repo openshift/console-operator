@@ -47,6 +47,8 @@ spec:
           value: docker.io/openshift/origin-console:latest
         - name: OPERATOR_NAME
           value: "console-operator"
+        - name: OPERATOR_IMAGE
+          value: docker.io/openshift/origin-console-operator:latest
         - name: POD_NAME
           valueFrom:
             fieldRef:
