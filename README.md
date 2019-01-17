@@ -257,6 +257,31 @@ oc whoami --loglevel=100
 # likely output will be $HOME/.kube/config 
 ``` 
 
+When running locally, dealing with a panic can be frustrating. Outputs take the form of:
+
+```bash
+# how to understand 0xc4200e0480, 0xc420110528, etc?
+github.com/.../controllercmd.(*ControllerBuilder).Run(0xc4200e0480, 0xc420110528, 0xc420048540, 0x3, 0x3)
+```
+[panicparse](https://github.com/maruel/panicparse) is very handy for dealing with parse
+errors.  Installing `panicparse` vs `pp` may save you some confusing with another tool
+(see the panicparse README for details).
+
+Once installed, run the operator like this:
+
+```bash
+# redirect output to a /tmp/ .txt file
+# use panicparse to process the file
+POD_NAME=openshift-console; \
+    IMAGE=docker.io/openshift/origin-console:latest;  \
+    console operator  \
+    --kubeconfig $HOME/openshift/installer/aws/us-east-2/auth/kubeconfig  \
+    --config examples/config.yaml  \
+    --create-default-console  \
+    --v 4 \
+    >> /tmp/<some-temp-file-name>.txt 2>&1; \
+    panicparse /tmp/<some-temp-file-name>.txt
+```
 
 
 
