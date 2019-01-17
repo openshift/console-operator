@@ -214,7 +214,7 @@ func consoleContainer(cr *v1alpha1.Console) corev1.Container {
 		TerminationMessagePolicy: corev1.TerminationMessagePolicy("File"),
 		Resources: corev1.ResourceRequirements{
 			Requests: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceCPU:    resource.MustParse("100m"),
+				corev1.ResourceCPU:    resource.MustParse("10m"),
 				corev1.ResourceMemory: resource.MustParse("100Mi"),
 			},
 		},
