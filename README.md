@@ -279,8 +279,8 @@ POD_NAME=openshift-console; \
     --config examples/config.yaml  \
     --create-default-console  \
     --v 4 \
-    >> /tmp/<some-temp-file-name>.txt 2>&1; \
-    panicparse /tmp/<some-temp-file-name>.txt
+    >> /tmp/some-temp-file-name.txt 2>&1; \
+    panicparse /tmp/some-temp-file-name.txt
 ```
 
 
