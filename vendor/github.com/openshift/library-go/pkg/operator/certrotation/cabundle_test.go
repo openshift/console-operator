@@ -210,20 +210,20 @@ func TestEnsureConfigMapCABundle(t *testing.T) {
 				client = kubefake.NewSimpleClientset(startingObj)
 			}
 
-			c := &CertRotationController{
-				caBundleNamespace:     "ns",
-				caBundleConfigMapName: "trust-bundle",
+			c := &CABundleRotation{
+				Namespace: "ns",
+				Name:      "trust-bundle",
 
-				configmapsClient: client.CoreV1(),
-				caBundleLister:   corev1listers.NewConfigMapLister(indexer),
-				eventRecorder:    events.NewInMemoryRecorder("test"),
+				Client:        client.CoreV1(),
+				Lister:        corev1listers.NewConfigMapLister(indexer),
+				EventRecorder: events.NewInMemoryRecorder("test"),
 			}
 
 			newCA, err := test.caFn()
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = c.ensureConfigMapCABundle(newCA)
+			_, err = c.ensureConfigMapCABundle(newCA)
 			switch {
 			case err != nil && len(test.expectedError) == 0:
 				t.Error(err)

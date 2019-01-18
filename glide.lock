@@ -1,5 +1,5 @@
 hash: b0da19e8f57c4813c03b70e51f71cdc6259881df1ce387d8b5ee3312c27316d2
-updated: 2019-01-03T18:57:51.647468218+01:00
+updated: 2019-01-18T11:50:35.717985-05:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -185,7 +185,7 @@ imports:
 - name: github.com/NYTimes/gziphandler
   version: 56545f4a5d46df9a6648819d1664c3a03a13ffdb
 - name: github.com/openshift/api
-  version: 1a0ca44421509b47daf1e17f2e96025b3a314c3b
+  version: c3ef7090a436a4ce1334e8a0401083b072dc7ab8
   subpackages:
   - apps
   - apps/v1
@@ -231,8 +231,10 @@ imports:
   - webconsole
   - webconsole/v1
 - name: github.com/openshift/client-go
-  version: 960f72aa32a8e9b4dd769b90ff1cb5bd4c898eec
+  version: f3714b1f9df49ae0d998d882f510ed1d8d10f4aa
   subpackages:
+  - config/clientset/versioned/scheme
+  - config/clientset/versioned/typed/config/v1
   - oauth/clientset/versioned
   - oauth/clientset/versioned/scheme
   - oauth/clientset/versioned/typed/oauth/v1
@@ -250,7 +252,7 @@ imports:
   - route/informers/externalversions/route/v1
   - route/listers/route/v1
 - name: github.com/openshift/library-go
-  version: ed90b992b08815b36c2b71c80218ea2135d8e4bd
+  version: 586f6681092a6c58b02b5b23154eca2a8e9940ce
   subpackages:
   - pkg/config/client
   - pkg/config/configdefaults
@@ -263,7 +265,6 @@ imports:
   - pkg/operator/events
   - pkg/operator/resource/resourceapply
   - pkg/operator/resource/resourcemerge
-  - pkg/operator/v1alpha1helpers
   - pkg/operator/versioning
   - pkg/serviceability
 - name: github.com/openshift/service-ca-operator
@@ -312,9 +313,9 @@ imports:
 - name: github.com/sirupsen/logrus
   version: 89742aefa4b206dcf400792f3bd35b542998eb3b
 - name: github.com/spf13/cobra
-  version: c439c4fa093711d42e1b01acb1235b52004753c1
+  version: 7547e83b2d85fd1893c7d76916f67689d761fecb
 - name: github.com/spf13/pflag
-  version: 583c0c0531f06d5278b7d917446061adc344b5cd
+  version: 24fa6976df40757dce6aea913e7b81ade90530e1
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
@@ -365,7 +366,7 @@ imports:
   subpackages:
   - rate
 - name: golang.org/x/tools
-  version: ca9055ed7d0470e61b81778f76637846e891ff60
+  version: b4b6fe2cb82970f144debbe03ecb71e340b15446
   subpackages:
   - imports
 - name: google.golang.org/genproto

@@ -95,23 +95,25 @@ func TestEnsureTargetCertKeyPair(t *testing.T) {
 				client = kubefake.NewSimpleClientset(startingObj)
 			}
 
-			c := &CertRotationController{
-				targetNamespace:             "ns",
-				targetCertKeyPairValidity:   24 * time.Hour,
-				newTargetPercentage:         .50,
-				targetCertKeyPairSecretName: "target-secret",
-				targetServingHostnames:      []string{"foo"},
+			c := &TargetRotation{
+				Namespace:         "ns",
+				Validity:          24 * time.Hour,
+				RefreshPercentage: .50,
+				Name:              "target-secret",
+				ServingRotation: &ServingRotation{
+					Hostnames: []string{"foo"},
+				},
 
-				secretsClient: client.CoreV1(),
-				targetLister:  corev1listers.NewSecretLister(indexer),
-				eventRecorder: events.NewInMemoryRecorder("test"),
+				Client:        client.CoreV1(),
+				Lister:        corev1listers.NewSecretLister(indexer),
+				EventRecorder: events.NewInMemoryRecorder("test"),
 			}
 
 			newCA, err := test.caFn()
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = c.ensureTargetCertKeyPair(newCA)
+			err = c.ensureTargetCertKeyPair(newCA, newCA.Config.Certs)
 			switch {
 			case err != nil && len(test.expectedError) == 0:
 				t.Error(err)

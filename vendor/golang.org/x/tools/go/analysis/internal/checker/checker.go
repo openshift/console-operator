@@ -141,11 +141,11 @@ func load(patterns []string, allSyntax bool) ([]*packages.Package, error) {
 			err = fmt.Errorf("%d errors during loading", n)
 		} else if n == 1 {
 			err = fmt.Errorf("error during loading")
+		} else if len(initial) == 0 {
+			err = fmt.Errorf("%s matched no packages", strings.Join(patterns, " "))
 		}
 	}
-	if len(initial) == 0 {
-		err = fmt.Errorf("%s matched no packages", strings.Join(patterns, " "))
-	}
+
 	return initial, err
 }
 
@@ -492,6 +492,7 @@ func (act *action) execOnce() {
 		OtherFiles:        act.pkg.OtherFiles,
 		Pkg:               act.pkg.Types,
 		TypesInfo:         act.pkg.TypesInfo,
+		TypesSizes:        act.pkg.TypesSizes,
 		ResultOf:          inputs,
 		Report:            func(d analysis.Diagnostic) { act.diagnostics = append(act.diagnostics, d) },
 		ImportObjectFact:  act.importObjectFact,

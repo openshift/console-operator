@@ -1,9 +1,15 @@
 package v1
 
 import (
+	"bytes"
+	"fmt"
+	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/diff"
+	"k8s.io/apimachinery/pkg/util/json"
 
 	configv1 "github.com/openshift/api/config/v1"
 )
@@ -53,6 +59,52 @@ func FindStatusCondition(conditions []configv1.ClusterOperatorStatusCondition, c
 	}
 
 	return nil
+}
+
+// GetStatusDiff returns a string representing change in condition status in human readable form.
+func GetStatusDiff(oldStatus configv1.ClusterOperatorStatus, newStatus configv1.ClusterOperatorStatus) string {
+	messages := []string{}
+	for _, newCondition := range newStatus.Conditions {
+		existingStatusCondition := FindStatusCondition(oldStatus.Conditions, newCondition.Type)
+		if existingStatusCondition == nil {
+			messages = append(messages, fmt.Sprintf("%s set to %s (%q)", newCondition.Type, newCondition.Status, newCondition.Message))
+			continue
+		}
+		if existingStatusCondition.Status != newCondition.Status {
+			messages = append(messages, fmt.Sprintf("%s changed from %s to %s (%q)", existingStatusCondition.Type, existingStatusCondition.Status, newCondition.Status, newCondition.Message))
+			continue
+		}
+		if existingStatusCondition.Message != newCondition.Message {
+			messages = append(messages, fmt.Sprintf("%s message changed from %q to %q", existingStatusCondition.Type, existingStatusCondition.Message, newCondition.Message))
+		}
+	}
+	for _, oldCondition := range oldStatus.Conditions {
+		// This should not happen. It means we removed old condition entirely instead of just changing its status
+		if c := FindStatusCondition(newStatus.Conditions, oldCondition.Type); c == nil {
+			messages = append(messages, fmt.Sprintf("%s was removed", oldCondition.Type))
+		}
+	}
+
+	if !equality.Semantic.DeepEqual(oldStatus.RelatedObjects, newStatus.RelatedObjects) {
+		messages = append(messages, fmt.Sprintf("status.relatedObjects changed from %q to %q", oldStatus.RelatedObjects, newStatus.RelatedObjects))
+	}
+	if !equality.Semantic.DeepEqual(oldStatus.Extension, newStatus.Extension) {
+		messages = append(messages, fmt.Sprintf("status.extension changed from %q to %q", oldStatus.Extension, newStatus.Extension))
+	}
+	if oldStatus.Version != newStatus.Version {
+		messages = append(messages, fmt.Sprintf("status.version changed from %q to %q", oldStatus.Version, newStatus.Version))
+	}
+
+	if len(messages) == 0 {
+		// ignore errors
+		originalJSON := &bytes.Buffer{}
+		json.NewEncoder(originalJSON).Encode(oldStatus)
+		newJSON := &bytes.Buffer{}
+		json.NewEncoder(newJSON).Encode(newStatus)
+		messages = append(messages, diff.StringDiff(originalJSON.String(), newJSON.String()))
+	}
+
+	return strings.Join(messages, ",")
 }
 
 // IsStatusConditionTrue returns true when the conditionType is present and set to `configv1.ConditionTrue`
