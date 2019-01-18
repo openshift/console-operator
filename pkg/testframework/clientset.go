@@ -8,7 +8,7 @@ import (
 	clientcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	restclient "k8s.io/client-go/rest"
 
-	clientconfigv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
+	clientroutev1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	clientconsolev1alpha1 "github.com/openshift/console-operator/pkg/generated/clientset/versioned/typed/console/v1alpha1"
 )
 
@@ -16,7 +16,7 @@ import (
 type Clientset struct {
 	clientcorev1.CoreV1Interface
 	clientappsv1.AppsV1Interface
-	clientconfigv1.ConfigV1Interface
+	clientroutev1.RouteV1Interface
 	clientconsolev1alpha1.ConsoleV1alpha1Interface
 }
 
@@ -40,7 +40,7 @@ func NewClientset(kubeconfig *restclient.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	clientset.ConfigV1Interface, err = clientconfigv1.NewForConfig(kubeconfig)
+	clientset.RouteV1Interface, err = clientroutev1.NewForConfig(kubeconfig)
 	if err != nil {
 		return nil, err
 	}
