@@ -54,7 +54,7 @@ const (
 )
 
 const (
-	minimumConsoleReplicas = 3
+	consoleReplicas = 2
 )
 
 var CreateDefaultConsoleFlag bool
@@ -248,10 +248,10 @@ func (c *consoleOperator) defaultConsole() *consolev1alpha1.Console {
 			OperatorSpec: operatorsv1alpha1.OperatorSpec{
 				// by default the console is managed
 				ManagementState: operatorsv1alpha1.Managed,
-				// if Verison is not 4.0.0 our reconcile loop will not pick it up
+				// if Version is not 4.0.0 our reconcile loop will not pick it up
 				Version: "4.0.0",
 			},
-			Count: minimumConsoleReplicas,
+			Count: consoleReplicas,
 		},
 	}
 }

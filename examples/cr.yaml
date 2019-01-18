@@ -15,8 +15,9 @@ spec:
   # - Unmanaged indicates that the operator should idle and ignore the console and its sub-resources
   # - Removed indicates that the operator should delete all of the sub-resources of the console
   managementState: Managed
-  # there should be the same number of console replicas as the number of masters, minimum 2
-  count: 3
+  # The default number of console replicas is 2. This may be changed if your environment is unique.
+  # For example, in a single node setup, 1 replica may be sufficient.  
+  count: 2
   logging:
     level: 0
   # artifact of base operator
