@@ -19,20 +19,14 @@ type Console struct {
 
 type ConsoleSpec struct {
 	v1alpha1.OperatorSpec
-	// Count is the number of Console replicas
-	Count int32 `json:"count,omitempty"`
-	// take a look @:
-	// https://github.com/openshift/cluster-image-registry-operator/blob/master/pkg/apis/imageregistry/v1alpha1/types.go#L91-L92
-	// DefaultRoute: T|F
-	// additional routes config w/secrets
-	// Route[]
+	Replicas  int32     `json:"count,omitempty"`
+	Overrides Overrides `json:"overrides"`
 }
 
 type ConsoleStatus struct {
 	v1alpha1.OperatorStatus
 	// set once the router has a default host name
 	DefaultHostName string `json:"defaultHostName"`
-	OAuthSecret     string `json:"oauthSecret"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -42,4 +36,10 @@ type ConsoleList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 
 	Items []Console `json:"items"`
+}
+
+type Overrides struct {
+	// NodeSelector allows the console to be scheduled on nodes besides master nodes.
+	// +optional
+	NodeSelector metav1.LabelSelector `json:"nodeSelector,omitempty"`
 }
