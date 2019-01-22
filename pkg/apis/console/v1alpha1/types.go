@@ -19,8 +19,8 @@ type Console struct {
 
 type ConsoleSpec struct {
 	v1alpha1.OperatorSpec
-	Replicas  int32     `json:"count,omitempty"`
-	Overrides Overrides `json:"overrides"`
+	Customization Customization `json:"customization,omitempty"`
+	Overrides     Overrides     `json:"overrides,omitempty"`
 }
 
 type ConsoleStatus struct {
@@ -43,3 +43,17 @@ type Overrides struct {
 	// +optional
 	NodeSelector metav1.LabelSelector `json:"nodeSelector,omitempty"`
 }
+
+type Customization struct {
+	Branding             Brand  `json:"branding"`
+	DocumentationBaseURL string `json:"documentationBaseURL"`
+}
+
+type Brand string
+
+const (
+	BrandOKD       Brand = "okd"
+	BrandOnline    Brand = "online"
+	BrandOCP       Brand = "ocp"
+	BrandDedicated Brand = "dedicated"
+)
