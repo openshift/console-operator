@@ -11,5 +11,7 @@ spec:
     listKind: ConsoleOperatorConfigList
     plural: consoleoperatorconfigs
     singular: consoleoperatorconfig
+    categories:
+    - coreoperators
   subresources:
     status: {}
