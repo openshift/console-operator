@@ -20,7 +20,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - pods
   - services
   - events
   - configmaps
@@ -33,10 +32,17 @@ rules:
   - update
   - delete
 - apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - apps
   resources:
   - deployments
-  - replicasets
   verbs:
   - get
   - list
@@ -44,6 +50,14 @@ rules:
   - create
   - update
   - delete
+- apiGroups:
+  - apps
+  resources:
+  - replicasets
+  verbs:
+  - get
+  - list
+  - watch
 - apiGroups:
   - route.openshift.io
   resources:
@@ -55,6 +69,42 @@ rules:
   - create
   - update
   - delete
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: console-operator
+  namespace: openshift-console-operator
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - replicasets
+  verbs:
+  - get
+  - list
+  - watch
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -72,4 +122,3 @@ rules:
   - watch
   resourceNames:
   - openshift-console
-

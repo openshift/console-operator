@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: console-operator
-  namespace: openshift-console
+  namespace: openshift-console-operator
 spec:
   replicas: 2
   selector:
@@ -39,10 +39,6 @@ spec:
         - mountPath: /var/run/configmaps/config
           name: config
         env:
-        - name: WATCH_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
         - name: IMAGE
           value: docker.io/openshift/origin-console:latest
         - name: OPERATOR_NAME

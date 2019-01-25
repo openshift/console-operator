@@ -178,6 +178,7 @@ capabilities (not as `system:admin` but rather using the correct service account
 # if you want to remove the existing console entirely to start fresh
 oc login -u system:admin
 oc delete project openshift-console 
+oc delete project openshift-console-operator
 
 # then recreate ensure all the necessary resources (including the namespace)
 # rolebindings, service account, etc
@@ -192,7 +193,7 @@ Then to correctly run the operator you will want to login using the token from t
 service account:
 
 ```bash 
-oc login --token=$(oc sa get-token console-operator -n openshift-console)
+oc login --token=$(oc sa get-token console-operator -n openshift-console-operator)
 ```
 
 After doing the above steps, you can run the operator locally with the following:
