@@ -31,7 +31,7 @@ import (
 
 	// informers
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
-	consolev1alpha1 "github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	consolev1alpha1 "github.com/openshift/console-operator/pkg/apis/console/v1"
 	consoleinformers "github.com/openshift/console-operator/pkg/generated/informers/externalversions/console/v1alpha1"
 	appsinformersv1 "k8s.io/client-go/informers/apps/v1"
 
@@ -163,7 +163,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 
 	var currentActualVersion *semver.Version
 
-	// TODO: ca.yaml needs a version, update the v1alpha1.Console to include version field
+	// TODO: ca.yaml needs a version, update the v1.Console to include version field
 	if ca := operatorConfig.Status.CurrentAvailability; ca != nil {
 		ver, err := semver.Parse(ca.Version)
 		if err != nil {

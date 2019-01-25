@@ -46,7 +46,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		return err
 	}
 
-	// pkg/apis/console/v1alpha1/types.go has a `genclient` annotation,
+	// pkg/apis/console/v1/types.go has a `genclient` annotation,
 	// that creates the expected functions for the type.
 	consoleOperatorClient, err := versioned.NewForConfig(ctx.KubeConfig)
 	if err != nil {

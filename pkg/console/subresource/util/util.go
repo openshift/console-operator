@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	"github.com/openshift/console-operator/pkg/apis/console/v1"
 )
 
 func SharedLabels() map[string]string {
@@ -70,7 +70,7 @@ func AddOwnerRef(obj v1.Object, ownerRef *v1.OwnerReference) {
 }
 
 // func RemoveOwnerRef
-func OwnerRefFrom(cr *v1alpha1.Console) *v1.OwnerReference {
+func OwnerRefFrom(cr *v1.Console) *v1.OwnerReference {
 
 	if cr != nil {
 		truthy := true
