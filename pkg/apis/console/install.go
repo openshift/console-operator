@@ -4,7 +4,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	consolev1alpha1 "github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	consolev1alpha1 "github.com/openshift/console-operator/pkg/apis/console/v1"
 )
 
 const (
