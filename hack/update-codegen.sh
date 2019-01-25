@@ -30,7 +30,7 @@ verify="${VERIFY:-}"
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
 ${CODEGEN_PKG}/generate-groups.sh "all" \
   github.com/openshift/console-operator/pkg/generated github.com/openshift/console-operator/pkg/apis \
-  console:v1alpha1 \
+  console:v1 \
   --output-base "$(dirname ${BASH_SOURCE})/../../../.." \
   --go-header-file ${SCRIPT_ROOT}/hack/boilerplate.txt \
   ${verify}
