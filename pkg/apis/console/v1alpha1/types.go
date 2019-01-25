@@ -45,13 +45,14 @@ type Overrides struct {
 }
 
 type Customization struct {
-	Branding             Brand  `json:"branding"`
+	Brand                Brand  `json:"brand"`
 	DocumentationBaseURL string `json:"documentationBaseURL"`
 }
 
 type Brand string
 
 const (
+	BrandOpenshift Brand = "openshift"
 	BrandOKD       Brand = "okd"
 	BrandOnline    Brand = "online"
 	BrandOCP       Brand = "ocp"
