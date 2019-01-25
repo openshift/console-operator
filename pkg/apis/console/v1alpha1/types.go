@@ -9,21 +9,21 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type Console struct {
+type ConsoleOperatorConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ConsoleSpec   `json:"spec,omitempty"`
-	Status ConsoleStatus `json:"status,omitempty"`
+	Spec   ConsoleOperatorConfigSpec   `json:"spec,omitempty"`
+	Status ConsoleOperatorConfigStatus `json:"status,omitempty"`
 }
 
-type ConsoleSpec struct {
+type ConsoleOperatorConfigSpec struct {
 	v1alpha1.OperatorSpec
 	Customization Customization `json:"customization,omitempty"`
 	Overrides     Overrides     `json:"overrides,omitempty"`
 }
 
-type ConsoleStatus struct {
+type ConsoleOperatorConfigStatus struct {
 	v1alpha1.OperatorStatus
 	// set once the router has a default host name
 	DefaultHostName string `json:"defaultHostName"`
@@ -35,7 +35,7 @@ type ConsoleList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []Console `json:"items"`
+	Items []ConsoleOperatorConfig `json:"items"`
 }
 
 type Overrides struct {
