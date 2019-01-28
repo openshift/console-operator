@@ -1,24 +1,19 @@
 # The console-operator will create a console automatically on startup if one does not exist.
 # This file is an example of a console resource.
 # You may edit this file and `oc apply -f cr.yaml` to make changes to the console.
-apiVersion: "console.openshift.io/v1alpha1"
-kind: "Console"
+apiVersion: console.operator.openshift.io
+kind: ConsoleOperatorConfig
 metadata:
   # Do not change the name, the operator explicitly requires this name to match as the console is a singleton.
   # must match name defined in pkg/controller/api.go
   name: console-operator-resource
   namespace: openshift-console
 spec:
-  # openshift/api/operator/v1alpha1/types.go
+  # openshift/api/operator/v1/types.go
   # managementState indicates whether the operator is:
   # - Managed indicates the operator fully manages the state of the console and its sub-resources
   # - Unmanaged indicates that the operator should idle and ignore the console and its sub-resources
   # - Removed indicates that the operator should delete all of the sub-resources of the console
   managementState: Managed
-  # The default number of console replicas is 2. This may be changed if your environment is unique.
-  # For example, in a single node setup, 1 replica may be sufficient.  
-  count: 2
   logging:
     level: 0
-  # artifact of base operator
-  version: 4.0.0
