@@ -13,8 +13,8 @@ const (
 const (
 	OpenShiftConsoleName              = "openshift-console"
 	OpenShiftConsoleShortName         = "console"
-	OpenShiftConsoleNamespace         = OpenShiftConsoleName
-	OpenShiftConsoleOperatorNamespace = OpenShiftConsoleName
+	OpenShiftConsoleNamespace         = TargetNamespace
+	OpenShiftConsoleOperatorNamespace = "openshift-console-operator"
 	OpenShiftConsoleOperator          = "console-operator"
 	OpenShiftConsoleConfigMapName     = "console-config"
 	OpenShiftConsoleDeploymentName    = OpenShiftConsoleName
