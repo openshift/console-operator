@@ -5,8 +5,13 @@ import (
 	"testing"
 	"time"
 
+	routev1 "github.com/openshift/api/route/v1"
+	appv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	consoleapi "github.com/openshift/console-operator/pkg/api"
@@ -27,8 +32,8 @@ func DeleteAll(t *testing.T, client *Clientset) {
 	for _, resource := range resources {
 		t.Logf("deleting console %s...", resource)
 		if err := DeleteCompletely(
-			func() (metav1.Object, error) {
-				return getResource(client, resource)
+			func() (runtime.Object, error) {
+				return GetResource(client, resource)
 			},
 			func(*metav1.DeleteOptions) error {
 				return deleteResource(client, resource)
@@ -39,8 +44,8 @@ func DeleteAll(t *testing.T, client *Clientset) {
 	}
 }
 
-func getResource(client *Clientset, resource string) (metav1.Object, error) {
-	var res metav1.Object
+func GetResource(client *Clientset, resource string) (runtime.Object, error) {
+	var res runtime.Object
 	var err error
 	switch resource {
 	case "ConfigMap":
@@ -76,7 +81,7 @@ func deleteResource(client *Clientset, resource string) error {
 
 // DeleteCompletely sends a delete request and waits until the resource and
 // its dependents are deleted.
-func DeleteCompletely(getObject func() (metav1.Object, error), deleteObject func(*metav1.DeleteOptions) error) error {
+func DeleteCompletely(getObject func() (runtime.Object, error), deleteObject func(*metav1.DeleteOptions) error) error {
 	obj, err := getObject()
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -85,7 +90,7 @@ func DeleteCompletely(getObject func() (metav1.Object, error), deleteObject func
 		return err
 	}
 
-	uid := obj.GetUID()
+	uid := getUID(obj)
 
 	policy := metav1.DeletePropagationForeground
 	if err := deleteObject(&metav1.DeleteOptions{
@@ -109,8 +114,25 @@ func DeleteCompletely(getObject func() (metav1.Object, error), deleteObject func
 			return false, err
 		}
 
-		return obj.GetUID() != uid, nil
+		return getUID(obj) != uid, nil
 	})
+}
+
+func getUID(obj runtime.Object) types.UID {
+	configMap, ok := obj.(*corev1.ConfigMap)
+	if ok {
+		return configMap.ObjectMeta.GetUID()
+	}
+	service, ok := obj.(*corev1.Service)
+	if ok {
+		return service.ObjectMeta.GetUID()
+	}
+	route, ok := obj.(*routev1.Route)
+	if ok {
+		return route.ObjectMeta.GetUID()
+	}
+	deployment, _ := obj.(*appv1.Deployment)
+	return deployment.ObjectMeta.GetUID()
 }
 
 // IsResourceAvailable checks if tested resource is available(recreated by console-operator),
@@ -118,7 +140,7 @@ func DeleteCompletely(getObject func() (metav1.Object, error), deleteObject func
 func IsResourceAvailable(errChan chan error, client *Clientset, resource string) {
 	counter := 0
 	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
-		_, err = getResource(client, resource)
+		_, err = GetResource(client, resource)
 		if err == nil {
 			return true, nil
 		}
@@ -134,12 +156,31 @@ func IsResourceAvailable(errChan chan error, client *Clientset, resource string)
 	errChan <- err
 }
 
+func IsResourceAvailable_(client *Clientset, resource string) error {
+	counter := 0
+	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
+		_, err = GetResource(client, resource)
+		if err == nil {
+			return true, nil
+		}
+		if counter == 10 {
+			if err != nil {
+				return true, fmt.Errorf("deleted console %s was not recreated", resource)
+			}
+			return true, nil
+		}
+		counter++
+		return false, nil
+	})
+	return err
+}
+
 // IsResourceUnavailable checks if tested resource is unavailable(not recreated by console-operator),
 // during 10 second period. If not error will be returned.
 func IsResourceUnavailable(errChan chan error, client *Clientset, resource string) {
 	counter := 0
 	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
-		_, err = getResource(client, resource)
+		_, err = GetResource(client, resource)
 		if err == nil {
 			return true, fmt.Errorf("deleted console %s was recreated", resource)
 		}

@@ -1,4 +1,4 @@
-package e2e_test
+package e2e
 
 import (
 	"testing"
@@ -26,5 +26,35 @@ func TestManaged(t *testing.T) {
 
 	if checkErr != nil {
 		t.Fatal(checkErr)
+	}
+}
+
+func TestEditManagedConfigMap(t *testing.T) {
+	client := testframework.MustNewClientset(t, nil)
+	defer testframework.MustManageConsole(t, client)
+	testframework.MustManageConsole(t, client)
+
+	if !patchAndCheckConfigMap(t, client) {
+		t.Fatalf("console ConfigMap data are not set to default value")
+	}
+}
+
+func TestEditManagedService(t *testing.T) {
+	client := testframework.MustNewClientset(t, nil)
+	defer testframework.MustManageConsole(t, client)
+	testframework.MustManageConsole(t, client)
+
+	if !patchAndCheckService(t, client) {
+		t.Fatalf("console Service data are not set to default value")
+	}
+}
+
+func TestEditManagedRoute(t *testing.T) {
+	client := testframework.MustNewClientset(t, nil)
+	defer testframework.MustManageConsole(t, client)
+	testframework.MustManageConsole(t, client)
+
+	if !patchAndCheckRoute(t, client) {
+		t.Fatalf("console Route data are not set to default value")
 	}
 }
