@@ -1,9 +1,10 @@
 package configmap
 
 import (
-	"github.com/openshift/console-operator/pkg/api"
 	"reflect"
 	"testing"
+
+	"github.com/openshift/console-operator/pkg/api"
 
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -12,7 +13,7 @@ import (
 
 func TestDefaultServiceCAConfigMap(t *testing.T) {
 	type args struct {
-		cr *v1alpha1.Console
+		cr *v1alpha1.ConsoleOperatorConfig
 	}
 	tests := []struct {
 		name string
@@ -22,11 +23,11 @@ func TestDefaultServiceCAConfigMap(t *testing.T) {
 		{
 			name: "Test default service CA config map",
 			args: args{
-				cr: &v1alpha1.Console{
+				cr: &v1alpha1.ConsoleOperatorConfig{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
-					Spec:       v1alpha1.ConsoleSpec{},
-					Status:     v1alpha1.ConsoleStatus{},
+					Spec:       v1alpha1.ConsoleOperatorConfigSpec{},
+					Status:     v1alpha1.ConsoleOperatorConfigStatus{},
 				},
 			},
 			want: &corev1.ConfigMap{
@@ -37,11 +38,11 @@ func TestDefaultServiceCAConfigMap(t *testing.T) {
 					CreationTimestamp:          metav1.Time{},
 					DeletionTimestamp:          nil,
 					DeletionGracePeriodSeconds: nil,
-					Labels:          map[string]string{"app": api.OpenShiftConsoleName},
-					Annotations:     map[string]string{injectCABundleAnnotation: "true"},
-					OwnerReferences: nil,
-					Initializers:    nil,
-					Finalizers:      nil,
+					Labels:                     map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations:                map[string]string{injectCABundleAnnotation: "true"},
+					OwnerReferences:            nil,
+					Initializers:               nil,
+					Finalizers:                 nil,
 				},
 			},
 		},
@@ -71,11 +72,11 @@ func TestServiceCAStub(t *testing.T) {
 					CreationTimestamp:          metav1.Time{},
 					DeletionTimestamp:          nil,
 					DeletionGracePeriodSeconds: nil,
-					Labels:          map[string]string{"app": api.OpenShiftConsoleName},
-					Annotations:     map[string]string{injectCABundleAnnotation: "true"},
-					OwnerReferences: nil,
-					Initializers:    nil,
-					Finalizers:      nil,
+					Labels:                     map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations:                map[string]string{injectCABundleAnnotation: "true"},
+					OwnerReferences:            nil,
+					Initializers:               nil,
+					Finalizers:                 nil,
 				},
 				Data:       nil,
 				BinaryData: nil,

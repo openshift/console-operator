@@ -1,11 +1,12 @@
 package route
 
 import (
-	"github.com/openshift/console-operator/pkg/api"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"reflect"
 	"testing"
+
+	"github.com/openshift/console-operator/pkg/api"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
@@ -16,7 +17,7 @@ func TestDefaultRoute(t *testing.T) {
 		weight int32 = 100
 	)
 	type args struct {
-		cr *v1alpha1.Console
+		cr *v1alpha1.ConsoleOperatorConfig
 	}
 	tests := []struct {
 		name string
@@ -26,11 +27,11 @@ func TestDefaultRoute(t *testing.T) {
 		{
 			name: "Test default route",
 			args: args{
-				cr: &v1alpha1.Console{
+				cr: &v1alpha1.ConsoleOperatorConfig{
 					TypeMeta:   v1.TypeMeta{},
 					ObjectMeta: v1.ObjectMeta{},
-					Spec:       v1alpha1.ConsoleSpec{},
-					Status:     v1alpha1.ConsoleStatus{},
+					Spec:       v1alpha1.ConsoleOperatorConfigSpec{},
+					Status:     v1alpha1.ConsoleOperatorConfigStatus{},
 				},
 			},
 			want: &routev1.Route{
@@ -88,12 +89,12 @@ func TestStub(t *testing.T) {
 					CreationTimestamp:          v1.Time{},
 					DeletionTimestamp:          nil,
 					DeletionGracePeriodSeconds: nil,
-					Labels:          map[string]string{"app": api.OpenShiftConsoleName},
-					Annotations:     nil,
-					OwnerReferences: nil,
-					Initializers:    nil,
-					Finalizers:      nil,
-					ClusterName:     "",
+					Labels:                     map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations:                nil,
+					OwnerReferences:            nil,
+					Initializers:               nil,
+					Finalizers:                 nil,
+					ClusterName:                "",
 				},
 				Spec:   routev1.RouteSpec{},
 				Status: routev1.RouteStatus{},

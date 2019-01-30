@@ -2,9 +2,10 @@ package configmap
 
 import (
 	"fmt"
-	"github.com/openshift/api/route/v1"
 	"reflect"
 	"testing"
+
+	v1 "github.com/openshift/api/route/v1"
 
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
@@ -37,7 +38,7 @@ servingInfo:
 // To manually run these tests: go test -v ./pkg/console/subresource/configmap/...
 func TestDefaultConfigMap(t *testing.T) {
 	type args struct {
-		cr *v1alpha1.Console
+		cr *v1alpha1.ConsoleOperatorConfig
 		rt *v1.Route
 	}
 	tests := []struct {
@@ -48,11 +49,11 @@ func TestDefaultConfigMap(t *testing.T) {
 		{
 			name: "Test Default Config Map",
 			args: args{
-				cr: &v1alpha1.Console{
+				cr: &v1alpha1.ConsoleOperatorConfig{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
-					Spec:       v1alpha1.ConsoleSpec{},
-					Status:     v1alpha1.ConsoleStatus{},
+					Spec:       v1alpha1.ConsoleOperatorConfigSpec{},
+					Status:     v1alpha1.ConsoleOperatorConfigStatus{},
 				},
 				rt: &v1.Route{
 					TypeMeta:   metav1.TypeMeta{},
@@ -82,12 +83,12 @@ func TestDefaultConfigMap(t *testing.T) {
 					CreationTimestamp:          metav1.Time{},
 					DeletionTimestamp:          nil,
 					DeletionGracePeriodSeconds: nil,
-					Labels:          map[string]string{"app": api.OpenShiftConsoleName},
-					Annotations:     nil,
-					OwnerReferences: nil,
-					Initializers:    nil,
-					Finalizers:      nil,
-					ClusterName:     "",
+					Labels:                     map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations:                nil,
+					OwnerReferences:            nil,
+					Initializers:               nil,
+					Finalizers:                 nil,
+					ClusterName:                "",
 				},
 				Data:       map[string]string{"console-config.yaml": exampleYaml},
 				BinaryData: nil,
@@ -123,12 +124,12 @@ func TestStub(t *testing.T) {
 					CreationTimestamp:          metav1.Time{},
 					DeletionTimestamp:          nil,
 					DeletionGracePeriodSeconds: nil,
-					Labels:          map[string]string{"app": api.OpenShiftConsoleName},
-					Annotations:     nil,
-					OwnerReferences: nil,
-					Initializers:    nil,
-					Finalizers:      nil,
-					ClusterName:     "",
+					Labels:                     map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations:                nil,
+					OwnerReferences:            nil,
+					Initializers:               nil,
+					Finalizers:                 nil,
+					ClusterName:                "",
 				},
 				BinaryData: nil,
 				Data:       nil,
