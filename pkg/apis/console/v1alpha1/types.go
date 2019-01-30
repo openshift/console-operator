@@ -1,12 +1,12 @@
 package v1alpha1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/openshift/api/operator/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // +genclient
+// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type ConsoleOperatorConfig struct {
@@ -18,22 +18,28 @@ type ConsoleOperatorConfig struct {
 }
 
 type ConsoleOperatorConfigSpec struct {
-	v1alpha1.OperatorSpec
-	// Count is the number of ConsoleOperatorConfig replicas
-	Count int32 `json:"count,omitempty"`
-	// take a look @:
-	// https://github.com/openshift/cluster-image-registry-operator/blob/master/pkg/apis/imageregistry/v1alpha1/types.go#L91-L92
-	// DefaultRoute: T|F
-	// additional routes config w/secrets
-	// Route[]
+	v1alpha1.OperatorSpec `json:",inline"`
+	Customization         Customization `json:"customization,omitempty"`
 }
 
 type ConsoleOperatorConfigStatus struct {
-	v1alpha1.OperatorStatus
-	// set once the router has a default host name
-	DefaultHostName string `json:"defaultHostName"`
-	OAuthSecret     string `json:"oauthSecret"`
+	v1alpha1.OperatorStatus `json:",inline"`
 }
+
+type Customization struct {
+	Brand                Brand  `json:"brand,omitempty"`
+	DocumentationBaseURL string `json:"documentationBaseURL,omitempty"`
+}
+
+type Brand string
+
+const (
+	BrandOpenShift Brand = "openshift"
+	BrandOKD       Brand = "okd"
+	BrandOnline    Brand = "online"
+	BrandOCP       Brand = "ocp"
+	BrandDedicated Brand = "dedicated"
+)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
