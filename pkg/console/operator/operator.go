@@ -53,10 +53,6 @@ const (
 	controllerName = "ConsoleOperatorConfig"
 )
 
-const (
-	consoleReplicas = 2
-)
-
 var CreateDefaultConsoleFlag bool
 
 type consoleOperator struct {
@@ -251,7 +247,6 @@ func (c *consoleOperator) defaultConsole() *consolev1alpha1.ConsoleOperatorConfi
 				// if Version is not 4.0.0 our reconcile loop will not pick it up
 				Version: "4.0.0",
 			},
-			Count: consoleReplicas,
 		},
 	}
 }

@@ -70,7 +70,7 @@ func DefaultDeployment(cr *v1alpha1.ConsoleOperatorConfig, cm *corev1.ConfigMap,
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
-	replicas := cr.Spec.Count
+	replicas := int32(3)
 	gracePeriod := int64(30)
 
 	deployment := &appsv1.Deployment{
