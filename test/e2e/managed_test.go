@@ -34,8 +34,9 @@ func TestEditManagedConfigMap(t *testing.T) {
 	defer testframework.MustManageConsole(t, client)
 	testframework.MustManageConsole(t, client)
 
-	if !patchAndCheckConfigMap(t, client) {
-		t.Fatalf("console ConfigMap data are not set to default value")
+	err := patchAndCheckConfigMap(t, client, true)
+	if err != nil {
+		t.Fatalf("error: %s", err)
 	}
 }
 
@@ -44,8 +45,9 @@ func TestEditManagedService(t *testing.T) {
 	defer testframework.MustManageConsole(t, client)
 	testframework.MustManageConsole(t, client)
 
-	if !patchAndCheckService(t, client) {
-		t.Fatalf("console Service data are not set to default value")
+	err := patchAndCheckService(t, client, true)
+	if err != nil {
+		t.Fatalf("error: %s", err)
 	}
 }
 
@@ -54,7 +56,8 @@ func TestEditManagedRoute(t *testing.T) {
 	defer testframework.MustManageConsole(t, client)
 	testframework.MustManageConsole(t, client)
 
-	if !patchAndCheckRoute(t, client) {
-		t.Fatalf("console Route data are not set to default value")
+	err := patchAndCheckRoute(t, client, true)
+	if err != nil {
+		t.Fatalf("error: %s", err)
 	}
 }

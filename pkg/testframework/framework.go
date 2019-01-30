@@ -9,9 +9,9 @@ import (
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	consoleapi "github.com/openshift/console-operator/pkg/api"
@@ -49,17 +49,33 @@ func GetResource(client *Clientset, resource string) (runtime.Object, error) {
 	var err error
 	switch resource {
 	case "ConfigMap":
-		res, err = client.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
+		res, err = GetConsoleConfigMap(client)
 	case "Service":
-		res, err = client.Services(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleServiceName, metav1.GetOptions{})
+		res, err = GetConsoleService(client)
 	case "Route":
-		res, err = client.Routes(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleRouteName, metav1.GetOptions{})
+		res, err = GetConsoleRoute(client)
 	case "Deployment":
 		fallthrough
 	default:
-		res, err = client.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleDeploymentName, metav1.GetOptions{})
+		res, err = GetConsoleDeployment(client)
 	}
 	return res, err
+}
+
+func GetConsoleConfigMap(client *Clientset) (*corev1.ConfigMap, error) {
+	return client.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
+}
+
+func GetConsoleService(client *Clientset) (*corev1.Service, error) {
+	return client.Services(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleServiceName, metav1.GetOptions{})
+}
+
+func GetConsoleRoute(client *Clientset) (*routev1.Route, error) {
+	return client.Routes(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleRouteName, metav1.GetOptions{})
+}
+
+func GetConsoleDeployment(client *Clientset) (*appv1.Deployment, error) {
+	return client.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleDeploymentName, metav1.GetOptions{})
 }
 
 func deleteResource(client *Clientset, resource string) error {
@@ -90,7 +106,8 @@ func DeleteCompletely(getObject func() (runtime.Object, error), deleteObject fun
 		return err
 	}
 
-	uid := getUID(obj)
+	accessor, err := meta.Accessor(obj)
+	uid := accessor.GetUID()
 
 	policy := metav1.DeletePropagationForeground
 	if err := deleteObject(&metav1.DeleteOptions{
@@ -114,25 +131,10 @@ func DeleteCompletely(getObject func() (runtime.Object, error), deleteObject fun
 			return false, err
 		}
 
-		return getUID(obj) != uid, nil
-	})
-}
+		accessor, err := meta.Accessor(obj)
 
-func getUID(obj runtime.Object) types.UID {
-	configMap, ok := obj.(*corev1.ConfigMap)
-	if ok {
-		return configMap.ObjectMeta.GetUID()
-	}
-	service, ok := obj.(*corev1.Service)
-	if ok {
-		return service.ObjectMeta.GetUID()
-	}
-	route, ok := obj.(*routev1.Route)
-	if ok {
-		return route.ObjectMeta.GetUID()
-	}
-	deployment, _ := obj.(*appv1.Deployment)
-	return deployment.ObjectMeta.GetUID()
+		return accessor.GetUID() != uid, nil
+	})
 }
 
 // IsResourceAvailable checks if tested resource is available(recreated by console-operator),
@@ -154,25 +156,6 @@ func IsResourceAvailable(errChan chan error, client *Clientset, resource string)
 		return false, nil
 	})
 	errChan <- err
-}
-
-func IsResourceAvailable_(client *Clientset, resource string) error {
-	counter := 0
-	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
-		_, err = GetResource(client, resource)
-		if err == nil {
-			return true, nil
-		}
-		if counter == 10 {
-			if err != nil {
-				return true, fmt.Errorf("deleted console %s was not recreated", resource)
-			}
-			return true, nil
-		}
-		counter++
-		return false, nil
-	})
-	return err
 }
 
 // IsResourceUnavailable checks if tested resource is unavailable(not recreated by console-operator),
