@@ -337,20 +337,20 @@ func secretAndOauthMatch(secret *corev1.Secret, client *oauthv1.OAuthClient) boo
 // properly filled out with the appropriate values.
 func setStatus(cs v1alpha1.ConsoleOperatorConfigStatus, svc *corev1.Service, rt *routev1.Route, cm *corev1.ConfigMap, dep *appsv1.Deployment, oa *oauthv1.OAuthClient, sec *corev1.Secret) {
 	// TODO: handle custom hosts as well
-	if rt.Spec.Host != "" {
-		cs.DefaultHostName = rt.Spec.Host
-		logrus.Printf("stats.DefaultHostName set to %v", rt.Spec.Host)
-	} else {
-		cs.DefaultHostName = ""
-		logrus.Printf("stats.DefaultHostName set to %v", "")
-	}
-
-	if secretAndOauthMatch(sec, oa) {
-		cs.OAuthSecret = "valid"
-		logrus.Printf("status.OAuthSecret is valid")
-	} else {
-		cs.OAuthSecret = "mismatch"
-		logrus.Printf("status.OAuthSecret is mismatch")
-	}
+	//if rt.Spec.Host != "" {
+	//	cs.DefaultHostName = rt.Spec.Host
+	//	logrus.Printf("stats.DefaultHostName set to %v", rt.Spec.Host)
+	//} else {
+	//	cs.DefaultHostName = ""
+	//	logrus.Printf("stats.DefaultHostName set to %v", "")
+	//}
+	//
+	//if secretAndOauthMatch(sec, oa) {
+	//	cs.OAuthSecret = "valid"
+	//	logrus.Printf("status.OAuthSecret is valid")
+	//} else {
+	//	cs.OAuthSecret = "mismatch"
+	//	logrus.Printf("status.OAuthSecret is mismatch")
+	//}
 
 }
