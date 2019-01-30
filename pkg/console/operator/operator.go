@@ -125,7 +125,7 @@ func (c *consoleOperator) Key() (metav1.Object, error) {
 	operatorConfig, err := c.operatorClient.Get(api.ResourceName, metav1.GetOptions{})
 
 	if errors.IsNotFound(err) && CreateDefaultConsoleFlag {
-		return c.operatorClient.Create(c.defaultConsole())
+		return c.operatorClient.Create(c.defaultConsoleOperatorConfig())
 	}
 
 	return operatorConfig, err
@@ -233,7 +233,7 @@ func (c *consoleOperator) deleteAllResources(cr *consolev1alpha1.ConsoleOperator
 
 // this may need to eventually live under each sync version, depending on if there is
 // custom sync logic
-func (c *consoleOperator) defaultConsole() *consolev1alpha1.ConsoleOperatorConfig {
+func (c *consoleOperator) defaultConsoleOperatorConfig() *consolev1alpha1.ConsoleOperatorConfig {
 	logrus.Info("creating console CR with default values")
 	return &consolev1alpha1.ConsoleOperatorConfig{
 		ObjectMeta: metav1.ObjectMeta{
