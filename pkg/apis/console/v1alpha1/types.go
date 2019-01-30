@@ -9,17 +9,17 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type Console struct {
+type ConsoleOperatorConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ConsoleSpec   `json:"spec,omitempty"`
-	Status ConsoleStatus `json:"status,omitempty"`
+	Spec   ConsoleOperatorConfigSpec   `json:"spec,omitempty"`
+	Status ConsoleOperatorConfigStatus `json:"status,omitempty"`
 }
 
-type ConsoleSpec struct {
+type ConsoleOperatorConfigSpec struct {
 	v1alpha1.OperatorSpec
-	// Count is the number of Console replicas
+	// Count is the number of ConsoleOperatorConfig replicas
 	Count int32 `json:"count,omitempty"`
 	// take a look @:
 	// https://github.com/openshift/cluster-image-registry-operator/blob/master/pkg/apis/imageregistry/v1alpha1/types.go#L91-L92
@@ -28,7 +28,7 @@ type ConsoleSpec struct {
 	// Route[]
 }
 
-type ConsoleStatus struct {
+type ConsoleOperatorConfigStatus struct {
 	v1alpha1.OperatorStatus
 	// set once the router has a default host name
 	DefaultHostName string `json:"defaultHostName"`
@@ -37,9 +37,9 @@ type ConsoleStatus struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type ConsoleList struct {
+type ConsoleOperatorConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []Console `json:"items"`
+	Items []ConsoleOperatorConfig `json:"items"`
 }
