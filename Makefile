@@ -58,7 +58,6 @@ verify:
 	hack/verify-gofmt.sh ||r=1;\
 	hack/verify-govet.sh ||r=1;\
 	hack/verify-imports.sh ||r=1;\
-	hack/verify-codegen.sh ||r=1;\
 	exit $$r ;\
 	}
 .PHONY: verify
