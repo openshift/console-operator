@@ -21,7 +21,7 @@ const (
 	consoleTargetPort      = 8443
 )
 
-func DefaultService(cr *v1alpha1.Console) *v1.Service {
+func DefaultService(cr *v1alpha1.ConsoleOperatorConfig) *v1.Service {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Name = api.OpenShiftConsoleShortName

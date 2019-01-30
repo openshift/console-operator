@@ -15,9 +15,9 @@ const (
 )
 
 // DefaultServiceCAConfigMap creates a config map that holds the service CA bundle.
-// Console uses this bundle to proxy to Prometheus. The value is injected into
+// ConsoleOperatorConfig uses this bundle to proxy to Prometheus. The value is injected into
 // key "service-ca.crt" by the service serving cert operator.
-func DefaultServiceCAConfigMap(cr *v1alpha1.Console) *corev1.ConfigMap {
+func DefaultServiceCAConfigMap(cr *v1alpha1.ConsoleOperatorConfig) *corev1.ConfigMap {
 	configMap := ServiceCAStub()
 	util.AddOwnerRef(configMap, util.OwnerRefFrom(cr))
 	return configMap

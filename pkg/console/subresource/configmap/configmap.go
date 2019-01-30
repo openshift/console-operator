@@ -26,7 +26,7 @@ const (
 	keyFilePath  = "/var/serving-cert/tls.key"
 )
 
-func DefaultConfigMap(cr *v1alpha1.Console, rt *routev1.Route) *corev1.ConfigMap {
+func DefaultConfigMap(cr *v1alpha1.ConsoleOperatorConfig, rt *routev1.Route) *corev1.ConfigMap {
 	host := rt.Spec.Host
 	config := NewYamlConfigString(host)
 	configMap := Stub()

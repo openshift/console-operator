@@ -11,7 +11,7 @@ import (
 
 const ClientSecretKey = "clientSecret"
 
-func DefaultSecret(cr *v1alpha1.Console, randomBits string) *corev1.Secret {
+func DefaultSecret(cr *v1alpha1.ConsoleOperatorConfig, randomBits string) *corev1.Secret {
 	secret := Stub()
 
 	SetSecretString(secret, randomBits)

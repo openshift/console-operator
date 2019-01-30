@@ -115,11 +115,11 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 
 	consoleOperator := operator.NewConsoleOperator(
 		// informers
-		consoleOperatorInformers.Console().V1alpha1().Consoles(), // Console
-		kubeInformersNamespaced.Core().V1(),                      // Secrets, ConfigMaps, Service
-		kubeInformersNamespaced.Apps().V1().Deployments(),        // Deployments
-		routesInformersNamespaced.Route().V1().Routes(),          // Route
-		oauthInformers.Oauth().V1().OAuthClients(),               // OAuth clients
+		consoleOperatorInformers.Console().V1alpha1().ConsoleOperatorConfigs(), // ConsoleOperatorConfig
+		kubeInformersNamespaced.Core().V1(),                                    // Secrets, ConfigMaps, Service
+		kubeInformersNamespaced.Apps().V1().Deployments(),                      // Deployments
+		routesInformersNamespaced.Route().V1().Routes(),                        // Route
+		oauthInformers.Oauth().V1().OAuthClients(),                             // OAuth clients
 		// clients
 		consoleOperatorClient.ConsoleV1alpha1(),
 		kubeClient.CoreV1(), // Secrets, ConfigMaps, Service
@@ -160,11 +160,11 @@ type operatorStatusProvider struct {
 }
 
 func (p *operatorStatusProvider) Informer() cache.SharedIndexInformer {
-	return p.informers.Console().V1alpha1().Consoles().Informer()
+	return p.informers.Console().V1alpha1().ConsoleOperatorConfigs().Informer()
 }
 
 func (p *operatorStatusProvider) CurrentStatus() (operatorv1alpha1.OperatorStatus, error) {
-	instance, err := p.informers.Console().V1alpha1().Consoles().Lister().Consoles(api.TargetNamespace).Get(api.ResourceName)
+	instance, err := p.informers.Console().V1alpha1().ConsoleOperatorConfigs().Lister().ConsoleOperatorConfigs(api.TargetNamespace).Get(api.ResourceName)
 	if err != nil {
 		return operatorv1alpha1.OperatorStatus{}, err
 	}

@@ -80,7 +80,7 @@ func ApplyRoute(client routeclient.RoutesGetter, required *routev1.Route) (*rout
 	return actual, true, err
 }
 
-func DefaultRoute(cr *v1alpha1.Console) *routev1.Route {
+func DefaultRoute(cr *v1alpha1.ConsoleOperatorConfig) *routev1.Route {
 	route := Stub()
 	route.Spec = routev1.RouteSpec{
 		To:             toService(),

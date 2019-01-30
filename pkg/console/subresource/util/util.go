@@ -70,7 +70,7 @@ func AddOwnerRef(obj v1.Object, ownerRef *v1.OwnerReference) {
 }
 
 // func RemoveOwnerRef
-func OwnerRefFrom(cr *v1alpha1.Console) *v1.OwnerReference {
+func OwnerRefFrom(cr *v1alpha1.ConsoleOperatorConfig) *v1.OwnerReference {
 
 	if cr != nil {
 		truthy := true

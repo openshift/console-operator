@@ -50,7 +50,7 @@ const (
 	// workQueueKey is the singleton key shared by all events
 	// the value is irrelevant
 	workQueueKey   = "sync-queue"
-	controllerName = "Console"
+	controllerName = "ConsoleOperatorConfig"
 )
 
 const (
@@ -63,7 +63,7 @@ type consoleOperator struct {
 	// for a performance sensitive operator, it would make sense to use informers
 	// to handle reads and clients to handle writes.  since this operator works
 	// on a singleton resource, it has no performance requirements.
-	operatorClient v1alpha1.ConsoleInterface
+	operatorClient v1alpha1.ConsoleOperatorConfigInterface
 	// core kube
 	secretsClient    coreclientv1.SecretsGetter
 	configMapClient  coreclientv1.ConfigMapsGetter
@@ -80,13 +80,13 @@ type consoleOperator struct {
 // for each resource that it interacts with.
 func NewConsoleOperator(
 	// informers
-	consoles consoleinformers.ConsoleInformer,
+	consoles consoleinformers.ConsoleOperatorConfigInformer,
 	coreV1 corev1.Interface,
 	deployments appsinformersv1.DeploymentInformer,
 	routes routesinformersv1.RouteInformer,
 	oauthClients oauthinformersv1.OAuthClientInformer,
 	// clients
-	operatorClient v1alpha1.ConsolesGetter,
+	operatorClient v1alpha1.ConsoleOperatorConfigsGetter,
 	corev1Client coreclientv1.CoreV1Interface,
 	deploymentClient appsv1.DeploymentsGetter,
 	routev1Client routeclientv1.RoutesGetter,
@@ -96,7 +96,7 @@ func NewConsoleOperator(
 ) operator.Runner {
 	c := &consoleOperator{
 		// operator
-		operatorClient: operatorClient.Consoles(api.TargetNamespace),
+		operatorClient: operatorClient.ConsoleOperatorConfigs(api.TargetNamespace),
 		// core kube
 		secretsClient:    corev1Client,
 		configMapClient:  corev1Client,
@@ -124,7 +124,7 @@ func NewConsoleOperator(
 	)
 }
 
-// key is actually the pivot point for the operator, which is our Console custom resource
+// key is actually the pivot point for the operator, which is our ConsoleOperatorConfig custom resource
 func (c *consoleOperator) Key() (metav1.Object, error) {
 	operatorConfig, err := c.operatorClient.Get(api.ResourceName, metav1.GetOptions{})
 
@@ -143,7 +143,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	logrus.Infof("started syncing operator %q (%v)", obj.GetName(), startTime)
 	defer logrus.Infof("finished syncing operator %q (%v) \n\n", obj.GetName(), time.Since(startTime))
 
-	operatorConfig := obj.(*consolev1alpha1.Console)
+	operatorConfig := obj.(*consolev1alpha1.ConsoleOperatorConfig)
 
 	switch operatorConfig.Spec.ManagementState {
 	case operatorsv1alpha1.Managed:
@@ -163,7 +163,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 
 	var currentActualVersion *semver.Version
 
-	// TODO: ca.yaml needs a version, update the v1alpha1.Console to include version field
+	// TODO: ca.yaml needs a version, update the v1alpha1.ConsoleOperatorConfig to include version field
 	if ca := operatorConfig.Status.CurrentAvailability; ca != nil {
 		ver, err := semver.Parse(ca.Version)
 		if err != nil {
@@ -212,7 +212,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 }
 
 // this may need to move to sync_v400 if versions ever have custom delete logic
-func (c *consoleOperator) deleteAllResources(cr *consolev1alpha1.Console) error {
+func (c *consoleOperator) deleteAllResources(cr *consolev1alpha1.ConsoleOperatorConfig) error {
 	logrus.Info("deleting console resources")
 	defer logrus.Info("finished deleting console resources")
 	var errs []error
@@ -237,14 +237,14 @@ func (c *consoleOperator) deleteAllResources(cr *consolev1alpha1.Console) error 
 
 // this may need to eventually live under each sync version, depending on if there is
 // custom sync logic
-func (c *consoleOperator) defaultConsole() *consolev1alpha1.Console {
+func (c *consoleOperator) defaultConsole() *consolev1alpha1.ConsoleOperatorConfig {
 	logrus.Info("creating console CR with default values")
-	return &consolev1alpha1.Console{
+	return &consolev1alpha1.ConsoleOperatorConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      api.ResourceName,
 			Namespace: api.OpenShiftConsoleNamespace,
 		},
-		Spec: consolev1alpha1.ConsoleSpec{
+		Spec: consolev1alpha1.ConsoleOperatorConfigSpec{
 			OperatorSpec: operatorsv1alpha1.OperatorSpec{
 				// by default the console is managed
 				ManagementState: operatorsv1alpha1.Managed,

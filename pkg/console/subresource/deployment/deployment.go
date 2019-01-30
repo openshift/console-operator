@@ -66,7 +66,7 @@ var volumeConfigList = []volumeConfig{
 	},
 }
 
-func DefaultDeployment(cr *v1alpha1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) *appsv1.Deployment {
+func DefaultDeployment(cr *v1alpha1.ConsoleOperatorConfig, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) *appsv1.Deployment {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
@@ -184,7 +184,7 @@ func consoleVolumeMounts(vc []volumeConfig) []corev1.VolumeMount {
 	return volMountList
 }
 
-func consoleContainer(cr *v1alpha1.Console) corev1.Container {
+func consoleContainer(cr *v1alpha1.ConsoleOperatorConfig) corev1.Container {
 	volumeMounts := consoleVolumeMounts(volumeConfigList)
 
 	return corev1.Container{

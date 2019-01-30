@@ -16,22 +16,22 @@ import (
 	v1alpha1 "github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
 )
 
-func isOperatorManaged(cr *v1alpha1.Console) bool {
+func isOperatorManaged(cr *v1alpha1.ConsoleOperatorConfig) bool {
 	return cr.Spec.ManagementState == operatorsv1alpha1.Managed
 }
 
-func isOperatorUnmanaged(cr *v1alpha1.Console) bool {
+func isOperatorUnmanaged(cr *v1alpha1.ConsoleOperatorConfig) bool {
 	return cr.Spec.ManagementState == operatorsv1alpha1.Unmanaged
 }
 
-func isOperatorRemoved(cr *v1alpha1.Console) bool {
+func isOperatorRemoved(cr *v1alpha1.ConsoleOperatorConfig) bool {
 	return cr.Spec.ManagementState == operatorsv1alpha1.Removed
 }
 
-type operatorStateReactionFn func(cr *v1alpha1.Console) bool
+type operatorStateReactionFn func(cr *v1alpha1.ConsoleOperatorConfig) bool
 
 func ensureConsoleIsInDesiredState(t *testing.T, client *Clientset, state operatorsv1alpha1.ManagementState) error {
-	var cr *v1alpha1.Console
+	var cr *v1alpha1.ConsoleOperatorConfig
 	// var checkFunc func()
 	var checkFunc operatorStateReactionFn
 
