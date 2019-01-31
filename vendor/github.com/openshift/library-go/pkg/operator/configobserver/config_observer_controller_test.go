@@ -5,8 +5,11 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
+	"github.com/imdario/mergo"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -19,6 +22,10 @@ import (
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 )
 
+func (c *fakeOperatorClient) Informer() cache.SharedIndexInformer {
+	return nil
+}
+
 func (c *fakeOperatorClient) GetOperatorState() (spec *operatorv1.OperatorSpec, status *operatorv1.OperatorStatus, resourceVersion string, err error) {
 	return c.startingSpec, &operatorv1.OperatorStatus{}, "", nil
 
@@ -30,9 +37,9 @@ func (c *fakeOperatorClient) UpdateOperatorSpec(rv string, in *operatorv1.Operat
 	c.spec = in
 	return in, rv, c.specUpdateFailure
 }
-func (c *fakeOperatorClient) UpdateOperatorStatus(rv string, in *operatorv1.OperatorStatus) (status *operatorv1.OperatorStatus, resourceVersion string, err error) {
+func (c *fakeOperatorClient) UpdateOperatorStatus(rv string, in *operatorv1.OperatorStatus) (status *operatorv1.OperatorStatus, err error) {
 	c.status = in
-	return in, rv, nil
+	return in, nil
 }
 
 type fakeOperatorClient struct {
@@ -44,6 +51,10 @@ type fakeOperatorClient struct {
 }
 
 type fakeLister struct{}
+
+func (l *fakeLister) ResourceSyncer() resourcesynccontroller.ResourceSyncer {
+	return nil
+}
 
 func (l *fakeLister) PreRunHasSynced() []cache.InformerSynced {
 	return []cache.InformerSynced{
@@ -156,6 +167,33 @@ func TestSyncStatus(t *testing.T) {
 				Message: "error writing updated observed config: update spec failure",
 			},
 		},
+		{
+			name: "NonDeterministic",
+			fakeClient: func() *fakeOperatorClient {
+				return &fakeOperatorClient{
+					startingSpec: &operatorv1.OperatorSpec{},
+				}
+			},
+			expectEvents: [][]string{
+				{"ObservedConfigChanged", "Writing updated observed config"},
+			},
+			observers: []ObserveConfigFunc{
+				func(listers Listers, recorder events.Recorder, existingConfig map[string]interface{}) (observedConfig map[string]interface{}, errs []error) {
+					return map[string]interface{}{"level1": map[string]interface{}{"level2_c": []interface{}{"slice_entry_a"}}}, nil
+				},
+				func(listers Listers, recorder events.Recorder, existingConfig map[string]interface{}) (observedConfig map[string]interface{}, errs []error) {
+					return map[string]interface{}{"level1": map[string]interface{}{"level2_c": []interface{}{"slice_entry_b"}}}, nil
+				},
+			},
+
+			expectError: false,
+			expectedCondition: &operatorv1.OperatorCondition{
+				Type:    operatorStatusTypeConfigObservationFailing,
+				Status:  operatorv1.ConditionTrue,
+				Reason:  "Error",
+				Message: "non-deterministic config observation detected",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -204,10 +242,6 @@ func TestSyncStatus(t *testing.T) {
 				if !reflect.DeepEqual(tc.expectedObservedConfig, operatorConfigClient.spec.ObservedConfig.Object) {
 					t.Errorf("\n===== observed config expected:\n%v\n===== observed config actual:\n%v", toYAML(tc.expectedObservedConfig), toYAML(operatorConfigClient.spec.ObservedConfig.Object))
 				}
-			default:
-				if operatorConfigClient.spec != nil {
-					t.Errorf("unexpected %v", spew.Sdump(operatorConfigClient.spec))
-				}
 			}
 
 			switch {
@@ -226,6 +260,16 @@ func TestSyncStatus(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+func TestMergoVersion(t *testing.T) {
+	type test struct{ A string }
+	src := test{"src"}
+	dest := test{"dest"}
+	mergo.Merge(&dest, &src, mergo.WithOverride)
+	if dest.A != "src" {
+		t.Errorf("incompatible version of github.com/imdario/mergo found")
 	}
 }
 

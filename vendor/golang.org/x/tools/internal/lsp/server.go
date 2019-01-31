@@ -6,7 +6,9 @@ package lsp
 
 import (
 	"context"
+	"fmt"
 	"go/token"
+	"net"
 	"os"
 	"sync"
 
@@ -24,6 +26,28 @@ func RunServer(ctx context.Context, stream jsonrpc2.Stream, opts ...interface{})
 	conn, client := protocol.RunServer(ctx, stream, s, opts...)
 	s.client = client
 	return conn.Wait(ctx)
+}
+
+// RunServerOnPort starts an LSP server on the given port and does not exit.
+// This function exists for debugging purposes.
+func RunServerOnPort(ctx context.Context, port int, opts ...interface{}) error {
+	s := &server{}
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%v", port))
+	if err != nil {
+		return err
+	}
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			return err
+		}
+		stream := jsonrpc2.NewHeaderStream(conn, conn)
+		go func() {
+			conn, client := protocol.RunServer(ctx, stream, s, opts...)
+			s.client = client
+			conn.Wait(ctx)
+		}()
+	}
 }
 
 type server struct {
@@ -194,16 +218,21 @@ func (s *server) Hover(ctx context.Context, params *protocol.TextDocumentPositio
 		return nil, err
 	}
 	pos := fromProtocolPosition(tok, params.Position)
-	contents, rng, err := source.Hover(ctx, f, pos)
+	ident, err := source.Identifier(ctx, s.view, f, pos)
 	if err != nil {
 		return nil, err
 	}
+	content, err := ident.Hover(nil)
+	if err != nil {
+		return nil, err
+	}
+	markdown := "```go\n" + content + "\n```"
 	return &protocol.Hover{
 		Contents: protocol.MarkupContent{
 			Kind:  protocol.Markdown,
-			Value: contents,
+			Value: markdown,
 		},
-		Range: toProtocolRange(tok, rng),
+		Range: toProtocolRange(tok, ident.Range),
 	}, nil
 }
 
@@ -234,11 +263,11 @@ func (s *server) Definition(ctx context.Context, params *protocol.TextDocumentPo
 		return nil, err
 	}
 	pos := fromProtocolPosition(tok, params.Position)
-	r, err := source.Definition(ctx, s.view, f, pos)
+	ident, err := source.Identifier(ctx, s.view, f, pos)
 	if err != nil {
 		return nil, err
 	}
-	return []protocol.Location{toProtocolLocation(s.view.FileSet(), r)}, nil
+	return []protocol.Location{toProtocolLocation(s.view.FileSet(), ident.Declaration.Range)}, nil
 }
 
 func (s *server) TypeDefinition(ctx context.Context, params *protocol.TextDocumentPositionParams) ([]protocol.Location, error) {
@@ -251,11 +280,11 @@ func (s *server) TypeDefinition(ctx context.Context, params *protocol.TextDocume
 		return nil, err
 	}
 	pos := fromProtocolPosition(tok, params.Position)
-	r, err := source.TypeDefinition(ctx, s.view, f, pos)
+	ident, err := source.Identifier(ctx, s.view, f, pos)
 	if err != nil {
 		return nil, err
 	}
-	return []protocol.Location{toProtocolLocation(s.view.FileSet(), r)}, nil
+	return []protocol.Location{toProtocolLocation(s.view.FileSet(), ident.Type.Range)}, nil
 }
 
 func (s *server) Implementation(context.Context, *protocol.TextDocumentPositionParams) ([]protocol.Location, error) {
