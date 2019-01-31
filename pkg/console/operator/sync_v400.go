@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	// kube
 	oauthv1 "github.com/openshift/api/oauth/v1"
-	operatorv1alpha1 "github.com/openshift/api/operator/v1alpha1"
+	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -113,18 +113,24 @@ func sync_v400(co *consoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 
 func SyncDeployment(co *consoleOperator, recorder events.Recorder, consoleConfig *v1alpha1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) (*appsv1.Deployment, bool, error) {
 	logrus.Printf("validating console deployment...")
-	defaultDeployment := deploymentsub.DefaultDeployment(consoleConfig, cm, serviceCAConfigMap, sec)
-	versionAvailability := &operatorv1alpha1.VersionAvailability{
-		Version: consoleConfig.Spec.Version,
+	requiredDeployment := deploymentsub.DefaultDeployment(consoleConfig, cm, serviceCAConfigMap, sec)
+	versionAvailability := []operatorv1.GenerationStatus{
+		{
+			Group:          "apps/v1",
+			Resource:       "deployments",
+			Namespace:      requiredDeployment.Namespace,
+			Name:           requiredDeployment.Name,
+			LastGeneration: requiredDeployment.Generation,
+		},
 	}
-	deploymentGeneration := resourcemerge.ExpectedDeploymentGenerationV1alpha1(defaultDeployment, versionAvailability)
+	deploymentGeneration := resourcemerge.ExpectedDeploymentGeneration(requiredDeployment, versionAvailability)
 	// first establish, do we have a deployment?
 	existingDeployment, getDepErr := co.deploymentClient.Deployments(api.TargetNamespace).Get(deploymentsub.Stub().Name, metav1.GetOptions{})
 
 	// if not, create it, first pass
 	if apierrors.IsNotFound(getDepErr) {
 		logrus.Print("deployment not found, creating new deployment")
-		_, depCreated, createdErr := resourceapply.ApplyDeployment(co.deploymentClient, recorder, defaultDeployment, deploymentGeneration, true)
+		_, depCreated, createdErr := resourceapply.ApplyDeployment(co.deploymentClient, recorder, requiredDeployment, deploymentGeneration, true)
 		// kill the sync loop
 		return nil, depCreated, fmt.Errorf("deployment not found, creating new deployment, create error = %v", createdErr)
 	}
