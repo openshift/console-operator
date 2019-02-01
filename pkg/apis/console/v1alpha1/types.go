@@ -45,6 +45,6 @@ type ConsoleList struct {
 }
 
 type FlagOptions struct {
-	Brand string `json:"brand"`
-	SetDefault bool `json:"setDefault"`
+	Brand      string `json:"brand"`
+	SetDefault bool   `json:"setDefault"`
 }

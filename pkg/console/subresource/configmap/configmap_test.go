@@ -37,8 +37,8 @@ servingInfo:
 // To manually run these tests: go test -v ./pkg/console/subresource/configmap/...
 func TestDefaultConfigMap(t *testing.T) {
 	type args struct {
-		cr *v1alpha1.Console
-		rt *v1.Route
+		cr  *v1alpha1.Console
+		rt  *v1.Route
 		opt v1alpha1.FlagOptions
 	}
 	tests := []struct {
@@ -153,7 +153,7 @@ func TestStub(t *testing.T) {
 // TODO: remove - This unit test is probably not useful since it is just testing yaml methods slice and marshal with no logic
 func TestNewYamlConfig(t *testing.T) {
 	type args struct {
-		host string
+		host    string
 		options v1alpha1.FlagOptions
 	}
 	tests := []struct {
@@ -164,8 +164,8 @@ func TestNewYamlConfig(t *testing.T) {
 		{
 			name: "TestNewYamlConfig",
 			args: args{
-				host: host,
-				options: v1alpha1.FlagOptions{Brand:brandingDefault},
+				host:    host,
+				options: v1alpha1.FlagOptions{Brand: brandingDefault},
 			},
 			want: exampleYaml,
 		},
