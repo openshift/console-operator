@@ -32,6 +32,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	metav1.AddToGroupVersion(scheme, GroupVersion)
 
 	scheme.AddKnownTypes(GroupVersion,
+		&Console{},
+		&ConsoleList{},
+		&Etcd{},
+		&EtcdList{},
 		&KubeAPIServer{},
 		&KubeAPIServerList{},
 		&KubeControllerManager{},

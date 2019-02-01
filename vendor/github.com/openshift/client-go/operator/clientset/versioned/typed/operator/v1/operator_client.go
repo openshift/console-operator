@@ -11,6 +11,8 @@ import (
 
 type OperatorV1Interface interface {
 	RESTClient() rest.Interface
+	ConsolesGetter
+	EtcdsGetter
 	KubeAPIServersGetter
 	KubeControllerManagersGetter
 	OpenShiftAPIServersGetter
@@ -20,6 +22,14 @@ type OperatorV1Interface interface {
 // OperatorV1Client is used to interact with features provided by the operator.openshift.io group.
 type OperatorV1Client struct {
 	restClient rest.Interface
+}
+
+func (c *OperatorV1Client) Consoles() ConsoleInterface {
+	return newConsoles(c)
+}
+
+func (c *OperatorV1Client) Etcds() EtcdInterface {
+	return newEtcds(c)
 }
 
 func (c *OperatorV1Client) KubeAPIServers() KubeAPIServerInterface {

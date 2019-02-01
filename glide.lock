@@ -1,5 +1,5 @@
 hash: f20fa9e013d2b14fa754f89237c2bdd77eb88d73f132f03ad71f5424a0a5431e
-updated: 2019-01-31T11:01:27.206653742+01:00
+updated: 2019-01-31T22:26:34.425107-05:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -196,7 +196,7 @@ imports:
 - name: github.com/NYTimes/gziphandler
   version: 56545f4a5d46df9a6648819d1664c3a03a13ffdb
 - name: github.com/openshift/api
-  version: 0e93a752a8cbf93d6c542ab9eeb1a89c2a38f899
+  version: 4912e102a00fa8bb4bf27f83808dce6ef1b6887d
   subpackages:
   - apps
   - apps/v1
@@ -242,7 +242,7 @@ imports:
   - webconsole
   - webconsole/v1
 - name: github.com/openshift/client-go
-  version: 9d9c3dc826335abee846500602f450ba1bdb70ed
+  version: 43eeb8cff295868f3cd8faa3347bcfbdc9b2a9c0
   subpackages:
   - oauth/clientset/versioned
   - oauth/clientset/versioned/scheme
@@ -261,7 +261,7 @@ imports:
   - route/informers/externalversions/route/v1
   - route/listers/route/v1
 - name: github.com/openshift/library-go
-  version: bc1eaa8a350dacaf8e2f0571cb780337daf7686e
+  version: d8d206f3a04f7d06753d3891c155445fac258718
   subpackages:
   - pkg/config/client
   - pkg/config/configdefaults
@@ -294,11 +294,7 @@ imports:
   subpackages:
   - tools/junitreport/pkg/api
   - tools/junitreport/pkg/builder
-  - tools/junitreport/pkg/builder/flat
-  - tools/junitreport/pkg/builder/nested
   - tools/junitreport/pkg/parser
-  - tools/junitreport/pkg/parser/gotest
-  - tools/junitreport/pkg/parser/oscmd
   - tools/junitreport/pkg/parser/stack
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
@@ -335,7 +331,7 @@ imports:
 - name: github.com/spf13/cobra
   version: 7547e83b2d85fd1893c7d76916f67689d761fecb
 - name: github.com/spf13/pflag
-  version: 24fa6976df40757dce6aea913e7b81ade90530e1
+  version: 583c0c0531f06d5278b7d917446061adc344b5cd
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
@@ -391,7 +387,7 @@ imports:
   subpackages:
   - rate
 - name: golang.org/x/tools
-  version: bb1329dc71a0cb59ec60f5bce4e5e087516677c0
+  version: 2382e3994d48b1d22acc2c86bcad0a2aff028e32
   subpackages:
   - imports
 - name: google.golang.org/appengine
