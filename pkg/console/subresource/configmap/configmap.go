@@ -26,9 +26,9 @@ const (
 	keyFilePath  = "/var/serving-cert/tls.key"
 )
 
-func DefaultConfigMap(cr *v1alpha1.Console, rt *routev1.Route) *corev1.ConfigMap {
+func DefaultConfigMap(cr *v1alpha1.Console, rt *routev1.Route, options v1alpha1.FlagOptions) *corev1.ConfigMap {
 	host := rt.Spec.Host
-	config := NewYamlConfigString(host)
+	config := NewYamlConfigString(host, options)
 	configMap := Stub()
 	configMap.Data = map[string]string{
 		consoleConfigYamlFile: config,
@@ -47,11 +47,11 @@ func Stub() *corev1.ConfigMap {
 	return configMap
 }
 
-func NewYamlConfigString(host string) string {
-	return string(NewYamlConfig(host))
+func NewYamlConfigString(host string, options v1alpha1.FlagOptions) string {
+	return string(NewYamlConfig(host, options))
 }
 
-func NewYamlConfig(host string) []byte {
+func NewYamlConfig(host string, options v1alpha1.FlagOptions) []byte {
 	conf := yaml.MapSlice{
 		{
 			Key: "kind", Value: "ConsoleConfig",
@@ -62,7 +62,7 @@ func NewYamlConfig(host string) []byte {
 		}, {
 			Key: "clusterInfo", Value: clusterInfo(host),
 		}, {
-			Key: "customization", Value: customization(),
+			Key: "customization", Value: customization(options),
 		}, {
 			Key: "servingInfo", Value: servingInfo(),
 		},
@@ -87,12 +87,12 @@ func servingInfo() yaml.MapSlice {
 	}
 }
 
-func customization() yaml.MapSlice {
+func customization(options v1alpha1.FlagOptions) yaml.MapSlice {
 	return yaml.MapSlice{
 		{
 			// TODO: branding will need to be provided by higher level config.
 			// it should not be configurable in the CR, but needs to be configured somewhere.
-			Key: "branding", Value: brandingDefault,
+			Key: "branding", Value: options.Brand,
 		}, {
 			Key: "documentationBaseURL", Value: documentationBaseURL,
 		},

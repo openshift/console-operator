@@ -36,5 +36,13 @@ func NewOperator() *cobra.Command {
         `,
 	)
 
+	cmd.Flags().StringVarP(
+		&operator.Brand,
+		"brand",
+		"b",
+		"okd",
+		"Defines what branding the console will show. Defaults to OKD.",
+	)
+
 	return cmd
 }

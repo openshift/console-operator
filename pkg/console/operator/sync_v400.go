@@ -39,7 +39,7 @@ import (
 // The next loop will pick up where they previous left off and move the process forward one step.
 // This ensures the logic is simpler as we do not have to handle coordination between objects within
 // the loop.
-func sync_v400(co *consoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.Console, bool, error) {
+func sync_v400(co *consoleOperator, consoleConfig *v1alpha1.Console, options v1alpha1.FlagOptions) (*v1alpha1.Console, bool, error) {
 	logrus.Println("running sync loop 4.0.0")
 	recorder := co.recorder
 
@@ -58,7 +58,7 @@ func sync_v400(co *consoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 	}
 	toUpdate = toUpdate || svcChanged
 
-	cm, cmChanged, cmErr := SyncConfigMap(co, recorder, consoleConfig, rt)
+	cm, cmChanged, cmErr := SyncConfigMap(co, recorder, consoleConfig, rt, options)
 	if cmErr != nil {
 		return consoleConfig, toUpdate, cmErr
 	}
@@ -199,9 +199,9 @@ func SyncSecret(co *consoleOperator, recorder events.Recorder, consoleConfig *v1
 // apply configmap (needs route)
 // by the time we get to the configmap, we can assume the route exits & is configured properly
 // therefore no additional error handling is needed here.
-func SyncConfigMap(co *consoleOperator, recorder events.Recorder, consoleConfig *v1alpha1.Console, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
+func SyncConfigMap(co *consoleOperator, recorder events.Recorder, consoleConfig *v1alpha1.Console, rt *routev1.Route, options v1alpha1.FlagOptions) (*corev1.ConfigMap, bool, error) {
 	logrus.Printf("validating console configmap...")
-	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, recorder, configmapsub.DefaultConfigMap(consoleConfig, rt))
+	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, recorder, configmapsub.DefaultConfigMap(consoleConfig, rt, options))
 	if cmErr != nil {
 		logrus.Errorf("%q: %v \n", "configmap", cmErr)
 		return nil, false, cmErr

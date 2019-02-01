@@ -39,6 +39,7 @@ func TestDefaultConfigMap(t *testing.T) {
 	type args struct {
 		cr *v1alpha1.Console
 		rt *v1.Route
+		opt v1alpha1.FlagOptions
 	}
 	tests := []struct {
 		name string
@@ -68,6 +69,9 @@ func TestDefaultConfigMap(t *testing.T) {
 					},
 					Status: v1.RouteStatus{},
 				},
+				opt: v1alpha1.FlagOptions{
+					Brand: brandingDefault,
+				},
 			},
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{},
@@ -96,7 +100,7 @@ func TestDefaultConfigMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DefaultConfigMap(tt.args.cr, tt.args.rt); !reflect.DeepEqual(got, tt.want) {
+			if got := DefaultConfigMap(tt.args.cr, tt.args.rt, tt.args.opt); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DefaultConfigMap() = %v\n ----------- want %v", got, tt.want)
 			}
 		})
@@ -150,6 +154,7 @@ func TestStub(t *testing.T) {
 func TestNewYamlConfig(t *testing.T) {
 	type args struct {
 		host string
+		options v1alpha1.FlagOptions
 	}
 	tests := []struct {
 		name string
@@ -160,13 +165,14 @@ func TestNewYamlConfig(t *testing.T) {
 			name: "TestNewYamlConfig",
 			args: args{
 				host: host,
+				options: v1alpha1.FlagOptions{Brand:brandingDefault},
 			},
 			want: exampleYaml,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewYamlConfigString(tt.args.host); !reflect.DeepEqual(got, tt.want) {
+			if got := NewYamlConfigString(tt.args.host, tt.args.options); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewYamlConfig() = \n%v\n ----> want\n%v", got, tt.want)
 			}
 		})

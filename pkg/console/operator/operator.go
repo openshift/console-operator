@@ -58,6 +58,7 @@ const (
 )
 
 var CreateDefaultConsoleFlag bool
+var Brand string
 
 type consoleOperator struct {
 	// for a performance sensitive operator, it would make sense to use informers
@@ -183,13 +184,14 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	v311_to_401 := versioning.NewRangeOrDie("3.11.0", "4.0.1")
 
 	outConfig := operatorConfig.DeepCopy()
+
 	var errs []error
 
 	configChanged := false
 	switch {
 	// v4.0.0 or nil
 	case v311_to_401.BetweenOrEmpty(currentActualVersion):
-		outConfig, configChanged, err = sync_v400(c, outConfig)
+		outConfig, configChanged, err = sync_v400(c, outConfig, consolev1alpha1.FlagOptions{Brand, CreateDefaultConsoleFlag})
 		errs = append(errs, err)
 		if err == nil {
 			outConfig.Status.TaskSummary = "sync-4.0.0"

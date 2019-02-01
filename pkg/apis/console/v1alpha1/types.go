@@ -43,3 +43,8 @@ type ConsoleList struct {
 
 	Items []Console `json:"items"`
 }
+
+type FlagOptions struct {
+	Brand string `json:"brand"`
+	SetDefault bool `json:"setDefault"`
+}
