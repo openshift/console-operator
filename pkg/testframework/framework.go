@@ -5,8 +5,13 @@ import (
 	"testing"
 	"time"
 
+	routev1 "github.com/openshift/api/route/v1"
+	appv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	consoleapi "github.com/openshift/console-operator/pkg/api"
@@ -27,8 +32,8 @@ func DeleteAll(t *testing.T, client *Clientset) {
 	for _, resource := range resources {
 		t.Logf("deleting console %s...", resource)
 		if err := DeleteCompletely(
-			func() (metav1.Object, error) {
-				return getResource(client, resource)
+			func() (runtime.Object, error) {
+				return GetResource(client, resource)
 			},
 			func(*metav1.DeleteOptions) error {
 				return deleteResource(client, resource)
@@ -39,22 +44,38 @@ func DeleteAll(t *testing.T, client *Clientset) {
 	}
 }
 
-func getResource(client *Clientset, resource string) (metav1.Object, error) {
-	var res metav1.Object
+func GetResource(client *Clientset, resource string) (runtime.Object, error) {
+	var res runtime.Object
 	var err error
 	switch resource {
 	case "ConfigMap":
-		res, err = client.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
+		res, err = GetConsoleConfigMap(client)
 	case "Service":
-		res, err = client.Services(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleServiceName, metav1.GetOptions{})
+		res, err = GetConsoleService(client)
 	case "Route":
-		res, err = client.Routes(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleRouteName, metav1.GetOptions{})
+		res, err = GetConsoleRoute(client)
 	case "Deployment":
 		fallthrough
 	default:
-		res, err = client.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleDeploymentName, metav1.GetOptions{})
+		res, err = GetConsoleDeployment(client)
 	}
 	return res, err
+}
+
+func GetConsoleConfigMap(client *Clientset) (*corev1.ConfigMap, error) {
+	return client.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
+}
+
+func GetConsoleService(client *Clientset) (*corev1.Service, error) {
+	return client.Services(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleServiceName, metav1.GetOptions{})
+}
+
+func GetConsoleRoute(client *Clientset) (*routev1.Route, error) {
+	return client.Routes(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleRouteName, metav1.GetOptions{})
+}
+
+func GetConsoleDeployment(client *Clientset) (*appv1.Deployment, error) {
+	return client.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleDeploymentName, metav1.GetOptions{})
 }
 
 func deleteResource(client *Clientset, resource string) error {
@@ -76,7 +97,7 @@ func deleteResource(client *Clientset, resource string) error {
 
 // DeleteCompletely sends a delete request and waits until the resource and
 // its dependents are deleted.
-func DeleteCompletely(getObject func() (metav1.Object, error), deleteObject func(*metav1.DeleteOptions) error) error {
+func DeleteCompletely(getObject func() (runtime.Object, error), deleteObject func(*metav1.DeleteOptions) error) error {
 	obj, err := getObject()
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -85,7 +106,8 @@ func DeleteCompletely(getObject func() (metav1.Object, error), deleteObject func
 		return err
 	}
 
-	uid := obj.GetUID()
+	accessor, err := meta.Accessor(obj)
+	uid := accessor.GetUID()
 
 	policy := metav1.DeletePropagationForeground
 	if err := deleteObject(&metav1.DeleteOptions{
@@ -109,7 +131,9 @@ func DeleteCompletely(getObject func() (metav1.Object, error), deleteObject func
 			return false, err
 		}
 
-		return obj.GetUID() != uid, nil
+		accessor, err := meta.Accessor(obj)
+
+		return accessor.GetUID() != uid, nil
 	})
 }
 
@@ -118,7 +142,7 @@ func DeleteCompletely(getObject func() (metav1.Object, error), deleteObject func
 func IsResourceAvailable(errChan chan error, client *Clientset, resource string) {
 	counter := 0
 	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
-		_, err = getResource(client, resource)
+		_, err = GetResource(client, resource)
 		if err == nil {
 			return true, nil
 		}
@@ -139,7 +163,7 @@ func IsResourceAvailable(errChan chan error, client *Clientset, resource string)
 func IsResourceUnavailable(errChan chan error, client *Clientset, resource string) {
 	counter := 0
 	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
-		_, err = getResource(client, resource)
+		_, err = GetResource(client, resource)
 		if err == nil {
 			return true, fmt.Errorf("deleted console %s was recreated", resource)
 		}

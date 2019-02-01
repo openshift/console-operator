@@ -1,4 +1,4 @@
-package e2e_test
+package e2e
 
 import (
 	"testing"
@@ -27,5 +27,38 @@ func TestUnmanaged(t *testing.T) {
 
 	if checkErr != nil {
 		t.Fatal(checkErr)
+	}
+}
+
+func TestEditUnmanagedConfigMap(t *testing.T) {
+	client := testframework.MustNewClientset(t, nil)
+	defer testframework.MustManageConsole(t, client)
+	testframework.MustUnmanageConsole(t, client)
+
+	err := patchAndCheckConfigMap(t, client, false)
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
+}
+
+func TestEditUnmanagedService(t *testing.T) {
+	client := testframework.MustNewClientset(t, nil)
+	defer testframework.MustManageConsole(t, client)
+	testframework.MustUnmanageConsole(t, client)
+
+	err := patchAndCheckService(t, client, false)
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
+}
+
+func TestEditUnmanagedRoute(t *testing.T) {
+	client := testframework.MustNewClientset(t, nil)
+	defer testframework.MustManageConsole(t, client)
+	testframework.MustUnmanageConsole(t, client)
+
+	err := patchAndCheckRoute(t, client, false)
+	if err != nil {
+		t.Fatalf("error: %s", err)
 	}
 }
