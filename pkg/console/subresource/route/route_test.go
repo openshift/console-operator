@@ -36,9 +36,10 @@ func TestDefaultRoute(t *testing.T) {
 			want: &routev1.Route{
 				TypeMeta: v1.TypeMeta{},
 				ObjectMeta: v1.ObjectMeta{
-					Name:      api.OpenShiftConsoleShortName,
-					Namespace: api.OpenShiftConsoleName,
-					Labels:    map[string]string{"app": api.OpenShiftConsoleName},
+					Name:        api.OpenShiftConsoleShortName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
 				},
 				Spec: routev1.RouteSpec{
 					To: routev1.RouteTargetReference{
@@ -80,7 +81,7 @@ func TestStub(t *testing.T) {
 				ObjectMeta: v1.ObjectMeta{
 					Name:                       api.OpenShiftConsoleShortName,
 					GenerateName:               "",
-					Namespace:                  api.OpenShiftConsoleName,
+					Namespace:                  api.OpenShiftConsoleNamespace,
 					SelfLink:                   "",
 					UID:                        "",
 					ResourceVersion:            "",
@@ -89,7 +90,7 @@ func TestStub(t *testing.T) {
 					DeletionTimestamp:          nil,
 					DeletionGracePeriodSeconds: nil,
 					Labels:          map[string]string{"app": api.OpenShiftConsoleName},
-					Annotations:     nil,
+					Annotations:     map[string]string{},
 					OwnerReferences: nil,
 					Initializers:    nil,
 					Finalizers:      nil,

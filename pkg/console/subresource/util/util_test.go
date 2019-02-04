@@ -57,9 +57,10 @@ func TestSharedMeta(t *testing.T) {
 		{
 			name: "Test shared metadata",
 			want: v1.ObjectMeta{
-				Name:      api.OpenShiftConsoleName,
-				Namespace: api.OpenShiftConsoleName,
-				Labels:    map[string]string{"app": api.OpenShiftConsoleName},
+				Name:        api.OpenShiftConsoleName,
+				Namespace:   api.OpenShiftConsoleNamespace,
+				Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+				Annotations: map[string]string{},
 			},
 		},
 	}
