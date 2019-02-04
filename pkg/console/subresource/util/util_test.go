@@ -1,12 +1,13 @@
 package util
 
 import (
-	"github.com/openshift/console-operator/pkg/api"
 	"reflect"
 	"testing"
 
-	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/openshift/console-operator/pkg/api"
+
+	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestSharedLabels(t *testing.T) {
@@ -52,11 +53,11 @@ func TestLabelsForConsole(t *testing.T) {
 func TestSharedMeta(t *testing.T) {
 	tests := []struct {
 		name string
-		want v1.ObjectMeta
+		want metav1.ObjectMeta
 	}{
 		{
 			name: "Test shared metadata",
-			want: v1.ObjectMeta{
+			want: metav1.ObjectMeta{
 				Name:        api.OpenShiftConsoleName,
 				Namespace:   api.OpenShiftConsoleNamespace,
 				Labels:      map[string]string{"app": api.OpenShiftConsoleName},
@@ -76,8 +77,8 @@ func TestSharedMeta(t *testing.T) {
 /*
 func TestAddOwnerRef(t *testing.T) {
 	type args struct {
-		obj      v1.Object
-		ownerRef *v1.OwnerReference
+		obj      metav1Object
+		ownerRef *metav1OwnerReference
 	}
 	tests := []struct {
 		name string
@@ -96,30 +97,30 @@ func TestAddOwnerRef(t *testing.T) {
 func TestOwnerRefFrom(t *testing.T) {
 	var truthy = true
 	type args struct {
-		cr *v1alpha1.Console
+		cr *v1.Console
 	}
 	tests := []struct {
 		name string
 		args args
-		want *v1.OwnerReference
+		want *metav1.OwnerReference
 	}{
 		{
 			name: "Test owner ref from when cr is not null",
 			args: args{
-				cr: &v1alpha1.Console{
-					TypeMeta: v1.TypeMeta{
+				cr: &v1.Console{
+					TypeMeta: metav1.TypeMeta{
 						Kind:       "Console",
 						APIVersion: "4.0",
 					},
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "Test",
 						UID:  "",
 					},
-					Spec:   v1alpha1.ConsoleSpec{},
-					Status: v1alpha1.ConsoleStatus{},
+					Spec:   v1.ConsoleSpec{},
+					Status: v1.ConsoleStatus{},
 				},
 			},
-			want: &v1.OwnerReference{
+			want: &metav1.OwnerReference{
 				APIVersion: "4.0",
 				Kind:       "Console",
 				Name:       "Test",

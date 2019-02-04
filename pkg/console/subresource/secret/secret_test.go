@@ -1,19 +1,20 @@
 package secret
 
 import (
-	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
 	"testing"
 
-	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
 func TestDefaultSecret(t *testing.T) {
 	type args struct {
-		cr         *v1alpha1.Console
+		cr         *v1.Console
 		randomBits string
 	}
 	tests := []struct {
@@ -24,17 +25,17 @@ func TestDefaultSecret(t *testing.T) {
 		{
 			name: "Test default secret",
 			args: args{
-				cr: &v1alpha1.Console{
-					TypeMeta:   v1.TypeMeta{},
-					ObjectMeta: v1.ObjectMeta{},
-					Spec:       v1alpha1.ConsoleSpec{},
-					Status:     v1alpha1.ConsoleStatus{},
+				cr: &v1.Console{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec:       v1.ConsoleSpec{},
+					Status:     v1.ConsoleStatus{},
 				},
 				randomBits: ClientSecretKey,
 			},
 			want: &corev1.Secret{
-				TypeMeta: v1.TypeMeta{},
-				ObjectMeta: v1.ObjectMeta{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
 					Name:        deployment.ConsoleOauthConfigName,
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
@@ -63,8 +64,8 @@ func TestStub(t *testing.T) {
 		{
 			name: "Test stubbing secret",
 			want: &corev1.Secret{
-				TypeMeta: v1.TypeMeta{},
-				ObjectMeta: v1.ObjectMeta{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
 					Name:        deployment.ConsoleOauthConfigName,
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},

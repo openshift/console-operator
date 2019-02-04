@@ -25,7 +25,7 @@ import (
 	"github.com/openshift/console-operator/pkg/generated/informers/externalversions"
 
 	// operator
-	operatorv1alpha1 "github.com/openshift/api/operator/v1alpha1"
+	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/console/operator"
 )
 
@@ -46,7 +46,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		return err
 	}
 
-	// pkg/apis/console/v1alpha1/types.go has a `genclient` annotation,
+	// pkg/apis/console/v1/types.go has a `genclient` annotation,
 	// that creates the expected functions for the type.
 	consoleOperatorClient, err := versioned.NewForConfig(ctx.KubeConfig)
 	if err != nil {
@@ -115,13 +115,13 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 
 	consoleOperator := operator.NewConsoleOperator(
 		// informers
-		consoleOperatorInformers.Console().V1alpha1().Consoles(), // Console
-		kubeInformersNamespaced.Core().V1(),                      // Secrets, ConfigMaps, Service
-		kubeInformersNamespaced.Apps().V1().Deployments(),        // Deployments
-		routesInformersNamespaced.Route().V1().Routes(),          // Route
-		oauthInformers.Oauth().V1().OAuthClients(),               // OAuth clients
+		consoleOperatorInformers.Console().V1().Consoles(), // Console
+		kubeInformersNamespaced.Core().V1(),                // Secrets, ConfigMaps, Service
+		kubeInformersNamespaced.Apps().V1().Deployments(),  // Deployments
+		routesInformersNamespaced.Route().V1().Routes(),    // Route
+		oauthInformers.Oauth().V1().OAuthClients(),         // OAuth clients
 		// clients
-		consoleOperatorClient.ConsoleV1alpha1(),
+		consoleOperatorClient.ConsoleV1(),
 		kubeClient.CoreV1(), // Secrets, ConfigMaps, Service
 		kubeClient.AppsV1(),
 		routesClient.RouteV1(),
@@ -160,13 +160,13 @@ type operatorStatusProvider struct {
 }
 
 func (p *operatorStatusProvider) Informer() cache.SharedIndexInformer {
-	return p.informers.Console().V1alpha1().Consoles().Informer()
+	return p.informers.Console().V1().Consoles().Informer()
 }
 
-func (p *operatorStatusProvider) CurrentStatus() (operatorv1alpha1.OperatorStatus, error) {
-	instance, err := p.informers.Console().V1alpha1().Consoles().Lister().Consoles(api.TargetNamespace).Get(api.ResourceName)
+func (p *operatorStatusProvider) CurrentStatus() (operatorv1.OperatorStatus, error) {
+	instance, err := p.informers.Console().V1().Consoles().Lister().Consoles(api.TargetNamespace).Get(api.ResourceName)
 	if err != nil {
-		return operatorv1alpha1.OperatorStatus{}, err
+		return operatorv1.OperatorStatus{}, err
 	}
 
 	return instance.Status.OperatorStatus, nil
