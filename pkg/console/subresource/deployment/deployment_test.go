@@ -1,14 +1,15 @@
 package deployment
 
 import (
-	alpha1 "github.com/openshift/api/operator/v1alpha1"
-	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
-	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	"reflect"
 	"testing"
 
-	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	operatorsv1 "github.com/openshift/api/operator/v1"
+	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
+	"github.com/openshift/console-operator/pkg/console/subresource/util"
+
+	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +22,7 @@ func TestDefaultDeployment(t *testing.T) {
 		gracePeriod  int64 = 30
 	)
 	type args struct {
-		cr  *v1alpha1.Console
+		cr  *v1.Console
 		cm  *corev1.ConfigMap
 		ca  *corev1.ConfigMap
 		sec *corev1.Secret
@@ -34,14 +35,14 @@ func TestDefaultDeployment(t *testing.T) {
 		{
 			name: "Test Default Config Map",
 			args: args{
-				cr: &v1alpha1.Console{
+				cr: &v1.Console{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
-					Spec: v1alpha1.ConsoleSpec{
-						OperatorSpec: alpha1.OperatorSpec{},
+					Spec: v1.ConsoleSpec{
+						OperatorSpec: operatorsv1.OperatorSpec{},
 						Count:        replicaCount,
 					},
-					Status: v1alpha1.ConsoleStatus{},
+					Status: v1.ConsoleStatus{},
 				},
 				cm: &corev1.ConfigMap{
 					TypeMeta: metav1.TypeMeta{},

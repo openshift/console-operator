@@ -1,11 +1,11 @@
 package service
 
 import (
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
@@ -21,7 +21,7 @@ const (
 	consoleTargetPort      = 8443
 )
 
-func DefaultService(cr *v1alpha1.Console) *v1.Service {
+func DefaultService(cr *v1.Console) *corev1.Service {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Name = api.OpenShiftConsoleShortName
@@ -29,11 +29,11 @@ func DefaultService(cr *v1alpha1.Console) *v1.Service {
 		ServingCertSecretAnnotation: ConsoleServingCertName,
 	}
 	service := Stub()
-	service.Spec = v1.ServiceSpec{
-		Ports: []v1.ServicePort{
+	service.Spec = corev1.ServiceSpec{
+		Ports: []corev1.ServicePort{
 			{
 				Name:       consolePortName,
-				Protocol:   v1.ProtocolTCP,
+				Protocol:   corev1.ProtocolTCP,
 				Port:       consolePort,
 				TargetPort: intstr.FromInt(consoleTargetPort),
 			},
@@ -47,13 +47,13 @@ func DefaultService(cr *v1alpha1.Console) *v1.Service {
 	return service
 }
 
-func Stub() *v1.Service {
+func Stub() *corev1.Service {
 	meta := util.SharedMeta()
 	meta.Name = api.OpenShiftConsoleShortName
 	meta.Annotations = map[string]string{
 		ServingCertSecretAnnotation: ConsoleServingCertName,
 	}
-	service := &v1.Service{
+	service := &corev1.Service{
 		ObjectMeta: meta,
 	}
 	return service

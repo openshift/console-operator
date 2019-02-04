@@ -10,42 +10,42 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	// operatorapi "github.com/openshift/api/operator/v1"
-	operatorsv1alpha1 "github.com/openshift/api/operator/v1alpha1"
+	operatorsv1 "github.com/openshift/api/operator/v1"
 
 	consoleapi "github.com/openshift/console-operator/pkg/api"
-	v1alpha1 "github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
 )
 
-func isOperatorManaged(cr *v1alpha1.Console) bool {
-	return cr.Spec.ManagementState == operatorsv1alpha1.Managed
+func isOperatorManaged(cr *v1.Console) bool {
+	return cr.Spec.ManagementState == operatorsv1.Managed
 }
 
-func isOperatorUnmanaged(cr *v1alpha1.Console) bool {
-	return cr.Spec.ManagementState == operatorsv1alpha1.Unmanaged
+func isOperatorUnmanaged(cr *v1.Console) bool {
+	return cr.Spec.ManagementState == operatorsv1.Unmanaged
 }
 
-func isOperatorRemoved(cr *v1alpha1.Console) bool {
-	return cr.Spec.ManagementState == operatorsv1alpha1.Removed
+func isOperatorRemoved(cr *v1.Console) bool {
+	return cr.Spec.ManagementState == operatorsv1.Removed
 }
 
-type operatorStateReactionFn func(cr *v1alpha1.Console) bool
+type operatorStateReactionFn func(cr *v1.Console) bool
 
-func ensureConsoleIsInDesiredState(t *testing.T, client *Clientset, state operatorsv1alpha1.ManagementState) error {
-	var cr *v1alpha1.Console
+func ensureConsoleIsInDesiredState(t *testing.T, client *Clientset, state operatorsv1.ManagementState) error {
+	var cr *v1.Console
 	// var checkFunc func()
 	var checkFunc operatorStateReactionFn
 
 	switch state {
-	case operatorsv1alpha1.Managed:
+	case operatorsv1.Managed:
 		checkFunc = isOperatorManaged
-	case operatorsv1alpha1.Unmanaged:
+	case operatorsv1.Unmanaged:
 		checkFunc = isOperatorUnmanaged
-	case operatorsv1alpha1.Removed:
+	case operatorsv1.Removed:
 		checkFunc = isOperatorRemoved
 	}
 
 	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
-		cr, err = client.ConsoleV1alpha1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.ResourceName, metav1.GetOptions{})
+		cr, err = client.ConsoleV1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.ResourceName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -60,7 +60,7 @@ func ensureConsoleIsInDesiredState(t *testing.T, client *Clientset, state operat
 }
 
 func ManageConsole(t *testing.T, client *Clientset) error {
-	cr, err := client.ConsoleV1alpha1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.ResourceName, metav1.GetOptions{})
+	cr, err := client.ConsoleV1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.ResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -72,11 +72,11 @@ func ManageConsole(t *testing.T, client *Clientset) error {
 
 	t.Logf("changing console operator state to 'Managed'...")
 
-	_, err = client.ConsoleV1alpha1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.ResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Managed"}}`))
+	_, err = client.ConsoleV1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.ResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Managed"}}`))
 	if err != nil {
 		return err
 	}
-	if err := ensureConsoleIsInDesiredState(t, client, operatorsv1alpha1.Managed); err != nil {
+	if err := ensureConsoleIsInDesiredState(t, client, operatorsv1.Managed); err != nil {
 		return fmt.Errorf("unable to change console operator state to 'Managed': %s", err)
 	}
 
@@ -84,7 +84,7 @@ func ManageConsole(t *testing.T, client *Clientset) error {
 }
 
 func UnmanageConsole(t *testing.T, client *Clientset) error {
-	cr, err := client.ConsoleV1alpha1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.ResourceName, metav1.GetOptions{})
+	cr, err := client.ConsoleV1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.ResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -96,11 +96,11 @@ func UnmanageConsole(t *testing.T, client *Clientset) error {
 
 	t.Logf("changing console operator state to 'Unmanaged'...")
 
-	_, err = client.ConsoleV1alpha1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.ResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Unmanaged"}}`))
+	_, err = client.ConsoleV1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.ResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Unmanaged"}}`))
 	if err != nil {
 		return err
 	}
-	if err := ensureConsoleIsInDesiredState(t, client, operatorsv1alpha1.Unmanaged); err != nil {
+	if err := ensureConsoleIsInDesiredState(t, client, operatorsv1.Unmanaged); err != nil {
 		return fmt.Errorf("unable to change console operator state to 'Unmanaged': %s", err)
 	}
 
@@ -108,7 +108,7 @@ func UnmanageConsole(t *testing.T, client *Clientset) error {
 }
 
 func RemoveConsole(t *testing.T, client *Clientset) error {
-	cr, err := client.ConsoleV1alpha1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.ResourceName, metav1.GetOptions{})
+	cr, err := client.ConsoleV1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.ResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -120,11 +120,11 @@ func RemoveConsole(t *testing.T, client *Clientset) error {
 
 	t.Logf("changing console operator state to 'Removed'...")
 
-	_, err = client.ConsoleV1alpha1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.ResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Removed"}}`))
+	_, err = client.ConsoleV1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.ResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Removed"}}`))
 	if err != nil {
 		return err
 	}
-	if err := ensureConsoleIsInDesiredState(t, client, operatorsv1alpha1.Removed); err != nil {
+	if err := ensureConsoleIsInDesiredState(t, client, operatorsv1.Removed); err != nil {
 		return fmt.Errorf("unable to change console operator state to 'Removed': %s", err)
 	}
 

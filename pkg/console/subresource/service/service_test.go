@@ -1,31 +1,32 @@
 package service
 
 import (
-	"github.com/openshift/console-operator/pkg/api"
-	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"reflect"
 	"testing"
 
-	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
-	"k8s.io/api/core/v1"
+	"github.com/openshift/console-operator/pkg/api"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+
+	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestDefaultService(t *testing.T) {
 	type args struct {
-		cr *v1alpha1.Console
+		cr *v1.Console
 	}
 	tests := []struct {
 		name string
 		args args
-		want *v1.Service
+		want *corev1.Service
 	}{
 		{
 			name: "Test default service generation",
 			args: args{
-				cr: &v1alpha1.Console{},
+				cr: &v1.Console{},
 			},
-			want: &v1.Service{
+			want: &corev1.Service{
 				TypeMeta: v12.TypeMeta{},
 				ObjectMeta: v12.ObjectMeta{
 					Name:      api.OpenShiftConsoleShortName,
@@ -34,11 +35,11 @@ func TestDefaultService(t *testing.T) {
 					Annotations: map[string]string{
 						ServingCertSecretAnnotation: ConsoleServingCertName},
 				},
-				Spec: v1.ServiceSpec{
-					Ports: []v1.ServicePort{
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
 						{
 							Name:       consolePortName,
-							Protocol:   v1.ProtocolTCP,
+							Protocol:   corev1.ProtocolTCP,
 							Port:       consolePort,
 							TargetPort: intstr.FromInt(consoleTargetPort),
 						},
@@ -47,7 +48,7 @@ func TestDefaultService(t *testing.T) {
 					Type:            "ClusterIP",
 					SessionAffinity: "None",
 				},
-				Status: v1.ServiceStatus{},
+				Status: corev1.ServiceStatus{},
 			},
 		},
 	}
@@ -63,11 +64,11 @@ func TestDefaultService(t *testing.T) {
 func TestStub(t *testing.T) {
 	tests := []struct {
 		name string
-		want *v1.Service
+		want *corev1.Service
 	}{
 		{
 			name: "Test stubbing out service",
-			want: &v1.Service{
+			want: &corev1.Service{
 				TypeMeta: v12.TypeMeta{},
 				ObjectMeta: v12.ObjectMeta{
 					Name:      api.OpenShiftConsoleShortName,
@@ -76,8 +77,8 @@ func TestStub(t *testing.T) {
 					Annotations: map[string]string{
 						ServingCertSecretAnnotation: ConsoleServingCertName},
 				},
-				Spec:   v1.ServiceSpec{},
-				Status: v1.ServiceStatus{},
+				Spec:   corev1.ServiceSpec{},
+				Status: corev1.ServiceStatus{},
 			},
 		},
 	}

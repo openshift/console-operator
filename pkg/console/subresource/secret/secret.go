@@ -4,14 +4,14 @@ import (
 	// kube
 	corev1 "k8s.io/api/core/v1"
 	// openshift
-	"github.com/openshift/console-operator/pkg/apis/console/v1alpha1"
+	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
 	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
 const ClientSecretKey = "clientSecret"
 
-func DefaultSecret(cr *v1alpha1.Console, randomBits string) *corev1.Secret {
+func DefaultSecret(cr *v1.Console, randomBits string) *corev1.Secret {
 	secret := Stub()
 
 	SetSecretString(secret, randomBits)
