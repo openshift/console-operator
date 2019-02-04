@@ -1,9 +1,8 @@
 package v1
 
 import (
+	operatorsv1 "github.com/openshift/api/operator/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	v1 "github.com/openshift/api/operator/v1"
 )
 
 // +genclient
@@ -18,7 +17,7 @@ type Console struct {
 }
 
 type ConsoleSpec struct {
-	v1.OperatorSpec
+	operatorsv1.OperatorSpec
 	// Count is the number of Console replicas
 	Count int32 `json:"count,omitempty"`
 	// take a look @:
@@ -29,7 +28,7 @@ type ConsoleSpec struct {
 }
 
 type ConsoleStatus struct {
-	v1.OperatorStatus
+	operatorsv1.OperatorStatus
 	// set once the router has a default host name
 	DefaultHostName string `json:"defaultHostName"`
 	OAuthSecret     string `json:"oauthSecret"`

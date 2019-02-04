@@ -164,25 +164,20 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	var currentActualVersion *semver.Version
 
 	// TODO: ca.yaml needs a version, update the v1.Console to include version field
-	if ca := operatorConfig.Status.CurrentAvailability; ca != nil {
-		ver, err := semver.Parse(ca.Version)
+	if version := operatorConfig.Status.Version; version != "" {
+		ver, err := semver.Parse(version)
 		if err != nil {
 			utilruntime.HandleError(err)
 		} else {
 			currentActualVersion = &ver
 		}
 	}
-	// not yet using, we target only 4.0.0
-	desiredVersion, err := semver.Parse(operatorConfig.Spec.Version)
-	if err != nil {
-		// TODO report failing status, we may actually attempt to do this in the "normal" error handling
-		return err
-	}
 
 	// this is arbitrary, but we need a placeholder. we will have to handle versioning appropriately at some point
 	v311_to_401 := versioning.NewRangeOrDie("3.11.0", "4.0.1")
 
 	outConfig := operatorConfig.DeepCopy()
+	var err error
 	var errs []error
 
 	configChanged := false
@@ -191,15 +186,8 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	case v311_to_401.BetweenOrEmpty(currentActualVersion):
 		outConfig, configChanged, err = sync_v400(c, outConfig)
 		errs = append(errs, err)
-		if err == nil {
-			outConfig.Status.TaskSummary = "sync-4.0.0"
-			outConfig.Status.CurrentAvailability = &operatorsv1.VersionAvailability{
-				Version: desiredVersion.String(),
-			}
-		}
 	default:
-		logrus.Printf("unrecognized version. desired %s, actual %s", desiredVersion, currentActualVersion)
-		outConfig.Status.TaskSummary = "unrecognized"
+		logrus.Printf("unrecognized version. actual %s", currentActualVersion)
 	}
 
 	if configChanged {
@@ -248,8 +236,6 @@ func (c *consoleOperator) defaultConsole() *consolev1.Console {
 			OperatorSpec: operatorsv1.OperatorSpec{
 				// by default the console is managed
 				ManagementState: operatorsv1.Managed,
-				// if Version is not 4.0.0 our reconcile loop will not pick it up
-				Version: "4.0.0",
 			},
 			Count: consoleReplicas,
 		},
