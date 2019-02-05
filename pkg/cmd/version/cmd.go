@@ -3,14 +3,21 @@ package version
 import (
 	"fmt"
 	"github.com/blang/semver"
+	"github.com/openshift/console-operator/pkg/console/version"
 	"github.com/spf13/cobra"
 	"strings"
+
+	cm "github.com/openshift/console-operator/pkg/console/subresource/configmap"
 )
 
 var (
-	Raw     = "v0.0.1"
-	Version = semver.MustParse(strings.TrimLeft(Raw, "v"))
-	String  = fmt.Sprintf("ConsoleOperator %s", Raw)
+	Raw        = "v0.0.1"
+	VerInfo    = version.Get()
+	GitCommit  = VerInfo.GitCommit
+	BuildDate  = VerInfo.BuildDate
+	Version    = semver.MustParse(strings.TrimLeft(Raw, "v"))
+	BrandValue = cm.DEFAULT_BRAND
+	String     = fmt.Sprintf("ConsoleOperator %s\nGit Commit: %s\nBuild Date: %s\nCurrent Brand Setting: %s", Raw, GitCommit, BuildDate, BrandValue)
 )
 
 func NewVersion() *cobra.Command {

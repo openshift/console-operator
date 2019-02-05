@@ -241,7 +241,7 @@ os::build::internal::build_binaries() {
       if [[ ${#nonstatics[@]} -gt 0 ]]; then
         GOOS=${platform%/*} GOARCH=${platform##*/} go install \
           -pkgdir "${pkgdir}/${platform}" \
-          -tags "${OS_GOFLAGS_TAGS-} ${!platform_gotags_envvar:-}" \
+          -tags "${OS_GOFLAGS_TAGS-} ${!platform_gotags_envvar:-} ${ADDITIONAL_GOTAGS-}" \
           -ldflags="${local_ldflags}" \
           "${goflags[@]:+${goflags[@]}}" \
           "${nonstatics[@]}"
