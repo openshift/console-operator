@@ -10,7 +10,6 @@ import (
 	"github.com/sirupsen/logrus"
 	// kube
 	oauthv1 "github.com/openshift/api/oauth/v1"
-	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -114,44 +113,14 @@ func sync_v400(co *consoleOperator, consoleConfig *v1alpha1.Console) (*v1alpha1.
 func SyncDeployment(co *consoleOperator, recorder events.Recorder, consoleConfig *v1alpha1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) (*appsv1.Deployment, bool, error) {
 	logrus.Printf("validating console deployment...")
 	requiredDeployment := deploymentsub.DefaultDeployment(consoleConfig, cm, serviceCAConfigMap, sec)
-	versionAvailability := []operatorv1.GenerationStatus{
-		{
-			Group:          "apps/v1",
-			Resource:       "deployments",
-			Namespace:      requiredDeployment.Namespace,
-			Name:           requiredDeployment.Name,
-			LastGeneration: requiredDeployment.Generation,
-		},
-	}
-	deploymentGeneration := resourcemerge.ExpectedDeploymentGeneration(requiredDeployment, versionAvailability)
-	// first establish, do we have a deployment?
-	existingDeployment, getDepErr := co.deploymentClient.Deployments(api.TargetNamespace).Get(deploymentsub.Stub().Name, metav1.GetOptions{})
-
-	// if not, create it, first pass
-	if apierrors.IsNotFound(getDepErr) {
-		logrus.Print("deployment not found, creating new deployment")
-		_, depCreated, createdErr := resourceapply.ApplyDeployment(co.deploymentClient, recorder, requiredDeployment, deploymentGeneration, true)
-		// kill the sync loop
-		return nil, depCreated, fmt.Errorf("deployment not found, creating new deployment, create error = %v", createdErr)
-	}
-
-	if getDepErr != nil {
-		logrus.Errorf("%q: %v \n", "deployment", getDepErr)
-		return nil, false, getDepErr
-	}
-
-	// otherwise, we may need to update or force a rollout
-	if deploymentsub.ResourceVersionsChanged(existingDeployment, cm, serviceCAConfigMap, sec) {
-		toUpdate := deploymentsub.UpdateResourceVersions(existingDeployment, cm, serviceCAConfigMap, sec)
-		updatedDeployment, depChanged, updateErr := resourceapply.ApplyDeployment(co.deploymentClient, recorder, toUpdate, deploymentGeneration, true)
-		if updateErr != nil {
-			logrus.Errorf("%q: %v \n", "deployment", updateErr)
-			return nil, false, updateErr
-		}
-		return updatedDeployment, depChanged, nil
+	expectedGeneration := getDeploymentGeneration(co)
+	deployment, deploymentChanged, applyDepErr := resourceapply.ApplyDeployment(co.deploymentClient, recorder, requiredDeployment, expectedGeneration, false)
+	if applyDepErr != nil {
+		logrus.Errorf("%q: %v \n", "deployment", applyDepErr)
+		return nil, false, applyDepErr
 	}
 	logrus.Println("deployment exists and is in the correct state")
-	return existingDeployment, false, nil
+	return deployment, deploymentChanged, nil
 }
 
 // applies changes to the oauthclient
@@ -299,6 +268,14 @@ func secretAndOauthMatch(secret *corev1.Secret, client *oauthv1.OAuthClient) boo
 	secretString := secretsub.GetSecretString(secret)
 	clientSecretString := oauthsub.GetSecretString(client)
 	return secretString == clientSecretString
+}
+
+func getDeploymentGeneration(co *consoleOperator) int64 {
+	deployment, err := co.deploymentClient.Deployments(api.TargetNamespace).Get(deploymentsub.Stub().Name, metav1.GetOptions{})
+	if err != nil {
+		return -1
+	}
+	return deployment.Generation
 }
 
 //func secretsMatch(secretGetter coreclientv1.SecretsGetter, clientsGetter oauthclientv1.OAuthClientsGetter) bool {

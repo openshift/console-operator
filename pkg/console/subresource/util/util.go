@@ -41,9 +41,10 @@ func LabelsForConsole() map[string]string {
 
 func SharedMeta() v1.ObjectMeta {
 	return v1.ObjectMeta{
-		Name:      api.OpenShiftConsoleName,
-		Namespace: api.OpenShiftConsoleName,
-		Labels:    SharedLabels(),
+		Name:        api.OpenShiftConsoleName,
+		Namespace:   api.OpenShiftConsoleNamespace,
+		Labels:      SharedLabels(),
+		Annotations: map[string]string{},
 	}
 }
 

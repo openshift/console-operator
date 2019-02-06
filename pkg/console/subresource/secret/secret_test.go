@@ -35,9 +35,10 @@ func TestDefaultSecret(t *testing.T) {
 			want: &corev1.Secret{
 				TypeMeta: v1.TypeMeta{},
 				ObjectMeta: v1.ObjectMeta{
-					Name:      deployment.ConsoleOauthConfigName,
-					Namespace: api.OpenShiftConsoleName,
-					Labels:    map[string]string{"app": api.OpenShiftConsoleName},
+					Name:        deployment.ConsoleOauthConfigName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
 				},
 				Data:       map[string][]byte{"clientSecret": {99, 108, 105, 101, 110, 116, 83, 101, 99, 114, 101, 116}},
 				StringData: nil,
@@ -64,9 +65,10 @@ func TestStub(t *testing.T) {
 			want: &corev1.Secret{
 				TypeMeta: v1.TypeMeta{},
 				ObjectMeta: v1.ObjectMeta{
-					Name:      deployment.ConsoleOauthConfigName,
-					Namespace: api.OpenShiftConsoleName,
-					Labels:    map[string]string{"app": api.OpenShiftConsoleName},
+					Name:        deployment.ConsoleOauthConfigName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
 				},
 				Data:       nil,
 				StringData: nil,

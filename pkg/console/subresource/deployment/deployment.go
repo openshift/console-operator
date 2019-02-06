@@ -1,8 +1,6 @@
 package deployment
 
 import (
-	"github.com/sirupsen/logrus"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -28,6 +26,7 @@ const (
 	configMapResourceVersionAnnotation          = "console.openshift.io/console-config-version"
 	serviceCAConfigMapResourceVersionAnnotation = "console.openshift.io/service-ca-config-version"
 	secretResourceVersionAnnotation             = "console.openshift.io/oauth-secret-version"
+	consoleImageAnnotation                      = "console.openshift.io/image"
 )
 
 type volumeConfig struct {
@@ -70,6 +69,13 @@ func DefaultDeployment(cr *v1alpha1.Console, cm *corev1.ConfigMap, serviceCAConf
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
+	// Set any annotations as needed so that `ApplyDeployment` rolls out a
+	// new version when they change. `ApplyDeployment` doesn't compare that
+	// pod template, but it does check deployment annotations.
+	meta.Annotations[configMapResourceVersionAnnotation] = cm.GetResourceVersion()
+	meta.Annotations[serviceCAConfigMapResourceVersionAnnotation] = serviceCAConfigMap.GetResourceVersion()
+	meta.Annotations[secretResourceVersionAnnotation] = sec.GetResourceVersion()
+	meta.Annotations[consoleImageAnnotation] = util.GetImageEnv()
 	replicas := cr.Spec.Count
 	gracePeriod := int64(30)
 
@@ -88,6 +94,7 @@ func DefaultDeployment(cr *v1alpha1.Console, cm *corev1.ConfigMap, serviceCAConf
 						configMapResourceVersionAnnotation:          cm.GetResourceVersion(),
 						serviceCAConfigMapResourceVersionAnnotation: serviceCAConfigMap.GetResourceVersion(),
 						secretResourceVersionAnnotation:             sec.GetResourceVersion(),
+						consoleImageAnnotation:                      util.GetImageEnv(),
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -241,33 +248,4 @@ func livenessProbe() *corev1.Probe {
 	probe := defaultProbe()
 	probe.InitialDelaySeconds = 30
 	return probe
-}
-
-func ConfigMapResourceVersionChanged(dep *appsv1.Deployment, cm *corev1.ConfigMap) bool {
-	currentVersion := dep.Spec.Template.Annotations[configMapResourceVersionAnnotation]
-	logrus.Infof("%v changed? %v (%v vs %v)", configMapResourceVersionAnnotation, cm.GetResourceVersion() != currentVersion, cm.GetResourceVersion(), currentVersion)
-	return cm.GetResourceVersion() != currentVersion
-}
-
-func ServiceCAConfigMapResourceVersionChanged(dep *appsv1.Deployment, serviceCAConfigMap *corev1.ConfigMap) bool {
-	currentVersion := dep.Spec.Template.Annotations[serviceCAConfigMapResourceVersionAnnotation]
-	logrus.Infof("%v changed? %v (%v vs %v)", serviceCAConfigMapResourceVersionAnnotation, serviceCAConfigMap.GetResourceVersion() != currentVersion, serviceCAConfigMap.GetResourceVersion(), currentVersion)
-	return serviceCAConfigMap.GetResourceVersion() != currentVersion
-}
-
-func SecretResourceVersionChanged(dep *appsv1.Deployment, sec *corev1.Secret) bool {
-	currentVersion := dep.Spec.Template.Annotations[secretResourceVersionAnnotation]
-	logrus.Infof("%v changed? %v (%v vs %v)", secretResourceVersionAnnotation, sec.GetResourceVersion() != currentVersion, sec.GetResourceVersion(), currentVersion)
-	return sec.GetResourceVersion() != currentVersion
-}
-
-func ResourceVersionsChanged(dep *appsv1.Deployment, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) bool {
-	return ConfigMapResourceVersionChanged(dep, cm) || ServiceCAConfigMapResourceVersionChanged(dep, serviceCAConfigMap) || SecretResourceVersionChanged(dep, sec)
-}
-
-func UpdateResourceVersions(dep *appsv1.Deployment, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) *appsv1.Deployment {
-	dep.Spec.Template.Annotations[configMapResourceVersionAnnotation] = cm.GetResourceVersion()
-	dep.Spec.Template.Annotations[serviceCAConfigMapResourceVersionAnnotation] = serviceCAConfigMap.GetResourceVersion()
-	dep.Spec.Template.Annotations[secretResourceVersionAnnotation] = sec.GetResourceVersion()
-	return dep
 }
