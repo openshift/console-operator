@@ -1,3 +1,5 @@
+# TODO: This CRD will be eliminated in favor of:
+# https://github.com/openshift/cluster-config-operator/pull/11
 # console config is the public facing configuration
 # of the console
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -7,7 +9,6 @@ metadata:
 spec:
   scope: Cluster
   group: config.openshift.io
-  version: v1
   names:
     kind: Console
     listKind: ConsoleList
@@ -15,3 +16,7 @@ spec:
     singular: console
   subresources:
     status: {}
+  versions:
+  - name: v1
+    served: true
+    storage: true

@@ -7,7 +7,6 @@ metadata:
 spec:
   scope: Cluster
   group: operator.openshift.io
-  version: v1
   names:
     kind: Console
     listKind: ConsoleList
@@ -15,3 +14,7 @@ spec:
     singular: console
   subresources:
     status: {}
+  versions:
+  - name: v1
+    served: true
+    storage: true
