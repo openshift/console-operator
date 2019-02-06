@@ -17,12 +17,17 @@ import (
 	authclient "github.com/openshift/client-go/oauth/clientset/versioned"
 	// clients
 	routesclient "github.com/openshift/client-go/route/clientset/versioned"
-	"github.com/openshift/console-operator/pkg/generated/clientset/versioned"
+
+	configclient "github.com/openshift/client-go/config/clientset/versioned"
+	operatorclient "github.com/openshift/client-go/operator/clientset/versioned"
 
 	// informers
 	oauthinformers "github.com/openshift/client-go/oauth/informers/externalversions"
 	routesinformers "github.com/openshift/client-go/route/informers/externalversions"
 	"github.com/openshift/console-operator/pkg/generated/informers/externalversions"
+
+	configinformers "github.com/openshift/client-go/config/informers/externalversions"
+	operatorinformers "github.com/openshift/client-go/operator/informers/externalversions"
 
 	// operator
 	operatorv1alpha1 "github.com/openshift/api/operator/v1alpha1"
@@ -48,10 +53,17 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 
 	// pkg/apis/console/v1alpha1/types.go has a `genclient` annotation,
 	// that creates the expected functions for the type.
-	consoleOperatorClient, err := versioned.NewForConfig(ctx.KubeConfig)
+	consoleOperatorConfigClient, err := operatorclient.NewForConfig(ctx.KubeConfig)
 	if err != nil {
 		return err
 	}
+
+	consoleConfigClient, err := configclient.NewForConfig(ctx.KubeConfig)
+	if err != nil {
+		return err
+	}
+
+	// consoleConfigClient, err := NewForCOnfig
 
 	routesClient, err := routesclient.NewForConfig(ctx.KubeConfig)
 	if err != nil {
@@ -87,13 +99,16 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		informers.WithTweakListOptions(tweakListOptions),
 	)
 
-	consoleOperatorInformers := externalversions.NewSharedInformerFactoryWithOptions(
-		// this is our generated client
-		consoleOperatorClient,
+	consoleConfigInformers := configinformers.NewSharedInformerFactoryWithOptions(
+		consoleConfigClient,
 		resync,
-		// and the same set of optional transform functions
-		externalversions.WithNamespace(api.TargetNamespace),
-		externalversions.WithTweakListOptions(tweakListOptions),
+		configinformers.WithTweakListOptions(tweakListOptions),
+	)
+
+	consoleOperatorConfigInformers := operatorinformers.NewSharedInformerFactoryWithOptions(
+		consoleOperatorConfigClient,
+		resync,
+		operatorinformers.WithTweakListOptions(tweakListOptions),
 	)
 
 	routesInformersNamespaced := routesinformers.NewSharedInformerFactoryWithOptions(
@@ -115,13 +130,19 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 
 	consoleOperator := operator.NewConsoleOperator(
 		// informers
-		consoleOperatorInformers.Console().V1alpha1().Consoles(), // Console
-		kubeInformersNamespaced.Core().V1(),                      // Secrets, ConfigMaps, Service
-		kubeInformersNamespaced.Apps().V1().Deployments(),        // Deployments
-		routesInformersNamespaced.Route().V1().Routes(),          // Route
-		oauthInformers.Oauth().V1().OAuthClients(),               // OAuth clients
+		// TODO: this is just v1 instead of v1alpha1. rebase on #125
+		consoleOperatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
+		consoleConfigInformers.Config().V1().Consoles(),           // ConsoleConfig
+
+		kubeInformersNamespaced.Core().V1(),               // Secrets, ConfigMaps, Service
+		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
+		routesInformersNamespaced.Route().V1().Routes(),   // Route
+		oauthInformers.Oauth().V1().OAuthClients(),        // OAuth clients
 		// clients
-		consoleOperatorClient.ConsoleV1alpha1(),
+
+		consoleOperatorConfigClient.OperatorV1(),
+		consoleConfigClient.ConfigV1(),
+
 		kubeClient.CoreV1(), // Secrets, ConfigMaps, Service
 		kubeClient.AppsV1(),
 		routesClient.RouteV1(),
@@ -130,7 +151,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	)
 
 	kubeInformersNamespaced.Start(ctx.Context.Done())
-	consoleOperatorInformers.Start(ctx.Context.Done())
+	consoleOperatorConfigInformers.Start(ctx.Context.Done())
 	routesInformersNamespaced.Start(ctx.Context.Done())
 	oauthInformers.Start(ctx.Context.Done())
 
@@ -144,7 +165,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	//	controller.ResourceName,
 	//	// no idea why this is dynamic & not a strongly typed client.
 	//	dynamicClient,
-	//	&operatorStatusProvider{informers: consoleOperatorInformers},
+	//	&operatorStatusProvider{informers: consoleOperatorConfigInformers},
 	//)
 	//// TODO: will have a series of Run() funcs here
 	//go clusterOperatorStatus.Run(1, stopCh)

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openshift/console-operator/pkg/api"
-
 	// 3rd party
 	"github.com/blang/semver"
 	"github.com/sirupsen/logrus"
@@ -35,8 +33,11 @@ import (
 	consoleinformers "github.com/openshift/console-operator/pkg/generated/informers/externalversions/console/v1alpha1"
 	appsinformersv1 "k8s.io/client-go/informers/apps/v1"
 
+	configv1 "github.com/openshift/client-go/config/informers/externalversions/config/v1"
+
 	// clients
-	"github.com/openshift/console-operator/pkg/generated/clientset/versioned/typed/console/v1alpha1"
+	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
+	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
@@ -44,6 +45,10 @@ import (
 	"github.com/openshift/console-operator/pkg/console/subresource/route"
 	"github.com/openshift/console-operator/pkg/console/subresource/secret"
 	"github.com/openshift/console-operator/pkg/console/subresource/service"
+
+	consoleconfigv1 "github.com/openshift/api/config/v1"
+	consoleoperatorv1 "github.com/openshift/api/operator/v1"
+	"github.com/openshift/console-operator/pkg/api"
 )
 
 const (
@@ -63,12 +68,17 @@ type consoleOperator struct {
 	// for a performance sensitive operator, it would make sense to use informers
 	// to handle reads and clients to handle writes.  since this operator works
 	// on a singleton resource, it has no performance requirements.
-	operatorClient v1alpha1.ConsoleInterface
+	operatorConfigClient operatorclientv1.ConsolesGetter
+	consoleConfigClient  configclientv1.ConsolesGetter
+
 	// core kube
 	secretsClient    coreclientv1.SecretsGetter
 	configMapClient  coreclientv1.ConfigMapsGetter
 	serviceClient    coreclientv1.ServicesGetter
 	deploymentClient appsv1.DeploymentsGetter
+
+	operatorClient operatorclientv1.OperatorV1Client
+	configClient   configclientv1.ConfigV1Client
 	// openshift
 	routeClient routeclientv1.RoutesGetter
 	oauthClient oauthclientv1.OAuthClientsGetter
@@ -79,14 +89,22 @@ type consoleOperator struct {
 // the consoleOperator uses specific, strongly-typed clients
 // for each resource that it interacts with.
 func NewConsoleOperator(
-	// informers
-	consoles consoleinformers.ConsoleInformer,
+	// console informers
+	// TODO: 2 new informers here!
+	consoleOperatorConfigInformer consoleinformers.ConsoleInformer,
+	consoleConfigInformer configv1.ConsoleInformer,
+	// other informers
+
 	coreV1 corev1.Interface,
-	deployments appsinformersv1.DeploymentInformer,
-	routes routesinformersv1.RouteInformer,
-	oauthClients oauthinformersv1.OAuthClientInformer,
-	// clients
-	operatorClient v1alpha1.ConsolesGetter,
+	deploymentsInformer appsinformersv1.DeploymentInformer,
+	routesInformer routesinformersv1.RouteInformer,
+	oauthClientsInformer oauthinformersv1.OAuthClientInformer,
+
+	// console clients
+	// TODO: 2 new clients here!
+	consoleOperatorConfigClient operatorclientv1.ConsolesGetter,
+	consoleConfigClient configclientv1.ConsolesGetter,
+	// other clients
 	corev1Client coreclientv1.CoreV1Interface,
 	deploymentClient appsv1.DeploymentsGetter,
 	routev1Client routeclientv1.RoutesGetter,
@@ -94,9 +112,13 @@ func NewConsoleOperator(
 	// recorder
 	recorder events.Recorder,
 ) operator.Runner {
+
+	// TODO: update this sukka! with all the plumbing of the 4 new informers & clients....
+	// bleh.
 	c := &consoleOperator{
 		// operator
-		operatorClient: operatorClient.Consoles(api.TargetNamespace),
+		operatorConfigClient: consoleOperatorConfigClient,
+		consoleConfigClient:  consoleConfigClient,
 		// core kube
 		secretsClient:    corev1Client,
 		configMapClient:  corev1Client,
@@ -114,22 +136,24 @@ func NewConsoleOperator(
 	serviceInformer := coreV1.Services()
 
 	return operator.New(controllerName, c,
-		operator.WithInformer(consoles, operator.FilterByNames(api.ResourceName)),
-		operator.WithInformer(deployments, operator.FilterByNames(api.OpenShiftConsoleName)),
+		operator.WithInformer(consoleConfigInformer, operator.FilterByNames(api.ResourceName)),
+		operator.WithInformer(consoleOperatorConfigInformer, operator.FilterByNames(api.ResourceName)),
+		operator.WithInformer(deploymentsInformer, operator.FilterByNames(api.OpenShiftConsoleName)),
 		operator.WithInformer(configMapInformer, operator.FilterByNames(configmap.ConsoleConfigMapName, configmap.ServiceCAConfigMapName)),
 		operator.WithInformer(secretsInformer, operator.FilterByNames(deployment.ConsoleOauthConfigName)),
-		operator.WithInformer(routes, operator.FilterByNames(api.OpenShiftConsoleShortName)),
+		operator.WithInformer(routesInformer, operator.FilterByNames(api.OpenShiftConsoleShortName)),
 		operator.WithInformer(serviceInformer, operator.FilterByNames(api.OpenShiftConsoleShortName)),
-		operator.WithInformer(oauthClients, operator.FilterByNames(api.OAuthClientName)),
+		operator.WithInformer(oauthClientsInformer, operator.FilterByNames(api.OAuthClientName)),
 	)
 }
 
 // key is actually the pivot point for the operator, which is our Console custom resource
 func (c *consoleOperator) Key() (metav1.Object, error) {
-	operatorConfig, err := c.operatorClient.Get(api.ResourceName, metav1.GetOptions{})
+	operatorConfig, err := c.operatorConfigClient.Consoles().Get(api.ResourceName, metav1.GetOptions{})
+	// operatorConfig, err := c.operatorClient.Get(api.ResourceName, metav1.GetOptions{})
 
 	if errors.IsNotFound(err) && CreateDefaultConsoleFlag {
-		return c.operatorClient.Create(c.defaultConsole())
+		return c.operatorConfigClient.Consoles().Create(c.defaultConsoleOperatorConfig())
 	}
 
 	return operatorConfig, err
@@ -189,6 +213,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	switch {
 	// v4.0.0 or nil
 	case v311_to_401.BetweenOrEmpty(currentActualVersion):
+		// TODO: sync_v400 should get both ConsoleConfig, ConsoleOperatorConfig
 		outConfig, configChanged, err = sync_v400(c, outConfig)
 		errs = append(errs, err)
 		if err == nil {
@@ -203,8 +228,8 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	}
 
 	if configChanged {
-		// TODO: this should do better apply logic or similar, maybe use SetStatusFromAvailability
-		_, err = c.operatorClient.Update(outConfig)
+		// TODO: this is a version mismatch, rebase on #125
+		_, err = c.operatorConfigClient.Consoles().Update(outConfig)
 		errs = append(errs, err)
 	}
 
@@ -235,23 +260,58 @@ func (c *consoleOperator) deleteAllResources(cr *consolev1alpha1.Console) error 
 	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
 }
 
+// TODO:
+// - remove the old defaultConsole()
+// - replace with the below funcs.  BOTH
+//
 // this may need to eventually live under each sync version, depending on if there is
 // custom sync logic
-func (c *consoleOperator) defaultConsole() *consolev1alpha1.Console {
-	logrus.Info("creating console CR with default values")
-	return &consolev1alpha1.Console{
+//func (c *consoleOperator) defaultConsole() *consolev1alpha1.Console {
+//	logrus.Info("creating console CR with default values")
+//	return &consolev1alpha1.Console{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name:      api.ResourceName,
+//			Namespace: api.OpenShiftConsoleNamespace,
+//		},
+//		Spec: consolev1alpha1.ConsoleSpec{
+//			OperatorSpec: operatorsv1alpha1.OperatorSpec{
+//				// by default the console is managed
+//				ManagementState: operatorsv1alpha1.Managed,
+//				// if Version is not 4.0.0 our reconcile loop will not pick it up
+//				Version: "4.0.0",
+//			},
+//			Count: consoleReplicas,
+//		},
+//	}
+//}
+
+func (c *consoleOperator) defaultConsoleConfig() *consoleconfigv1.Console {
+	return &consoleconfigv1.Console{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      api.ResourceName,
-			Namespace: api.OpenShiftConsoleNamespace,
+			Name: api.ResourceName,
 		},
-		Spec: consolev1alpha1.ConsoleSpec{
-			OperatorSpec: operatorsv1alpha1.OperatorSpec{
-				// by default the console is managed
-				ManagementState: operatorsv1alpha1.Managed,
-				// if Version is not 4.0.0 our reconcile loop will not pick it up
-				Version: "4.0.0",
+		Spec: consoleconfigv1.ConsoleSpec{
+			//Authentication: consoleconfigv1.ConsoleAuthentication{
+			//	LogoutRedirect: "",
+			//},
+		},
+	}
+}
+
+func (c *consoleOperator) defaultConsoleOperatorConfig() *consoleoperatorv1.Console {
+	return &consoleoperatorv1.Console{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: api.ResourceName,
+		},
+		Spec: consoleoperatorv1.ConsoleSpec{
+			OperatorSpec: consoleoperatorv1.OperatorSpec{
+				ManagementState: consoleoperatorv1.Managed,
+				// LogLevel:        "",
 			},
-			Count: consoleReplicas,
+			// Customization: consoleoperatorv1.ConsoleCustomization{
+			//	Brand:                "",
+			//	DocumentationBaseURL: "",
+			// },
 		},
 	}
 }
