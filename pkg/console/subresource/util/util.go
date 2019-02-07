@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	operatorv1 "github.com/openshift/api/operator/v1"
+
 	"github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 
@@ -12,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/openshift/console-operator/pkg/api"
-	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
 )
 
 func SharedLabels() map[string]string {
@@ -71,7 +72,7 @@ func AddOwnerRef(obj metav1.Object, ownerRef *metav1.OwnerReference) {
 }
 
 // func RemoveOwnerRef
-func OwnerRefFrom(cr *v1.Console) *metav1.OwnerReference {
+func OwnerRefFrom(cr *operatorv1.Console) *metav1.OwnerReference {
 
 	if cr != nil {
 		truthy := true

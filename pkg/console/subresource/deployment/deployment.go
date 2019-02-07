@@ -7,8 +7,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
-	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
@@ -65,7 +65,7 @@ var volumeConfigList = []volumeConfig{
 	},
 }
 
-func DefaultDeployment(cr *v1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) *appsv1.Deployment {
+func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) *appsv1.Deployment {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
@@ -76,7 +76,7 @@ func DefaultDeployment(cr *v1.Console, cm *corev1.ConfigMap, serviceCAConfigMap 
 	meta.Annotations[serviceCAConfigMapResourceVersionAnnotation] = serviceCAConfigMap.GetResourceVersion()
 	meta.Annotations[secretResourceVersionAnnotation] = sec.GetResourceVersion()
 	meta.Annotations[consoleImageAnnotation] = util.GetImageEnv()
-	replicas := cr.Spec.Count
+	replicas := int32(2)
 	gracePeriod := int64(30)
 
 	deployment := &appsv1.Deployment{
@@ -130,14 +130,14 @@ func DefaultDeployment(cr *v1.Console, cm *corev1.ConfigMap, serviceCAConfigMap 
 					TerminationGracePeriodSeconds: &gracePeriod,
 					SecurityContext:               &corev1.PodSecurityContext{},
 					Containers: []corev1.Container{
-						consoleContainer(cr),
+						consoleContainer(operatorConfig),
 					},
 					Volumes: consoleVolumes(volumeConfigList),
 				},
 			},
 		},
 	}
-	util.AddOwnerRef(deployment, util.OwnerRefFrom(cr))
+	util.AddOwnerRef(deployment, util.OwnerRefFrom(operatorConfig))
 	return deployment
 }
 
@@ -191,7 +191,7 @@ func consoleVolumeMounts(vc []volumeConfig) []corev1.VolumeMount {
 	return volMountList
 }
 
-func consoleContainer(cr *v1.Console) corev1.Container {
+func consoleContainer(cr *operatorv1.Console) corev1.Container {
 	volumeMounts := consoleVolumeMounts(volumeConfigList)
 
 	return corev1.Container{

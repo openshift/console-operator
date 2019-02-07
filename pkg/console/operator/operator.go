@@ -166,14 +166,18 @@ func (c *consoleOperator) handleSync(operatorConfig *operatorsv1.Console, consol
 	}
 
 	// do we need the if(configChanged) update bits?
-	outConfig, configChanged, err := sync_v400(c, operatorConfig, consoleConfig)
+	operatorConfigOut, consoleConfigOut, configChanged, err := sync_v400(c, operatorConfig, consoleConfig)
 	if err != nil {
 		return err
 	}
+	// TODO: these should probably be handled separately
 	if configChanged {
 		// TODO: this should do better apply logic or similar, maybe use SetStatusFromAvailability
-		_, err = c.operatorConfigClient.Update(outConfig)
-		if err != nil {
+		if _, err = c.operatorConfigClient.Update(operatorConfigOut); err != nil {
+			return err
+		}
+
+		if _, err = c.consoleConfigClient.Update(consoleConfigOut); err != nil {
 			return err
 		}
 	}

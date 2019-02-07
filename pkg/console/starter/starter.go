@@ -7,7 +7,6 @@ import (
 	// kube
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/client-go/tools/cache"
 
 	// "k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
@@ -30,11 +29,6 @@ import (
 	routesclient "github.com/openshift/client-go/route/clientset/versioned"
 	routesinformers "github.com/openshift/client-go/route/informers/externalversions"
 
-	// informers
-	"github.com/openshift/console-operator/pkg/generated/informers/externalversions"
-
-	// operator
-	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/console/operator"
 )
 
@@ -171,19 +165,19 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 }
 
 // I'd prefer this in a /console/status/ package, but other operators keep it here.
-type operatorStatusProvider struct {
-	informers externalversions.SharedInformerFactory
-}
-
-func (p *operatorStatusProvider) Informer() cache.SharedIndexInformer {
-	return p.informers.Console().V1().Consoles().Informer()
-}
-
-func (p *operatorStatusProvider) CurrentStatus() (operatorv1.OperatorStatus, error) {
-	instance, err := p.informers.Console().V1().Consoles().Lister().Consoles(api.TargetNamespace).Get(api.ResourceName)
-	if err != nil {
-		return operatorv1.OperatorStatus{}, err
-	}
-
-	return instance.Status.OperatorStatus, nil
-}
+//type operatorStatusProvider struct {
+//	informers externalversions.SharedInformerFactory
+//}
+//
+//func (p *operatorStatusProvider) Informer() cache.SharedIndexInformer {
+//	return p.informers.Console().V1().Consoles().Informer()
+//}
+//
+//func (p *operatorStatusProvider) CurrentStatus() (operatorv1.OperatorStatus, error) {
+//	instance, err := p.informers.Console().V1().Consoles().Lister().Consoles(api.TargetNamespace).Get(api.ResourceName)
+//	if err != nil {
+//		return operatorv1.OperatorStatus{}, err
+//	}
+//
+//	return instance.Status.OperatorStatus, nil
+//}
