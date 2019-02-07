@@ -126,8 +126,6 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		routesInformersNamespaced.Route().V1().Routes(),   // Route
 		oauthInformers.Oauth().V1().OAuthClients(),        // OAuth clients
 		// clients
-
-		///// consoleOperatorConfigClient.ConsoleV1(),
 		consoleOperatorConfigClient.OperatorV1(),
 		consoleConfigClient.ConfigV1(),
 

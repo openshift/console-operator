@@ -208,19 +208,16 @@ func (c *consoleOperator) deleteAllResources(cr *operatorsv1.Console) error {
 	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
 }
 
+// see https://github.com/openshift/api/blob/master/config/v1/types_console.go
 func (c *consoleOperator) defaultConsoleConfig() *configv1.Console {
 	return &configv1.Console{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: api.ResourceName,
 		},
-		Spec: configv1.ConsoleSpec{
-			//Authentication: consoleconfigv1.ConsoleAuthentication{
-			//	LogoutRedirect: "",
-			//},
-		},
 	}
 }
 
+// see https://github.com/openshift/api/blob/master/operator/v1/types_console.go
 func (c *consoleOperator) defaultConsoleOperatorConfig() *operatorsv1.Console {
 	return &operatorsv1.Console{
 		ObjectMeta: metav1.ObjectMeta{
@@ -229,12 +226,7 @@ func (c *consoleOperator) defaultConsoleOperatorConfig() *operatorsv1.Console {
 		Spec: operatorsv1.ConsoleSpec{
 			OperatorSpec: operatorsv1.OperatorSpec{
 				ManagementState: operatorsv1.Managed,
-				// LogLevel:        "",
 			},
-			// Customization: consoleoperatorv1.ConsoleCustomization{
-			//	Brand:                "",
-			//	DocumentationBaseURL: "",
-			// },
 		},
 	}
 }
