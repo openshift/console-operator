@@ -96,11 +96,6 @@ You will likely want to add this to your path or symlink it:
 ln -s ./_output/local/bin/<os>/<arch>/console ~/bin/console 
 ```
 
-Run the code generator if you make changes to the `./pkg/apis` files:
-
-```bash 
-make update-codegen
-```
 
 Test `gofmt` and other verification tools:
 
