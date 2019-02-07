@@ -4,12 +4,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openshift/console-operator/pkg/api"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
-	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
+	"github.com/openshift/console-operator/pkg/api"
 )
 
 func TestDefaultRoute(t *testing.T) {
@@ -17,7 +17,7 @@ func TestDefaultRoute(t *testing.T) {
 		weight int32 = 100
 	)
 	type args struct {
-		cr *v1.Console
+		cr *operatorv1.Console
 	}
 	tests := []struct {
 		name string
@@ -27,11 +27,11 @@ func TestDefaultRoute(t *testing.T) {
 		{
 			name: "Test default route",
 			args: args{
-				cr: &v1.Console{
+				cr: &operatorv1.Console{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
-					Spec:       v1.ConsoleSpec{},
-					Status:     v1.ConsoleStatus{},
+					Spec:       operatorv1.ConsoleSpec{},
+					Status:     operatorv1.ConsoleStatus{},
 				},
 			},
 			want: &routev1.Route{
@@ -90,12 +90,12 @@ func TestStub(t *testing.T) {
 					CreationTimestamp:          metav1.Time{},
 					DeletionTimestamp:          nil,
 					DeletionGracePeriodSeconds: nil,
-					Labels:          map[string]string{"app": api.OpenShiftConsoleName},
-					Annotations:     map[string]string{},
-					OwnerReferences: nil,
-					Initializers:    nil,
-					Finalizers:      nil,
-					ClusterName:     "",
+					Labels:                     map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations:                map[string]string{},
+					OwnerReferences:            nil,
+					Initializers:               nil,
+					Finalizers:                 nil,
+					ClusterName:                "",
 				},
 				Spec:   routev1.RouteSpec{},
 				Status: routev1.RouteStatus{},

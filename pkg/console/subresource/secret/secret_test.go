@@ -4,17 +4,17 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
-	corev1 "k8s.io/api/core/v1"
+	operatorv1 "github.com/openshift/api/operator/v1"
+	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
 )
 
 func TestDefaultSecret(t *testing.T) {
 	type args struct {
-		cr         *v1.Console
+		cr         *operatorv1.Console
 		randomBits string
 	}
 	tests := []struct {
@@ -25,11 +25,11 @@ func TestDefaultSecret(t *testing.T) {
 		{
 			name: "Test default secret",
 			args: args{
-				cr: &v1.Console{
+				cr: &operatorv1.Console{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
-					Spec:       v1.ConsoleSpec{},
-					Status:     v1.ConsoleStatus{},
+					Spec:       operatorv1.ConsoleSpec{},
+					Status:     operatorv1.ConsoleStatus{},
 				},
 				randomBits: ClientSecretKey,
 			},
