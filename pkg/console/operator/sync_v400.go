@@ -15,6 +15,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
+	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	// operator
 	configmapsub "github.com/openshift/console-operator/pkg/console/subresource/configmap"
@@ -41,58 +43,121 @@ import (
 // This ensures the logic is simpler as we do not have to handle coordination between objects within
 // the loop.
 func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleConfig *configv1.Console) (*operatorv1.Console, *configv1.Console, bool, error) {
+	errors := []error{}
+	originalOperatorConfig := operatorConfig.DeepCopy()
 	logrus.Println("running sync loop 4.0.0")
 	recorder := co.recorder
 
 	// track changes, may trigger ripples & update operator config or console config status
 	toUpdate := false
 
-	rt, rtChanged, rtErr := SyncRoute(co, operatorConfig)
-	if rtErr != nil {
-		return operatorConfig, consoleConfig, toUpdate, rtErr
+	rt, rtChanged, err := SyncRoute(co, operatorConfig)
+	if err != nil {
+		errors = append(errors, fmt.Errorf("%q: %v", "route", err))
 	}
 	toUpdate = toUpdate || rtChanged
 
-	_, svcChanged, svcErr := SyncService(co, recorder, operatorConfig)
-	if svcErr != nil {
-		return operatorConfig, consoleConfig, toUpdate, svcErr
+	_, svcChanged, err := SyncService(co, recorder, operatorConfig)
+	if err != nil {
+		errors = append(errors, fmt.Errorf("%q: %v", "service", err))
 	}
 	toUpdate = toUpdate || svcChanged
 
-	cm, cmChanged, cmErr := SyncConfigMap(co, recorder, operatorConfig, consoleConfig, rt)
-	if cmErr != nil {
-		return operatorConfig, consoleConfig, toUpdate, cmErr
+	cm, cmChanged, err := SyncConfigMap(co, recorder, operatorConfig, consoleConfig, rt)
+	if err != nil {
+		errors = append(errors, fmt.Errorf("%q: %v", "configmap", err))
 	}
 	toUpdate = toUpdate || cmChanged
 
-	serviceCAConfigMap, serviceCAConfigMapChanged, serviceCAConfigMapErr := SyncServiceCAConfigMap(co, operatorConfig)
-	if serviceCAConfigMapErr != nil {
-		return operatorConfig, consoleConfig, toUpdate, serviceCAConfigMapErr
+	serviceCAConfigMap, serviceCAConfigMapChanged, err := SyncServiceCAConfigMap(co, operatorConfig)
+	if err != nil {
+		errors = append(errors, fmt.Errorf("%q: %v", "serviceCAconfigmap", err))
 	}
 	toUpdate = toUpdate || serviceCAConfigMapChanged
 
-	sec, secChanged, secErr := SyncSecret(co, recorder, operatorConfig)
-	if secErr != nil {
-		return operatorConfig, consoleConfig, toUpdate, secErr
+	sec, secChanged, err := SyncSecret(co, recorder, operatorConfig)
+	if err != nil {
+		errors = append(errors, fmt.Errorf("%q: %v", "secret", err))
 	}
 	toUpdate = toUpdate || secChanged
 
-	_, oauthChanged, oauthErr := SyncOAuthClient(co, operatorConfig, sec, rt)
-	if oauthErr != nil {
-		return operatorConfig, consoleConfig, toUpdate, oauthErr
+	_, oauthChanged, err := SyncOAuthClient(co, operatorConfig, sec, rt)
+	if err != nil {
+		errors = append(errors, fmt.Errorf("%q: %v", "oauth", err))
 	}
 	toUpdate = toUpdate || oauthChanged
 
-	_, depChanged, depErr := SyncDeployment(co, recorder, operatorConfig, cm, serviceCAConfigMap, sec)
-	if depErr != nil {
-		return operatorConfig, consoleConfig, toUpdate, depErr
+	actualDeployment, depChanged, err := SyncDeployment(co, recorder, operatorConfig, cm, serviceCAConfigMap, sec)
+	if err != nil {
+		errors = append(errors, fmt.Errorf("%q: %v", "deployment", err))
 	}
 	toUpdate = toUpdate || depChanged
 
+	if actualDeployment.Status.ReadyReplicas > 0 {
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
+			Type:               operatorv1.OperatorStatusTypeAvailable,
+			Status:             operatorv1.ConditionTrue,
+			LastTransitionTime: metav1.Now(),
+		})
+	} else {
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
+			Type:               operatorv1.OperatorStatusTypeAvailable,
+			Status:             operatorv1.ConditionFalse,
+			Reason:             "NoPodsAvailable",
+			Message:            "NoDeploymentPodsAvailableOnAnyNode.",
+			LastTransitionTime: metav1.Now(),
+		})
+	}
+
+	if len(errors) > 0 {
+		message := ""
+		for _, err := range errors {
+			message = message + err.Error() + "\n"
+		}
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
+			Type:               workloadFailingCondition,
+			Status:             operatorv1.ConditionTrue,
+			Message:            message,
+			Reason:             "SyncError",
+			LastTransitionTime: metav1.Now(),
+		})
+	} else {
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
+			Type:   workloadFailingCondition,
+			Status: operatorv1.ConditionFalse,
+		})
+	}
+
 	logrus.Println("sync_v400: updating console status")
-	if updatedConfig, err := SyncConsoleConfig(co, consoleConfig, rt); err != nil {
-		logrus.Errorf("Could not update console config status: %v \n", err)
-		return operatorConfig, updatedConfig, toUpdate, err
+	_, consoleConfigChanged, err := SyncConsoleConfig(co, consoleConfig, rt)
+	if err != nil {
+		errors = append(errors, fmt.Errorf("%q: %v", "consoleConfig", err))
+		// logrus.Errorf("Could not update console config status: %v \n", err)
+		// return operatorConfig, updatedConfig, toUpdate, err
+	}
+	toUpdate = toUpdate || consoleConfigChanged
+
+	if toUpdate {
+		logrus.Infof("sync_v400: to update spec: %v", toUpdate)
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
+			Type:               operatorv1.OperatorStatusTypeProgressing,
+			Status:             operatorv1.ConditionTrue,
+			Reason:             "DesiredStateNotYetAchieved",
+			LastTransitionTime: metav1.Now(),
+		})
+	} else {
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
+			Type:   operatorv1.OperatorStatusTypeProgressing,
+			Status: operatorv1.ConditionFalse,
+		})
+	}
+
+	if !equality.Semantic.DeepEqual(operatorConfig.Status, originalOperatorConfig.Status) {
+		if _, err := co.operatorConfigClient.UpdateStatus(operatorConfig); err != nil {
+			// we should be returning error only if status update fails, since sync errors
+			// should be reported as part of the status update.
+			return operatorConfig, consoleConfig, toUpdate, err
+		}
 	}
 
 	defer func() {
@@ -105,16 +170,17 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 		logrus.Printf("\t deployment changed: %v", depChanged)
 	}()
 
-	// at this point there should be no existing errors, we survived the sync loop
-	// pass back config (updated), and bool indicating change happened so we can update
-	// the cluster operator status
 	return operatorConfig, consoleConfig, toUpdate, nil
 }
 
-func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, route *routev1.Route) (*configv1.Console, error) {
-	logrus.Printf("Updating console.config.openshift.io with hostname: %v \n", route.Spec.Host)
-	consoleConfig.Status.PublicHostname = util.HTTPS(route.Spec.Host)
-	return co.consoleConfigClient.UpdateStatus(consoleConfig)
+func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, route *routev1.Route) (*configv1.Console, bool, error) {
+	if consoleConfig.Status.PublicHostname != route.Spec.Host {
+		logrus.Printf("Updating console.config.openshift.io with hostname: %v \n", route.Spec.Host)
+		consoleConfig.Status.PublicHostname = util.HTTPS(route.Spec.Host)
+		updatedConsoleConfig, err := co.consoleConfigClient.UpdateStatus(consoleConfig)
+		return updatedConsoleConfig, true, err
+	}
+	return consoleConfig, false, nil
 }
 
 func SyncDeployment(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) (*appsv1.Deployment, bool, error) {

@@ -6,9 +6,11 @@ import (
 	"time"
 
 	// 3rd party
+	"github.com/golang/glog"
 	"github.com/sirupsen/logrus"
 
 	// kube
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -25,6 +27,7 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/boilerplate/operator"
 	"github.com/openshift/library-go/pkg/operator/events"
+	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	// informers
 	configinformerv1 "github.com/openshift/client-go/config/informers/externalversions/config/v1"
@@ -47,7 +50,8 @@ import (
 )
 
 const (
-	controllerName = "Console"
+	controllerName           = "Console"
+	workloadFailingCondition = "WorkloadFailing"
 )
 
 var CreateDefaultConsoleFlag bool
@@ -148,18 +152,62 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	}
 
 	if err := c.handleSync(operatorConfig, consoleConfig); err != nil {
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+			Type:               operatorsv1.OperatorStatusTypeFailing,
+			Status:             operatorsv1.ConditionTrue,
+			Reason:             "OperatorSyncLoopError",
+			Message:            err.Error(),
+			LastTransitionTime: metav1.Now(),
+		})
+		if _, updateErr := c.operatorConfigClient.UpdateStatus(operatorConfig); updateErr != nil {
+			glog.Errorf("error updating status: %s", err)
+		}
 		return err
 	}
+
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+		Type:               operatorsv1.OperatorStatusTypeAvailable,
+		Status:             operatorsv1.ConditionTrue,
+		LastTransitionTime: metav1.Now(),
+	})
 	return nil
 }
 
 func (c *consoleOperator) handleSync(operatorConfig *operatorsv1.Console, consoleConfig *configv1.Console) error {
+
+	originalOperatorConfig := operatorConfig.DeepCopy()
 	switch operatorConfig.Spec.ManagementState {
 	case operatorsv1.Managed:
 		logrus.Println("console is in a managed state.")
 		// handled below
 	case operatorsv1.Unmanaged:
 		logrus.Println("console is in an unmanaged state.")
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+			Type:               operatorsv1.OperatorStatusTypeAvailable,
+			Status:             operatorsv1.ConditionUnknown,
+			Reason:             "Unmanaged",
+			Message:            "the controller manager is in an unmanaged state, therefore its availability is unknown.",
+			LastTransitionTime: metav1.Now(),
+		})
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+			Type:               operatorsv1.OperatorStatusTypeProgressing,
+			Status:             operatorsv1.ConditionFalse,
+			Reason:             "Unmanaged",
+			Message:            "the controller manager is in an unmanaged state, therefore no changes are being applied.",
+			LastTransitionTime: metav1.Now(),
+		})
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+			Type:               operatorsv1.OperatorStatusTypeFailing,
+			Status:             operatorsv1.ConditionFalse,
+			Reason:             "Unmanaged",
+			Message:            "the controller manager is in an unmanaged state, therefore no operator actions are failing.",
+			LastTransitionTime: metav1.Now(),
+		})
+		if !equality.Semantic.DeepEqual(operatorConfig.Status, originalOperatorConfig.Status) {
+			if _, err := c.operatorConfigClient.UpdateStatus(operatorConfig); err != nil {
+				return err
+			}
+		}
 		return nil
 	case operatorsv1.Removed:
 		logrus.Println("console has been removed.")
