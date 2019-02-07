@@ -123,6 +123,7 @@ func NewConsoleOperator(
 func (c *consoleOperator) Key() (metav1.Object, error) {
 	operatorConfig, err := c.operatorConfigClient.Get(api.ResourceName, metav1.GetOptions{})
 	if errors.IsNotFound(err) && CreateDefaultConsoleFlag {
+		logrus.Errorf("No console operator config found. Creating.")
 		return c.operatorConfigClient.Create(c.defaultConsoleOperatorConfig())
 	}
 
@@ -138,8 +139,8 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 
 	consoleConfig, err := c.consoleConfigClient.Get(api.ResourceName, metav1.GetOptions{})
 	if errors.IsNotFound(err) && CreateDefaultConsoleFlag {
+		logrus.Errorf("No console config found. Creating.")
 		c.consoleConfigClient.Create(c.defaultConsoleConfig())
-		// TODO: ensure this is fine to fail & kick the loop again here
 		return err
 	}
 
