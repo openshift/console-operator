@@ -6,6 +6,7 @@ import (
 	"time"
 
 	// 3rd party
+	"github.com/golang/glog"
 	"github.com/sirupsen/logrus"
 
 	// kube
@@ -25,6 +26,7 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/boilerplate/operator"
 	"github.com/openshift/library-go/pkg/operator/events"
+	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	// informers
 	configinformerv1 "github.com/openshift/client-go/config/informers/externalversions/config/v1"
@@ -145,6 +147,16 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	}
 
 	if err := c.handleSync(operatorConfig, consoleConfig); err != nil {
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+			Type:    operatorsv1.OperatorStatusTypeFailing,
+			Status:  operatorsv1.ConditionTrue,
+			Reason:  "OperatorSyncLoopError",
+			Message: err.Error(),
+		})
+		if _, updateErr := c.operatorConfigClient.UpdateStatus(operatorConfig); updateErr != nil {
+			glog.Errorf("error updating status: %s", err)
+		}
+
 		return err
 	}
 	return nil
