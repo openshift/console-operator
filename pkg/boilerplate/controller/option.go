@@ -7,7 +7,7 @@ import (
 	"github.com/golang/glog"
 
 	"k8s.io/apimachinery/pkg/api/meta"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -25,6 +25,12 @@ func WithMaxRetries(maxRetries int) Option {
 	}
 }
 
+func WithInitialEvent(namespace, name string) Option {
+	return toNaiveRunOpt(func(c *controller) {
+		c.addKey(namespace, name)
+	})
+}
+
 func WithRateLimiter(limiter workqueue.RateLimiter) Option {
 	return func(c *controller) {
 		c.queue = workqueue.NewNamedRateLimitingQueue(limiter, c.name)
@@ -38,14 +44,14 @@ func WithInformerSynced(getter InformerGetter) Option {
 	})
 }
 
-func WithInformer(getter InformerGetter, filter ParentFilter) Option {
+func WithInformer(getter InformerGetter, filter ParentFilter, opts ...InformerOption) Option {
 	informer := getter.Informer() // immediately signal that we intend to use this informer in case it is lazily initialized
 	return toRunOpt(func(c *controller) {
 		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				object := metaOrDie(obj)
 				if filter.Add(object) {
-					glog.V(4).Infof("%s: handling add %s/%s", c.name, object.GetNamespace(), object.GetName())
+					glog.V(4).Infof("%s: handling add %s/%s: %s", c.name, object.GetNamespace(), object.GetName(), object.GetSelfLink())
 					c.add(filter, object)
 				}
 			},
@@ -53,7 +59,7 @@ func WithInformer(getter InformerGetter, filter ParentFilter) Option {
 				oldObject := metaOrDie(oldObj)
 				newObject := metaOrDie(newObj)
 				if filter.Update(oldObject, newObject) {
-					glog.V(4).Infof("%s: handling update %s/%s", c.name, newObject.GetNamespace(), newObject.GetName())
+					glog.V(4).Infof("%s: handling update %s/%s: %s", c.name, newObject.GetNamespace(), newObject.GetName(), newObject.GetSelfLink())
 					c.add(filter, newObject)
 				}
 			},
@@ -72,23 +78,35 @@ func WithInformer(getter InformerGetter, filter ParentFilter) Option {
 					}
 				}
 				if filter.Delete(accessor) {
-					glog.V(4).Infof("%s: handling delete %s/%s", c.name, accessor.GetNamespace(), accessor.GetName())
+					glog.V(4).Infof("%s: handling delete %s/%s: %s", c.name, accessor.GetNamespace(), accessor.GetName(), accessor.GetSelfLink())
 					c.add(filter, accessor)
 				}
 			},
 		})
-		WithInformerSynced(getter)(c)
+
+		// default to a safe sync setting
+		if len(opts) == 0 {
+			opts = []InformerOption{withSync()}
+		}
+
+		for _, opt := range opts {
+			informerOptionToOption(opt, getter)(c)
+		}
 	})
 }
 
 func toRunOpt(opt Option) Option {
-	return toOnceOpt(func(c *controller) {
+	return toOnceOpt(toNaiveRunOpt(opt))
+}
+
+func toNaiveRunOpt(opt Option) Option {
+	return func(c *controller) {
 		if c.run {
 			opt(c)
 			return
 		}
 		c.runOpts = append(c.runOpts, opt)
-	})
+	}
 }
 
 func toOnceOpt(opt Option) Option {

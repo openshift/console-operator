@@ -1,9 +1,8 @@
 package operator
 
 import (
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/openshift/console-operator/pkg/boilerplate/controller"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type KeySyncer interface {
