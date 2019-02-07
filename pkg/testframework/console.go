@@ -9,29 +9,26 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	// operatorapi "github.com/openshift/api/operator/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
-
 	consoleapi "github.com/openshift/console-operator/pkg/api"
-	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
 )
 
-func isOperatorManaged(cr *v1.Console) bool {
+func isOperatorManaged(cr *operatorsv1.Console) bool {
 	return cr.Spec.ManagementState == operatorsv1.Managed
 }
 
-func isOperatorUnmanaged(cr *v1.Console) bool {
+func isOperatorUnmanaged(cr *operatorsv1.Console) bool {
 	return cr.Spec.ManagementState == operatorsv1.Unmanaged
 }
 
-func isOperatorRemoved(cr *v1.Console) bool {
+func isOperatorRemoved(cr *operatorsv1.Console) bool {
 	return cr.Spec.ManagementState == operatorsv1.Removed
 }
 
-type operatorStateReactionFn func(cr *v1.Console) bool
+type operatorStateReactionFn func(cr *operatorsv1.Console) bool
 
 func ensureConsoleIsInDesiredState(t *testing.T, client *Clientset, state operatorsv1.ManagementState) error {
-	var cr *v1.Console
+	var operatorConfig *operatorsv1.Console
 	// var checkFunc func()
 	var checkFunc operatorStateReactionFn
 
@@ -45,14 +42,14 @@ func ensureConsoleIsInDesiredState(t *testing.T, client *Clientset, state operat
 	}
 
 	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
-		cr, err = client.ConsoleV1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.ResourceName, metav1.GetOptions{})
+		operatorConfig, err = client.Consoles().Get(consoleapi.ResourceName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
-		return checkFunc(cr), nil
+		return checkFunc(operatorConfig), nil
 	})
 	if err != nil {
-		DumpObject(t, "the latest observed state of the console resource", cr)
+		DumpObject(t, "the latest observed state of the console resource", operatorConfig)
 		DumpOperatorLogs(t, client)
 		return fmt.Errorf("failed to wait to change console operator state to 'Removed': %s", err)
 	}
@@ -60,7 +57,7 @@ func ensureConsoleIsInDesiredState(t *testing.T, client *Clientset, state operat
 }
 
 func ManageConsole(t *testing.T, client *Clientset) error {
-	cr, err := client.ConsoleV1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.ResourceName, metav1.GetOptions{})
+	cr, err := client.Consoles().Get(consoleapi.ResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -72,7 +69,7 @@ func ManageConsole(t *testing.T, client *Clientset) error {
 
 	t.Logf("changing console operator state to 'Managed'...")
 
-	_, err = client.ConsoleV1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.ResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Managed"}}`))
+	_, err = client.Consoles().Patch(consoleapi.ResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Managed"}}`))
 	if err != nil {
 		return err
 	}
@@ -84,7 +81,7 @@ func ManageConsole(t *testing.T, client *Clientset) error {
 }
 
 func UnmanageConsole(t *testing.T, client *Clientset) error {
-	cr, err := client.ConsoleV1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.ResourceName, metav1.GetOptions{})
+	cr, err := client.Consoles().Get(consoleapi.ResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -96,7 +93,7 @@ func UnmanageConsole(t *testing.T, client *Clientset) error {
 
 	t.Logf("changing console operator state to 'Unmanaged'...")
 
-	_, err = client.ConsoleV1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.ResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Unmanaged"}}`))
+	_, err = client.Consoles().Patch(consoleapi.ResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Unmanaged"}}`))
 	if err != nil {
 		return err
 	}
@@ -108,7 +105,7 @@ func UnmanageConsole(t *testing.T, client *Clientset) error {
 }
 
 func RemoveConsole(t *testing.T, client *Clientset) error {
-	cr, err := client.ConsoleV1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.ResourceName, metav1.GetOptions{})
+	cr, err := client.Consoles().Get(consoleapi.ResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -120,7 +117,7 @@ func RemoveConsole(t *testing.T, client *Clientset) error {
 
 	t.Logf("changing console operator state to 'Removed'...")
 
-	_, err = client.ConsoleV1Interface.Consoles(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.ResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Removed"}}`))
+	_, err = client.Consoles().Patch(consoleapi.ResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Removed"}}`))
 	if err != nil {
 		return err
 	}
