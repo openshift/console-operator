@@ -9,7 +9,7 @@ import (
 	restclient "k8s.io/client-go/rest"
 
 	clientroutev1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
-	clientconsolev1alpha1 "github.com/openshift/console-operator/pkg/generated/clientset/versioned/typed/console/v1alpha1"
+	clientconsolev1 "github.com/openshift/console-operator/pkg/generated/clientset/versioned/typed/console/v1"
 )
 
 // Clientset is a set of Kubernetes clients.
@@ -17,7 +17,7 @@ type Clientset struct {
 	clientcorev1.CoreV1Interface
 	clientappsv1.AppsV1Interface
 	clientroutev1.RouteV1Interface
-	clientconsolev1alpha1.ConsoleV1alpha1Interface
+	clientconsolev1.ConsoleV1Interface
 }
 
 // NewClientset creates a set of Kubernetes clients. The default kubeconfig is
@@ -44,7 +44,7 @@ func NewClientset(kubeconfig *restclient.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	clientset.ConsoleV1alpha1Interface, err = clientconsolev1alpha1.NewForConfig(kubeconfig)
+	clientset.ConsoleV1Interface, err = clientconsolev1.NewForConfig(kubeconfig)
 	if err != nil {
 		return nil, err
 	}

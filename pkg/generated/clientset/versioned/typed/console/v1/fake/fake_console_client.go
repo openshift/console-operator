@@ -3,22 +3,22 @@
 package fake
 
 import (
-	v1alpha1 "github.com/openshift/console-operator/pkg/generated/clientset/versioned/typed/console/v1alpha1"
+	v1 "github.com/openshift/console-operator/pkg/generated/clientset/versioned/typed/console/v1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
 
-type FakeConsoleV1alpha1 struct {
+type FakeConsoleV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeConsoleV1alpha1) Consoles(namespace string) v1alpha1.ConsoleInterface {
+func (c *FakeConsoleV1) Consoles(namespace string) v1.ConsoleInterface {
 	return &FakeConsoles{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakeConsoleV1alpha1) RESTClient() rest.Interface {
+func (c *FakeConsoleV1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

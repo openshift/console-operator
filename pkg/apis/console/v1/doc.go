@@ -4,4 +4,4 @@
 
 // +groupName=console.openshift.io
 
-package v1alpha1
+package v1
