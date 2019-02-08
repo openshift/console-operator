@@ -123,8 +123,10 @@ func NewConsoleOperator(
 func (c *consoleOperator) Key() (metav1.Object, error) {
 	operatorConfig, err := c.operatorConfigClient.Get(api.ResourceName, metav1.GetOptions{})
 	if errors.IsNotFound(err) && CreateDefaultConsoleFlag {
-		logrus.Errorf("No console operator config found. Creating.")
-		return c.operatorConfigClient.Create(c.defaultConsoleOperatorConfig())
+		if _, err := c.operatorConfigClient.Create(c.defaultConsoleOperatorConfig()); err != nil {
+			logrus.Errorf("No console operator config found. Creating. %v \n", err)
+			return nil, err
+		}
 	}
 
 	return operatorConfig, err
@@ -139,9 +141,10 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 
 	consoleConfig, err := c.consoleConfigClient.Get(api.ResourceName, metav1.GetOptions{})
 	if errors.IsNotFound(err) && CreateDefaultConsoleFlag {
-		logrus.Errorf("No console config found. Creating.")
-		c.consoleConfigClient.Create(c.defaultConsoleConfig())
-		return err
+		if _, err := c.consoleConfigClient.Create(c.defaultConsoleConfig()); err != nil {
+			logrus.Errorf("No console config found. Creating. %v \n", err)
+			return err
+		}
 	}
 
 	if err := c.handleSync(operatorConfig, consoleConfig); err != nil {
