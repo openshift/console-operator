@@ -5,7 +5,6 @@ os::log::info "Running unit tests"
 
 
 PACKAGES_TO_TEST=(
-    "github.com/openshift/console-operator/pkg/apis/console/v1"
     "github.com/openshift/console-operator/pkg/cmd/operator"
     "github.com/openshift/console-operator/pkg/cmd/version"
     "github.com/openshift/console-operator/pkg/console/operator"

@@ -4,17 +4,17 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openshift/console-operator/pkg/api"
+	corev1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
-	corev1 "k8s.io/api/core/v1"
+	operatorv1 "github.com/openshift/api/operator/v1"
+	"github.com/openshift/console-operator/pkg/api"
 )
 
 func TestDefaultService(t *testing.T) {
 	type args struct {
-		cr *v1.Console
+		cr *operatorv1.Console
 	}
 	tests := []struct {
 		name string
@@ -24,7 +24,7 @@ func TestDefaultService(t *testing.T) {
 		{
 			name: "Test default service generation",
 			args: args{
-				cr: &v1.Console{},
+				cr: &operatorv1.Console{},
 			},
 			want: &corev1.Service{
 				TypeMeta: v12.TypeMeta{},

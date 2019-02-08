@@ -4,10 +4,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openshift/console-operator/pkg/api"
-
-	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	operatorv1 "github.com/openshift/api/operator/v1"
+	"github.com/openshift/console-operator/pkg/api"
 )
 
 func TestSharedLabels(t *testing.T) {
@@ -97,7 +97,7 @@ func TestAddOwnerRef(t *testing.T) {
 func TestOwnerRefFrom(t *testing.T) {
 	var truthy = true
 	type args struct {
-		cr *v1.Console
+		cr *operatorv1.Console
 	}
 	tests := []struct {
 		name string
@@ -107,7 +107,7 @@ func TestOwnerRefFrom(t *testing.T) {
 		{
 			name: "Test owner ref from when cr is not null",
 			args: args{
-				cr: &v1.Console{
+				cr: &operatorv1.Console{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "Console",
 						APIVersion: "4.0",
@@ -116,8 +116,8 @@ func TestOwnerRefFrom(t *testing.T) {
 						Name: "Test",
 						UID:  "",
 					},
-					Spec:   v1.ConsoleSpec{},
-					Status: v1.ConsoleStatus{},
+					Spec:   operatorv1.ConsoleSpec{},
+					Status: operatorv1.ConsoleStatus{},
 				},
 			},
 			want: &metav1.OwnerReference{

@@ -5,11 +5,12 @@ import (
 	"reflect"
 	"testing"
 
-	routev1 "github.com/openshift/api/route/v1"
-	"github.com/openshift/console-operator/pkg/api"
-	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	operatorv1 "github.com/openshift/api/operator/v1"
+	routev1 "github.com/openshift/api/route/v1"
+	"github.com/openshift/console-operator/pkg/api"
 )
 
 const (
@@ -37,7 +38,7 @@ servingInfo:
 // To manually run these tests: go test -v ./pkg/console/subresource/configmap/...
 func TestDefaultConfigMap(t *testing.T) {
 	type args struct {
-		cr *v1.Console
+		cr *operatorv1.Console
 		rt *routev1.Route
 	}
 	tests := []struct {
@@ -48,11 +49,11 @@ func TestDefaultConfigMap(t *testing.T) {
 		{
 			name: "Test Default Config Map",
 			args: args{
-				cr: &v1.Console{
+				cr: &operatorv1.Console{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
-					Spec:       v1.ConsoleSpec{},
-					Status:     v1.ConsoleStatus{},
+					Spec:       operatorv1.ConsoleSpec{},
+					Status:     operatorv1.ConsoleStatus{},
 				},
 				rt: &routev1.Route{
 					TypeMeta:   metav1.TypeMeta{},

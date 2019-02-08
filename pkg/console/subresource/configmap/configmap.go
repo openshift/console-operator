@@ -7,9 +7,9 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
-	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
@@ -26,7 +26,7 @@ const (
 	keyFilePath  = "/var/serving-cert/tls.key"
 )
 
-func DefaultConfigMap(cr *v1.Console, rt *routev1.Route) *corev1.ConfigMap {
+func DefaultConfigMap(cr *operatorv1.Console, rt *routev1.Route) *corev1.ConfigMap {
 	host := rt.Spec.Host
 	config := NewYamlConfigString(host)
 	configMap := Stub()

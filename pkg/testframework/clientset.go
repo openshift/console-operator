@@ -4,20 +4,20 @@ import (
 	"fmt"
 	"testing"
 
+	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
+	clientroutev1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	clientappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	clientcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	restclient "k8s.io/client-go/rest"
-
-	clientroutev1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
-	clientconsolev1 "github.com/openshift/console-operator/pkg/generated/clientset/versioned/typed/console/v1"
 )
 
 // Clientset is a set of Kubernetes clients.
 type Clientset struct {
+	// embedded
 	clientcorev1.CoreV1Interface
 	clientappsv1.AppsV1Interface
 	clientroutev1.RouteV1Interface
-	clientconsolev1.ConsoleV1Interface
+	operatorclientv1.ConsolesGetter
 }
 
 // NewClientset creates a set of Kubernetes clients. The default kubeconfig is
@@ -44,10 +44,12 @@ func NewClientset(kubeconfig *restclient.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	clientset.ConsoleV1Interface, err = clientconsolev1.NewForConfig(kubeconfig)
+	operatorsClient, err := operatorclientv1.NewForConfig(kubeconfig)
 	if err != nil {
 		return nil, err
 	}
+	clientset.ConsolesGetter = operatorsClient
+
 	return clientset, nil
 }
 

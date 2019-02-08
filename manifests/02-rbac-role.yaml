@@ -122,3 +122,25 @@ rules:
   - watch
   resourceNames:
   - openshift-console
+- apiGroups:
+  - config.openshift.io
+  resources:
+  - consoles
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
+- apiGroups:
+  - operator.openshift.io
+  resources:
+  - consoles
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete

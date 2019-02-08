@@ -4,25 +4,24 @@ import (
 	"reflect"
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
-
-	v1 "github.com/openshift/console-operator/pkg/apis/console/v1"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestDefaultDeployment(t *testing.T) {
 	var (
-		replicaCount int32 = 3
+		replicaCount int32 = 2
 		labels             = map[string]string{"app": api.OpenShiftConsoleName, "component": "ui"}
 		gracePeriod  int64 = 30
 	)
 	type args struct {
-		cr  *v1.Console
+		cr  *operatorsv1.Console
 		cm  *corev1.ConfigMap
 		ca  *corev1.ConfigMap
 		sec *corev1.Secret
@@ -35,14 +34,13 @@ func TestDefaultDeployment(t *testing.T) {
 		{
 			name: "Test Default Config Map",
 			args: args{
-				cr: &v1.Console{
+				cr: &operatorsv1.Console{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
-					Spec: v1.ConsoleSpec{
+					Spec: operatorsv1.ConsoleSpec{
 						OperatorSpec: operatorsv1.OperatorSpec{},
-						Count:        replicaCount,
 					},
-					Status: v1.ConsoleStatus{},
+					Status: operatorsv1.ConsoleStatus{},
 				},
 				cm: &corev1.ConfigMap{
 					TypeMeta: metav1.TypeMeta{},
