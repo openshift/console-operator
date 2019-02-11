@@ -29,7 +29,7 @@ func TestDefaultService(t *testing.T) {
 			want: &corev1.Service{
 				TypeMeta: v12.TypeMeta{},
 				ObjectMeta: v12.ObjectMeta{
-					Name:      api.OpenShiftConsoleShortName,
+					Name:      api.OpenShiftConsoleName,
 					Namespace: api.OpenShiftConsoleNamespace,
 					Labels:    map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{
@@ -71,7 +71,7 @@ func TestStub(t *testing.T) {
 			want: &corev1.Service{
 				TypeMeta: v12.TypeMeta{},
 				ObjectMeta: v12.ObjectMeta{
-					Name:      api.OpenShiftConsoleShortName,
+					Name:      api.OpenShiftConsoleName,
 					Namespace: api.OpenShiftConsoleNamespace,
 					Labels:    map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{

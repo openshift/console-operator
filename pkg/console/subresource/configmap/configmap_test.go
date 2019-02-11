@@ -18,7 +18,7 @@ const (
 	exampleYaml = `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1beta1
 auth:
-  clientID: openshift-console
+  clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   logoutRedirect: ""
   oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt

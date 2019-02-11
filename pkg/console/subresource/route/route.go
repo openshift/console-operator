@@ -11,7 +11,6 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	routeclient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
-	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 
 	// operator
@@ -94,7 +93,6 @@ func DefaultRoute(cr *operatorv1.Console) *routev1.Route {
 
 func Stub() *routev1.Route {
 	meta := util.SharedMeta()
-	meta.Name = api.OpenShiftConsoleShortName
 	return &routev1.Route{
 		ObjectMeta: meta,
 	}
@@ -133,7 +131,6 @@ func Validate(route *routev1.Route) (*routev1.Route, bool) {
 
 func routeMeta() metav1.ObjectMeta {
 	meta := util.SharedMeta()
-	meta.Name = api.OpenShiftConsoleShortName
 	return meta
 }
 

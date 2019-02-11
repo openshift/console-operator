@@ -37,7 +37,7 @@ func TestDefaultRoute(t *testing.T) {
 			want: &routev1.Route{
 				TypeMeta: metav1.TypeMeta{},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        api.OpenShiftConsoleShortName,
+					Name:        api.OpenShiftConsoleName,
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
@@ -45,7 +45,7 @@ func TestDefaultRoute(t *testing.T) {
 				Spec: routev1.RouteSpec{
 					To: routev1.RouteTargetReference{
 						Kind:   "Service",
-						Name:   api.OpenShiftConsoleShortName,
+						Name:   api.OpenShiftConsoleName,
 						Weight: &weight,
 					},
 					Port: &routev1.RoutePort{
@@ -80,7 +80,7 @@ func TestStub(t *testing.T) {
 			want: &routev1.Route{
 				TypeMeta: metav1.TypeMeta{},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:                       api.OpenShiftConsoleShortName,
+					Name:                       api.OpenShiftConsoleName,
 					GenerateName:               "",
 					Namespace:                  api.OpenShiftConsoleNamespace,
 					SelfLink:                   "",

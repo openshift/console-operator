@@ -88,7 +88,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   api.OpenShiftConsoleShortName,
+					Name:   api.OpenShiftConsoleName,
 					Labels: labels,
 					Annotations: map[string]string{
 						configMapResourceVersionAnnotation:          cm.GetResourceVersion(),
@@ -197,7 +197,7 @@ func consoleContainer(cr *operatorv1.Console) corev1.Container {
 	return corev1.Container{
 		Image:           util.GetImageEnv(),
 		ImagePullPolicy: corev1.PullPolicy("IfNotPresent"),
-		Name:            api.OpenShiftConsoleShortName,
+		Name:            api.OpenShiftConsoleName,
 		Command: []string{
 			"/opt/bridge/bin/bridge",
 			"--public-dir=/opt/bridge/static",

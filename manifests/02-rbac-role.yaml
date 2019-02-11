@@ -121,7 +121,7 @@ rules:
   - update
   - watch
   resourceNames:
-  - openshift-console
+  - console
 - apiGroups:
   - config.openshift.io
   resources:
