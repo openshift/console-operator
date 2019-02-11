@@ -49,7 +49,8 @@ import (
 )
 
 const (
-	controllerName = "Console"
+	controllerName           = "Console"
+	workloadFailingCondition = "WorkloadFailing"
 )
 
 var CreateDefaultConsoleFlag bool
@@ -148,10 +149,11 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 
 	if err := c.handleSync(operatorConfig, consoleConfig); err != nil {
 		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-			Type:    operatorsv1.OperatorStatusTypeFailing,
-			Status:  operatorsv1.ConditionTrue,
-			Reason:  "OperatorSyncLoopError",
-			Message: err.Error(),
+			Type:               operatorsv1.OperatorStatusTypeFailing,
+			Status:             operatorsv1.ConditionTrue,
+			Reason:             "OperatorSyncLoopError",
+			Message:            err.Error(),
+			LastTransitionTime: metav1.Now(),
 		})
 		if _, updateErr := c.operatorConfigClient.UpdateStatus(operatorConfig); updateErr != nil {
 			glog.Errorf("error updating status: %s", err)
@@ -159,6 +161,12 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 
 		return err
 	}
+
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+		Type:               operatorsv1.OperatorStatusTypeAvailable,
+		Status:             operatorsv1.ConditionTrue,
+		LastTransitionTime: metav1.Now(),
+	})
 	return nil
 }
 
@@ -169,6 +177,24 @@ func (c *consoleOperator) handleSync(operatorConfig *operatorsv1.Console, consol
 		// handled below
 	case operatorsv1.Unmanaged:
 		logrus.Println("console is in an unmanaged state.")
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+			Type:    operatorsv1.OperatorStatusTypeAvailable,
+			Status:  operatorsv1.ConditionUnknown,
+			Reason:  "Unmanaged",
+			Message: "the controller manager is in an unmanaged state, therefore its availability is unknown.",
+		})
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+			Type:    operatorsv1.OperatorStatusTypeProgressing,
+			Status:  operatorsv1.ConditionFalse,
+			Reason:  "Unmanaged",
+			Message: "the controller manager is in an unmanaged state, therefore no changes are being applied.",
+		})
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+			Type:    operatorsv1.OperatorStatusTypeFailing,
+			Status:  operatorsv1.ConditionFalse,
+			Reason:  "Unmanaged",
+			Message: "the controller manager is in an unmanaged state, therefore no operator actions are failing.",
+		})
 		return nil
 	case operatorsv1.Removed:
 		logrus.Println("console has been removed.")
