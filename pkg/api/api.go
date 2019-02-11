@@ -22,3 +22,14 @@ const (
 	OpenShiftConsoleRouteName         = OpenShiftConsoleShortName
 	OAuthClientName                   = OpenShiftConsoleName
 )
+
+// configs always have the name "cluster"
+const (
+	ConsoleConfigName         = "cluster"
+	ConsoleOperatorConfigName = ConsoleConfigName
+)
+
+// however, the ClusterOperator resource is named "console"
+const (
+	ClusterOperatorName = "console"
+)

@@ -216,7 +216,7 @@ func (c *consoleOperator) deleteAllResources(cr *operatorsv1.Console) error {
 func (c *consoleOperator) defaultConsoleConfig() *configv1.Console {
 	return &configv1.Console{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: api.ResourceName,
+			Name: api.ConsoleConfigName,
 		},
 	}
 }
@@ -225,7 +225,7 @@ func (c *consoleOperator) defaultConsoleConfig() *configv1.Console {
 func (c *consoleOperator) defaultConsoleOperatorConfig() *operatorsv1.Console {
 	return &operatorsv1.Console{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: api.ResourceName,
+			Name: api.ConsoleOperatorConfigName,
 		},
 		Spec: operatorsv1.ConsoleSpec{
 			OperatorSpec: operatorsv1.OperatorSpec{
