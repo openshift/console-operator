@@ -57,7 +57,7 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 	}
 	toUpdate = toUpdate || svcChanged
 
-	cm, cmChanged, cmErr := SyncConfigMap(co, recorder, operatorConfig, rt)
+	cm, cmChanged, cmErr := SyncConfigMap(co, recorder, operatorConfig, consoleConfig, rt)
 	if cmErr != nil {
 		return operatorConfig, consoleConfig, toUpdate, cmErr
 	}
@@ -87,11 +87,12 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 	}
 	toUpdate = toUpdate || depChanged
 
-	// if any of our resources have changed, we should update the operatorConfig.Status. otherwise, skip this step.
+	// if any of our resources have changed, we should update
+	// operatorConfig.Status
+	// consoleConfig.Status
 	if toUpdate {
 		logrus.Infof("sync_v400: to update spec: %v", toUpdate)
-		// TODO: set the status.
-		// setStatus(operatorConfig.Status, svc, rt, cm, dep, oa, sec)
+		SyncConsoleConfig(co, consoleConfig, rt)
 	}
 
 	defer func() {
@@ -108,6 +109,11 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 	// pass back config (updated), and bool indicating change happened so we can update
 	// the cluster operator status
 	return operatorConfig, consoleConfig, toUpdate, nil
+}
+
+func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, route *routev1.Route) (*configv1.Console, error) {
+	consoleConfig.Status.PublicHostname = route.Spec.Host
+	return co.consoleConfigClient.Update(consoleConfig)
 }
 
 func SyncDeployment(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) (*appsv1.Deployment, bool, error) {
@@ -168,9 +174,9 @@ func SyncSecret(co *consoleOperator, recorder events.Recorder, operatorConfig *o
 // apply configmap (needs route)
 // by the time we get to the configmap, we can assume the route exits & is configured properly
 // therefore no additional error handling is needed here.
-func SyncConfigMap(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
+func SyncConfigMap(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
 	logrus.Printf("validating console configmap...")
-	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, recorder, configmapsub.DefaultConfigMap(operatorConfig, rt))
+	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, recorder, configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, rt))
 	if cmErr != nil {
 		logrus.Errorf("%q: %v \n", "configmap", cmErr)
 		return nil, false, cmErr
