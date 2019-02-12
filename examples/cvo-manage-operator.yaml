@@ -7,5 +7,5 @@ spec:
   overrides:
   - kind: Deployment
     name: console-operator
-    namespace: openshift-console
+    namespace: openshift-console-operator
     unmanaged: false
