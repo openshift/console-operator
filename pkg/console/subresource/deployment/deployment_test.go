@@ -105,7 +105,7 @@ func TestDefaultDeployment(t *testing.T) {
 						MatchLabels: labels,
 					},
 					Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{
-						Name:   api.OpenShiftConsoleShortName,
+						Name:   api.OpenShiftConsoleName,
 						Labels: labels,
 						Annotations: map[string]string{
 							configMapResourceVersionAnnotation:          "",
