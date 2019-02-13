@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/openshift/console-operator/pkg/console/subresource/util"
+
 	"github.com/openshift/console-operator/pkg/api"
 
 	// 3rd party
@@ -87,12 +89,10 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 	}
 	toUpdate = toUpdate || depChanged
 
-	// if any of our resources have changed, we should update
-	// operatorConfig.Status
-	// consoleConfig.Status
-	if toUpdate {
-		logrus.Infof("sync_v400: to update spec: %v", toUpdate)
-		SyncConsoleConfig(co, consoleConfig, rt)
+	logrus.Println("sync_v400: updating console status")
+	if updatedConfig, err := SyncConsoleConfig(co, consoleConfig, rt); err != nil {
+		logrus.Errorf("Could not update console config status: %v \n", err)
+		return operatorConfig, updatedConfig, toUpdate, err
 	}
 
 	defer func() {
@@ -112,8 +112,9 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 }
 
 func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, route *routev1.Route) (*configv1.Console, error) {
-	consoleConfig.Status.PublicHostname = route.Spec.Host
-	return co.consoleConfigClient.Update(consoleConfig)
+	logrus.Printf("Updating console.config.openshift.io with hostname: %v \n", route.Spec.Host)
+	consoleConfig.Status.PublicHostname = util.HTTPS(route.Spec.Host)
+	return co.consoleConfigClient.UpdateStatus(consoleConfig)
 }
 
 func SyncDeployment(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) (*appsv1.Deployment, bool, error) {

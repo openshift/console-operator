@@ -35,25 +35,25 @@ const (
 	defaultBranding             = "okd"
 )
 
-//consoleConfig.Spec.Authentication.LogoutRedirect
 func getLogoutRedirect(consoleConfig *configv1.Console) string {
-	// TODO: handle if not provided
-	// return consoleConfig.Spec.Authentication.LogoutRedirect || defaultLogoutURL
-	return consoleConfig.Spec.Authentication.LogoutRedirect
+	if len(consoleConfig.Spec.Authentication.LogoutRedirect) > 0 {
+		return consoleConfig.Spec.Authentication.LogoutRedirect
+	}
+	return defaultLogoutURL
 }
 
-//operatorConfig.Spec.Customization.Brand
 func getBrand(operatorConfig *operatorv1.Console) operatorv1.Brand {
-	// TODO: handle if not provided
-	// return operatorConfig.Spec.Customization.Brand || defaultBranding
-	return operatorConfig.Spec.Customization.Brand
+	if len(operatorConfig.Spec.Customization.Brand) > 0 {
+		return operatorConfig.Spec.Customization.Brand
+	}
+	return defaultBranding
 }
 
-//operatorConfig.Spec.Customization.DocumentationBaseURL
 func getDocURL(operatorConfig *operatorv1.Console) string {
-	// TODO: handle if not provided
-	// return operatorConfig.Spec.Customization.DocumentationBaseURL || defaultDocumentationBaseURL
-	return operatorConfig.Spec.Customization.DocumentationBaseURL
+	if len(operatorConfig.Spec.Customization.DocumentationBaseURL) > 0 {
+		return operatorConfig.Spec.Customization.DocumentationBaseURL
+	}
+	return defaultDocumentationBaseURL
 }
 
 func DefaultConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, rt *routev1.Route) *corev1.ConfigMap {

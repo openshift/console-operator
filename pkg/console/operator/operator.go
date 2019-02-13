@@ -108,8 +108,8 @@ func NewConsoleOperator(
 	serviceInformer := coreV1.Services()
 
 	return operator.New(controllerName, c,
-		operator.WithInformer(operatorConfigInformer, operator.FilterByNames(api.ResourceName)),
-		operator.WithInformer(consoleConfigInformer, operator.FilterByNames(api.ResourceName)),
+		operator.WithInformer(operatorConfigInformer, operator.FilterByNames(api.ConfigResourceName)),
+		operator.WithInformer(consoleConfigInformer, operator.FilterByNames(api.ConfigResourceName)),
 		operator.WithInformer(deployments, operator.FilterByNames(api.OpenShiftConsoleName)),
 		operator.WithInformer(configMapInformer, operator.FilterByNames(configmap.ConsoleConfigMapName, configmap.ServiceCAConfigMapName)),
 		operator.WithInformer(secretsInformer, operator.FilterByNames(deployment.ConsoleOauthConfigName)),
@@ -121,7 +121,7 @@ func NewConsoleOperator(
 
 // key is actually the pivot point for the operator, which is our Console custom resource
 func (c *consoleOperator) Key() (metav1.Object, error) {
-	operatorConfig, err := c.operatorConfigClient.Get(api.ResourceName, metav1.GetOptions{})
+	operatorConfig, err := c.operatorConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
 	if errors.IsNotFound(err) && CreateDefaultConsoleFlag {
 		if _, err := c.operatorConfigClient.Create(c.defaultConsoleOperatorConfig()); err != nil {
 			logrus.Errorf("No console operator config found. Creating. %v \n", err)
@@ -139,7 +139,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 
 	operatorConfig := obj.(*operatorsv1.Console)
 
-	consoleConfig, err := c.consoleConfigClient.Get(api.ResourceName, metav1.GetOptions{})
+	consoleConfig, err := c.consoleConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
 	if errors.IsNotFound(err) && CreateDefaultConsoleFlag {
 		if _, err := c.consoleConfigClient.Create(c.defaultConsoleConfig()); err != nil {
 			logrus.Errorf("No console config found. Creating. %v \n", err)
@@ -216,7 +216,7 @@ func (c *consoleOperator) deleteAllResources(cr *operatorsv1.Console) error {
 func (c *consoleOperator) defaultConsoleConfig() *configv1.Console {
 	return &configv1.Console{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: api.ResourceName,
+			Name: api.ConfigResourceName,
 		},
 	}
 }
@@ -225,7 +225,7 @@ func (c *consoleOperator) defaultConsoleConfig() *configv1.Console {
 func (c *consoleOperator) defaultConsoleOperatorConfig() *operatorsv1.Console {
 	return &operatorsv1.Console{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: api.ResourceName,
+			Name: api.ConfigResourceName,
 		},
 		Spec: operatorsv1.ConsoleSpec{
 			OperatorSpec: operatorsv1.OperatorSpec{

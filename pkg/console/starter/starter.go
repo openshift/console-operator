@@ -72,7 +72,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	// need to create a couple different version for
 	// resources w/different names
 	tweakListOptions := func(options *v1.ListOptions) {
-		// options.FieldSelector = fields.OneTermEqualSelector("metadata.name", operator.ResourceName).String()
+		// options.FieldSelector = fields.OneTermEqualSelector("metadata.name", operator.ConfigResourceName).String()
 	}
 
 	tweakOAuthListOptions := func(options *v1.ListOptions) {
@@ -149,7 +149,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	// our version of library-go has the old group
 	//clusterOperatorStatus := status.NewClusterOperatorStatusController(
 	//	controller.TargetNamespace,
-	//	controller.ResourceName,
+	//	controller.ConfigResourceName,
 	//	// no idea why this is dynamic & not a strongly typed client.
 	//	dynamicClient,
 	//	&operatorStatusProvider{informers: consoleOperatorInformers},
@@ -172,7 +172,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 //}
 //
 //func (p *operatorStatusProvider) CurrentStatus() (operatorv1.OperatorStatus, error) {
-//	instance, err := p.informers.Console().V1().Consoles().Lister().Consoles(api.TargetNamespace).Get(api.ResourceName)
+//	instance, err := p.informers.Console().V1().Consoles().Lister().Consoles(api.TargetNamespace).Get(api.ConfigResourceName)
 //	if err != nil {
 //		return operatorv1.OperatorStatus{}, err
 //	}
