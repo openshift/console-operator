@@ -1,5 +1,0 @@
-apiVersion: oauth.openshift.io/v1
-kind: OAuthClient
-metadata:
-  name: foo-bar-baz
-  # oauth is cluster scoped

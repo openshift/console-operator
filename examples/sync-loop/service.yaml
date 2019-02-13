@@ -1,5 +1,0 @@
-kind: Service
-apiVersion: v1
-metadata:
-  name: foo-bar-baz
-  namespace: openshift-console
