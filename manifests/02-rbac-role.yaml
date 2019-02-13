@@ -126,6 +126,7 @@ rules:
   - config.openshift.io
   resources:
   - consoles
+  - consoles/status
   verbs:
   - get
   - list
