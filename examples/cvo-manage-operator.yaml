@@ -1,0 +1,11 @@
+apiVersion: config.openshift.io/v1
+kind: ClusterVersion
+metadata:
+  namespace: openshift-cluster-version
+  name: version
+spec:
+  overrides:
+  - kind: Deployment
+    name: console-operator
+    namespace: openshift-console-operator
+    unmanaged: false

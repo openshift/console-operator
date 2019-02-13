@@ -6,6 +6,13 @@ source "$(dirname "${BASH_SOURCE}")/lib/init.sh"
 
 host_platform="$(os::build::host_platform)"
 
+
+OS_GIT_MAJOR=${OS_GIT_MAJOR-}
+OS_GIT_MINOR=${OS_GIT_MINOR-}
+OS_GIT_VERSION=${OS_GIT_VERSION-}
+OS_GIT_COMMIT=${OS_GIT_COMMIT-}
+
+
 # by default, build for these platforms
 platforms=(
   linux/amd64

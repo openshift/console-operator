@@ -89,13 +89,18 @@ The binary output will be:
 ./_output/local/bin/<os>/<arch>/console
 ```
 
-You will likely want to add this to your path or symlink it:
+You may want to add this to your path or symlink it:
 
 ```bash 
 # if your ~/bin is in your path:
 ln -s ./_output/local/bin/<os>/<arch>/console ~/bin/console 
 ```
 
+However, it is no longer recommended to run the operator locally.  Instead, you 
+should be building a docker image and deploying it into a development cluster.
+Continue below for instructions to do this with a reasonable feedback loop.
+
+### Verify Source Code
 
 Test `gofmt` and other verification tools:
 
@@ -110,7 +115,7 @@ gofmt -w ./pkg
 gofmt -w ./cmd 
 ```
 
-Run the tests with 
+### Run Unit Tests
 
 ```bash
 make test-unit
@@ -118,128 +123,151 @@ make test-unit
 
 It is suggested to run `integration` and `e2e` tests with CI.  This is automatic when opening a PR.
 
-### Run the Binary Locally 
 
-The operator expects the `IMAGE` env var to be set in order to know which console to deploy. In 
-addition, it is recommended to use the `--create-default-console` flag as this ensures the operator 
-will deploy a console even if a `cr.yaml` for the openshift console is not found.  The console will 
-be deployed with reasonable default values. 
+### Development Against a 4.0 Dev Cluster 
 
-The `./examples/config.yaml` file mirrors `04-config.yaml` and can be used for dev testing.  Currently 
-it only controls leader election and provides nothing interesting to configure.
+The approach here is to build & deploy your code in a new container on a development cluster.  Don't 
+be put off by the need to redeploy your container, this is intended to provide a quick feedback loop.
 
-Run:
+#### Create a Cluster
+To develop features for the `console-operator`, you will need to run your code against a dev cluster.
+The `console-operator` expects to be running in a container.  It is difficult to fake a local 
+environment, and the debuggin experience is not like debugging a real container.  Instead, do the following 
+to set yourself up to build your binary & deploy a new container quickly and frequently.
 
-```bash 
-IMAGE=docker.io/openshift/origin-console:latest \
-    console operator \
-    --kubeconfig $HOME/.kube/config \
-    --config examples/config.yaml \
-    --create-default-console \
-    --v 4
+Visit [https://try.openshift.com/](https://try.openshift.com/), download the installer and create 
+a cluster.  [Instructions](https://cloud.openshift.com/clusters/install) (including pull secret) 
+are maintained here.
+
+```bash
+# create a directory for your install config
+# aws is recommended
+mkdir ~/openshift/aws/us-east
+cd ~/openshift/aws/us-east
+# generate configs using the wizard
+openshift-install create install-config
+# then run the installer to get a cluster 
+openshift-install create cluster --dir ~/openshift/aws/us-east --log-level debug
 ```
 
-NOTE: your `--kubeconfig` may be in another location.
+If successful, you should have gotten instructions to set `KUBECONFIG`, login to the console, etc.
 
-### Deploy an alternative image 
+#### Shut down CVO & the Default Console Operator
 
-To build a new container image and then deploy it do the following:
+We don't want the default `console-operator` to run if we are going to test our own. Therefore, do 
+the following:
 
-```bash 
-# build the operator binary
-make 
-# now build a container image, tagging it to your own remote image registry:
-docker build -t <registry>/<username>/<repo> .
-# example:
-docker build -t quay.io/harrypotter/griffindor:latest
-# push to the registry
-docker push quay.io/harrypotter/griffindor:latest
+```bash
+# Instruct CVO to stop managing the console operator
+# CVO's job is to ensure all of the operators are functioning correctly
+# if we want to make changes to the operator, we need to tell CVO to stop caring.
+oc apply -f examples/cvo-unmanage-operator.yaml
+# Then, scale down the default console-operator 
+oc scale --replicas 0 deployment console-operator --namespace openshift-console-operator
 ```
-In order to deploy the image, you will want to edit the `./examples/05-operator-alt-image.yaml` 
-file. It mirrors `05-operator.yaml` which is the official deployment manifest.  Updating the 
-`container` `image` to `image: quay.io/harrypotter/griffindor:latest` should be sufficient to then:
+Note that you can also simply delete the CVO namespace if you want to turn it off completely (for all operators).
 
-```bash 
-oc create -f ./examples/05-operator-alt-image.yaml
+Now we should be ready to build & deploy the operator with our changes.
+
+#### Preparation to Deploy Operator Changes Quickly
+
+Typically to build your binary you will use the `make` command:
+
+```bash
+# this will build for your platform:
+make
+# if you are running OSX, you will need to build for linux doing something like:
+OS_DEBUG=true OS_BUILD_PLATFORMS=linux/amd64 make
+# note that you can build for mulitiple platforms with:
+make build-cross
 ```
-
-## Running Against a 4.0.0 Cluster
-
-The console operator is installed by default and will automatically maintain a console. For development,
-if you want to run the console-operator locally against a 4.0 cluster with the appropriate 
-capabilities (not as `system:admin` but rather using the correct service account) do the following:
+But the `make` step is included in the `Dockerfile`, so this does not need to be done manually.
+You can instead simply build the container image and push the it to your own registry:
 
 ```bash 
-# if you want to remove the existing console entirely to start fresh
-oc login -u system:admin
-oc delete project openshift-console 
-oc delete project openshift-console-operator
-
-# then recreate ensure all the necessary resources (including the namespace)
-# rolebindings, service account, etc
-oc create -f manifests/00*.yaml
-oc create -f manifests/01*.yaml
-oc create -f manifests/02*.yaml
-oc create -f manifests/03*.yaml
-oc create -f manifests/04*.yaml
+# the pattern is:
+docker build -t <registry>/<your-username>/console-operator:<version> .
+# following: docker.io/openshift/origin-console-operator:latest
+# for development, you are going to push to an alternate registry.
+# specifically it can look something like this:
+docker build -t quay.io/benjaminapetersen/console-operator:latest .
 ```
+You can optionally build a specific version.
 
-Then to correctly run the operator you will want to login using the token from the 
-service account:
+Then, push your image:
 
 ```bash 
-oc login --token=$(oc sa get-token console-operator -n openshift-console-operator)
+docker push <registry>/<your-username>/console-operator:<version>
+# Be sure your repository is public else the image will not be able to be pulled later
+docker push quay.io/benjaminapetersen/console-operator:latest
 ```
+Then, you will want to deploy your new container.  This means duplicating the `manifests/05-operator.yaml`
+and updating the line `image: docker.io/openshift/origin-console-operator:latest` to instead use the
+image you just pushed.
 
-After doing the above steps, you can run the operator locally with the following:
-
-```bash 
-# if you make changes, be sure to rebuild the binary with `make`
-IMAGE=docker.io/openshift/origin-console:latest \
-    console operator \
-    --kubeconfig $HOME/.kube/config \
-    --config examples/config.yaml \
-    --create-default-console \
-    --v 4
+```bash
+# duplicate the operator manifest to /examples or your ~/ home dir
+cp manifests/05-operator.yaml ~/05-operator-alt-image.yaml
 ```
+Then, update the image & replicas in your `05-operator-alt-image.yaml` file:
 
-NOTE: your `--kubeconfig` may be in another location.
+```yaml
+# before
+replicas: 2
+image: docker.io/openshift/origin-console-operator:latest
+# after 
+# image: <registry>/<your-username>/console-operator:<version>
+replicas: 1
+image: quay.io/benjaminapetersen/console-operator:latest
+```
+And ensure that the `imagePullPolicy` is still `Always`.  This will ensure a fast development feedback loop. 
 
-## Running against a < 4.0.0 Cluster (min 3.11 Recommended)
-
-
-If using oc cluster up on a < 4.0.0 cluster you will need the `--public-hostname` flag 
-when you cluster up. The `--server-loglevel` flag is helpful for debugging. 
-OAuth issues will not be visible unless the loglevel is set to at least `3`.
-
-```bash 
-# there are a variety of ways to get your machine IP address
-# this example works on OSX
-OAUTH_VISIBLE_LOGLEVEL=3
-# get IP address on Linux
-MACHINE_IP_ADDR=hostname -I
-# or get IP address on OSX (uglier eh?)
-MACHINE_IP_ADDR=ipconfig getifaddr en0
-# put it all together
-oc cluster up --public-hostname=$MACHINE_IP_ADDR --server-loglevel $OAUTH_VISIBLE_LOGLEVEL
+```yaml
+imagePullPolicy: Always
 ```
 
-Once you have a running cluster, you can deploy everything like this:
+#### Deploying 
 
-```bash 
-oc create -f manifests
+At this point, your pattern will be 
+
+- Change code
+- Build a new docker image
+    - This will automatically & implicitly `make build` a new binary
+- Push the image to your repository
+- Delete the running `console-operator` pod
+    - This will cause the Deployment to pull the image again before deploying a new pod
+
+Which looks like the following:
+
+```bash
+# build binary + container
+docker build -t quay.io/benjaminapetersen/console-operator:latest .
+# push container
+docker push quay.io/benjaminapetersen/console-operator:latest
+# delete pod, trigger a new pull & deploy
+oc delete pod console-operator --namespace openshift-console-operator
 ```
-But if you want to run the operator locally instead of the deployed container, remove the deployment:
+Docker containers are layered, so there should not be a significant time delay in between your pushes.
 
-```bash 
-oc delete -f manifests/05-operator.yaml
-```
+#### Manifest changes
 
-In addition, you may need the `clusteroperator` CRD:
+If you are making changes to the manifests, you will need to `oc apply` the manifest.
 
-```bash 
-# pre 4.0.0 needs this, but it is not part of the post 4.0.0 manifests payload
-oc create -f ./examples/crd-clusteroperator.yaml
+#### Debugging 
+
+```bash
+# inspect the clusteroperator object
+oc describe clusteroperator console
+# get all events in openshift-console-operator namespace
+oc get events -n openshift-console-operator
+# retrieve deployment info (including related events)
+oc describe deployment console-operator -n openshift-console-operator
+# retrieve pod info (including related events)
+oc describe pod console-operator-<sha> -n openshift-console-operator
+# watch the logs of the operator pod (scale down to 1, no need for mulitple during dev)
+oc logs -f console-operator-<sha> -n openshift-console-operator
+# exec into the pod
+ oc exec -it console-operator-<sha> -- /bin/bash
 ```
 
 ## Tips
@@ -251,8 +279,17 @@ If you don't know where your `kubeconfig` is due to running against multiple clu
 oc whoami --loglevel=100
 # likely output will be $HOME/.kube/config 
 ``` 
+If you need to know information about your cluster:
 
-
+```bash
+# this will list all images, associated github repo, and the commit # currently running.
+# very useful to see if the image is running current code...or not.
+oc adm release info --commits
+# get just the list of images & sha256 digest
+oc adm release info
+# coming soon...
+oc adm release extract 
+```
 
 
 
