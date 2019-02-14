@@ -184,27 +184,7 @@ func (c *consoleOperator) handleSync(operatorConfig *operatorsv1.Console, consol
 		// handled below
 	case operatorsv1.Unmanaged:
 		logrus.Println("console is in an unmanaged state.")
-		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-			Type:               operatorsv1.OperatorStatusTypeAvailable,
-			Status:             operatorsv1.ConditionUnknown,
-			Reason:             "Unmanaged",
-			Message:            "the controller manager is in an unmanaged state, therefore its availability is unknown.",
-			LastTransitionTime: metav1.Now(),
-		})
-		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-			Type:               operatorsv1.OperatorStatusTypeProgressing,
-			Status:             operatorsv1.ConditionFalse,
-			Reason:             "Unmanaged",
-			Message:            "the controller manager is in an unmanaged state, therefore no changes are being applied.",
-			LastTransitionTime: metav1.Now(),
-		})
-		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-			Type:               operatorsv1.OperatorStatusTypeFailing,
-			Status:             operatorsv1.ConditionFalse,
-			Reason:             "Unmanaged",
-			Message:            "the controller manager is in an unmanaged state, therefore no operator actions are failing.",
-			LastTransitionTime: metav1.Now(),
-		})
+		setUnmanagedConditions(operatorConfig)
 		if !equality.Semantic.DeepEqual(operatorConfig.Status, originalOperatorConfig.Status) {
 			if _, err := c.operatorConfigClient.UpdateStatus(operatorConfig); err != nil {
 				return err
@@ -237,6 +217,7 @@ func (c *consoleOperator) handleSync(operatorConfig *operatorsv1.Console, consol
 	// }
 	return nil
 }
+
 
 // this may need to move to sync_v400 if versions ever have custom delete logic
 func (c *consoleOperator) deleteAllResources(cr *operatorsv1.Console) error {
