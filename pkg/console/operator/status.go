@@ -28,4 +28,5 @@ func setUnmanagedConditions(operatorConfig *operatorsv1.Console) *operatorsv1.Co
 		Message:            "the controller manager is in an unmanaged state, therefore no operator actions are failing.",
 		LastTransitionTime: metav1.Now(),
 	})
+	return operatorConfig
 }
