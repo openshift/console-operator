@@ -152,6 +152,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	}
 
 	if err := c.handleSync(operatorConfig, consoleConfig); err != nil {
+		logrus.Println("~~~~~~~~~~~~  SYNC() - FAILING CONDITION - TRUE  ~~~~~~~~~~~~~")
 		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
 			Type:               operatorsv1.OperatorStatusTypeFailing,
 			Status:             operatorsv1.ConditionTrue,
@@ -165,6 +166,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 		return err
 	}
 
+	logrus.Println("~~~~~~~~~~~~  SYNC() - AVAILABLE CONDITION - TRUE  ~~~~~~~~~~~~~")
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
 		Type:               operatorsv1.OperatorStatusTypeAvailable,
 		Status:             operatorsv1.ConditionTrue,

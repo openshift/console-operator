@@ -102,12 +102,14 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	toUpdate = toUpdate || depChanged
 
 	if actualDeployment.Status.ReadyReplicas > 0 {
+		logrus.Println("~~~~~~~~~~~~ 400() - AVAILABLE CONDITION - TRUE  ~~~~~~~~~~~~~")
 		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
 			Type:               operatorv1.OperatorStatusTypeAvailable,
 			Status:             operatorv1.ConditionTrue,
 			LastTransitionTime: metav1.Now(),
 		})
 	} else {
+		logrus.Println("~~~~~~~~~~~~ 400() - AVAILABLE CONDITION - FALSE  ~~~~~~~~~~~~~")
 		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
 			Type:               operatorv1.OperatorStatusTypeAvailable,
 			Status:             operatorv1.ConditionFalse,
@@ -116,11 +118,6 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 			LastTransitionTime: metav1.Now(),
 		})
 	}
-
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
-		Type:   workloadFailingCondition,
-		Status: operatorv1.ConditionFalse,
-	})
 
 	logrus.Println("sync_v400: updating console status")
 	_, consoleConfigChanged, err := SyncConsoleConfig(co, consoleConfig, rt)
@@ -131,8 +128,16 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	}
 	toUpdate = toUpdate || consoleConfigChanged
 
+	logrus.Println("~~~~~~~~~~~~ 400() - FAILING CONDITION - FALSE  ~~~~~~~~~~~~~")
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
+		Type:               workloadFailingCondition,
+		Status:             operatorv1.ConditionFalse,
+		LastTransitionTime: metav1.Now(),
+	})
+
 	if toUpdate {
 		logrus.Infof("sync_v400: to update spec: %v", toUpdate)
+		logrus.Println("~~~~~~~~~~~~ 400() - PROGGRESSING CONDITION - TRUE  ~~~~~~~~~~~~~")
 		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
 			Type:               operatorv1.OperatorStatusTypeProgressing,
 			Status:             operatorv1.ConditionTrue,
@@ -140,6 +145,8 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 			LastTransitionTime: metav1.Now(),
 		})
 	} else {
+		logrus.Println("~~~~~~~~~~~~ 400() - PROGGRESSING CONDITION - FALSE  ~~~~~~~~~~~~~")
+
 		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
 			Type:   operatorv1.OperatorStatusTypeProgressing,
 			Status: operatorv1.ConditionFalse,
@@ -150,15 +157,9 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 		if _, err := co.operatorConfigClient.UpdateStatus(operatorConfig); err != nil {
 			// we should be returning error only if status update fails, since sync errors
 			// should be reported as part of the status update.
-			return nil, nil, toUpdate, err
+			return operatorConfig, consoleConfig, toUpdate, err
 		}
 	}
-
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
-		Type:               workloadFailingCondition,
-		Status:             operatorv1.ConditionFalse,
-		LastTransitionTime: metav1.Now(),
-	})
 
 	defer func() {
 		logrus.Printf("sync loop 4.0.0 complete:")
@@ -170,10 +171,11 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 		logrus.Printf("\t deployment changed: %v", depChanged)
 	}()
 
-	return nil, nil, toUpdate, nil
+	return operatorConfig, consoleConfig, toUpdate, nil
 }
 
 func handleSyncErrorCondition(operatorConfig *operatorv1.Console, message string) {
+	logrus.Println("~~~~~~~~~~~~ handleSyncErrorCondition() - FAILING CONDITION - TRUE  ~~~~~~~~~~~~~")
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
 		Type:               workloadFailingCondition,
 		Status:             operatorv1.ConditionTrue,
