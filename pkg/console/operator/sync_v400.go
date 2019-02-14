@@ -15,7 +15,6 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -26,7 +25,6 @@ import (
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
-	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	// operator
 	configmapsub "github.com/openshift/console-operator/pkg/console/subresource/configmap"
@@ -43,7 +41,6 @@ import (
 // This ensures the logic is simpler as we do not have to handle coordination between objects within
 // the loop.
 func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, consoleConfig *configv1.Console) (*operatorv1.Console, *configv1.Console, bool, error) {
-	errors := []error{}
 	operatorConfig := originalOperatorConfig.DeepCopy()
 	logrus.Println("running sync loop 4.0.0")
 	recorder := co.recorder
@@ -51,114 +48,91 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	// track changes, may trigger ripples & update operator config or console config status
 	toUpdate := false
 
+	// TODO: if the sync_loop starts, should we set condition progressing:true?
+	// - this may be prematurely assuming that something has to happen, when
+	//   perhaps it does not (that said, we should not be notified unless
+	//   a resource we care about changes...
+	// TODO: when it ends, should we set progressing:false?
+
 	rt, rtChanged, rtErr := SyncRoute(co, operatorConfig)
 	if rtErr != nil {
-		handleSyncErrorCondition(operatorConfig, fmt.Sprintf("%v: %s\n", "route", rtErr))
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%v: %s\n", "route", rtErr)))
 		return operatorConfig, consoleConfig, toUpdate, rtErr
 	}
 	toUpdate = toUpdate || rtChanged
 
 	_, svcChanged, svcErr := SyncService(co, recorder, operatorConfig)
 	if svcErr != nil {
-		handleSyncErrorCondition(operatorConfig, fmt.Sprintf("%q: %v\n", "service", svcErr))
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "service", svcErr)))
 		return operatorConfig, consoleConfig, toUpdate, svcErr
 	}
 	toUpdate = toUpdate || svcChanged
 
 	cm, cmChanged, cmErr := SyncConfigMap(co, recorder, operatorConfig, consoleConfig, rt)
 	if cmErr != nil {
-		handleSyncErrorCondition(operatorConfig, fmt.Sprintf("%q: %v\n", "configmap", cmErr))
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "configmap", cmErr)))
 		return operatorConfig, consoleConfig, toUpdate, cmErr
 	}
 	toUpdate = toUpdate || cmChanged
 
 	serviceCAConfigMap, serviceCAConfigMapChanged, serviceCAConfigMapErr := SyncServiceCAConfigMap(co, operatorConfig)
 	if serviceCAConfigMapErr != nil {
-		handleSyncErrorCondition(operatorConfig, fmt.Sprintf("%q: %v\n", "serviceCAconfigmap", serviceCAConfigMapErr))
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "serviceCAconfigmap", serviceCAConfigMapErr)))
 		return operatorConfig, consoleConfig, toUpdate, serviceCAConfigMapErr
 	}
 	toUpdate = toUpdate || serviceCAConfigMapChanged
 
 	sec, secChanged, secErr := SyncSecret(co, recorder, operatorConfig)
 	if secErr != nil {
-		handleSyncErrorCondition(operatorConfig, fmt.Sprintf("%q: %v\n", "secret", secErr))
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "secret", secErr)))
 		return operatorConfig, consoleConfig, toUpdate, secErr
 	}
 	toUpdate = toUpdate || secChanged
 
 	_, oauthChanged, oauthErr := SyncOAuthClient(co, operatorConfig, sec, rt)
 	if oauthErr != nil {
-		handleSyncErrorCondition(operatorConfig, fmt.Sprintf("%q: %v\n", "oauth", oauthErr))
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "oauth", oauthErr)))
 		return operatorConfig, consoleConfig, toUpdate, oauthErr
 	}
 	toUpdate = toUpdate || oauthChanged
 
 	actualDeployment, depChanged, depErr := SyncDeployment(co, recorder, operatorConfig, cm, serviceCAConfigMap, sec)
 	if depErr != nil {
-		handleSyncErrorCondition(operatorConfig, fmt.Sprintf("%q: %v\n", "route", depErr))
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "route", depErr)))
 		return operatorConfig, consoleConfig, toUpdate, depErr
 	}
 
 	toUpdate = toUpdate || depChanged
 
-	if actualDeployment.Status.ReadyReplicas > 0 {
-		logrus.Println("~~~~~~~~~~~~ 400() - AVAILABLE CONDITION - TRUE  ~~~~~~~~~~~~~")
-		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
-			Type:               operatorv1.OperatorStatusTypeAvailable,
-			Status:             operatorv1.ConditionTrue,
-			LastTransitionTime: metav1.Now(),
-		})
-	} else {
-		logrus.Println("~~~~~~~~~~~~ 400() - AVAILABLE CONDITION - FALSE  ~~~~~~~~~~~~~")
-		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
-			Type:               operatorv1.OperatorStatusTypeAvailable,
-			Status:             operatorv1.ConditionFalse,
-			Reason:             "NoPodsAvailable",
-			Message:            "NoDeploymentPodsAvailableOnAnyNode.",
-			LastTransitionTime: metav1.Now(),
-		})
-	}
+	logrus.Println("-----------------------")
+	logrus.Printf("sync loop 4.0.0 resources updated: %v \n", toUpdate)
+	logrus.Println("-----------------------")
 
-	logrus.Println("sync_v400: updating console status")
-	_, consoleConfigChanged, err := SyncConsoleConfig(co, consoleConfig, rt)
-	if err != nil {
-		errors = append(errors, fmt.Errorf("%q: %v", "consoleConfig", err))
-		// logrus.Errorf("Could not update console config status: %v \n", err)
-		// return operatorConfig, updatedConfig, toUpdate, err
-	}
-	toUpdate = toUpdate || consoleConfigChanged
+	// at this point, we should not be failing anymore
+	co.ConditionResourceSyncSuccess(operatorConfig)
 
-	logrus.Println("~~~~~~~~~~~~ 400() - FAILING CONDITION - FALSE  ~~~~~~~~~~~~~")
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
-		Type:               workloadFailingCondition,
-		Status:             operatorv1.ConditionFalse,
-		LastTransitionTime: metav1.Now(),
-	})
-
+	// but we may be in a transitional state, if any of the above resources changed
 	if toUpdate {
-		logrus.Infof("sync_v400: to update spec: %v", toUpdate)
-		logrus.Println("~~~~~~~~~~~~ 400() - PROGGRESSING CONDITION - TRUE  ~~~~~~~~~~~~~")
-		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
-			Type:               operatorv1.OperatorStatusTypeProgressing,
-			Status:             operatorv1.ConditionTrue,
-			Reason:             "DesiredStateNotYetAchieved",
-			LastTransitionTime: metav1.Now(),
-		})
+		co.ConditionResourceSyncProgressing(operatorConfig)
 	} else {
-		logrus.Println("~~~~~~~~~~~~ 400() - PROGGRESSING CONDITION - FALSE  ~~~~~~~~~~~~~")
-
-		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
-			Type:   operatorv1.OperatorStatusTypeProgressing,
-			Status: operatorv1.ConditionFalse,
-		})
+		co.ConditionResourceSyncNotProgressing(operatorConfig)
+	}
+	// final availability is dependent upon the deployment
+	if actualDeployment.Status.ReadyReplicas > 0 {
+		co.ConditionDeploymentAvailable(operatorConfig)
+	} else {
+		co.ConditionDeploymentNotAvailable(operatorConfig)
 	}
 
-	if !equality.Semantic.DeepEqual(operatorConfig.Status, originalOperatorConfig.Status) {
-		if _, err := co.operatorConfigClient.UpdateStatus(operatorConfig); err != nil {
-			// we should be returning error only if status update fails, since sync errors
-			// should be reported as part of the status update.
-			return operatorConfig, consoleConfig, toUpdate, err
-		}
+	// finally write out the set of conditions currently set
+	co.SyncStatus(operatorConfig)
+
+	// if we survive the gauntlet, we need to update the console config with the
+	// public hostname so that the world can know the console is ready to roll
+	logrus.Println("sync_v400: updating console status")
+	if updatedConfig, err := SyncConsoleConfig(co, consoleConfig, rt); err != nil {
+		logrus.Errorf("Could not update console config status: %v \n", err)
+		return operatorConfig, updatedConfig, toUpdate, err
 	}
 
 	defer func() {
