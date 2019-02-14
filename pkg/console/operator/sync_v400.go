@@ -42,7 +42,7 @@ import (
 // The next loop will pick up where they previous left off and move the process forward one step.
 // This ensures the logic is simpler as we do not have to handle coordination between objects within
 // the loop.
-func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, consoleConfig *configv1.Console) (bool, error) {
+func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, consoleConfig *configv1.Console) (*operatorv1.Console, *configv1.Console, bool, error) {
 	errors := []error{}
 	operatorConfig := originalOperatorConfig.DeepCopy()
 	logrus.Println("running sync loop 4.0.0")
@@ -51,46 +51,54 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	// track changes, may trigger ripples & update operator config or console config status
 	toUpdate := false
 
-	rt, rtChanged, err := SyncRoute(co, operatorConfig)
-	if err != nil {
-		errors = append(errors, fmt.Errorf("%q: %v", "route", err))
+	rt, rtChanged, rtErr := SyncRoute(co, operatorConfig)
+	if rtErr != nil {
+		handleSyncErrorCondition(operatorConfig, fmt.Sprintf("%v: %s\n", "route", rtErr))
+		return operatorConfig, consoleConfig, toUpdate, rtErr
 	}
 	toUpdate = toUpdate || rtChanged
 
-	_, svcChanged, err := SyncService(co, recorder, operatorConfig)
-	if err != nil {
-		errors = append(errors, fmt.Errorf("%q: %v", "service", err))
+	_, svcChanged, svcErr := SyncService(co, recorder, operatorConfig)
+	if svcErr != nil {
+		handleSyncErrorCondition(operatorConfig, fmt.Sprintf("%q: %v\n", "service", svcErr))
+		return operatorConfig, consoleConfig, toUpdate, svcErr
 	}
 	toUpdate = toUpdate || svcChanged
 
-	cm, cmChanged, err := SyncConfigMap(co, recorder, operatorConfig, consoleConfig, rt)
-	if err != nil {
-		errors = append(errors, fmt.Errorf("%q: %v", "configmap", err))
+	cm, cmChanged, cmErr := SyncConfigMap(co, recorder, operatorConfig, consoleConfig, rt)
+	if cmErr != nil {
+		handleSyncErrorCondition(operatorConfig, fmt.Sprintf("%q: %v\n", "configmap", cmErr))
+		return operatorConfig, consoleConfig, toUpdate, cmErr
 	}
 	toUpdate = toUpdate || cmChanged
 
-	serviceCAConfigMap, serviceCAConfigMapChanged, err := SyncServiceCAConfigMap(co, operatorConfig)
-	if err != nil {
-		errors = append(errors, fmt.Errorf("%q: %v", "serviceCAconfigmap", err))
+	serviceCAConfigMap, serviceCAConfigMapChanged, serviceCAConfigMapErr := SyncServiceCAConfigMap(co, operatorConfig)
+	if serviceCAConfigMapErr != nil {
+		handleSyncErrorCondition(operatorConfig, fmt.Sprintf("%q: %v\n", "serviceCAconfigmap", serviceCAConfigMapErr))
+		return operatorConfig, consoleConfig, toUpdate, serviceCAConfigMapErr
 	}
 	toUpdate = toUpdate || serviceCAConfigMapChanged
 
-	sec, secChanged, err := SyncSecret(co, recorder, operatorConfig)
-	if err != nil {
-		errors = append(errors, fmt.Errorf("%q: %v", "secret", err))
+	sec, secChanged, secErr := SyncSecret(co, recorder, operatorConfig)
+	if secErr != nil {
+		handleSyncErrorCondition(operatorConfig, fmt.Sprintf("%q: %v\n", "secret", secErr))
+		return operatorConfig, consoleConfig, toUpdate, secErr
 	}
 	toUpdate = toUpdate || secChanged
 
-	_, oauthChanged, err := SyncOAuthClient(co, operatorConfig, sec, rt)
-	if err != nil {
-		errors = append(errors, fmt.Errorf("%q: %v", "oauth", err))
+	_, oauthChanged, oauthErr := SyncOAuthClient(co, operatorConfig, sec, rt)
+	if oauthErr != nil {
+		handleSyncErrorCondition(operatorConfig, fmt.Sprintf("%q: %v\n", "oauth", oauthErr))
+		return operatorConfig, consoleConfig, toUpdate, oauthErr
 	}
 	toUpdate = toUpdate || oauthChanged
 
-	actualDeployment, depChanged, err := SyncDeployment(co, recorder, operatorConfig, cm, serviceCAConfigMap, sec)
-	if err != nil {
-		errors = append(errors, fmt.Errorf("%q: %v", "deployment", err))
+	actualDeployment, depChanged, depErr := SyncDeployment(co, recorder, operatorConfig, cm, serviceCAConfigMap, sec)
+	if depErr != nil {
+		handleSyncErrorCondition(operatorConfig, fmt.Sprintf("%q: %v\n", "route", depErr))
+		return operatorConfig, consoleConfig, toUpdate, depErr
 	}
+
 	toUpdate = toUpdate || depChanged
 
 	if actualDeployment.Status.ReadyReplicas > 0 {
@@ -109,24 +117,10 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 		})
 	}
 
-	if len(errors) > 0 {
-		message := ""
-		for _, err := range errors {
-			message = message + err.Error() + "\n"
-		}
-		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
-			Type:               workloadFailingCondition,
-			Status:             operatorv1.ConditionTrue,
-			Message:            message,
-			Reason:             "SyncError",
-			LastTransitionTime: metav1.Now(),
-		})
-	} else {
-		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
-			Type:   workloadFailingCondition,
-			Status: operatorv1.ConditionFalse,
-		})
-	}
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
+		Type:   workloadFailingCondition,
+		Status: operatorv1.ConditionFalse,
+	})
 
 	logrus.Println("sync_v400: updating console status")
 	_, consoleConfigChanged, err := SyncConsoleConfig(co, consoleConfig, rt)
@@ -156,7 +150,7 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 		if _, err := co.operatorConfigClient.UpdateStatus(operatorConfig); err != nil {
 			// we should be returning error only if status update fails, since sync errors
 			// should be reported as part of the status update.
-			return toUpdate, err
+			return nil, nil, toUpdate, err
 		}
 	}
 
@@ -170,7 +164,17 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 		logrus.Printf("\t deployment changed: %v", depChanged)
 	}()
 
-	return toUpdate, nil
+	return nil, nil, toUpdate, nil
+}
+
+func handleSyncErrorCondition(operatorConfig *operatorv1.Console, message string) {
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
+		Type:               workloadFailingCondition,
+		Status:             operatorv1.ConditionTrue,
+		Message:            message,
+		Reason:             "SyncError",
+		LastTransitionTime: metav1.Now(),
+	})
 }
 
 func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, route *routev1.Route) (*configv1.Console, bool, error) {
