@@ -29,12 +29,6 @@ const (
 	defaultLogoutURL = ""
 )
 
-// overridden by operator config
-const (
-	defaultDocumentationBaseURL = "https://docs.okd.io/4.0/"
-	defaultBranding             = "okd"
-)
-
 func getLogoutRedirect(consoleConfig *configv1.Console) string {
 	if len(consoleConfig.Spec.Authentication.LogoutRedirect) > 0 {
 		return consoleConfig.Spec.Authentication.LogoutRedirect
@@ -46,14 +40,14 @@ func getBrand(operatorConfig *operatorv1.Console) operatorv1.Brand {
 	if len(operatorConfig.Spec.Customization.Brand) > 0 {
 		return operatorConfig.Spec.Customization.Brand
 	}
-	return defaultBranding
+	return DEFAULT_BRAND
 }
 
 func getDocURL(operatorConfig *operatorv1.Console) string {
 	if len(operatorConfig.Spec.Customization.DocumentationBaseURL) > 0 {
 		return operatorConfig.Spec.Customization.DocumentationBaseURL
 	}
-	return defaultDocumentationBaseURL
+	return DEFAULT_DOC_URL
 }
 
 func DefaultConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, rt *routev1.Route) *corev1.ConfigMap {

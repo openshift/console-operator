@@ -12,6 +12,7 @@ OUT_DIR = _output
 OS_OUTPUT_GOPATH ?= 1
 
 export GOFLAGS
+export ADDITIONAL_GOTAGS
 export TESTFLAGS
 # If set to 1, create an isolated GOPATH inside _output using symlinks to avoid
 # other packages being accidentally included. Defaults to on.
