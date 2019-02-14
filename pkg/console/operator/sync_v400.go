@@ -154,6 +154,12 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 		}
 	}
 
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
+		Type:               workloadFailingCondition,
+		Status:             operatorv1.ConditionFalse,
+		LastTransitionTime: metav1.Now(),
+	})
+
 	defer func() {
 		logrus.Printf("sync loop 4.0.0 complete:")
 		logrus.Printf("\t service changed: %v", svcChanged)
