@@ -8,6 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
@@ -38,8 +39,9 @@ servingInfo:
 // To manually run these tests: go test -v ./pkg/console/subresource/configmap/...
 func TestDefaultConfigMap(t *testing.T) {
 	type args struct {
-		cr *operatorv1.Console
-		rt *routev1.Route
+		operatorConfig *operatorv1.Console
+		consoleConfig  *configv1.Console
+		rt             *routev1.Route
 	}
 	tests := []struct {
 		name string
@@ -49,11 +51,15 @@ func TestDefaultConfigMap(t *testing.T) {
 		{
 			name: "Test Default Config Map",
 			args: args{
-				cr: &operatorv1.Console{
+				operatorConfig: &operatorv1.Console{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
 					Spec:       operatorv1.ConsoleSpec{},
 					Status:     operatorv1.ConsoleStatus{},
+				},
+				consoleConfig: &configv1.Console{
+					Spec:   configv1.ConsoleSpec{},
+					Status: configv1.ConsoleStatus{},
 				},
 				rt: &routev1.Route{
 					TypeMeta:   metav1.TypeMeta{},
@@ -97,7 +103,7 @@ func TestDefaultConfigMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DefaultConfigMap(tt.args.cr, tt.args.rt); !reflect.DeepEqual(got, tt.want) {
+			if got := DefaultConfigMap(tt.args.operatorConfig, tt.args.consoleConfig, tt.args.rt); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DefaultConfigMap() = %v\n ----------- want %v", got, tt.want)
 			}
 		})
@@ -150,7 +156,10 @@ func TestStub(t *testing.T) {
 // TODO: remove - This unit test is probably not useful since it is just testing yaml methods slice and marshal with no logic
 func TestNewYamlConfig(t *testing.T) {
 	type args struct {
-		host string
+		host           string
+		logoutRedirect string
+		brand          operatorv1.Brand
+		docURL         string
 	}
 	tests := []struct {
 		name string
@@ -160,14 +169,17 @@ func TestNewYamlConfig(t *testing.T) {
 		{
 			name: "TestNewYamlConfig",
 			args: args{
-				host: host,
+				host:           host,
+				logoutRedirect: "",
+				brand:          "okd",
+				docURL:         "https://docs.okd.io/4.0/",
 			},
 			want: exampleYaml,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewYamlConfigString(tt.args.host); !reflect.DeepEqual(got, tt.want) {
+			if got := string(NewYamlConfig(tt.args.host, tt.args.logoutRedirect, tt.args.brand, tt.args.docURL)); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewYamlConfig() = \n%v\n ----> want\n%v", got, tt.want)
 			}
 		})

@@ -42,7 +42,7 @@ func ensureConsoleIsInDesiredState(t *testing.T, client *Clientset, state operat
 	}
 
 	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
-		operatorConfig, err = client.Consoles().Get(consoleapi.ResourceName, metav1.GetOptions{})
+		operatorConfig, err = client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -57,7 +57,7 @@ func ensureConsoleIsInDesiredState(t *testing.T, client *Clientset, state operat
 }
 
 func ManageConsole(t *testing.T, client *Clientset) error {
-	cr, err := client.Consoles().Get(consoleapi.ResourceName, metav1.GetOptions{})
+	cr, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func ManageConsole(t *testing.T, client *Clientset) error {
 
 	t.Logf("changing console operator state to 'Managed'...")
 
-	_, err = client.Consoles().Patch(consoleapi.ResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Managed"}}`))
+	_, err = client.Consoles().Patch(consoleapi.ConfigResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Managed"}}`))
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func ManageConsole(t *testing.T, client *Clientset) error {
 }
 
 func UnmanageConsole(t *testing.T, client *Clientset) error {
-	cr, err := client.Consoles().Get(consoleapi.ResourceName, metav1.GetOptions{})
+	cr, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func UnmanageConsole(t *testing.T, client *Clientset) error {
 
 	t.Logf("changing console operator state to 'Unmanaged'...")
 
-	_, err = client.Consoles().Patch(consoleapi.ResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Unmanaged"}}`))
+	_, err = client.Consoles().Patch(consoleapi.ConfigResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Unmanaged"}}`))
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func UnmanageConsole(t *testing.T, client *Clientset) error {
 }
 
 func RemoveConsole(t *testing.T, client *Clientset) error {
-	cr, err := client.Consoles().Get(consoleapi.ResourceName, metav1.GetOptions{})
+	cr, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func RemoveConsole(t *testing.T, client *Clientset) error {
 
 	t.Logf("changing console operator state to 'Removed'...")
 
-	_, err = client.Consoles().Patch(consoleapi.ResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Removed"}}`))
+	_, err = client.Consoles().Patch(consoleapi.ConfigResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Removed"}}`))
 	if err != nil {
 		return err
 	}
