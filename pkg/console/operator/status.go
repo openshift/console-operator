@@ -78,7 +78,7 @@ func (c *consoleOperator) operatorStatusNotFailing(operatorConfig *operatorsv1.C
 //   Status: True
 //   OperatorSyncLoopError
 func (c *consoleOperator) operatorStatusFailingSyncLoopError(operatorConfig *operatorsv1.Console, err error) (*operatorsv1.Console, error) {
-	fmt.Println("%s %s %s %s %s", operatorsv1.OperatorStatusTypeFailing, operatorsv1.ConditionTrue, "OperatorSyncLoopError", err.Error(), metav1.Now())
+	fmt.Printf("%s %s %s %s %s", operatorsv1.OperatorStatusTypeFailing, operatorsv1.ConditionTrue, "OperatorSyncLoopError", err.Error(), metav1.Now())
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
 		Type:               operatorsv1.OperatorStatusTypeFailing,
 		Status:             operatorsv1.ConditionTrue,
