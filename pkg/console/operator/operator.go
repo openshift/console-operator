@@ -217,10 +217,22 @@ func (c *consoleOperator) handleSync(operatorConfig *operatorsv1.Console, consol
 		return fmt.Errorf("unknown state: %v", operatorConfig.Spec.ManagementState)
 	}
 
-	_, err := sync_v400(c, operatorConfig, consoleConfig)
+	_, _, _, err := sync_v400(c, operatorConfig, consoleConfig)
 	if err != nil {
 		return err
 	}
+
+	// TODO: these should probably be handled separately
+	// if configChanged {
+	// 	// TODO: this should do better apply logic or similar, maybe use SetStatusFromAvailability
+	// 	if _, err = c.operatorConfigClient.Update(operatorConfigOut); err != nil {
+	// 		return err
+	// 	}
+
+	// 	if _, err = c.consoleConfigClient.Update(consoleConfigOut); err != nil {
+	// 		return err
+	// 	}
+	// }
 	return nil
 }
 
