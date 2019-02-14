@@ -152,24 +152,19 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	}
 
 	if err := c.handleSync(operatorConfig, consoleConfig); err != nil {
-		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-			Type:               operatorsv1.OperatorStatusTypeFailing,
-			Status:             operatorsv1.ConditionTrue,
-			Reason:             "OperatorSyncLoopError",
-			Message:            err.Error(),
-			LastTransitionTime: metav1.Now(),
-		})
+		// v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+		// 	Type:               operatorsv1.OperatorStatusTypeFailing,
+		// 	Status:             operatorsv1.ConditionTrue,
+		// 	Reason:             "OperatorSyncLoopError",
+		// 	Message:            err.Error(),
+		// 	LastTransitionTime: metav1.Now(),
+		// })
 		if _, updateErr := c.operatorConfigClient.UpdateStatus(operatorConfig); updateErr != nil {
 			glog.Errorf("error updating status: %s", err)
 		}
 		return err
 	}
 
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeAvailable,
-		Status:             operatorsv1.ConditionTrue,
-		LastTransitionTime: metav1.Now(),
-	})
 	return nil
 }
 
@@ -217,10 +212,22 @@ func (c *consoleOperator) handleSync(operatorConfig *operatorsv1.Console, consol
 		return fmt.Errorf("unknown state: %v", operatorConfig.Spec.ManagementState)
 	}
 
-	_, err := sync_v400(c, operatorConfig, consoleConfig)
+	_, _, _, err := sync_v400(c, operatorConfig, consoleConfig)
 	if err != nil {
 		return err
 	}
+
+	// TODO: these should probably be handled separately
+	// if configChanged {
+	// 	// TODO: this should do better apply logic or similar, maybe use SetStatusFromAvailability
+	// 	if _, err = c.operatorConfigClient.Update(operatorConfigOut); err != nil {
+	// 		return err
+	// 	}
+
+	// 	if _, err = c.consoleConfigClient.Update(consoleConfigOut); err != nil {
+	// 		return err
+	// 	}
+	// }
 	return nil
 }
 
