@@ -42,9 +42,9 @@ import (
 // The next loop will pick up where they previous left off and move the process forward one step.
 // This ensures the logic is simpler as we do not have to handle coordination between objects within
 // the loop.
-func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleConfig *configv1.Console) (*operatorv1.Console, *configv1.Console, bool, error) {
+func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, consoleConfig *configv1.Console) (bool, error) {
 	errors := []error{}
-	originalOperatorConfig := operatorConfig.DeepCopy()
+	operatorConfig := originalOperatorConfig.DeepCopy()
 	logrus.Println("running sync loop 4.0.0")
 	recorder := co.recorder
 
@@ -156,7 +156,7 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 		if _, err := co.operatorConfigClient.UpdateStatus(operatorConfig); err != nil {
 			// we should be returning error only if status update fails, since sync errors
 			// should be reported as part of the status update.
-			return operatorConfig, consoleConfig, toUpdate, err
+			return toUpdate, err
 		}
 	}
 
@@ -170,7 +170,7 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 		logrus.Printf("\t deployment changed: %v", depChanged)
 	}()
 
-	return operatorConfig, consoleConfig, toUpdate, nil
+	return toUpdate, nil
 }
 
 func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, route *routev1.Route) (*configv1.Console, bool, error) {
