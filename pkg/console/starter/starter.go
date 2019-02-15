@@ -151,8 +151,8 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	clusterOperatorStatus := status.NewClusterOperatorStatusController(
 		"console",
 		[]configv1.ObjectReference{
-			{Group: "operator.openshift.io", Resource: "consoles", Name: api.OpenShiftConsoleName},
-			{Group: "config.openshift.io", Resource: "consoles", Name: api.OpenShiftConsoleName},
+			{Group: "operator.openshift.io", Resource: "consoles", Name: api.ConfigResourceName},
+			{Group: "config.openshift.io", Resource: "consoles", Name: api.ConfigResourceName},
 			{Group: "oauth.openshift.io", Resource: "oauthclients", Name: api.OAuthClientName},
 			{Resource: "namespaces", Name: api.OpenShiftConsoleOperatorNamespace},
 			{Resource: "namespaces", Name: api.OpenShiftConsoleNamespace},

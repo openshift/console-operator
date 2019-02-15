@@ -48,12 +48,6 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	// track changes, may trigger ripples & update operator config or console config status
 	toUpdate := false
 
-	// TODO: if the sync_loop starts, should we set condition progressing:true?
-	// - this may be prematurely assuming that something has to happen, when
-	//   perhaps it does not (that said, we should not be notified unless
-	//   a resource we care about changes...
-	// TODO: when it ends, should we set progressing:false?
-
 	rt, rtChanged, rtErr := SyncRoute(co, operatorConfig)
 	if rtErr != nil {
 		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%v: %s\n", "route", rtErr)))
@@ -101,23 +95,22 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "route", depErr)))
 		return operatorConfig, consoleConfig, toUpdate, depErr
 	}
-
 	toUpdate = toUpdate || depChanged
 
 	logrus.Println("-----------------------")
 	logrus.Printf("sync loop 4.0.0 resources updated: %v \n", toUpdate)
 	logrus.Println("-----------------------")
 
-	// at this point, we should not be failing anymore
+	// if we made it this far, the operator is not failing
+	// but we will handle the state of the operand below
 	co.ConditionResourceSyncSuccess(operatorConfig)
-
-	// but we may be in a transitional state, if any of the above resources changed
+	// the operand is in a transitional state if any of the above resources changed
 	if toUpdate {
-		co.ConditionResourceSyncProgressing(operatorConfig)
+		co.ConditionResourceSyncProgressing(operatorConfig, "Changes made during sync updates, additional sync expected.")
 	} else {
 		co.ConditionResourceSyncNotProgressing(operatorConfig)
 	}
-	// final availability is dependent upon the deployment
+	// the operand is available if all resources are present & if we have pods
 	if actualDeployment.Status.ReadyReplicas > 0 {
 		co.ConditionDeploymentAvailable(operatorConfig)
 	} else {
