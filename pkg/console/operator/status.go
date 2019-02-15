@@ -3,6 +3,8 @@ package operator
 import (
 	"fmt"
 
+	"github.com/sirupsen/logrus"
+
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
@@ -14,6 +16,7 @@ import (
 //   Status: True
 //   -
 func (c *consoleOperator) operatorStatusAvailable(operatorConfig *operatorsv1.Console) (*operatorsv1.Console, error) {
+	logrus.Printf("Status: Available. \n")
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
 		Type:               operatorsv1.OperatorStatusTypeAvailable,
 		Status:             operatorsv1.ConditionTrue,
@@ -26,6 +29,7 @@ func (c *consoleOperator) operatorStatusAvailable(operatorConfig *operatorsv1.Co
 }
 
 func (c *consoleOperator) operatorStatusProgressing(operatorConfig *operatorsv1.Console) (*operatorsv1.Console, error) {
+	logrus.Printf("Status: Progressing...")
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
 		Type:               operatorv1.OperatorStatusTypeProgressing,
 		Status:             operatorv1.ConditionTrue,
@@ -39,6 +43,7 @@ func (c *consoleOperator) operatorStatusProgressing(operatorConfig *operatorsv1.
 }
 
 func (c *consoleOperator) operatorStatusNotProgressing(operatorConfig *operatorsv1.Console) (*operatorsv1.Console, error) {
+	logrus.Printf("Status: Not progressing. \n")
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
 		Type:   operatorv1.OperatorStatusTypeProgressing,
 		Status: operatorv1.ConditionFalse,
@@ -50,21 +55,10 @@ func (c *consoleOperator) operatorStatusNotProgressing(operatorConfig *operators
 }
 
 func (c *consoleOperator) operatorStatusFailing(operatorConfig *operatorsv1.Console) (*operatorsv1.Console, error) {
+	logrus.Printf("Status: failing... \n")
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
 		Type:               workloadFailingCondition,
 		Status:             operatorv1.ConditionTrue,
-		LastTransitionTime: metav1.Now(),
-	})
-	if _, err := c.operatorConfigClient.UpdateStatus(operatorConfig); err != nil {
-		return nil, fmt.Errorf("status update error: %v \n", err)
-	}
-	return operatorConfig, nil
-}
-
-func (c *consoleOperator) operatorStatusNotFailing(operatorConfig *operatorsv1.Console) (*operatorsv1.Console, error) {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
-		Type:               workloadFailingCondition,
-		Status:             operatorv1.ConditionFalse,
 		LastTransitionTime: metav1.Now(),
 	})
 	if _, err := c.operatorConfigClient.UpdateStatus(operatorConfig); err != nil {
@@ -78,7 +72,7 @@ func (c *consoleOperator) operatorStatusNotFailing(operatorConfig *operatorsv1.C
 //   Status: True
 //   OperatorSyncLoopError
 func (c *consoleOperator) operatorStatusFailingSyncLoopError(operatorConfig *operatorsv1.Console, err error) (*operatorsv1.Console, error) {
-	fmt.Printf("%s %s %s %s %s", operatorsv1.OperatorStatusTypeFailing, operatorsv1.ConditionTrue, "OperatorSyncLoopError", err.Error(), metav1.Now())
+	fmt.Printf("Status: %s %s %s %s %s", operatorsv1.OperatorStatusTypeFailing, operatorsv1.ConditionTrue, "OperatorSyncLoopError", err.Error(), metav1.Now())
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
 		Type:               operatorsv1.OperatorStatusTypeFailing,
 		Status:             operatorsv1.ConditionTrue,
@@ -99,6 +93,7 @@ func (c *consoleOperator) operatorStatusFailingSyncLoopError(operatorConfig *ope
 //  Status: Unknown
 //  - in an unmanaged state, we don't know the status of anything, the operator is effectively off
 func (c *consoleOperator) operatorStatusUnknownUnmanaged(operatorConfig *operatorsv1.Console) (*operatorsv1.Console, error) {
+	logrus.Printf("Status: unmanaged state. Conditions unknown.")
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
 		Type:               operatorsv1.OperatorStatusTypeAvailable,
 		Status:             operatorsv1.ConditionUnknown,
@@ -127,8 +122,10 @@ func (c *consoleOperator) operatorStatusUnknownUnmanaged(operatorConfig *operato
 }
 
 func (c *consoleOperator) operatorStatusResourceSyncFailure(operatorConfig *operatorv1.Console, message string) (*operatorsv1.Console, error) {
+	logrus.Printf("Status: Workload sync failure: %v \n", message)
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
-		Type:               workloadFailingCondition,
+		// Type:               workloadFailingCondition,
+		Type:               operatorv1.OperatorStatusTypeFailing,
 		Status:             operatorv1.ConditionTrue,
 		Message:            message,
 		Reason:             "SyncError",
@@ -140,7 +137,22 @@ func (c *consoleOperator) operatorStatusResourceSyncFailure(operatorConfig *oper
 	return operatorConfig, nil
 }
 
+func (c *consoleOperator) operatorStatusResourceSyncSuccess(operatorConfig *operatorsv1.Console) (*operatorsv1.Console, error) {
+	logrus.Printf("Status: Workload sync success! \n")
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
+		// Type:               workloadFailingCondition,
+		Type:               operatorv1.OperatorStatusTypeFailing,
+		Status:             operatorv1.ConditionFalse,
+		LastTransitionTime: metav1.Now(),
+	})
+	if _, err := c.operatorConfigClient.UpdateStatus(operatorConfig); err != nil {
+		return nil, fmt.Errorf("status update error: %v \n", err)
+	}
+	return operatorConfig, nil
+}
+
 func (c *consoleOperator) operatorStatusDeploymentAvailable(operatorConfig *operatorv1.Console) (*operatorsv1.Console, error) {
+	logrus.Printf("Status: deployment available. \n")
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
 		Type:               operatorv1.OperatorStatusTypeAvailable,
 		Status:             operatorv1.ConditionTrue,
@@ -153,6 +165,7 @@ func (c *consoleOperator) operatorStatusDeploymentAvailable(operatorConfig *oper
 }
 
 func (c *consoleOperator) operatorStatusDeploymentUnavailable(operatorConfig *operatorv1.Console) (*operatorsv1.Console, error) {
+	logrus.Printf("Status: deployment unavailable.")
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
 		Type:               operatorv1.OperatorStatusTypeAvailable,
 		Status:             operatorv1.ConditionFalse,

@@ -99,7 +99,7 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	toUpdate = toUpdate || depChanged
 
 	// at this point, we should not be failing anymore
-	co.operatorStatusNotFailing(operatorConfig)
+	co.operatorStatusResourceSyncSuccess(operatorConfig)
 
 	// but we may be in a transitional state, if any of the above resources changed
 	if toUpdate {
