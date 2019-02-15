@@ -48,71 +48,84 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	// track changes, may trigger ripples & update operator config or console config status
 	toUpdate := false
 
+	// TODO: if the sync_loop starts, should we set condition progressing:true?
+	// - this may be prematurely assuming that something has to happen, when
+	//   perhaps it does not (that said, we should not be notified unless
+	//   a resource we care about changes...
+	// TODO: when it ends, should we set progressing:false?
+
 	rt, rtChanged, rtErr := SyncRoute(co, operatorConfig)
 	if rtErr != nil {
-		co.operatorStatusResourceSyncFailure(operatorConfig, fmt.Sprintf("%v: %s\n", "route", rtErr))
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%v: %s\n", "route", rtErr)))
 		return operatorConfig, consoleConfig, toUpdate, rtErr
 	}
 	toUpdate = toUpdate || rtChanged
 
 	_, svcChanged, svcErr := SyncService(co, recorder, operatorConfig)
 	if svcErr != nil {
-		co.operatorStatusResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "service", svcErr))
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "service", svcErr)))
 		return operatorConfig, consoleConfig, toUpdate, svcErr
 	}
 	toUpdate = toUpdate || svcChanged
 
 	cm, cmChanged, cmErr := SyncConfigMap(co, recorder, operatorConfig, consoleConfig, rt)
 	if cmErr != nil {
-		co.operatorStatusResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "configmap", cmErr))
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "configmap", cmErr)))
 		return operatorConfig, consoleConfig, toUpdate, cmErr
 	}
 	toUpdate = toUpdate || cmChanged
 
 	serviceCAConfigMap, serviceCAConfigMapChanged, serviceCAConfigMapErr := SyncServiceCAConfigMap(co, operatorConfig)
 	if serviceCAConfigMapErr != nil {
-		co.operatorStatusResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "serviceCAconfigmap", serviceCAConfigMapErr))
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "serviceCAconfigmap", serviceCAConfigMapErr)))
 		return operatorConfig, consoleConfig, toUpdate, serviceCAConfigMapErr
 	}
 	toUpdate = toUpdate || serviceCAConfigMapChanged
 
 	sec, secChanged, secErr := SyncSecret(co, recorder, operatorConfig)
 	if secErr != nil {
-		co.operatorStatusResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "secret", secErr))
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "secret", secErr)))
 		return operatorConfig, consoleConfig, toUpdate, secErr
 	}
 	toUpdate = toUpdate || secChanged
 
 	_, oauthChanged, oauthErr := SyncOAuthClient(co, operatorConfig, sec, rt)
 	if oauthErr != nil {
-		co.operatorStatusResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "oauth", oauthErr))
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "oauth", oauthErr)))
 		return operatorConfig, consoleConfig, toUpdate, oauthErr
 	}
 	toUpdate = toUpdate || oauthChanged
 
 	actualDeployment, depChanged, depErr := SyncDeployment(co, recorder, operatorConfig, cm, serviceCAConfigMap, sec)
 	if depErr != nil {
-		co.operatorStatusResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "route", depErr))
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "route", depErr)))
 		return operatorConfig, consoleConfig, toUpdate, depErr
 	}
 
 	toUpdate = toUpdate || depChanged
 
+	logrus.Println("-----------------------")
+	logrus.Printf("sync loop 4.0.0 resources updated: %v \n", toUpdate)
+	logrus.Println("-----------------------")
+
 	// at this point, we should not be failing anymore
-	co.operatorStatusResourceSyncSuccess(operatorConfig)
+	co.ConditionResourceSyncSuccess(operatorConfig)
 
 	// but we may be in a transitional state, if any of the above resources changed
 	if toUpdate {
-		co.operatorStatusProgressing(operatorConfig)
+		co.ConditionResourceSyncProgressing(operatorConfig)
 	} else {
-		co.operatorStatusNotProgressing(operatorConfig)
+		co.ConditionResourceSyncNotProgressing(operatorConfig)
 	}
 	// final availability is dependent upon the deployment
 	if actualDeployment.Status.ReadyReplicas > 0 {
-		co.operatorStatusDeploymentAvailable(operatorConfig)
+		co.ConditionDeploymentAvailable(operatorConfig)
 	} else {
-		co.operatorStatusDeploymentUnavailable(operatorConfig)
+		co.ConditionDeploymentNotAvailable(operatorConfig)
 	}
+
+	// finally write out the set of conditions currently set
+	co.SyncStatus(operatorConfig)
 
 	// if we survive the gauntlet, we need to update the console config with the
 	// public hostname so that the world can know the console is ready to roll
