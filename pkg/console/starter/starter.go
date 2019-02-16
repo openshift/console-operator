@@ -75,7 +75,11 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		// options.FieldSelector = fields.OneTermEqualSelector("metadata.name", operator.ConfigResourceName).String()
 	}
 
-	tweakOAuthListOptions := func(options *v1.ListOptions) {
+	tweakListOptionsForConfigs := func(options *v1.ListOptions) {
+		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.ConfigResourceName).String()
+	}
+
+	tweakListOptionsForOAuth := func(options *v1.ListOptions) {
 		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OAuthClientName).String()
 	}
 
@@ -89,13 +93,13 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	consoleConfigInformers := configinformers.NewSharedInformerFactoryWithOptions(
 		consoleConfigClient,
 		resync,
-		configinformers.WithTweakListOptions(tweakListOptions),
+		configinformers.WithTweakListOptions(tweakListOptionsForConfigs),
 	)
 
 	consoleOperatorConfigInformers := operatorinformers.NewSharedInformerFactoryWithOptions(
 		consoleOperatorConfigClient,
 		resync,
-		operatorinformers.WithTweakListOptions(tweakListOptions),
+		operatorinformers.WithTweakListOptions(tweakListOptionsForConfigs),
 	)
 
 	routesInformersNamespaced := routesinformers.NewSharedInformerFactoryWithOptions(
@@ -109,7 +113,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	oauthInformers := oauthinformers.NewSharedInformerFactoryWithOptions(
 		oauthClient,
 		resync,
-		oauthinformers.WithTweakListOptions(tweakOAuthListOptions),
+		oauthinformers.WithTweakListOptions(tweakListOptionsForOAuth),
 	)
 
 	// TODO: Replace this with real event recorder (use ControllerContext).
