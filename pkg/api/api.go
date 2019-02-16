@@ -2,7 +2,7 @@ package api
 
 const (
 	TargetNamespace    = "openshift-console"
-	ConfigResourceName = "console"
+	ConfigResourceName = "cluster"
 )
 
 // consts to maintain existing names of various sub-resources
