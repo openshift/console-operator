@@ -16,9 +16,14 @@ spec:
       serviceAccountName: console-operator
       containers:
       - name: console-operator
-        # image: quay.io/benjaminapetersen/console-operator:v4.0.0.6
-        # image: quay.io/benjaminapetersen/console-operator-2:v4.1.0
-        image: quay.io/benjaminapetersen/console-operator-2:v4.1.2
+        # for development
+        # once you clone this repo, make changes, build & push a new image:
+        # docker build quay.io/<your-user>/console-operator:latest .
+        # docker push quay.io/<your-user>/console-operator:latest
+        # then
+        # oc apply -f examples/05-operator-alt-image.yaml
+        # with this line updated:
+        image: quay.io/<your-user>/console-operator:latest
         ports:
         - containerPort: 60000
           name: metrics
