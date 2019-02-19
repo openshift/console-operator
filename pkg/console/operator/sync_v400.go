@@ -111,7 +111,7 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 
 func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, route *routev1.Route) (*configv1.Console, error) {
 	logrus.Printf("Updating console.config.openshift.io with hostname: %v \n", route.Spec.Host)
-	consoleConfig.Status.PublicHostname = route.Spec.Host
+	consoleConfig.Status.PublicURL = route.Spec.Host
 	return co.consoleConfigClient.UpdateStatus(consoleConfig)
 }
 
