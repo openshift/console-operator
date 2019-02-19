@@ -1,7 +1,10 @@
 apiVersion: operator.openshift.io/v1alpha1
 kind: GenericOperatorConfig
 leaderElection:
-  namespace: openshift-console
+  namespace: openshift-console-operator
+  leaseDuration: 90
+  renewDeadline: 45
+  retryPeriod: 30
 authentication:
   disabled: true
 authorization:

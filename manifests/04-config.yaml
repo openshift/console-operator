@@ -9,6 +9,9 @@ data:
     kind: GenericOperatorConfig
     leaderElection:
       namespace: openshift-console-operator
+      leaseDuration: 90
+      renewDeadline: 45
+      retryPeriod: 30
     authentication:
       disabled: true
     authorization:
