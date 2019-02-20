@@ -3,7 +3,7 @@ package operator
 import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/openshift/service-serving-cert-signer/pkg/boilerplate/controller"
+	"github.com/openshift/service-ca-operator/pkg/boilerplate/controller"
 )
 
 type KeySyncer interface {

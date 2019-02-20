@@ -3,7 +3,7 @@ package api
 // Common controller/operator resource names
 const (
 	// Config instance
-	OperatorConfigInstanceName = "instance"
+	OperatorConfigInstanceName = "cluster"
 
 	// ConfigMaps
 	SignerControllerConfigMapName   = "service-serving-cert-signer-config"

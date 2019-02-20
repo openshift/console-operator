@@ -1,4 +1,4 @@
-# OpenShift Service Serving Cert Signer Operator
+# OpenShift Service CA Operator
 
 This operator runs the following OpenShift controllers:
 * **service-ca controller:**

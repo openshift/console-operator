@@ -3,9 +3,9 @@ package operator
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/service-serving-cert-signer/pkg/boilerplate/controllercmd"
-	"github.com/openshift/service-serving-cert-signer/pkg/operator"
-	"github.com/openshift/service-serving-cert-signer/pkg/version"
+	"github.com/openshift/service-ca-operator/pkg/boilerplate/controllercmd"
+	"github.com/openshift/service-ca-operator/pkg/operator"
+	"github.com/openshift/service-ca-operator/pkg/version"
 )
 
 const componentName = "openshift-service-cert-signer-operator"

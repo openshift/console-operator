@@ -7,8 +7,8 @@ import (
 	kcoreclient "k8s.io/client-go/kubernetes/typed/core/v1"
 	listers "k8s.io/client-go/listers/core/v1"
 
-	"github.com/openshift/service-serving-cert-signer/pkg/boilerplate/controller"
-	"github.com/openshift/service-serving-cert-signer/pkg/controller/api"
+	"github.com/openshift/service-ca-operator/pkg/boilerplate/controller"
+	"github.com/openshift/service-ca-operator/pkg/controller/api"
 )
 
 // ConfigMapCABundleInjectionController is responsible for injecting a CA bundle into configMaps annotated with

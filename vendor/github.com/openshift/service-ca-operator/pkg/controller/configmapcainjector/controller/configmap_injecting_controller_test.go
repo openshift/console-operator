@@ -14,7 +14,7 @@ import (
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/openshift/service-serving-cert-signer/pkg/controller/api"
+	"github.com/openshift/service-ca-operator/pkg/controller/api"
 )
 
 func TestSyncConfigMapCABundle(t *testing.T) {

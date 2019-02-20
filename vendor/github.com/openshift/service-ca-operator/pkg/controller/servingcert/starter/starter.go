@@ -11,7 +11,7 @@ import (
 	servicecertsignerv1alpha1 "github.com/openshift/api/servicecertsigner/v1alpha1"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/crypto"
-	"github.com/openshift/service-serving-cert-signer/pkg/controller/servingcert/controller"
+	"github.com/openshift/service-ca-operator/pkg/controller/servingcert/controller"
 )
 
 func ToStartFunc(config *servicecertsignerv1alpha1.ServiceServingCertSignerConfig) (controllercmd.StartFunc, error) {

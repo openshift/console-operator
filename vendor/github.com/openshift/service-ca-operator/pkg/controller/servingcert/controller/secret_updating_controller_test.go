@@ -10,7 +10,7 @@ import (
 	listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/openshift/service-serving-cert-signer/pkg/controller/api"
+	"github.com/openshift/service-ca-operator/pkg/controller/api"
 )
 
 func TestRequiresRegenerationServiceUIDMismatch(t *testing.T) {

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift/service-serving-cert-signer/tools/gotest2junit/pkg/api"
+	"github.com/openshift/service-ca-operator/tools/gotest2junit/pkg/api"
 )
 
 type Record struct {

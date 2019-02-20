@@ -23,8 +23,8 @@ import (
 	clientgotesting "k8s.io/client-go/testing"
 
 	"github.com/openshift/library-go/pkg/crypto"
-	"github.com/openshift/service-serving-cert-signer/pkg/controller/api"
-	"github.com/openshift/service-serving-cert-signer/pkg/controller/servingcert/cryptoextensions"
+	"github.com/openshift/service-ca-operator/pkg/controller/api"
+	"github.com/openshift/service-ca-operator/pkg/controller/servingcert/cryptoextensions"
 )
 
 func controllerSetup(startingObjects []runtime.Object, t *testing.T) ( /*caName*/ string, *fake.Clientset, *watch.RaceFreeFakeWatcher, *watch.RaceFreeFakeWatcher, *serviceServingCertController, informers.SharedInformerFactory) {

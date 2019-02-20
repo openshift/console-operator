@@ -2,11 +2,11 @@
 
 # This script provides constants for the Golang binary build process
 
-readonly OS_GO_PACKAGE=github.com/openshift/service-serving-cert-signer
+readonly OS_GO_PACKAGE=github.com/openshift/service-ca-operator
 
-readonly OS_BUILD_ENV_GOLANG="${OS_BUILD_ENV_GOLANG:-1.9}"
+readonly OS_BUILD_ENV_GOLANG="${OS_BUILD_ENV_GOLANG:-1.10}"
 readonly OS_BUILD_ENV_IMAGE="${OS_BUILD_ENV_IMAGE:-openshift/origin-release:golang-${OS_BUILD_ENV_GOLANG}}"
-readonly OS_REQUIRED_GO_VERSION="go1.9"
+readonly OS_REQUIRED_GO_VERSION="go1.10"
 readonly OS_BUILD_ENV_WORKINGDIR="/go/${OS_GO_PACKAGE}"
 
 readonly OS_OUTPUT_BASEPATH="${OS_OUTPUT_BASEPATH:-_output}"
@@ -25,7 +25,7 @@ readonly OS_GOFLAGS_TAGS="include_gcs include_oss containers_image_openpgp"
 readonly OS_IMAGE_COMPILE_BINARIES=( )
 
 readonly OS_CROSS_COMPILE_TARGETS=(
-  cmd/service-serving-cert-signer
+  cmd/service-ca-operator
 )
 readonly OS_CROSS_COMPILE_BINARIES=("${OS_CROSS_COMPILE_TARGETS[@]##*/}")
 
@@ -146,5 +146,5 @@ readonly OS_ALL_IMAGES=(
 # os::build::images builds all images in this repo.
 function os::build::images() {
   tag_prefix="${OS_IMAGE_PREFIX:-"openshift/origin"}"
-  os::build::image "${tag_prefix}-service-serving-cert-signer" .
+  os::build::image "${tag_prefix}-service-ca" .
 }

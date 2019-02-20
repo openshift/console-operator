@@ -1,5 +1,5 @@
 hash: f20fa9e013d2b14fa754f89237c2bdd77eb88d73f132f03ad71f5424a0a5431e
-updated: 2019-01-31T22:26:34.425107-05:00
+updated: 2019-02-20T16:30:42.559341-05:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -196,7 +196,7 @@ imports:
 - name: github.com/NYTimes/gziphandler
   version: 56545f4a5d46df9a6648819d1664c3a03a13ffdb
 - name: github.com/openshift/api
-  version: 4912e102a00fa8bb4bf27f83808dce6ef1b6887d
+  version: cec6269883be26556e63500b6df19a0b6691992e
   subpackages:
   - apps
   - apps/v1
@@ -242,8 +242,16 @@ imports:
   - webconsole
   - webconsole/v1
 - name: github.com/openshift/client-go
-  version: 43eeb8cff295868f3cd8faa3347bcfbdc9b2a9c0
+  version: 31ef839c86359881d2c312c4f0131febc6662400
   subpackages:
+  - config/clientset/versioned
+  - config/clientset/versioned/scheme
+  - config/clientset/versioned/typed/config/v1
+  - config/informers/externalversions
+  - config/informers/externalversions/config
+  - config/informers/externalversions/config/v1
+  - config/informers/externalversions/internalinterfaces
+  - config/listers/config/v1
   - oauth/clientset/versioned
   - oauth/clientset/versioned/scheme
   - oauth/clientset/versioned/typed/oauth/v1
@@ -252,6 +260,14 @@ imports:
   - oauth/informers/externalversions/oauth
   - oauth/informers/externalversions/oauth/v1
   - oauth/listers/oauth/v1
+  - operator/clientset/versioned
+  - operator/clientset/versioned/scheme
+  - operator/clientset/versioned/typed/operator/v1
+  - operator/informers/externalversions
+  - operator/informers/externalversions/internalinterfaces
+  - operator/informers/externalversions/operator
+  - operator/informers/externalversions/operator/v1
+  - operator/listers/operator/v1
   - route/clientset/versioned
   - route/clientset/versioned/scheme
   - route/clientset/versioned/typed/route/v1
@@ -261,7 +277,7 @@ imports:
   - route/informers/externalversions/route/v1
   - route/listers/route/v1
 - name: github.com/openshift/library-go
-  version: d8d206f3a04f7d06753d3891c155445fac258718
+  version: b8947b076480e6eb6939d81e080842348140a66f
   subpackages:
   - pkg/config/client
   - pkg/config/configdefaults
@@ -274,10 +290,9 @@ imports:
   - pkg/operator/events
   - pkg/operator/resource/resourceapply
   - pkg/operator/resource/resourcemerge
-  - pkg/operator/versioning
   - pkg/serviceability
 - name: github.com/openshift/service-ca-operator
-  version: 0ec9ea4a617413efd5980c887ae62f6ac13ac490
+  version: e5b71b38d38d7d59a9187d4f8dc9a1cbb9104dba
   subpackages:
   - tools/gotest2junit/pkg/api
   - tools/junitreport/pkg/api
@@ -294,7 +309,11 @@ imports:
   subpackages:
   - tools/junitreport/pkg/api
   - tools/junitreport/pkg/builder
+  - tools/junitreport/pkg/builder/flat
+  - tools/junitreport/pkg/builder/nested
   - tools/junitreport/pkg/parser
+  - tools/junitreport/pkg/parser/gotest
+  - tools/junitreport/pkg/parser/oscmd
   - tools/junitreport/pkg/parser/stack
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
@@ -391,7 +410,7 @@ imports:
   subpackages:
   - imports
 - name: google.golang.org/appengine
-  version: e9657d882bb81064595ca3b56cbe2546bbabf7b1
+  version: 54a98f90d1c46b7731eb8fb305d2a321c30ef610
   subpackages:
   - internal
   - internal/base
@@ -626,7 +645,6 @@ imports:
   version: 701b913670036511e3d752318272c97f1a2a2edd
   subpackages:
   - discovery
-  - discovery/fake
   - dynamic
   - informers
   - informers/admissionregistration
@@ -739,7 +757,6 @@ imports:
   - plugin/pkg/client/auth/exec
   - rest
   - rest/watch
-  - testing
   - tools/auth
   - tools/cache
   - tools/clientcmd

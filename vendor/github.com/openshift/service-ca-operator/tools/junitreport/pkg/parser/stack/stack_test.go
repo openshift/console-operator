@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openshift/service-serving-cert-signer/tools/junitreport/pkg/api"
+	"github.com/openshift/service-ca-operator/tools/junitreport/pkg/api"
 )
 
 func TestPush(t *testing.T) {
