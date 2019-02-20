@@ -3,6 +3,7 @@ package operator
 import (
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 
@@ -105,20 +106,25 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	// but we will handle the state of the operand below
 	co.ConditionResourceSyncSuccess(operatorConfig)
 	// the operand is in a transitional state if any of the above resources changed
-	if toUpdate {
+	// or if we have not settled on the desired number of replicas
+	if toUpdate || actualDeployment.Status.ReadyReplicas != deploymentsub.ConsoleReplicas {
 		co.ConditionResourceSyncProgressing(operatorConfig, "Changes made during sync updates, additional sync expected.")
 	} else {
 		co.ConditionResourceSyncNotProgressing(operatorConfig)
 	}
-	// the operand is available if all resources are present & if we have pods
-	if actualDeployment.Status.ReadyReplicas > 0 {
+	// the operand is available if all resources are present & if we have all the replicas
+	// available is currently defined as "met the users intent"
+	if actualDeployment.Status.ReadyReplicas == deploymentsub.ConsoleReplicas {
 		co.ConditionDeploymentAvailable(operatorConfig)
 	} else {
 		co.ConditionDeploymentNotAvailable(operatorConfig)
 	}
 
-	// finally write out the set of conditions currently set
-	co.SyncStatus(operatorConfig)
+	// finally write out the set of conditions currently set if anything has changed
+	// to avoid a hot loop
+	if !reflect.DeepEqual(operatorConfig, originalOperatorConfig) {
+		co.SyncStatus(operatorConfig)
+	}
 
 	// if we survive the gauntlet, we need to update the console config with the
 	// public hostname so that the world can know the console is ready to roll

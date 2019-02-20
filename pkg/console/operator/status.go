@@ -172,11 +172,26 @@ func (c *consoleOperator) ConditionNotAvailable(operatorConfig *operatorsv1.Cons
 	return operatorConfig
 }
 
-// A sync failure has happened.
-// We don't necessarily know the condition of the operand (console),
-// message should be a useful error output.
-// but we do know that the operator is failing to update the operand.
+// When a sync failure happens,
+// we dont know if the operand is available
+// we do know we are progressing because we are trying to change something about the operand
+// we do know we failed to make the update
 func (c *consoleOperator) ConditionResourceSyncFailure(operatorConfig *operatorsv1.Console, message string) *operatorsv1.Console {
+	message := "The operator failed to update a resource of the operand."
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+		Type:               operatorsv1.OperatorStatusTypeAvailable,
+		Status:             operatorsv1.ConditionUnknown,
+		Reason:             reasonUnmanaged,
+		Message:            message,
+		LastTransitionTime: metav1.Now(),
+	})
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+		Type:               operatorsv1.OperatorStatusTypeProgressing,
+		Status:             operatorsv1.ConditionTrue,
+		Reason:             reasonUnmanaged,
+		Message:            message,
+		LastTransitionTime: metav1.Now(),
+	})
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
 		Type:               operatorsv1.OperatorStatusTypeFailing,
 		Status:             operatorsv1.ConditionTrue,
@@ -213,7 +228,7 @@ func (c *consoleOperator) ConditionDeploymentNotAvailable(operatorConfig *operat
 		Type:               operatorsv1.OperatorStatusTypeAvailable,
 		Status:             operatorsv1.ConditionFalse,
 		Reason:             reasonNoPodsAvailable,
-		Message:            "No pods available for Console deployment.",
+		Message:            "No pods available for console deployment.",
 		LastTransitionTime: metav1.Now(),
 	})
 
@@ -244,8 +259,12 @@ func (c *consoleOperator) ConditionResourceSyncNotProgressing(operatorConfig *op
 
 func (c *consoleOperator) ConditionsManagementStateUnmanaged(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeAvailable,
-		Status:             operatorsv1.ConditionUnknown,
+		Type: operatorsv1.OperatorStatusTypeAvailable,
+		// See https://github.com/openshift/api/pull/206
+		// While the ConditionUnknown state seems to be the correct fit, the current understanding is that
+		// If the operator is fulfilling the user's desired state, set Available:true
+		// Status:             operatorsv1.ConditionUnknown,
+		Status:             operatorsv1.ConditionTrue,
 		Reason:             reasonUnmanaged,
 		Message:            "The operator is in an unmanaged state, therefore its availability is unknown.",
 		LastTransitionTime: metav1.Now(),
@@ -270,8 +289,12 @@ func (c *consoleOperator) ConditionsManagementStateUnmanaged(operatorConfig *ope
 
 func (c *consoleOperator) ConditionsManagementStateRemoved(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeAvailable,
-		Status:             operatorsv1.ConditionFalse,
+		Type: operatorsv1.OperatorStatusTypeAvailable,
+		// See https://github.com/openshift/api/pull/206
+		// At present, Available is the gate for upgrades.  The removal of an operand should NOT cause
+		// an upgrade to fail. Therefore, ManagementState:Removed should delete the operand (console),
+		// BUT should still report Available:True. Hopefully this will change.
+		Status:             operatorsv1.ConditionTrue,
 		Reason:             reasonRemoved,
 		Message:            "The operator is in a removed state, the console has been removed.",
 		LastTransitionTime: metav1.Now(),
