@@ -40,7 +40,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	//	return err
 	//}
 
-	kubeClient, err := kubernetes.NewForConfig(ctx.KubeConfig)
+	kubeClient, err := kubernetes.NewForConfig(ctx.ProtoKubeConfig)
 	if err != nil {
 		return err
 	}
@@ -55,12 +55,12 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		return err
 	}
 
-	routesClient, err := routesclient.NewForConfig(ctx.KubeConfig)
+	routesClient, err := routesclient.NewForConfig(ctx.ProtoKubeConfig)
 	if err != nil {
 		return err
 	}
 
-	oauthClient, err := authclient.NewForConfig(ctx.KubeConfig)
+	oauthClient, err := authclient.NewForConfig(ctx.ProtoKubeConfig)
 	if err != nil {
 		return err
 	}
