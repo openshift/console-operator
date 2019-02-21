@@ -62,7 +62,9 @@ func (c *consoleOperator) SyncStatus(operatorConfig *operatorsv1.Console) (*oper
 	logConditions(operatorConfig.Status.Conditions)
 	updatedConfig, err := c.operatorConfigClient.UpdateStatus(operatorConfig)
 	if err != nil {
-		return nil, fmt.Errorf("status update error: %v \n", err)
+		errMsg := fmt.Errorf("status update error: %v \n", err)
+		logrus.Error(errMsg)
+		return nil, errMsg
 	}
 	return updatedConfig, nil
 }
@@ -177,7 +179,7 @@ func (c *consoleOperator) ConditionNotAvailable(operatorConfig *operatorsv1.Cons
 // we do know we are progressing because we are trying to change something about the operand
 // we do know we failed to make the update
 func (c *consoleOperator) ConditionResourceSyncFailure(operatorConfig *operatorsv1.Console, message string) *operatorsv1.Console {
-	message := "The operator failed to update a resource of the operand."
+	// message := "The operator failed to update a resource of the operand."
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
 		Type:               operatorsv1.OperatorStatusTypeAvailable,
 		Status:             operatorsv1.ConditionUnknown,
