@@ -1,6 +1,6 @@
 package stack
 
-import "github.com/openshift/service-serving-cert-signer/tools/junitreport/pkg/api"
+import "github.com/openshift/service-ca-operator/tools/junitreport/pkg/api"
 
 // TestDataParser knows how to take raw test data and extract the useful information from it
 type TestDataParser interface {

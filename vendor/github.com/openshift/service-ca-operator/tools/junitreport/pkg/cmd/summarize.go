@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/openshift/service-serving-cert-signer/tools/junitreport/pkg/api"
+	"github.com/openshift/service-ca-operator/tools/junitreport/pkg/api"
 )
 
 // Summarize reads the input into a TestSuites structure and summarizes the tests contained within,

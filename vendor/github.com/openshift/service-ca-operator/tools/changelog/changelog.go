@@ -12,7 +12,7 @@ import (
 
 var (
 	mergeRequest   = regexp.MustCompile(`Merge pull request #([\d]+)`)
-	webconsoleBump = regexp.MustCompile(regexp.QuoteMeta("bump(github.com/openshift/service-serving-cert-signer-web-console): ") + `([\w]+)`)
+	webconsoleBump = regexp.MustCompile(regexp.QuoteMeta("bump(github.com/openshift/service-ca-operator-web-console): ") + `([\w]+)`)
 	upstreamKube   = regexp.MustCompile(`^UPSTREAM: (\d+)+:(.+)`)
 	upstreamRepo   = regexp.MustCompile(`^UPSTREAM: ([\w/-]+): (\d+)+:(.+)`)
 	prefix         = regexp.MustCompile(`^[\w-]: `)
@@ -183,7 +183,7 @@ func main() {
 		// github merge
 
 		// has api changes
-		display := fmt.Sprintf("%s [\\#%s](https://github.com/openshift/service-serving-cert-signer/pull/%s)", message, matches[1], matches[1])
+		display := fmt.Sprintf("%s [\\#%s](https://github.com/openshift/service-ca-operator/pull/%s)", message, matches[1], matches[1])
 		if hasFileChanges(c.short, "api/") {
 			apiChanges = append(apiChanges, display)
 		}

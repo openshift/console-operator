@@ -140,13 +140,13 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		recorder,
 	)
 
-	kubeInformersNamespaced.Start(ctx.Context.Done())
-	consoleOperatorConfigInformers.Start(ctx.Context.Done())
-	consoleConfigInformers.Start(ctx.Context.Done())
-	routesInformersNamespaced.Start(ctx.Context.Done())
-	oauthInformers.Start(ctx.Context.Done())
+	kubeInformersNamespaced.Start(ctx.Done())
+	consoleOperatorConfigInformers.Start(ctx.Done())
+	consoleConfigInformers.Start(ctx.Done())
+	routesInformersNamespaced.Start(ctx.Done())
+	oauthInformers.Start(ctx.Done())
 
-	go consoleOperator.Run(ctx.Context.Done())
+	go consoleOperator.Run(ctx.Done())
 
 	// TODO: turn this back on!
 	// for now its just creating noise.... as we need to update library-go for it to work correctly
@@ -161,7 +161,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	//// TODO: will have a series of Run() funcs here
 	//go clusterOperatorStatus.Run(1, stopCh)
 
-	<-ctx.Context.Done()
+	<-ctx.Done()
 
 	return fmt.Errorf("stopped")
 }

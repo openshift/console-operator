@@ -1,0 +1,10 @@
+# TODO: axe this file in favor of EnsureOperatorConfigExists within the operator
+apiVersion: operator.openshift.io/v1
+kind: ServiceCA
+metadata:
+  name: cluster
+spec:
+  managementState: Paused
+  version: 4.0.0
+  logLevel: "4"
+  replicas: 1

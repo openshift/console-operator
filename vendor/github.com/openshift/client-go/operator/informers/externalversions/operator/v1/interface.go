@@ -8,6 +8,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// Authentications returns a AuthenticationInformer.
+	Authentications() AuthenticationInformer
 	// Consoles returns a ConsoleInformer.
 	Consoles() ConsoleInformer
 	// Etcds returns a EtcdInformer.
@@ -16,10 +18,18 @@ type Interface interface {
 	KubeAPIServers() KubeAPIServerInformer
 	// KubeControllerManagers returns a KubeControllerManagerInformer.
 	KubeControllerManagers() KubeControllerManagerInformer
+	// KubeSchedulers returns a KubeSchedulerInformer.
+	KubeSchedulers() KubeSchedulerInformer
 	// OpenShiftAPIServers returns a OpenShiftAPIServerInformer.
 	OpenShiftAPIServers() OpenShiftAPIServerInformer
 	// OpenShiftControllerManagers returns a OpenShiftControllerManagerInformer.
 	OpenShiftControllerManagers() OpenShiftControllerManagerInformer
+	// ServiceCAs returns a ServiceCAInformer.
+	ServiceCAs() ServiceCAInformer
+	// ServiceCatalogAPIServers returns a ServiceCatalogAPIServerInformer.
+	ServiceCatalogAPIServers() ServiceCatalogAPIServerInformer
+	// ServiceCatalogControllerManagers returns a ServiceCatalogControllerManagerInformer.
+	ServiceCatalogControllerManagers() ServiceCatalogControllerManagerInformer
 }
 
 type version struct {
@@ -31,6 +41,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// Authentications returns a AuthenticationInformer.
+func (v *version) Authentications() AuthenticationInformer {
+	return &authenticationInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Consoles returns a ConsoleInformer.
@@ -53,6 +68,11 @@ func (v *version) KubeControllerManagers() KubeControllerManagerInformer {
 	return &kubeControllerManagerInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
+// KubeSchedulers returns a KubeSchedulerInformer.
+func (v *version) KubeSchedulers() KubeSchedulerInformer {
+	return &kubeSchedulerInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
 // OpenShiftAPIServers returns a OpenShiftAPIServerInformer.
 func (v *version) OpenShiftAPIServers() OpenShiftAPIServerInformer {
 	return &openShiftAPIServerInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
@@ -61,4 +81,19 @@ func (v *version) OpenShiftAPIServers() OpenShiftAPIServerInformer {
 // OpenShiftControllerManagers returns a OpenShiftControllerManagerInformer.
 func (v *version) OpenShiftControllerManagers() OpenShiftControllerManagerInformer {
 	return &openShiftControllerManagerInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// ServiceCAs returns a ServiceCAInformer.
+func (v *version) ServiceCAs() ServiceCAInformer {
+	return &serviceCAInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// ServiceCatalogAPIServers returns a ServiceCatalogAPIServerInformer.
+func (v *version) ServiceCatalogAPIServers() ServiceCatalogAPIServerInformer {
+	return &serviceCatalogAPIServerInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// ServiceCatalogControllerManagers returns a ServiceCatalogControllerManagerInformer.
+func (v *version) ServiceCatalogControllerManagers() ServiceCatalogControllerManagerInformer {
+	return &serviceCatalogControllerManagerInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

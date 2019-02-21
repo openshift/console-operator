@@ -1,6 +1,6 @@
 package operator
 
-import "github.com/openshift/service-serving-cert-signer/pkg/boilerplate/controller"
+import "github.com/openshift/service-ca-operator/pkg/boilerplate/controller"
 
 type Runner interface {
 	Run(stopCh <-chan struct{})

@@ -7,10 +7,10 @@ import (
 
 	operatorv1alpha1 "github.com/openshift/api/operator/v1alpha1"
 	servicecertsignerv1alpha1 "github.com/openshift/api/servicecertsigner/v1alpha1"
-	"github.com/openshift/service-serving-cert-signer/pkg/boilerplate/controllercmd"
-	"github.com/openshift/service-serving-cert-signer/pkg/cmd/scheme"
-	"github.com/openshift/service-serving-cert-signer/pkg/controller/servingcert/starter"
-	"github.com/openshift/service-serving-cert-signer/pkg/version"
+	"github.com/openshift/service-ca-operator/pkg/boilerplate/controllercmd"
+	"github.com/openshift/service-ca-operator/pkg/cmd/scheme"
+	"github.com/openshift/service-ca-operator/pkg/controller/servingcert/starter"
+	"github.com/openshift/service-ca-operator/pkg/version"
 )
 
 const (

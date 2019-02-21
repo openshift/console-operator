@@ -14,8 +14,8 @@ import (
 
 	ocontroller "github.com/openshift/library-go/pkg/controller"
 	"github.com/openshift/library-go/pkg/crypto"
-	"github.com/openshift/service-serving-cert-signer/pkg/boilerplate/controller"
-	"github.com/openshift/service-serving-cert-signer/pkg/controller/api"
+	"github.com/openshift/service-ca-operator/pkg/boilerplate/controller"
+	"github.com/openshift/service-ca-operator/pkg/controller/api"
 )
 
 type serviceServingCertUpdateController struct {

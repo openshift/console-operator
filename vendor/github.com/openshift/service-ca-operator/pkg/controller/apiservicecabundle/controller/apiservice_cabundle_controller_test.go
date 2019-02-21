@@ -14,7 +14,7 @@ import (
 	apiserviceclientfake "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/fake"
 	apiservicelister "k8s.io/kube-aggregator/pkg/client/listers/apiregistration/v1"
 
-	"github.com/openshift/service-serving-cert-signer/pkg/controller/api"
+	"github.com/openshift/service-ca-operator/pkg/controller/api"
 )
 
 func TestSyncAPIService(t *testing.T) {

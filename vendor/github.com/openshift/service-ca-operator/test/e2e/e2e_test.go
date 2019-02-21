@@ -14,13 +14,13 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/openshift/service-serving-cert-signer/pkg/controller/api"
+	"github.com/openshift/service-ca-operator/pkg/controller/api"
 )
 
 const (
-	serviceCAOperatorNamespace   = "openshift-core-operators"
+	serviceCAOperatorNamespace   = "openshift-service-ca-operator"
 	serviceCAControllerNamespace = "openshift-service-cert-signer"
-	serviceCAOperatorPodPrefix   = "openshift-service-cert-signer-operator"
+	serviceCAOperatorPodPrefix   = "service-ca-operator"
 	apiInjectorPodPrefix         = "apiservice-cabundle-injector"
 	configMapInjectorPodPrefix   = "configmap-cabundle-injector"
 	caControllerPodPrefix        = "service-serving-cert-signer"

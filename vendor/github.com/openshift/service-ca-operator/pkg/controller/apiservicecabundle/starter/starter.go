@@ -11,7 +11,7 @@ import (
 
 	servicecertsignerv1alpha1 "github.com/openshift/api/servicecertsigner/v1alpha1"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
-	"github.com/openshift/service-serving-cert-signer/pkg/controller/apiservicecabundle/controller"
+	"github.com/openshift/service-ca-operator/pkg/controller/apiservicecabundle/controller"
 )
 
 func ToStartFunc(config *servicecertsignerv1alpha1.APIServiceCABundleInjectorConfig) (controllercmd.StartFunc, error) {

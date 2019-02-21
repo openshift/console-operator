@@ -1,0 +1,14 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: servicecas.operator.openshift.io
+spec:
+  scope: Cluster
+  group: operator.openshift.io
+  version: v1
+  names:
+    kind: ServiceCA
+    plural: servicecas
+    singular: serviceca
+  subresources:
+    status: {}
