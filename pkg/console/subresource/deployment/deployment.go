@@ -246,6 +246,6 @@ func defaultProbe() *corev1.Probe {
 
 func livenessProbe() *corev1.Probe {
 	probe := defaultProbe()
-	probe.InitialDelaySeconds = 30
+	probe.InitialDelaySeconds = 150
 	return probe
 }
