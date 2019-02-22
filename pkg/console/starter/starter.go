@@ -83,6 +83,10 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OAuthClientName).String()
 	}
 
+	tweakListOptionsForRoute := func(options *v1.ListOptions) {
+		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OpenShiftConsoleRouteName).String()
+	}
+
 	kubeInformersNamespaced := informers.NewSharedInformerFactoryWithOptions(
 		kubeClient,
 		resync,
@@ -106,7 +110,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		routesClient,
 		resync,
 		routesinformers.WithNamespace(api.TargetNamespace),
-		routesinformers.WithTweakListOptions(tweakListOptions),
+		routesinformers.WithTweakListOptions(tweakListOptionsForRoute),
 	)
 
 	// oauthclients are not namespaced
