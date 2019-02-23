@@ -3,6 +3,7 @@ package operator
 import (
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 
@@ -40,7 +41,8 @@ import (
 // The next loop will pick up where they previous left off and move the process forward one step.
 // This ensures the logic is simpler as we do not have to handle coordination between objects within
 // the loop.
-func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleConfig *configv1.Console) (*operatorv1.Console, *configv1.Console, bool, error) {
+func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, consoleConfig *configv1.Console) (*operatorv1.Console, *configv1.Console, bool, error) {
+	operatorConfig := originalOperatorConfig.DeepCopy()
 	logrus.Println("running sync loop 4.0.0")
 	recorder := co.recorder
 
@@ -49,46 +51,83 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 
 	rt, rtChanged, rtErr := SyncRoute(co, operatorConfig)
 	if rtErr != nil {
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%v: %s\n", "route", rtErr)))
 		return operatorConfig, consoleConfig, toUpdate, rtErr
 	}
 	toUpdate = toUpdate || rtChanged
 
 	_, svcChanged, svcErr := SyncService(co, recorder, operatorConfig)
 	if svcErr != nil {
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "service", svcErr)))
 		return operatorConfig, consoleConfig, toUpdate, svcErr
 	}
 	toUpdate = toUpdate || svcChanged
 
 	cm, cmChanged, cmErr := SyncConfigMap(co, recorder, operatorConfig, consoleConfig, rt)
 	if cmErr != nil {
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "configmap", cmErr)))
 		return operatorConfig, consoleConfig, toUpdate, cmErr
 	}
 	toUpdate = toUpdate || cmChanged
 
 	serviceCAConfigMap, serviceCAConfigMapChanged, serviceCAConfigMapErr := SyncServiceCAConfigMap(co, operatorConfig)
 	if serviceCAConfigMapErr != nil {
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "serviceCAconfigmap", serviceCAConfigMapErr)))
 		return operatorConfig, consoleConfig, toUpdate, serviceCAConfigMapErr
 	}
 	toUpdate = toUpdate || serviceCAConfigMapChanged
 
 	sec, secChanged, secErr := SyncSecret(co, recorder, operatorConfig)
 	if secErr != nil {
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "secret", secErr)))
 		return operatorConfig, consoleConfig, toUpdate, secErr
 	}
 	toUpdate = toUpdate || secChanged
 
 	_, oauthChanged, oauthErr := SyncOAuthClient(co, operatorConfig, sec, rt)
 	if oauthErr != nil {
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "oauth", oauthErr)))
 		return operatorConfig, consoleConfig, toUpdate, oauthErr
 	}
 	toUpdate = toUpdate || oauthChanged
 
-	_, depChanged, depErr := SyncDeployment(co, recorder, operatorConfig, cm, serviceCAConfigMap, sec)
+	actualDeployment, depChanged, depErr := SyncDeployment(co, recorder, operatorConfig, cm, serviceCAConfigMap, sec)
 	if depErr != nil {
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "route", depErr)))
 		return operatorConfig, consoleConfig, toUpdate, depErr
 	}
 	toUpdate = toUpdate || depChanged
 
+	logrus.Println("-----------------------")
+	logrus.Printf("sync loop 4.0.0 resources updated: %v \n", toUpdate)
+	logrus.Println("-----------------------")
+
+	// if we made it this far, the operator is not failing
+	// but we will handle the state of the operand below
+	co.ConditionResourceSyncSuccess(operatorConfig)
+	// the operand is in a transitional state if any of the above resources changed
+	// or if we have not settled on the desired number of replicas
+	if toUpdate || actualDeployment.Status.ReadyReplicas != deploymentsub.ConsoleReplicas {
+		co.ConditionResourceSyncProgressing(operatorConfig, "Changes made during sync updates, additional sync expected.")
+	} else {
+		co.ConditionResourceSyncNotProgressing(operatorConfig)
+	}
+	// the operand is available if all resources are present & if we have all the replicas
+	// available is currently defined as "met the users intent"
+	if actualDeployment.Status.ReadyReplicas == deploymentsub.ConsoleReplicas {
+		co.ConditionDeploymentAvailable(operatorConfig)
+	} else {
+		co.ConditionDeploymentNotAvailable(operatorConfig)
+	}
+
+	// finally write out the set of conditions currently set if anything has changed
+	// to avoid a hot loop
+	if !reflect.DeepEqual(operatorConfig, originalOperatorConfig) {
+		co.SyncStatus(operatorConfig)
+	}
+
+	// if we survive the gauntlet, we need to update the console config with the
+	// public hostname so that the world can know the console is ready to roll
 	logrus.Println("sync_v400: updating console status")
 	if updatedConfig, err := SyncConsoleConfig(co, consoleConfig, rt); err != nil {
 		logrus.Errorf("Could not update console config status: %v \n", err)
@@ -105,9 +144,6 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 		logrus.Printf("\t deployment changed: %v", depChanged)
 	}()
 
-	// at this point there should be no existing errors, we survived the sync loop
-	// pass back config (updated), and bool indicating change happened so we can update
-	// the cluster operator status
 	return operatorConfig, consoleConfig, toUpdate, nil
 }
 

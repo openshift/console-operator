@@ -127,6 +127,8 @@ rules:
   resources:
   - consoles
   - consoles/status
+  - clusteroperators
+  - clusteroperators/status
   verbs:
   - get
   - list
@@ -138,6 +140,7 @@ rules:
   - operator.openshift.io
   resources:
   - consoles
+  - consoles/status
   verbs:
   - get
   - list

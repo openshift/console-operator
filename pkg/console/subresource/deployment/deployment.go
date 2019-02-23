@@ -20,6 +20,7 @@ const (
 	publicURLName          = "BRIDGE_DEVELOPER_CONSOLE_URL"
 	ConsoleServingCertName = "console-serving-cert"
 	ConsoleOauthConfigName = "console-oauth-config"
+	ConsoleReplicas        = 2
 )
 
 const (
@@ -76,7 +77,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	meta.Annotations[serviceCAConfigMapResourceVersionAnnotation] = serviceCAConfigMap.GetResourceVersion()
 	meta.Annotations[secretResourceVersionAnnotation] = sec.GetResourceVersion()
 	meta.Annotations[consoleImageAnnotation] = util.GetImageEnv()
-	replicas := int32(2)
+	replicas := int32(ConsoleReplicas)
 	gracePeriod := int64(30)
 
 	deployment := &appsv1.Deployment{

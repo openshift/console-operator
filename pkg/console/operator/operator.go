@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	// 3rd party
 	"github.com/sirupsen/logrus"
 
 	// kube
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -47,7 +47,8 @@ import (
 )
 
 const (
-	controllerName = "Console"
+	controllerName           = "Console"
+	workloadFailingCondition = "WorkloadFailing"
 )
 
 var CreateDefaultConsoleFlag bool
@@ -148,42 +149,36 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	}
 
 	if err := c.handleSync(operatorConfig, consoleConfig); err != nil {
+		c.SyncStatus(c.ConditionFailing(operatorConfig, "SyncLoopError", "Operator sync loop failed to completele."))
 		return err
 	}
+	c.SyncStatus(c.ConditionNotFailing(operatorConfig))
 	return nil
 }
 
-func (c *consoleOperator) handleSync(operatorConfig *operatorsv1.Console, consoleConfig *configv1.Console) error {
+func (c *consoleOperator) handleSync(originalOperatorConfig *operatorsv1.Console, consoleConfig *configv1.Console) error {
+
+	operatorConfig := originalOperatorConfig.DeepCopy()
 	switch operatorConfig.Spec.ManagementState {
 	case operatorsv1.Managed:
 		logrus.Println("console is in a managed state.")
 		// handled below
 	case operatorsv1.Unmanaged:
 		logrus.Println("console is in an unmanaged state.")
+		c.SyncStatus(c.ConditionsManagementStateUnmanaged(operatorConfig))
 		return nil
 	case operatorsv1.Removed:
 		logrus.Println("console has been removed.")
+		c.SyncStatus(c.ConditionsManagementStateRemoved(operatorConfig))
 		return c.deleteAllResources(operatorConfig)
 	default:
 		// TODO should update status
 		return fmt.Errorf("unknown state: %v", operatorConfig.Spec.ManagementState)
 	}
 
-	// do we need the if(configChanged) update bits?
-	operatorConfigOut, consoleConfigOut, configChanged, err := sync_v400(c, operatorConfig, consoleConfig)
+	_, _, _, err := sync_v400(c, operatorConfig, consoleConfig)
 	if err != nil {
 		return err
-	}
-	// TODO: these should probably be handled separately
-	if configChanged {
-		// TODO: this should do better apply logic or similar, maybe use SetStatusFromAvailability
-		if _, err = c.operatorConfigClient.Update(operatorConfigOut); err != nil {
-			return err
-		}
-
-		if _, err = c.consoleConfigClient.Update(consoleConfigOut); err != nil {
-			return err
-		}
 	}
 	return nil
 }
