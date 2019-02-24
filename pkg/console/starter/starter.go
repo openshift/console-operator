@@ -15,9 +15,11 @@ import (
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/console-operator/pkg/api"
-	operatorclient "github.com/openshift/console-operator/pkg/console/operatorclient"
+	"github.com/openshift/console-operator/pkg/console/operatorclient"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/status"
+
+	// informers
 
 	// clients
 	configclient "github.com/openshift/client-go/config/clientset/versioned"
@@ -82,6 +84,10 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.ConfigResourceName).String()
 	}
 
+	tweakListOptionsForClusterOperator := func(options *v1.ListOptions) {
+		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OpenShiftConsoleName).String()
+	}
+
 	tweakListOptionsForOAuth := func(options *v1.ListOptions) {
 		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OAuthClientName).String()
 	}
@@ -123,6 +129,12 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		oauthinformers.WithTweakListOptions(tweakListOptionsForOAuth),
 	)
 
+	clusterOperatorInformers := configinformers.NewSharedInformerFactoryWithOptions(
+		consoleConfigClient,
+		resync,
+		configinformers.WithTweakListOptions(tweakListOptionsForClusterOperator),
+	)
+
 	// TODO: Replace this with real event recorder (use ControllerContext).
 	recorder := ctx.EventRecorder
 
@@ -132,6 +144,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	}
 
 	// TODO: rearrange these into informer,client pairs, NOT separated.
+	// We need the clusteroperator/console watched here...
 	consoleOperator := operator.NewConsoleOperator(
 		// informers
 		consoleOperatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
@@ -149,6 +162,9 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		kubeClient.AppsV1(),
 		routesClient.RouteV1(),
 		oauthClient.OauthV1(),
+
+		clusterOperatorInformers.Config().V1().ClusterOperators(),
+
 		recorder,
 	)
 
@@ -172,6 +188,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	consoleConfigInformers.Start(ctx.Done())
 	routesInformersNamespaced.Start(ctx.Done())
 	oauthInformers.Start(ctx.Done())
+	clusterOperatorInformers.Start(ctx.Done())
 
 	go consoleOperator.Run(ctx.Done())
 	go clusterOperatorStatus.Run(1, ctx.Done())

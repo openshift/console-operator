@@ -65,6 +65,8 @@ type consoleOperator struct {
 	// openshift
 	routeClient routeclientv1.RoutesGetter
 	oauthClient oauthclientv1.OAuthClientsGetter
+
+	clusterOperatorClient configinformerv1.ClusterOperatorInformer
 	// recorder
 	recorder events.Recorder
 }
@@ -85,6 +87,10 @@ func NewConsoleOperator(
 	deploymentClient appsv1.DeploymentsGetter,
 	routev1Client routeclientv1.RoutesGetter,
 	oauthv1Client oauthclientv1.OAuthClientsGetter,
+	// we don't need a client/informer pair for the ClusterOperator resource, we simply need
+	// an informer to be notified when it changes.  If it changes for some reason, we want
+	// it to kick our sync loop to verify that it is the status we desire.
+	clusterOperatorClients configinformerv1.ClusterOperatorInformer,
 	// recorder
 	recorder events.Recorder,
 ) operator.Runner {
@@ -100,6 +106,8 @@ func NewConsoleOperator(
 		// openshift
 		routeClient: routev1Client,
 		oauthClient: oauthv1Client,
+
+		clusterOperatorClient: clusterOperatorClients,
 		// recorder
 		recorder: recorder,
 	}
@@ -117,6 +125,7 @@ func NewConsoleOperator(
 		operator.WithInformer(routes, operator.FilterByNames(api.OpenShiftConsoleName)),
 		operator.WithInformer(serviceInformer, operator.FilterByNames(api.OpenShiftConsoleName)),
 		operator.WithInformer(oauthClients, operator.FilterByNames(api.OAuthClientName)),
+		operator.WithInformer(clusterOperatorClients, operator.FilterByNames(api.OpenShiftConsoleName)),
 	)
 }
 

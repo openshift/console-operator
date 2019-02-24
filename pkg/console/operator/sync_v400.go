@@ -122,6 +122,8 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 
 	// finally write out the set of conditions currently set if anything has changed
 	// to avoid a hot loop
+	// TODO: prob need to get the clusteroperator/console resource & compare it to
+	// something... perhaps put the resource version on teh deployment like other stuff...
 	if !reflect.DeepEqual(operatorConfig, originalOperatorConfig) {
 		co.SyncStatus(operatorConfig)
 	}
