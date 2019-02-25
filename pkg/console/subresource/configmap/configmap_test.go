@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/util/diff"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -89,12 +91,12 @@ func TestDefaultConfigMap(t *testing.T) {
 					CreationTimestamp:          metav1.Time{},
 					DeletionTimestamp:          nil,
 					DeletionGracePeriodSeconds: nil,
-					Labels:          map[string]string{"app": api.OpenShiftConsoleName},
-					Annotations:     map[string]string{},
-					OwnerReferences: nil,
-					Initializers:    nil,
-					Finalizers:      nil,
-					ClusterName:     "",
+					Labels:                     map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations:                map[string]string{},
+					OwnerReferences:            nil,
+					Initializers:               nil,
+					Finalizers:                 nil,
+					ClusterName:                "",
 				},
 				Data:       map[string]string{"console-config.yaml": exampleYaml},
 				BinaryData: nil,
@@ -130,12 +132,12 @@ func TestStub(t *testing.T) {
 					CreationTimestamp:          metav1.Time{},
 					DeletionTimestamp:          nil,
 					DeletionGracePeriodSeconds: nil,
-					Labels:          map[string]string{"app": api.OpenShiftConsoleName},
-					Annotations:     map[string]string{},
-					OwnerReferences: nil,
-					Initializers:    nil,
-					Finalizers:      nil,
-					ClusterName:     "",
+					Labels:                     map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations:                map[string]string{},
+					OwnerReferences:            nil,
+					Initializers:               nil,
+					Finalizers:                 nil,
+					ClusterName:                "",
 				},
 				BinaryData: nil,
 				Data:       nil,
@@ -145,7 +147,7 @@ func TestStub(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := Stub(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("\nStub() = %v\n -------- want %v", got, tt.want)
+				t.Errorf("diff %v", diff.ObjectGoPrintDiff(tt.want, got))
 			}
 		})
 	}
