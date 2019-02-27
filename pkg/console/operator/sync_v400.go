@@ -235,11 +235,18 @@ func SyncSecret(co *consoleOperator, recorder events.Recorder, operatorConfig *o
 // therefore no additional error handling is needed here.
 func SyncConfigMap(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
 	logrus.Printf("validating console configmap...")
-	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, recorder, configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, infrastructureConfig, rt))
+
+	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, infrastructureConfig, rt)
+	if err != nil {
+		return nil, false, err
+	}
+
+	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, recorder, defaultConfigmap)
 	if cmErr != nil {
 		logrus.Errorf("%q: %v \n", "configmap", cmErr)
 		return nil, false, cmErr
 	}
+
 	logrus.Println("configmap exists and is in the correct state")
 	return cm, cmChanged, cmErr
 }

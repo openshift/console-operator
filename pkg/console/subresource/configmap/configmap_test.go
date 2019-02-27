@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	yaml "gopkg.in/yaml.v2"
+
 	"github.com/go-test/deep"
 
 	corev1 "k8s.io/api/core/v1"
@@ -18,6 +20,7 @@ import (
 const (
 	host          = "localhost"
 	mockAPIServer = "https://api.some.cluster.openshift.com:6443"
+	configKey     = "console-config.yaml"
 	exampleYaml   = `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1beta1
 auth:
@@ -105,14 +108,49 @@ func TestDefaultConfigMap(t *testing.T) {
 					Finalizers:      nil,
 					ClusterName:     "",
 				},
-				Data:       map[string]string{"console-config.yaml": exampleYaml},
+				Data:       map[string]string{configKey: exampleYaml},
 				BinaryData: nil,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(DefaultConfigMap(tt.args.operatorConfig, tt.args.consoleConfig, tt.args.infrastructureConfig, tt.args.rt), tt.want); diff != nil {
+			cm, _, _ := DefaultConfigMap(tt.args.operatorConfig, tt.args.consoleConfig, tt.args.infrastructureConfig, tt.args.rt)
+
+			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below
+			var exampleConfig map[string]interface{}
+			exampleBytes := []byte(exampleYaml)
+			err := yaml.Unmarshal(exampleBytes, &exampleConfig)
+			if err != nil {
+				t.Error(err)
+			}
+			fmt.Printf("%v\n", exampleConfig)
+
+			// the reason we have to marshall blindly into map[string]interface{}
+			// is that we don't have the definition for the console config struct.
+			// it exists in the console repo under cmd/bridge/config.go and is not
+			// available as an api object
+			var actualConfig map[string]interface{}
+			// convert the string back into a []byte
+			configBytes := []byte(cm.Data[configKey])
+
+			err = yaml.Unmarshal(configBytes, &actualConfig)
+			if err != nil {
+				t.Error("Problem with consoleConfig.Data[console-config.yaml]", err)
+			}
+
+			// compare the configs
+			if diff := deep.Equal(exampleConfig, actualConfig); diff != nil {
+				t.Error(diff)
+			}
+
+			// nil them out, we already compared them, and unfortunately we can't trust
+			// that the ordering will be stable. this avoids a flaky test.
+			cm.Data = nil
+			tt.want.Data = nil
+
+			// and then we can test the rest of the struct
+			if diff := deep.Equal(cm, tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})

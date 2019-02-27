@@ -3,6 +3,9 @@ package configmap
 import (
 	"fmt"
 
+	"github.com/sirupsen/logrus"
+
+	yaml2 "github.com/ghodss/yaml"
 	yaml "gopkg.in/yaml.v2"
 
 	corev1 "k8s.io/api/core/v1"
@@ -12,6 +15,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 )
 
 const (
@@ -57,22 +61,49 @@ func getApiUrl(infrastructureConfig *configv1.Infrastructure) string {
 	return ""
 }
 
-func DefaultConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, rt *routev1.Route) *corev1.ConfigMap {
-
+// DefaultConfigMap returns
+// - a new configmap,
+// - a bool indicating if config was merged (unsupportedConfigOverrides)
+// - an error
+func DefaultConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
 	logoutRedirect := getLogoutRedirect(consoleConfig)
 	brand := getBrand(operatorConfig)
 	docURL := getDocURL(operatorConfig)
 	apiServerURL := getApiUrl(infrastructureConfig)
 
 	host := rt.Spec.Host
-	config := string(NewYamlConfig(host, logoutRedirect, brand, docURL, apiServerURL))
+	config := NewYamlConfig(host, logoutRedirect, brand, docURL, apiServerURL)
+
 	configMap := Stub()
-	configMap.Data = map[string]string{
-		consoleConfigYamlFile: config,
+	configMap.Data = map[string]string{}
+	unsupportedRaw := operatorConfig.Spec.UnsupportedConfigOverrides.Raw
+
+	// merge config overrides, if we have them
+	mergedConfig, err := resourcemerge.MergeProcessConfig(nil, config, unsupportedRaw)
+	if err != nil {
+		logrus.Errorf("failed to generate configmap: %v \n", err)
+		return nil, false, err
 	}
 
+	outConfigYaml, err := yaml2.JSONToYAML(mergedConfig)
+	if err != nil {
+		logrus.Errorf("failed to generate configmap: %v \n", err)
+		return nil, false, err
+	}
+
+	// if we actually merged config overrides, log this information
+	didMerge := len(operatorConfig.Spec.UnsupportedConfigOverrides.Raw) != 0
+	if didMerge {
+		logrus.Println(fmt.Sprintf("With UnsupportedConfigOverrides: %v", string(unsupportedRaw)))
+	}
+
+	configMap.Data[consoleConfigYamlFile] = string(outConfigYaml)
+
+	logrus.Println("generated console config yaml:")
+	logrus.Printf("%s \n", string(outConfigYaml))
 	util.AddOwnerRef(configMap, util.OwnerRefFrom(operatorConfig))
-	return configMap
+
+	return configMap, didMerge, nil
 }
 
 func Stub() *corev1.ConfigMap {
