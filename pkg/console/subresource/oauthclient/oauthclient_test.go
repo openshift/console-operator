@@ -112,7 +112,7 @@ func TestSetRedirectURI(t *testing.T) {
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
 					Spec: routev1.RouteSpec{
-						Host: "localhost",
+						Host: "example.com",
 					},
 					Status: routev1.RouteStatus{},
 				},
@@ -123,7 +123,7 @@ func TestSetRedirectURI(t *testing.T) {
 				Secret:                              "",
 				AdditionalSecrets:                   nil,
 				RespondWithChallenges:               false,
-				RedirectURIs:                        []string{"https://localhost"},
+				RedirectURIs:                        []string{"https://example.com/auth/callback"},
 				GrantMethod:                         "",
 				ScopeRestrictions:                   nil,
 				AccessTokenMaxAgeSeconds:            nil,
