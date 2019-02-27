@@ -3,12 +3,8 @@ package servingcertsigner
 import (
 	"github.com/spf13/cobra"
 
-	"k8s.io/apimachinery/pkg/runtime"
+	"github.com/openshift/library-go/pkg/controller/controllercmd"
 
-	operatorv1alpha1 "github.com/openshift/api/operator/v1alpha1"
-	servicecertsignerv1alpha1 "github.com/openshift/api/servicecertsigner/v1alpha1"
-	"github.com/openshift/service-ca-operator/pkg/boilerplate/controllercmd"
-	"github.com/openshift/service-ca-operator/pkg/cmd/scheme"
 	"github.com/openshift/service-ca-operator/pkg/controller/servingcert/starter"
 	"github.com/openshift/service-ca-operator/pkg/version"
 )
@@ -20,26 +16,10 @@ const (
 
 func NewController() *cobra.Command {
 	cmd := controllercmd.
-		NewControllerCommandConfig(componentName, version.Get()).
-		WithNamespace(componentNamespace).
-		WithConfig(&servicecertsignerv1alpha1.ServiceServingCertSignerConfig{}, scheme.ConfigScheme, servicecertsignerv1alpha1.GroupVersion).
-		WithControllerFunc(controllerFunc).
+		NewControllerCommandConfig(componentName, version.Get(), starter.StartServiceServingCertSigner).
 		NewCommand()
 	cmd.Use = "serving-cert-signer"
 	cmd.Short = "Start the Service Serving Cert Signer controller"
 	return cmd
-}
 
-func controllerFunc(uncastConfig runtime.Object) (controllercmd.StartFunc, *operatorv1alpha1.GenericOperatorConfig, error) {
-	config := uncastConfig.(*servicecertsignerv1alpha1.ServiceServingCertSignerConfig)
-
-	startFunc, err := starter.ToStartFunc(config)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// TODO we should probably supply something useful in this config
-	operatorConfig := &operatorv1alpha1.GenericOperatorConfig{}
-
-	return startFunc, operatorConfig, nil
 }

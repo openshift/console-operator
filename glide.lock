@@ -1,5 +1,5 @@
-hash: f20fa9e013d2b14fa754f89237c2bdd77eb88d73f132f03ad71f5424a0a5431e
-updated: 2019-02-20T16:30:42.559341-05:00
+hash: 3248e3aefbca2aefa73f2a268e09ce0759103e4f1bd3129c03afe7952322e5f7
+updated: 2019-02-27T16:32:29.275358-05:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -131,6 +131,8 @@ imports:
   version: 1de3e0542de65ad8d75452a595886fdd0befb363
 - name: github.com/go-openapi/swag
   version: f3f9494671f93fcff853e3c6e9e948b3eb71e590
+- name: github.com/go-test/deep
+  version: 042da051cf3189d80f667339b822c7effac29cd6
 - name: github.com/gogo/protobuf
   version: c0656edd0d9eab7c66d1eb0c568f9039345796f7
   subpackages:
@@ -196,7 +198,7 @@ imports:
 - name: github.com/NYTimes/gziphandler
   version: 56545f4a5d46df9a6648819d1664c3a03a13ffdb
 - name: github.com/openshift/api
-  version: cec6269883be26556e63500b6df19a0b6691992e
+  version: c58918e29f89383d2e1467bad7156e2b0c49497f
   subpackages:
   - apps
   - apps/v1
@@ -277,9 +279,10 @@ imports:
   - route/informers/externalversions/route/v1
   - route/listers/route/v1
 - name: github.com/openshift/library-go
-  version: b8947b076480e6eb6939d81e080842348140a66f
+  version: 69961ead429165ef411c77e5be913b7bbb7357eb
   subpackages:
   - pkg/config/client
+  - pkg/config/clusteroperator/v1helpers
   - pkg/config/configdefaults
   - pkg/config/leaderelection
   - pkg/config/serving
@@ -290,9 +293,11 @@ imports:
   - pkg/operator/events
   - pkg/operator/resource/resourceapply
   - pkg/operator/resource/resourcemerge
+  - pkg/operator/status
+  - pkg/operator/v1helpers
   - pkg/serviceability
 - name: github.com/openshift/service-ca-operator
-  version: e5b71b38d38d7d59a9187d4f8dc9a1cbb9104dba
+  version: 53850701f3a06456ac96079e37eac859820231a4
   subpackages:
   - tools/gotest2junit/pkg/api
   - tools/junitreport/pkg/api
@@ -300,17 +305,6 @@ imports:
   - tools/junitreport/pkg/builder/flat
   - tools/junitreport/pkg/builder/nested
   - tools/junitreport/pkg/cmd
-  - tools/junitreport/pkg/parser
-  - tools/junitreport/pkg/parser/gotest
-  - tools/junitreport/pkg/parser/oscmd
-  - tools/junitreport/pkg/parser/stack
-- name: github.com/openshift/service-serving-cert-signer
-  version: 84f0c332a50bb20d7185aa6306f0e080b3c743d0
-  subpackages:
-  - tools/junitreport/pkg/api
-  - tools/junitreport/pkg/builder
-  - tools/junitreport/pkg/builder/flat
-  - tools/junitreport/pkg/builder/nested
   - tools/junitreport/pkg/parser
   - tools/junitreport/pkg/parser/gotest
   - tools/junitreport/pkg/parser/oscmd

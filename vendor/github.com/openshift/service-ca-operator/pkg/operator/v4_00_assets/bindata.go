@@ -16,6 +16,7 @@
 // bindata/v4.0.0/configmap-cabundle-controller/ns.yaml
 // bindata/v4.0.0/configmap-cabundle-controller/sa.yaml
 // bindata/v4.0.0/configmap-cabundle-controller/signing-cabundle.yaml
+// bindata/v4.0.0/service-ca-operator/operator-config.yaml
 // bindata/v4.0.0/service-serving-cert-signer-controller/clusterrole.yaml
 // bindata/v4.0.0/service-serving-cert-signer-controller/clusterrolebinding.yaml
 // bindata/v4.0.0/service-serving-cert-signer-controller/cm.yaml
@@ -573,6 +574,29 @@ func v400ConfigmapCabundleControllerSigningCabundleYaml() (*asset, error) {
 	return a, nil
 }
 
+var _v400ServiceCaOperatorOperatorConfigYaml = []byte(`apiVersion: operator.openshift.io/v1
+kind: ServiceCA
+metadata:
+  name: cluster
+spec:
+  managementState: Managed
+`)
+
+func v400ServiceCaOperatorOperatorConfigYamlBytes() ([]byte, error) {
+	return _v400ServiceCaOperatorOperatorConfigYaml, nil
+}
+
+func v400ServiceCaOperatorOperatorConfigYaml() (*asset, error) {
+	bytes, err := v400ServiceCaOperatorOperatorConfigYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "v4.0.0/service-ca-operator/operator-config.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _v400ServiceServingCertSignerControllerClusterroleYaml = []byte(`apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -911,6 +935,7 @@ var _bindata = map[string]func() (*asset, error){
 	"v4.0.0/configmap-cabundle-controller/ns.yaml": v400ConfigmapCabundleControllerNsYaml,
 	"v4.0.0/configmap-cabundle-controller/sa.yaml": v400ConfigmapCabundleControllerSaYaml,
 	"v4.0.0/configmap-cabundle-controller/signing-cabundle.yaml": v400ConfigmapCabundleControllerSigningCabundleYaml,
+	"v4.0.0/service-ca-operator/operator-config.yaml": v400ServiceCaOperatorOperatorConfigYaml,
 	"v4.0.0/service-serving-cert-signer-controller/clusterrole.yaml": v400ServiceServingCertSignerControllerClusterroleYaml,
 	"v4.0.0/service-serving-cert-signer-controller/clusterrolebinding.yaml": v400ServiceServingCertSignerControllerClusterrolebindingYaml,
 	"v4.0.0/service-serving-cert-signer-controller/cm.yaml": v400ServiceServingCertSignerControllerCmYaml,
@@ -981,6 +1006,9 @@ var _bintree = &bintree{nil, map[string]*bintree{
 			"ns.yaml": &bintree{v400ConfigmapCabundleControllerNsYaml, map[string]*bintree{}},
 			"sa.yaml": &bintree{v400ConfigmapCabundleControllerSaYaml, map[string]*bintree{}},
 			"signing-cabundle.yaml": &bintree{v400ConfigmapCabundleControllerSigningCabundleYaml, map[string]*bintree{}},
+		}},
+		"service-ca-operator": &bintree{nil, map[string]*bintree{
+			"operator-config.yaml": &bintree{v400ServiceCaOperatorOperatorConfigYaml, map[string]*bintree{}},
 		}},
 		"service-serving-cert-signer-controller": &bintree{nil, map[string]*bintree{
 			"clusterrole.yaml": &bintree{v400ServiceServingCertSignerControllerClusterroleYaml, map[string]*bintree{}},
