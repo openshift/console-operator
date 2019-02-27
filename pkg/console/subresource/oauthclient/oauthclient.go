@@ -98,6 +98,6 @@ func SetSecretString(client *oauthv1.OAuthClient, randomBits string) *oauthv1.OA
 func SetRedirectURI(client *oauthv1.OAuthClient, route *routev1.Route) *oauthv1.OAuthClient {
 	uri := route.Spec.Host
 	client.RedirectURIs = []string{}
-	client.RedirectURIs = append(client.RedirectURIs, util.HTTPS(uri))
+	client.RedirectURIs = append(client.RedirectURIs, util.HTTPS(uri)+"/auth/callback")
 	return client
 }
