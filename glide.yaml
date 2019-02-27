@@ -27,3 +27,9 @@ import:
 - package: k8s.io/gengo/args
   version: 01a732e01d00cb9a81bb0ca050d3e6d2b947927b
 - package: golang.org/x/tools/imports
+
+# third party
+- package: github.com/go-test/deep
+  version: master
+
+
