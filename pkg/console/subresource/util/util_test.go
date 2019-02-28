@@ -1,7 +1,7 @@
 package util
 
 import (
-	"reflect"
+	"github.com/go-test/deep"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,8 +24,8 @@ func TestSharedLabels(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := SharedLabels(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("SharedLabels() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(SharedLabels(), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
@@ -43,8 +43,8 @@ func TestLabelsForConsole(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := LabelsForConsole(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("LabelsForConsole() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(LabelsForConsole(), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
@@ -67,32 +67,12 @@ func TestSharedMeta(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := SharedMeta(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("SharedMeta() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(SharedMeta(), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
 }
-
-/*
-func TestAddOwnerRef(t *testing.T) {
-	type args struct {
-		obj      metav1Object
-		ownerRef *metav1OwnerReference
-	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		{},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			AddOwnerRef(tt.args.obj, tt.args.ownerRef)
-		})
-	}
-}
-*/
 
 func TestOwnerRefFrom(t *testing.T) {
 	var truthy = true
@@ -135,8 +115,8 @@ func TestOwnerRefFrom(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := OwnerRefFrom(tt.args.cr); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("OwnerRefFrom() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(OwnerRefFrom(tt.args.cr), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
@@ -175,8 +155,8 @@ func TestHTTPS(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := HTTPS(tt.args.host); got != tt.want {
-				t.Errorf("HTTPS() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(HTTPS(tt.args.host), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}

@@ -2,7 +2,7 @@ package configmap
 
 import (
 	"fmt"
-	"reflect"
+	"github.com/go-test/deep"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -103,8 +103,8 @@ func TestDefaultConfigMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DefaultConfigMap(tt.args.operatorConfig, tt.args.consoleConfig, tt.args.rt); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("DefaultConfigMap() = %v\n ----------- want %v", got, tt.want)
+			if diff := deep.Equal(DefaultConfigMap(tt.args.operatorConfig, tt.args.consoleConfig, tt.args.rt), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
@@ -144,8 +144,8 @@ func TestStub(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Stub(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("\nStub() = %v\n -------- want %v", got, tt.want)
+			if diff := deep.Equal(Stub(), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
@@ -153,7 +153,6 @@ func TestStub(t *testing.T) {
 
 // This unit test relies on both NewYamlConfig and NewYamlConfigString
 // to ensure the serialized data is created from host name
-// TODO: remove - This unit test is probably not useful since it is just testing yaml methods slice and marshal with no logic
 func TestNewYamlConfig(t *testing.T) {
 	type args struct {
 		host           string
@@ -179,8 +178,8 @@ func TestNewYamlConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := string(NewYamlConfig(tt.args.host, tt.args.logoutRedirect, tt.args.brand, tt.args.docURL)); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewYamlConfig() = \n%v\n ----> want\n%v", got, tt.want)
+			if diff := deep.Equal(string(NewYamlConfig(tt.args.host, tt.args.logoutRedirect, tt.args.brand, tt.args.docURL)), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
@@ -205,8 +204,8 @@ func Test_consoleBaseAddr(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := consoleBaseAddr(tt.args.host); got != tt.want {
-				t.Errorf("consoleBaseAddr() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(consoleBaseAddr(tt.args.host), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}

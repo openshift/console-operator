@@ -1,7 +1,7 @@
 package service
 
 import (
-	"reflect"
+	"github.com/go-test/deep"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -54,8 +54,8 @@ func TestDefaultService(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DefaultService(tt.args.cr); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("DefaultService() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(DefaultService(tt.args.cr), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
@@ -84,8 +84,8 @@ func TestStub(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Stub(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Stub() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(Stub(), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}

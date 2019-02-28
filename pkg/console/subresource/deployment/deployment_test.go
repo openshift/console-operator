@@ -1,7 +1,7 @@
 package deployment
 
 import (
-	"reflect"
+	"github.com/go-test/deep"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -164,8 +164,8 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DefaultDeployment(tt.args.cr, tt.args.cm, tt.args.cm, tt.args.sec); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("\nDefaultDeployment() = %v\n, want %v", got, tt.want)
+			if diff := deep.Equal(DefaultDeployment(tt.args.cr, tt.args.cm, tt.args.cm, tt.args.sec), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
@@ -210,8 +210,8 @@ func TestStub(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Stub(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Stub() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(Stub(), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
@@ -285,8 +285,8 @@ func Test_consoleVolumes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := consoleVolumes(tt.args.vc); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("\nconsoleVolumes() = %v, \nwant %v", got, tt.want)
+			if diff := deep.Equal(consoleVolumes(tt.args.vc), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
@@ -331,8 +331,8 @@ func Test_consoleVolumeMounts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := consoleVolumeMounts(tt.args.vc); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("consoleVolumeMounts() = %v, \nwant %v", got, tt.want)
+			if diff := deep.Equal(consoleVolumeMounts(tt.args.vc), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
