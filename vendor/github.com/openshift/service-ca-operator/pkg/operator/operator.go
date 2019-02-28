@@ -7,37 +7,44 @@ import (
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	rbacclientv1 "k8s.io/client-go/kubernetes/typed/rbac/v1"
 
+	"github.com/openshift/library-go/pkg/operator/events"
+
 	scsv1 "github.com/openshift/service-ca-operator/pkg/apis/serviceca/v1"
 	"github.com/openshift/service-ca-operator/pkg/boilerplate/operator"
 	"github.com/openshift/service-ca-operator/pkg/controller/api"
 	scsclientv1 "github.com/openshift/service-ca-operator/pkg/generated/clientset/versioned/typed/serviceca/v1"
 	scsinformerv1 "github.com/openshift/service-ca-operator/pkg/generated/informers/externalversions/serviceca/v1"
+	"github.com/openshift/service-ca-operator/pkg/operator/operatorclient"
 )
 
-const targetNamespaceName = "openshift-service-cert-signer"
-
-type serviceCertSignerOperator struct {
-	operatorConfigClient scsclientv1.ServiceCAsGetter
+type serviceCAOperator struct {
+	operatorConfigClient   scsclientv1.ServiceCAsGetter
+	operatorConfigInformer scsinformerv1.ServiceCAInformer
 
 	appsv1Client appsclientv1.AppsV1Interface
 	corev1Client coreclientv1.CoreV1Interface
 	rbacv1Client rbacclientv1.RbacV1Interface
+
+	eventRecorder events.Recorder
 }
 
-func NewServiceCertSignerOperator(
-	serviceCertSignerConfigInformer scsinformerv1.ServiceCAInformer,
+func NewServiceCAOperator(
+	operatorConfigInformer scsinformerv1.ServiceCAInformer,
 	namespacedKubeInformers informers.SharedInformerFactory,
 	operatorConfigClient scsclientv1.ServiceCAsGetter,
 	appsv1Client appsclientv1.AppsV1Interface,
 	corev1Client coreclientv1.CoreV1Interface,
 	rbacv1Client rbacclientv1.RbacV1Interface,
+	eventRecorder events.Recorder,
 ) operator.Runner {
-	c := &serviceCertSignerOperator{
+	c := &serviceCAOperator{
 		operatorConfigClient: operatorConfigClient,
 
 		appsv1Client: appsv1Client,
 		corev1Client: corev1Client,
 		rbacv1Client: rbacv1Client,
+
+		eventRecorder: eventRecorder,
 	}
 
 	configEvents := operator.FilterByNames(api.OperatorConfigInstanceName)
@@ -59,10 +66,10 @@ func NewServiceCertSignerOperator(
 		api.APIServiceInjectorDeploymentName,
 		api.ConfigMapInjectorDeploymentName,
 	)
-	namespaceEvents := operator.FilterByNames(targetNamespaceName)
+	namespaceEvents := operator.FilterByNames(operatorclient.TargetNamespace)
 
 	return operator.New("ServiceCAOperator", c,
-		operator.WithInformer(serviceCertSignerConfigInformer, configEvents),
+		operator.WithInformer(operatorConfigInformer, configEvents),
 		operator.WithInformer(namespacedKubeInformers.Core().V1().ConfigMaps(), configMapEvents),
 		operator.WithInformer(namespacedKubeInformers.Core().V1().ServiceAccounts(), saEvents),
 		operator.WithInformer(namespacedKubeInformers.Core().V1().Services(), serviceEvents),
@@ -72,11 +79,11 @@ func NewServiceCertSignerOperator(
 	)
 }
 
-func (c serviceCertSignerOperator) Key() (metav1.Object, error) {
+func (c serviceCAOperator) Key() (metav1.Object, error) {
 	return c.operatorConfigClient.ServiceCAs().Get(api.OperatorConfigInstanceName, metav1.GetOptions{})
 }
 
-func (c serviceCertSignerOperator) Sync(obj metav1.Object) error {
+func (c serviceCAOperator) Sync(obj metav1.Object) error {
 	operatorConfig := obj.(*scsv1.ServiceCA)
 
 	switch operatorConfig.Spec.ManagementState {

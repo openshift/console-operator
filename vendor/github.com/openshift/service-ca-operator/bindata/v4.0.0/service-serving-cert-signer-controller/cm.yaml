@@ -5,3 +5,7 @@ metadata:
   name: service-serving-cert-signer-config
 data:
   controller-config.yaml:
+    authentication:
+      disabled: true
+    authorization:
+      disabled: true

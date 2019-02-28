@@ -6,7 +6,7 @@ import (
 
 // sync_v4_00_to_latest takes care of synchronizing (not upgrading) the thing we're managing.
 // most of the time the sync method will be good for a large span of minor versions
-func sync_v4_00_to_latest(c serviceCertSignerOperator, operatorConfig *scsv1.ServiceCA) error {
+func sync_v4_00_to_latest(c serviceCAOperator, operatorConfig *scsv1.ServiceCA) error {
 	err := syncSigningController_v4_00_to_latest(c, operatorConfig)
 	if err != nil {
 		return err

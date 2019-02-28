@@ -4,98 +4,121 @@ import (
 	"fmt"
 	"time"
 
-	//"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	//"k8s.io/client-go/tools/cache"
 
-	//"github.com/openshift/library-go/pkg/operator/v1alpha1helpers"
-	//servicecav1 "github.com/openshift/service-ca-operator/pkg/apis/serviceca/v1"
+	configv1 "github.com/openshift/api/config/v1"
+	operatorv1 "github.com/openshift/api/operator/v1"
+	configv1client "github.com/openshift/client-go/config/clientset/versioned"
+	operatorv1client "github.com/openshift/client-go/operator/clientset/versioned"
+	operatorv1informers "github.com/openshift/client-go/operator/informers/externalversions"
+	"github.com/openshift/library-go/pkg/controller/controllercmd"
+	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
+	"github.com/openshift/library-go/pkg/operator/status"
+	"github.com/openshift/library-go/pkg/operator/v1helpers"
+
+	"github.com/openshift/service-ca-operator/pkg/controller/api"
 	scsclient "github.com/openshift/service-ca-operator/pkg/generated/clientset/versioned"
 	scsinformers "github.com/openshift/service-ca-operator/pkg/generated/informers/externalversions"
+	"github.com/openshift/service-ca-operator/pkg/operator/operatorclient"
+	"github.com/openshift/service-ca-operator/pkg/operator/v4_00_assets"
 )
 
-const (
-	globalConfigName = "cluster"
+const resyncDuration = 10 * time.Minute
 
-	// TODO unpause when ready
-	defaultOperatorConfig = `
-apiVersion: operator.openshift.io/v1
-kind: ServiceCA
-metadata:
-  name: ` + globalConfigName + `
-spec:
-  managementState: Paused
-`
-)
+func RunOperator(ctx *controllercmd.ControllerContext) error {
 
-func RunOperator(clientConfig *rest.Config, stopCh <-chan struct{}) error {
-	kubeClient, err := kubernetes.NewForConfig(clientConfig)
+	// This kube client uses protobuf, do not use it for CRs
+	kubeClient, err := kubernetes.NewForConfig(ctx.ProtoKubeConfig)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	scsClient, err := scsclient.NewForConfig(clientConfig)
+	scsClient, err := scsclient.NewForConfig(ctx.KubeConfig)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	//dynamicClient, err := dynamic.NewForConfig(clientConfig)
-	//if err != nil {
-	//	return err
-	//}
+	operatorConfigClient, err := operatorv1client.NewForConfig(ctx.KubeConfig)
+	if err != nil {
+		return err
+	}
+	dynamicClient, err := dynamic.NewForConfig(ctx.KubeConfig)
+	if err != nil {
+		return err
+	}
+	configClient, err := configv1client.NewForConfig(ctx.KubeConfig)
+	if err != nil {
+		return err
+	}
 
-	operatorInformers := scsinformers.NewSharedInformerFactory(scsClient, 10*time.Minute)
-	kubeInformersNamespaced := informers.NewFilteredSharedInformerFactory(kubeClient, 10*time.Minute, targetNamespaceName, nil)
+	operatorConfigInformers := operatorv1informers.NewSharedInformerFactory(operatorConfigClient, resyncDuration)
+	scsInformers := scsinformers.NewSharedInformerFactory(scsClient, resyncDuration)
+	kubeInformersNamespaced := informers.NewFilteredSharedInformerFactory(kubeClient, resyncDuration, operatorclient.TargetNamespace, nil)
+	kubeInformersForNamespaces := v1helpers.NewKubeInformersForNamespaces(kubeClient,
+		"",
+		operatorclient.GlobalUserSpecifiedConfigNamespace,
+		operatorclient.GlobalMachineSpecifiedConfigNamespace,
+		operatorclient.OperatorNamespace,
+		operatorclient.TargetNamespace,
+	)
+	v1helpers.EnsureOperatorConfigExists(
+		dynamicClient,
+		v4_00_assets.MustAsset("v4.0.0/service-ca-operator/operator-config.yaml"),
+		operatorv1.GroupVersion.WithResource("servicecas"))
 
-	// TODO: Use this
-	//v1alpha1helpers.EnsureOperatorConfigExists(
-	//	dynamicClient,
-	//	[]byte(defaultOperatorConfig),
-	//	servicecav1.GroupVersion.WithResource("serviceca"),
-	//	func() string { return "" },
-	//)
+	operatorClient := &operatorclient.OperatorClient{
+		Informers: operatorConfigInformers,
+		Client:    operatorConfigClient.OperatorV1(),
+	}
 
-	// TODO: Uncomment when we get a library bump and use v1 for status.
-	// clusterOperatorStatus := status.NewClusterOperatorStatusController(
-	//	"openshift-service-ca-operator",
-	//	"openshift-service-ca-operator",
-	//	dynamicClient,
-	//	&operatorStatusProvider{informers: operatorInformers},
-	//)
+	clusterOperatorStatus := status.NewClusterOperatorStatusController(
+		"service-ca",
+		[]configv1.ObjectReference{
+			{Group: "operator.openshift.io", Resource: "servicecas", Name: api.OperatorConfigInstanceName},
+			{Resource: "namespaces", Name: operatorclient.GlobalUserSpecifiedConfigNamespace},
+			{Resource: "namespaces", Name: operatorclient.GlobalMachineSpecifiedConfigNamespace},
+			{Resource: "namespaces", Name: operatorclient.OperatorNamespace},
+			{Resource: "namespaces", Name: operatorclient.TargetNamespace},
+		},
+		configClient.ConfigV1(),
+		operatorClient,
+		status.NewVersionGetter(),
+		ctx.EventRecorder,
+	)
 
-	operator := NewServiceCertSignerOperator(
-		operatorInformers.Operator().V1().ServiceCAs(),
+	resourceSyncController := resourcesynccontroller.NewResourceSyncController(
+		operatorClient,
+		kubeInformersForNamespaces,
+		v1helpers.CachedSecretGetter(kubeClient.CoreV1(), kubeInformersForNamespaces),
+		v1helpers.CachedConfigMapGetter(kubeClient.CoreV1(), kubeInformersForNamespaces),
+		ctx.EventRecorder,
+	)
+	if err := resourceSyncController.SyncConfigMap(
+		resourcesynccontroller.ResourceLocation{Namespace: operatorclient.GlobalMachineSpecifiedConfigNamespace, Name: "service-ca"},
+		resourcesynccontroller.ResourceLocation{Namespace: operatorclient.TargetNamespace, Name: api.SigningCABundleConfigMapName},
+	); err != nil {
+		return err
+	}
+
+	operator := NewServiceCAOperator(
+		scsInformers.Operator().V1().ServiceCAs(),
 		kubeInformersNamespaced,
 		scsClient.OperatorV1(),
 		kubeClient.AppsV1(),
 		kubeClient.CoreV1(),
 		kubeClient.RbacV1(),
+		ctx.EventRecorder,
 	)
 
-	operatorInformers.Start(stopCh)
-	kubeInformersNamespaced.Start(stopCh)
+	scsInformers.Start(ctx.Done())
+	operatorConfigInformers.Start(ctx.Done())
+	kubeInformersNamespaced.Start(ctx.Done())
+	kubeInformersForNamespaces.Start(ctx.Done())
 
-	go operator.Run(stopCh)
-	// TODO: Uncomment when we get a library bump and use v1 for status.
-	//go clusterOperatorStatus.Run(1, stopCh)
+	go operator.Run(ctx.Done())
+	go clusterOperatorStatus.Run(1, ctx.Done())
+	go resourceSyncController.Run(1, ctx.Done())
 
-	<-stopCh
+	<-ctx.Done()
 	return fmt.Errorf("stopped")
 }
-
-// TODO: Uncomment when we get a library bump and use v1 for status.
-//type operatorStatusProvider struct {
-//	informers scsinformers.SharedInformerFactory
-//}
-//
-//func (p *operatorStatusProvider) Informer() cache.SharedIndexInformer {
-//	return p.informers.Operator().V1().ServiceCAs().Informer()
-//}
-//
-//func (p *operatorStatusProvider) CurrentStatus() (servicecav1.OperatorStatus, error) {
-//	instance, err := p.informers.Operator().V1().ServiceCAs().Lister().Get(globalConfigName)
-//	if err != nil {
-//		return servicecav1.OperatorStatus{}, err
-//	}
-//	return instance.Status.OperatorStatus, nil
-//}

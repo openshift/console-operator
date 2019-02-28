@@ -123,7 +123,7 @@ func (c *FakeServiceCAs) DeleteCollection(options *v1.DeleteOptions, listOptions
 // Patch applies the patch and returns the patched serviceCA.
 func (c *FakeServiceCAs) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *servicecav1.ServiceCA, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(servicecasResource, name, pt, data, subresources...), &servicecav1.ServiceCA{})
+		Invokes(testing.NewRootPatchSubresourceAction(servicecasResource, name, data, subresources...), &servicecav1.ServiceCA{})
 	if obj == nil {
 		return nil, err
 	}

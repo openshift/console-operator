@@ -34,7 +34,7 @@ func controllerSetup(startingObjects []runtime.Object, t *testing.T) ( /*caName*
 	}
 
 	signerName := fmt.Sprintf("%s@%d", "openshift-service-serving-signer", time.Now().Unix())
-	ca, err := crypto.MakeCA(
+	ca, err := crypto.MakeSelfSignedCA(
 		path.Join(certDir, "service-signer.crt"),
 		path.Join(certDir, "service-signer.key"),
 		path.Join(certDir, "service-signer.serial"),

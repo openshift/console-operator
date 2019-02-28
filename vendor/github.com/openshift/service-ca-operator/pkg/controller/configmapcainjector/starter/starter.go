@@ -7,44 +7,44 @@ import (
 	"io/ioutil"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 
-	servicecertsignerv1alpha1 "github.com/openshift/api/servicecertsigner/v1alpha1"
+	scsv1alpha1 "github.com/openshift/api/servicecertsigner/v1alpha1"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/service-ca-operator/pkg/controller/configmapcainjector/controller"
 )
 
-func ToStartFunc(config *servicecertsignerv1alpha1.ConfigMapCABundleInjectorConfig) (controllercmd.StartFunc, error) {
-	if len(config.CABundleFile) == 0 {
-		return nil, fmt.Errorf("no ca bundle provided")
+func StartConfigMapCABundleInjector(ctx *controllercmd.ControllerContext) error {
+	config := &scsv1alpha1.ConfigMapCABundleInjectorConfig{}
+	if ctx.ComponentConfig != nil {
+		// make a copy we can mutate
+		configCopy := ctx.ComponentConfig.DeepCopy()
+		// force the config to our version to read it
+		configCopy.SetGroupVersionKind(scsv1alpha1.GroupVersion.WithKind("ConfigMapCABundleInjectorConfig"))
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(configCopy.Object, config); err != nil {
+			return err
+		}
 	}
-
+	if len(config.CABundleFile) == 0 {
+		return fmt.Errorf("no ca bundle provided")
+	}
 	ca, err := ioutil.ReadFile(config.CABundleFile)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
 	// Verify that there is at least one cert in the bundle file
 	block, _ := pem.Decode(ca)
 	if block == nil {
-		return nil, fmt.Errorf("failed to parse CA bundle file as pem")
+		return fmt.Errorf("failed to parse CA bundle file as pem")
 	}
 	if _, err = x509.ParseCertificate(block.Bytes); err != nil {
-		return nil, err
+		return err
 	}
+	caBundle := string(ca)
 
-	opts := &configMapCABundleInjectorOptions{ca: string(ca)}
-	return opts.runConfigMapCABundleInjector, nil
-}
-
-type configMapCABundleInjectorOptions struct {
-	ca string
-}
-
-func (o *configMapCABundleInjectorOptions) runConfigMapCABundleInjector(clientConfig *rest.Config, stopCh <-chan struct{}) error {
-	kubeClient, err := kubernetes.NewForConfig(clientConfig)
+	kubeClient, err := kubernetes.NewForConfig(ctx.ProtoKubeConfig)
 	if err != nil {
 		return err
 	}
@@ -53,14 +53,14 @@ func (o *configMapCABundleInjectorOptions) runConfigMapCABundleInjector(clientCo
 	configMapInjectorController := controller.NewConfigMapCABundleInjectionController(
 		kubeInformers.Core().V1().ConfigMaps(),
 		kubeClient.CoreV1(),
-		o.ca,
+		caBundle,
 	)
 
-	kubeInformers.Start(stopCh)
+	kubeInformers.Start(ctx.Done())
 
-	go configMapInjectorController.Run(5, stopCh)
+	go configMapInjectorController.Run(5, ctx.Done())
 
-	<-stopCh
+	<-ctx.Done()
 
 	return fmt.Errorf("stopped")
 }

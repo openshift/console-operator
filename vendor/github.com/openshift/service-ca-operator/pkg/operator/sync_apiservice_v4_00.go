@@ -2,6 +2,7 @@ package operator
 
 import (
 	"fmt"
+	"os"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -10,50 +11,52 @@ import (
 	appsclientv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
+	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
 	scsv1 "github.com/openshift/service-ca-operator/pkg/apis/serviceca/v1"
+
+	"github.com/openshift/service-ca-operator/pkg/operator/operatorclient"
 	"github.com/openshift/service-ca-operator/pkg/operator/v4_00_assets"
-	"os"
 )
 
 // syncAPIServiceController_v4_00_to_latest takes care of synchronizing (not upgrading) the thing we're managing.
 // most of the time the sync method will be good for a large span of minor versions
-func syncAPIServiceController_v4_00_to_latest(c serviceCertSignerOperator, operatorConfig *scsv1.ServiceCA) error {
+func syncAPIServiceController_v4_00_to_latest(c serviceCAOperator, operatorConfig *scsv1.ServiceCA) error {
 	var err error
 
 	requiredNamespace := resourceread.ReadNamespaceV1OrDie(v4_00_assets.MustAsset("v4.0.0/apiservice-cabundle-controller/ns.yaml"))
-	_, _, err = resourceapply.ApplyNamespace(c.corev1Client, requiredNamespace)
+	_, _, err = resourceapply.ApplyNamespace(c.corev1Client, c.eventRecorder, requiredNamespace)
 	if err != nil {
 		return fmt.Errorf("%q: %v", "ns", err)
 	}
 
 	requiredClusterRole := resourceread.ReadClusterRoleV1OrDie(v4_00_assets.MustAsset("v4.0.0/apiservice-cabundle-controller/clusterrole.yaml"))
-	_, _, err = resourceapply.ApplyClusterRole(c.rbacv1Client, requiredClusterRole)
+	_, _, err = resourceapply.ApplyClusterRole(c.rbacv1Client, c.eventRecorder, requiredClusterRole)
 	if err != nil {
 		return fmt.Errorf("%q: %v", "svc", err)
 	}
 
 	requiredClusterRoleBinding := resourceread.ReadClusterRoleBindingV1OrDie(v4_00_assets.MustAsset("v4.0.0/apiservice-cabundle-controller/clusterrolebinding.yaml"))
-	_, _, err = resourceapply.ApplyClusterRoleBinding(c.rbacv1Client, requiredClusterRoleBinding)
+	_, _, err = resourceapply.ApplyClusterRoleBinding(c.rbacv1Client, c.eventRecorder, requiredClusterRoleBinding)
 	if err != nil {
 		return fmt.Errorf("%q: %v", "clusterrolebinding", err)
 	}
 
 	requiredSA := resourceread.ReadServiceAccountV1OrDie(v4_00_assets.MustAsset("v4.0.0/apiservice-cabundle-controller/sa.yaml"))
-	_, saModified, err := resourceapply.ApplyServiceAccount(c.corev1Client, requiredSA)
+	_, saModified, err := resourceapply.ApplyServiceAccount(c.corev1Client, c.eventRecorder, requiredSA)
 	if err != nil {
 		return fmt.Errorf("%q: %v", "sa", err)
 	}
 
 	// TODO create a new configmap whenever the data value changes
-	_, configMapModified, err := manageAPIServiceConfigMap_v4_00_to_latest(c.corev1Client, operatorConfig)
+	_, configMapModified, err := manageAPIServiceConfigMap_v4_00_to_latest(c.corev1Client, c.eventRecorder, operatorConfig)
 	if err != nil {
 		return fmt.Errorf("%q: %v", "configmap", err)
 	}
 
-	_, signingCABundleModified, err := manageSigningCABundle(c.corev1Client)
+	_, signingCABundleModified, err := manageSigningCABundle(c.corev1Client, c.eventRecorder)
 	if err != nil {
 		return fmt.Errorf("%q: %v", "signing-cabundle", err)
 	}
@@ -71,30 +74,30 @@ func syncAPIServiceController_v4_00_to_latest(c serviceCertSignerOperator, opera
 
 	// we have attempted to update our configmaps and secrets, now it is time to create the DS
 	// TODO check basic preconditions here
-	_, _, err = manageAPIServiceDeployment_v4_00_to_latest(c.appsv1Client, operatorConfig, forceDeployment)
+	_, _, err = manageAPIServiceDeployment_v4_00_to_latest(c.appsv1Client, c.eventRecorder, operatorConfig, forceDeployment)
 	return err
 }
 
-func manageAPIServiceConfigMap_v4_00_to_latest(client coreclientv1.ConfigMapsGetter, operatorConfig *scsv1.ServiceCA) (*corev1.ConfigMap, bool, error) {
+func manageAPIServiceConfigMap_v4_00_to_latest(client coreclientv1.ConfigMapsGetter, eventRecorder events.Recorder, operatorConfig *scsv1.ServiceCA) (*corev1.ConfigMap, bool, error) {
 	configMap := resourceread.ReadConfigMapV1OrDie(v4_00_assets.MustAsset("v4.0.0/apiservice-cabundle-controller/cm.yaml"))
 	defaultConfig := v4_00_assets.MustAsset("v4.0.0/apiservice-cabundle-controller/defaultconfig.yaml")
 	requiredConfigMap, _, err := resourcemerge.MergeConfigMap(configMap, "controller-config.yaml", nil, defaultConfig, operatorConfig.Spec.APIServiceCABundleInjectorConfig.Raw)
 	if err != nil {
 		return nil, false, err
 	}
-	return resourceapply.ApplyConfigMap(client, requiredConfigMap)
+	return resourceapply.ApplyConfigMap(client, eventRecorder, requiredConfigMap)
 }
 
-func manageAPIServiceDeployment_v4_00_to_latest(client appsclientv1.AppsV1Interface, options *scsv1.ServiceCA, forceDeployment bool) (*appsv1.Deployment, bool, error) {
+func manageAPIServiceDeployment_v4_00_to_latest(client appsclientv1.AppsV1Interface, eventRecorder events.Recorder, options *scsv1.ServiceCA, forceDeployment bool) (*appsv1.Deployment, bool, error) {
 	required := resourceread.ReadDeploymentV1OrDie(v4_00_assets.MustAsset("v4.0.0/apiservice-cabundle-controller/deployment.yaml"))
 	required.Spec.Template.Spec.Containers[0].Image = os.Getenv("CONTROLLER_IMAGE")
 	required.Spec.Template.Spec.Containers[0].Args = append(required.Spec.Template.Spec.Containers[0].Args, fmt.Sprintf("-v=%s", options.Spec.LogLevel))
 
-	return resourceapply.ApplyDeployment(client, required, getGeneration(client, targetNamespaceName, required.Name), forceDeployment)
+	return resourceapply.ApplyDeployment(client, eventRecorder, required, getGeneration(client, operatorclient.TargetNamespace, required.Name), forceDeployment)
 }
 
 // TODO manage rotation in addition to initial creation
-func manageSigningCABundle(client coreclientv1.CoreV1Interface) (*corev1.ConfigMap, bool, error) {
+func manageSigningCABundle(client coreclientv1.CoreV1Interface, eventRecorder events.Recorder) (*corev1.ConfigMap, bool, error) {
 	configMap := resourceread.ReadConfigMapV1OrDie(v4_00_assets.MustAsset("v4.0.0/apiservice-cabundle-controller/signing-cabundle.yaml"))
 	existing, err := client.ConfigMaps(configMap.Namespace).Get(configMap.Name, metav1.GetOptions{})
 	if !apierrors.IsNotFound(err) {
@@ -115,5 +118,5 @@ func manageSigningCABundle(client coreclientv1.CoreV1Interface) (*corev1.ConfigM
 
 	configMap.Data["cabundle.crt"] = string(currentSigningKeySecret.Data["tls.crt"])
 
-	return resourceapply.ApplyConfigMap(client, configMap)
+	return resourceapply.ApplyConfigMap(client, eventRecorder, configMap)
 }

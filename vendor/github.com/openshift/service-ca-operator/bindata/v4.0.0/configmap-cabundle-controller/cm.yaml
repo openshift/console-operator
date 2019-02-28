@@ -5,3 +5,7 @@ metadata:
   name: configmap-cabundle-injector-config
 data:
   controller-config.yaml:
+    authentication:
+      disabled: true
+    authorization:
+      disabled: true
