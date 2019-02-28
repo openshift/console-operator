@@ -13,6 +13,32 @@ spec:
   subresources:
     status: {}
   versions:
-  - name: v1
-    served: true
-    storage: true
+    - name: v1
+      served: true
+      storage: true
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          properties:
+            managementState:
+              pattern: ^(Managed|Unmanaged|Removed|Forced)$
+              type: string
+              description: managementState indicates whether and how the operator
+                should manage the component
+            authentication:
+              properties:
+                logoutRedirect:
+                  pattern: ^((https):\/\/?)[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|\/?))$
+                  type: string
+                  description: Logout Redirect must be a valid URL
+            customization:
+              properties:
+                documentationBaseURL:
+                  pattern: ^((https):\/\/?)[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|\/?))\/$
+                  type: string
+                  description: Document base URL must be a valid URL that ends in a trailing slash
+                brand:
+                  pattern: ^(ocp|origin|okd|dedicated|online|azure)$
+                  type: string
+                  description: Brand must be be one of six values - azure|dedicated|ocp|okd|online|origin
