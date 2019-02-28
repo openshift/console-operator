@@ -27,8 +27,8 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   consoleBasePath: ""
 customization:
-  branding: ` + DEFAULT_BRAND + `
-  documentationBaseURL: ` + DEFAULT_DOC_URL + `
+  branding: okd
+  documentationBaseURL: https://docs.okd.io/4.0/
 servingInfo:
   bindAddress: https://0.0.0.0:8443
   certFile: /var/serving-cert/tls.crt
@@ -171,8 +171,8 @@ func TestNewYamlConfig(t *testing.T) {
 			args: args{
 				host:           host,
 				logoutRedirect: "",
-				brand:          DEFAULT_BRAND,
-				docURL:         DEFAULT_DOC_URL,
+				brand:          "okd",
+				docURL:         "https://docs.okd.io/4.0/",
 			},
 			want: exampleYaml,
 		},
