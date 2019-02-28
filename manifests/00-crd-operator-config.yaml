@@ -24,21 +24,15 @@ spec:
             managementState:
               pattern: ^(Managed|Unmanaged|Removed|Forced)$
               type: string
-              description: managementState indicates whether and how the operator
+              description: ManagementState indicates whether and how the operator
                 should manage the component
-            authentication:
-              properties:
-                logoutRedirect:
-                  pattern: ^((https):\/\/?)[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|\/?))$
-                  type: string
-                  description: Logout Redirect must be a valid URL
             customization:
               properties:
                 documentationBaseURL:
-                  pattern: ^((https):\/\/?)[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|\/?))\/$
+                  pattern: ^$|^((https):\/\/?)[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|\/?))\/$
                   type: string
-                  description: Document base URL must be a valid URL that ends in a trailing slash
+                  description: Documentation base url can optionally be set but must end in a trailing slash
                 brand:
-                  pattern: ^(ocp|origin|okd|dedicated|online|azure)$
+                  pattern: ^$|^(ocp|origin|okd|dedicated|online|azure)$
                   type: string
-                  description: Brand must be be one of six values - azure|dedicated|ocp|okd|online|origin
+                  description: Brand may be optionally set to one of six values - azure|dedicated|ocp|okd|online|origin
