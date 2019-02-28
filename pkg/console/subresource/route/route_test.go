@@ -1,7 +1,7 @@
 package route
 
 import (
-	"reflect"
+	"github.com/go-test/deep"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,8 +63,8 @@ func TestDefaultRoute(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DefaultRoute(tt.args.cr); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("DefaultRoute() = \n%v\n want \n%v", got, tt.want)
+			if diff := deep.Equal(DefaultRoute(tt.args.cr), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
@@ -104,8 +104,8 @@ func TestStub(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Stub(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Stub() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(Stub(), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}

@@ -1,7 +1,7 @@
 package configmap
 
 import (
-	"reflect"
+	"github.com/go-test/deep"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -49,8 +49,8 @@ func TestDefaultServiceCAConfigMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DefaultServiceCAConfigMap(tt.args.cr); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("DefaultServiceCAConfigMap() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(DefaultServiceCAConfigMap(tt.args.cr), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
@@ -85,8 +85,8 @@ func TestServiceCAStub(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ServiceCAStub(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ServiceCAStub() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(ServiceCAStub(), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}

@@ -1,9 +1,9 @@
 package oauthclient
 
 import (
+	"github.com/go-test/deep"
 	"github.com/openshift/console-operator/pkg/api"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
-	"reflect"
 	"testing"
 
 	oauthv1 "github.com/openshift/api/oauth/v1"
@@ -52,8 +52,9 @@ func TestDeRegisterConsoleFromOAuthClient(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DeRegisterConsoleFromOAuthClient(tt.args.client); got.Secret == tt.want.Secret || !reflect.DeepEqual(got.RedirectURIs, tt.want.RedirectURIs) {
-				t.Errorf("DeRegisterConsoleFromOAuthClient() = %v, want %v", got, tt.want)
+			got := DeRegisterConsoleFromOAuthClient(tt.args.client)
+			if diff := deep.Equal(got.RedirectURIs, tt.want.RedirectURIs); got.Secret == tt.want.Secret || diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
@@ -76,8 +77,8 @@ func TestStub(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Stub(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Stub() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(Stub(), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
@@ -133,8 +134,8 @@ func TestSetRedirectURI(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := SetRedirectURI(tt.args.client, tt.args.route); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("SetRedirectURI() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(SetRedirectURI(tt.args.client, tt.args.route), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
