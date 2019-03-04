@@ -35,7 +35,7 @@ spec:
         - "--create-default-console=true"
         # 04-config.yaml provides this config for the operator
         - "--config=/var/run/configmaps/config/controller-config.yaml"
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         volumeMounts:
         - mountPath: /var/run/configmaps/config
           name: config
