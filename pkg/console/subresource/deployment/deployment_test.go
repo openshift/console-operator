@@ -142,6 +142,7 @@ func TestDefaultDeployment(t *testing.T) {
 									Effect:   corev1.TaintEffectNoSchedule,
 								},
 							},
+							PriorityClassName:             "system-cluster-critical",
 							RestartPolicy:                 corev1.RestartPolicyAlways,
 							SchedulerName:                 corev1.DefaultSchedulerName,
 							TerminationGracePeriodSeconds: &gracePeriod,
