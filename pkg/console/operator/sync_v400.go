@@ -114,7 +114,7 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	}
 	// the operand is available if all resources are present & if we have all the replicas
 	// available is currently defined as "met the users intent"
-	if actualDeployment.Status.ReadyReplicas == deploymentsub.ConsoleReplicas {
+	if deploymentsub.IsReady(actualDeployment) && routesub.IsAdmitted(rt) {
 		co.ConditionDeploymentAvailable(operatorConfig)
 	} else {
 		co.ConditionDeploymentNotAvailable(operatorConfig)

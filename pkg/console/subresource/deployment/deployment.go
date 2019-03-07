@@ -1,6 +1,7 @@
 package deployment
 
 import (
+	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -250,4 +251,11 @@ func livenessProbe() *corev1.Probe {
 	probe := defaultProbe()
 	probe.InitialDelaySeconds = 150
 	return probe
+}
+
+// for the purpose of availability, ready is when we have at least
+// one ready replica
+func IsReady(deployment *appsv1.Deployment) bool {
+	logrus.Printf("Deployment is avalable: %v \n", deployment.Status.ReadyReplicas >= 1)
+	return deployment.Status.ReadyReplicas >= 1
 }
