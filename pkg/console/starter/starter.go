@@ -2,9 +2,11 @@ package starter
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	// kube
+	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 
@@ -152,6 +154,14 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		recorder,
 	)
 
+	versionRecorder := status.NewVersionGetter()
+	consoleClusterOperator, err := consoleOperatorConfigClient.OperatorV1().Consoles().Get("openshift-console", v1.GetOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	versionRecorder.SetVersion("openshift-console", consoleClusterOperator.Status.Version)
+	versionRecorder.SetVersion("operator", os.Getenv("OPERATOR_IMAGE_VERSION"))
+
 	clusterOperatorStatus := status.NewClusterOperatorStatusController(
 		"console",
 		[]configv1.ObjectReference{
@@ -163,7 +173,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		},
 		configClient.ConfigV1(),
 		operatorClient,
-		status.NewVersionGetter(),
+		versionRecorder,
 		ctx.EventRecorder,
 	)
 
