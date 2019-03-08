@@ -1,8 +1,9 @@
 package deployment
 
 import (
-	"github.com/go-test/deep"
 	"testing"
+
+	"github.com/go-test/deep"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -337,4 +338,55 @@ func Test_consoleVolumeMounts(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestIsReady(t *testing.T) {
+	type args struct {
+		deployment *appsv1.Deployment
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "Test IsReady(): Deployment has one ready replica",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Status: appsv1.DeploymentStatus{
+						ReadyReplicas: 1,
+					},
+				},
+			},
+			want: true,
+		}, {
+			name: "Test IsReady(): Deployment has multiple ready replicas",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Status: appsv1.DeploymentStatus{
+						ReadyReplicas: 5,
+					},
+				},
+			},
+			want: true,
+		}, {
+			name: "Test IsReady(): Deployment has no ready replicas",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Status: appsv1.DeploymentStatus{
+						ReadyReplicas: 0,
+					},
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsReady(tt.args.deployment); got != tt.want {
+				t.Errorf("IsReady() = \n%v\n want \n%v", got, tt.want)
+			}
+		})
+	}
+
 }
