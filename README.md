@@ -201,15 +201,15 @@ docker push <registry>/<your-username>/console-operator:<version>
 # Be sure your repository is public else the image will not be able to be pulled later
 docker push quay.io/benjaminapetersen/console-operator:latest
 ```
-Then, you will want to deploy your new container.  This means duplicating the `manifests/05-operator.yaml`
+Then, you will want to deploy your new container.  This means duplicating the `manifests/07-operator.yaml`
 and updating the line `image: docker.io/openshift/origin-console-operator:latest` to instead use the
 image you just pushed.
 
 ```bash
 # duplicate the operator manifest to /examples or your ~/ home dir
-cp manifests/05-operator.yaml ~/05-operator-alt-image.yaml
+cp manifests/07-operator.yaml ~/07-operator-alt-image.yaml
 ```
-Then, update the image & replicas in your `05-operator-alt-image.yaml` file:
+Then, update the image & replicas in your `07-operator-alt-image.yaml` file:
 
 ```yaml
 # before
