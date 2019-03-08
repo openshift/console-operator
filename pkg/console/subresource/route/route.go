@@ -1,7 +1,9 @@
 package route
 
 import (
+	"github.com/sirupsen/logrus"
 	// kube
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -158,4 +160,33 @@ func tls() *routev1.TLSConfig {
 
 func wildcard() routev1.WildcardPolicyType {
 	return routev1.WildcardPolicyNone
+}
+
+// for the purpose of availability, we simply need to know when the
+// route has been admitted.
+func IsAdmitted(route *routev1.Route) bool {
+	ingress := getIngressForHost(route)
+	admitted := false
+	if ingress == nil {
+		return false
+	}
+	for _, condition := range ingress.Conditions {
+		if condition.Type == routev1.RouteAdmitted && condition.Status == corev1.ConditionTrue {
+			admitted = true
+		}
+	}
+	logrus.Printf("Route is admitted: %s", admitted)
+	return admitted
+}
+
+// we only care about the ingress that matches the Route.Spec.Host
+// as this is the only one that is registered with OAuth
+func getIngressForHost(route *routev1.Route) *routev1.RouteIngress {
+	actualHost := route.Spec.Host
+	for _, ingress := range route.Status.Ingress {
+		if ingress.Host == actualHost {
+			return &ingress
+		}
+	}
+	return nil
 }
