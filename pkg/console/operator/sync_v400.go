@@ -41,7 +41,7 @@ import (
 // The next loop will pick up where they previous left off and move the process forward one step.
 // This ensures the logic is simpler as we do not have to handle coordination between objects within
 // the loop.
-func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, consoleConfig *configv1.Console) (*operatorv1.Console, *configv1.Console, bool, error) {
+func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure) (*operatorv1.Console, *configv1.Console, bool, error) {
 	operatorConfig := originalOperatorConfig.DeepCopy()
 	logrus.Println("running sync loop 4.0.0")
 	recorder := co.recorder
@@ -63,7 +63,7 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	}
 	toUpdate = toUpdate || svcChanged
 
-	cm, cmChanged, cmErr := SyncConfigMap(co, recorder, operatorConfig, consoleConfig, rt)
+	cm, cmChanged, cmErr := SyncConfigMap(co, recorder, operatorConfig, consoleConfig, infrastructureConfig, rt)
 	if cmErr != nil {
 		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "configmap", cmErr)))
 		return operatorConfig, consoleConfig, toUpdate, cmErr
@@ -211,9 +211,9 @@ func SyncSecret(co *consoleOperator, recorder events.Recorder, operatorConfig *o
 // apply configmap (needs route)
 // by the time we get to the configmap, we can assume the route exits & is configured properly
 // therefore no additional error handling is needed here.
-func SyncConfigMap(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
+func SyncConfigMap(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
 	logrus.Printf("validating console configmap...")
-	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, recorder, configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, rt))
+	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, recorder, configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, infrastructureConfig, rt))
 	if cmErr != nil {
 		logrus.Errorf("%q: %v \n", "configmap", cmErr)
 		return nil, false, cmErr

@@ -2,8 +2,9 @@ package configmap
 
 import (
 	"fmt"
-	"github.com/go-test/deep"
 	"testing"
+
+	"github.com/go-test/deep"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,8 +16,9 @@ import (
 )
 
 const (
-	host        = "localhost"
-	exampleYaml = `kind: ConsoleConfig
+	host          = "localhost"
+	mockAPIServer = "https://api.some.cluster.openshift.com:6443"
+	exampleYaml   = `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1beta1
 auth:
   clientID: console
@@ -26,6 +28,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   consoleBasePath: ""
+  masterPublicURL: ` + mockAPIServer + `
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -39,9 +42,10 @@ servingInfo:
 // To manually run these tests: go test -v ./pkg/console/subresource/configmap/...
 func TestDefaultConfigMap(t *testing.T) {
 	type args struct {
-		operatorConfig *operatorv1.Console
-		consoleConfig  *configv1.Console
-		rt             *routev1.Route
+		operatorConfig       *operatorv1.Console
+		consoleConfig        *configv1.Console
+		infrastructureConfig *configv1.Infrastructure
+		rt                   *routev1.Route
 	}
 	tests := []struct {
 		name string
@@ -60,6 +64,11 @@ func TestDefaultConfigMap(t *testing.T) {
 				consoleConfig: &configv1.Console{
 					Spec:   configv1.ConsoleSpec{},
 					Status: configv1.ConsoleStatus{},
+				},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL: "https://api.some.cluster.openshift.com:6443",
+					},
 				},
 				rt: &routev1.Route{
 					TypeMeta:   metav1.TypeMeta{},
@@ -103,7 +112,7 @@ func TestDefaultConfigMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(DefaultConfigMap(tt.args.operatorConfig, tt.args.consoleConfig, tt.args.rt), tt.want); diff != nil {
+			if diff := deep.Equal(DefaultConfigMap(tt.args.operatorConfig, tt.args.consoleConfig, tt.args.infrastructureConfig, tt.args.rt), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
@@ -159,6 +168,7 @@ func TestNewYamlConfig(t *testing.T) {
 		logoutRedirect string
 		brand          operatorv1.Brand
 		docURL         string
+		apiServerURL   string
 	}
 	tests := []struct {
 		name string
@@ -172,13 +182,14 @@ func TestNewYamlConfig(t *testing.T) {
 				logoutRedirect: "",
 				brand:          DEFAULT_BRAND,
 				docURL:         DEFAULT_DOC_URL,
+				apiServerURL:   mockAPIServer,
 			},
 			want: exampleYaml,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(string(NewYamlConfig(tt.args.host, tt.args.logoutRedirect, tt.args.brand, tt.args.docURL)), tt.want); diff != nil {
+			if diff := deep.Equal(string(NewYamlConfig(tt.args.host, tt.args.logoutRedirect, tt.args.brand, tt.args.docURL, tt.args.apiServerURL)), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})

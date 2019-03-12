@@ -48,12 +48,12 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		return err
 	}
 
-	consoleConfigClient, err := configclient.NewForConfig(ctx.KubeConfig)
+	configClient, err := configclient.NewForConfig(ctx.KubeConfig)
 	if err != nil {
 		return err
 	}
 
-	consoleOperatorConfigClient, err := operatorversionedclient.NewForConfig(ctx.KubeConfig)
+	operatorConfigClient, err := operatorversionedclient.NewForConfig(ctx.KubeConfig)
 	if err != nil {
 		return err
 	}
@@ -97,14 +97,14 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		informers.WithTweakListOptions(tweakListOptions),
 	)
 
-	consoleConfigInformers := configinformers.NewSharedInformerFactoryWithOptions(
-		consoleConfigClient,
+	configInformers := configinformers.NewSharedInformerFactoryWithOptions(
+		configClient,
 		resync,
 		configinformers.WithTweakListOptions(tweakListOptionsForConfigs),
 	)
 
-	consoleOperatorConfigInformers := operatorinformers.NewSharedInformerFactoryWithOptions(
-		consoleOperatorConfigClient,
+	operatorConfigInformers := operatorinformers.NewSharedInformerFactoryWithOptions(
+		operatorConfigClient,
 		resync,
 		operatorinformers.WithTweakListOptions(tweakListOptionsForConfigs),
 	)
@@ -127,23 +127,23 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	recorder := ctx.EventRecorder
 
 	operatorClient := &operatorclient.OperatorClient{
-		Informers: consoleOperatorConfigInformers,
-		Client:    consoleOperatorConfigClient.OperatorV1(),
+		Informers: operatorConfigInformers,
+		Client:    operatorConfigClient.OperatorV1(),
 	}
 
 	// TODO: rearrange these into informer,client pairs, NOT separated.
 	consoleOperator := operator.NewConsoleOperator(
 		// informers
-		consoleOperatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
-		consoleConfigInformers.Config().V1().Consoles(),           // ConsoleConfig
-
+		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
+		// configInformers.Config().V1().Consoles(),           // ConsoleConfig
+		configInformers,
 		kubeInformersNamespaced.Core().V1(),               // Secrets, ConfigMaps, Service
 		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
 		routesInformersNamespaced.Route().V1().Routes(),   // Route
 		oauthInformers.Oauth().V1().OAuthClients(),        // OAuth clients
 		// clients
-		consoleOperatorConfigClient.OperatorV1(),
-		consoleConfigClient.ConfigV1(),
+		operatorConfigClient.OperatorV1(),
+		configClient.ConfigV1(),
 
 		kubeClient.CoreV1(), // Secrets, ConfigMaps, Service
 		kubeClient.AppsV1(),
@@ -161,15 +161,15 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 			{Resource: "namespaces", Name: api.OpenShiftConsoleOperatorNamespace},
 			{Resource: "namespaces", Name: api.OpenShiftConsoleNamespace},
 		},
-		consoleConfigClient.ConfigV1(),
+		configClient.ConfigV1(),
 		operatorClient,
 		status.NewVersionGetter(),
 		ctx.EventRecorder,
 	)
 
 	kubeInformersNamespaced.Start(ctx.Done())
-	consoleOperatorConfigInformers.Start(ctx.Done())
-	consoleConfigInformers.Start(ctx.Done())
+	operatorConfigInformers.Start(ctx.Done())
+	configInformers.Start(ctx.Done())
 	routesInformersNamespaced.Start(ctx.Done())
 	oauthInformers.Start(ctx.Done())
 
