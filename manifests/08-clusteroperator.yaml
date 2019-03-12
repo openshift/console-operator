@@ -7,5 +7,3 @@ status:
   versions:
     - name: operator
       version: "0.0.1-snapshot"
-    - name: openshift-console
-      version: "0.0.1-snapshot_openshift"

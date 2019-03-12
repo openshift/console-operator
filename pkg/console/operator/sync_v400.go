@@ -3,6 +3,7 @@ package operator
 import (
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
@@ -116,6 +117,16 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	// available is currently defined as "met the users intent"
 	if deploymentsub.IsReady(actualDeployment) && routesub.IsAdmitted(rt) {
 		co.ConditionDeploymentAvailable(operatorConfig)
+
+		if deploymentsub.IsReadyAndUpdated(actualDeployment) {
+			co.ConditionNotProgressing(operatorConfig)
+			version := os.Getenv("RELEASE_VERSION")
+			if co.versionGetter.GetVersions()["operator"] != version {
+				co.versionGetter.SetVersion("operator", version)
+			}
+		} else {
+			co.ConditionProgressing(operatorConfig)
+		}
 	} else {
 		co.ConditionDeploymentNotAvailable(operatorConfig)
 	}

@@ -42,9 +42,7 @@ spec:
         env:
         - name: IMAGE
           value: docker.io/openshift/origin-console:latest
-        - name: OPERATOR_IMAGE
-          value: docker.io/openshift/origin-console-operator:v4.0
-        - name: OPERATOR_IMAGE_VERSION
+        - name: RELEASE_VERSION
           value: "0.0.1-snapshot"
         - name: OPERATOR_NAME
           value: "console-operator"

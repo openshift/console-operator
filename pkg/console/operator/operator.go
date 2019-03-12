@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/boilerplate/operator"
 	"github.com/openshift/library-go/pkg/operator/events"
+	"github.com/openshift/library-go/pkg/operator/status"
 
 	// informers
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
@@ -65,6 +66,7 @@ type consoleOperator struct {
 	routeClient          routeclientv1.RoutesGetter
 	oauthClient          oauthclientv1.OAuthClientsGetter
 	infrastructureClient configclientv1.InfrastructureInterface
+	versionGetter        status.VersionGetter
 	// recorder
 	recorder events.Recorder
 }
@@ -86,6 +88,7 @@ func NewConsoleOperator(
 	deploymentClient appsv1.DeploymentsGetter,
 	routev1Client routeclientv1.RoutesGetter,
 	oauthv1Client oauthclientv1.OAuthClientsGetter,
+	versionGetter status.VersionGetter,
 	// recorder
 	recorder events.Recorder,
 ) operator.Runner {
@@ -101,9 +104,10 @@ func NewConsoleOperator(
 		serviceClient:    corev1Client,
 		deploymentClient: deploymentClient,
 		// openshift
-		routeClient: routev1Client,
-		oauthClient: oauthv1Client,
-		// event recorder
+		routeClient:   routev1Client,
+		oauthClient:   oauthv1Client,
+		versionGetter: versionGetter,
+		// recorder
 		recorder: recorder,
 	}
 
@@ -178,8 +182,8 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 }
 
 func (c *consoleOperator) handleSync(originalOperatorConfig *operatorsv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure) error {
-
 	operatorConfig := originalOperatorConfig.DeepCopy()
+
 	switch operatorConfig.Spec.ManagementState {
 	case operatorsv1.Managed:
 		logrus.Println("console is in a managed state.")
