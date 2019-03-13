@@ -27,7 +27,7 @@ import (
 	"github.com/openshift/library-go/pkg/operator/events"
 
 	// informers
-	configinformerv1 "github.com/openshift/client-go/config/informers/externalversions/config/v1"
+	configinformer "github.com/openshift/client-go/config/informers/externalversions"
 	operatorinformerv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
@@ -57,14 +57,14 @@ type consoleOperator struct {
 	operatorConfigClient operatorclientv1.ConsoleInterface
 	consoleConfigClient  configclientv1.ConsoleInterface
 	// core kube
-
 	secretsClient    coreclientv1.SecretsGetter
 	configMapClient  coreclientv1.ConfigMapsGetter
 	serviceClient    coreclientv1.ServicesGetter
 	deploymentClient appsv1.DeploymentsGetter
 	// openshift
-	routeClient routeclientv1.RoutesGetter
-	oauthClient oauthclientv1.OAuthClientsGetter
+	routeClient          routeclientv1.RoutesGetter
+	oauthClient          oauthclientv1.OAuthClientsGetter
+	infrastructureClient configclientv1.InfrastructureInterface
 	// recorder
 	recorder events.Recorder
 }
@@ -72,7 +72,8 @@ type consoleOperator struct {
 func NewConsoleOperator(
 	// informers
 	operatorConfigInformer operatorinformerv1.ConsoleInformer,
-	consoleConfigInformer configinformerv1.ConsoleInformer,
+	configInformer configinformer.SharedInformerFactory,
+
 	coreV1 corev1.Interface,
 	deployments appsinformersv1.DeploymentInformer,
 	routes routesinformersv1.RouteInformer,
@@ -80,7 +81,7 @@ func NewConsoleOperator(
 
 	// clients
 	operatorConfigClient operatorclientv1.OperatorV1Interface,
-	consoleConfigClient configclientv1.ConfigV1Interface,
+	configClient configclientv1.ConfigV1Interface,
 	corev1Client coreclientv1.CoreV1Interface,
 	deploymentClient appsv1.DeploymentsGetter,
 	routev1Client routeclientv1.RoutesGetter,
@@ -89,9 +90,11 @@ func NewConsoleOperator(
 	recorder events.Recorder,
 ) operator.Runner {
 	c := &consoleOperator{
-		// operator
+		// configs
 		operatorConfigClient: operatorConfigClient.Consoles(),
-		consoleConfigClient:  consoleConfigClient.Consoles(),
+		consoleConfigClient:  configClient.Consoles(),
+		infrastructureClient: configClient.Infrastructures(),
+		// console resources
 		// core kube
 		secretsClient:    corev1Client,
 		configMapClient:  corev1Client,
@@ -100,23 +103,31 @@ func NewConsoleOperator(
 		// openshift
 		routeClient: routev1Client,
 		oauthClient: oauthv1Client,
-		// recorder
+		// event recorder
 		recorder: recorder,
 	}
 
 	secretsInformer := coreV1.Secrets()
 	configMapInformer := coreV1.ConfigMaps()
 	serviceInformer := coreV1.Services()
+	configV1Informers := configInformer.Config().V1()
+
+	configNameFilter := operator.FilterByNames(api.ConfigResourceName)
+	targetNameFilter := operator.FilterByNames(api.OpenShiftConsoleName)
 
 	return operator.New(controllerName, c,
-		operator.WithInformer(operatorConfigInformer, operator.FilterByNames(api.ConfigResourceName)),
-		operator.WithInformer(consoleConfigInformer, operator.FilterByNames(api.ConfigResourceName)),
-		operator.WithInformer(deployments, operator.FilterByNames(api.OpenShiftConsoleName)),
+		// configs
+		operator.WithInformer(configV1Informers.Consoles(), configNameFilter),
+		operator.WithInformer(operatorConfigInformer, configNameFilter),
+		operator.WithInformer(configV1Informers.Infrastructures(), configNameFilter),
+		// console resources
+		operator.WithInformer(deployments, targetNameFilter),
+		operator.WithInformer(routes, targetNameFilter),
+		operator.WithInformer(serviceInformer, targetNameFilter),
+		operator.WithInformer(oauthClients, targetNameFilter),
+		// special resources with unique names
 		operator.WithInformer(configMapInformer, operator.FilterByNames(configmap.ConsoleConfigMapName, configmap.ServiceCAConfigMapName)),
 		operator.WithInformer(secretsInformer, operator.FilterByNames(deployment.ConsoleOauthConfigName)),
-		operator.WithInformer(routes, operator.FilterByNames(api.OpenShiftConsoleName)),
-		operator.WithInformer(serviceInformer, operator.FilterByNames(api.OpenShiftConsoleName)),
-		operator.WithInformer(oauthClients, operator.FilterByNames(api.OAuthClientName)),
 	)
 }
 
@@ -138,8 +149,10 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	logrus.Infof("started syncing operator %q (%v)", obj.GetName(), startTime)
 	defer logrus.Infof("finished syncing operator %q (%v) \n\n", obj.GetName(), time.Since(startTime))
 
+	// we need to cast the operator config
 	operatorConfig := obj.(*operatorsv1.Console)
 
+	// ensure we have top level console config
 	consoleConfig, err := c.consoleConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
 	if errors.IsNotFound(err) && CreateDefaultConsoleFlag {
 		if _, err := c.consoleConfigClient.Create(c.defaultConsoleConfig()); err != nil {
@@ -148,7 +161,15 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 		}
 	}
 
-	if err := c.handleSync(operatorConfig, consoleConfig); err != nil {
+	// we need infrastructure config for apiServerURL
+	infrastructureConfig, err := c.infrastructureClient.Get(api.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		logrus.Errorf("Infrastructure config error: %v \n", err)
+		return err
+	}
+
+	// all configs needed to do a sync
+	if err := c.handleSync(operatorConfig, consoleConfig, infrastructureConfig); err != nil {
 		c.SyncStatus(c.ConditionFailing(operatorConfig, "SyncLoopError", "Operator sync loop failed to completele."))
 		return err
 	}
@@ -156,7 +177,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	return nil
 }
 
-func (c *consoleOperator) handleSync(originalOperatorConfig *operatorsv1.Console, consoleConfig *configv1.Console) error {
+func (c *consoleOperator) handleSync(originalOperatorConfig *operatorsv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure) error {
 
 	operatorConfig := originalOperatorConfig.DeepCopy()
 	switch operatorConfig.Spec.ManagementState {
@@ -176,7 +197,7 @@ func (c *consoleOperator) handleSync(originalOperatorConfig *operatorsv1.Console
 		return fmt.Errorf("unknown state: %v", operatorConfig.Spec.ManagementState)
 	}
 
-	_, _, _, err := sync_v400(c, operatorConfig, consoleConfig)
+	_, _, _, err := sync_v400(c, operatorConfig, consoleConfig, infrastructureConfig)
 	if err != nil {
 		return err
 	}

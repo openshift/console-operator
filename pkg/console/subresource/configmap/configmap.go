@@ -50,14 +50,22 @@ func getDocURL(operatorConfig *operatorv1.Console) string {
 	return DEFAULT_DOC_URL
 }
 
-func DefaultConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, rt *routev1.Route) *corev1.ConfigMap {
+func getApiUrl(infrastructureConfig *configv1.Infrastructure) string {
+	if infrastructureConfig != nil {
+		return infrastructureConfig.Status.APIServerURL
+	}
+	return ""
+}
+
+func DefaultConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, rt *routev1.Route) *corev1.ConfigMap {
 
 	logoutRedirect := getLogoutRedirect(consoleConfig)
 	brand := getBrand(operatorConfig)
 	docURL := getDocURL(operatorConfig)
+	apiServerURL := getApiUrl(infrastructureConfig)
 
 	host := rt.Spec.Host
-	config := string(NewYamlConfig(host, logoutRedirect, brand, docURL))
+	config := string(NewYamlConfig(host, logoutRedirect, brand, docURL, apiServerURL))
 	configMap := Stub()
 	configMap.Data = map[string]string{
 		consoleConfigYamlFile: config,
@@ -76,7 +84,7 @@ func Stub() *corev1.ConfigMap {
 	return configMap
 }
 
-func NewYamlConfig(host string, logoutRedirect string, brand operatorv1.Brand, docURL string) []byte {
+func NewYamlConfig(host string, logoutRedirect string, brand operatorv1.Brand, docURL string, apiServerURL string) []byte {
 	conf := yaml.MapSlice{
 		{
 			Key: "kind", Value: "ConsoleConfig",
@@ -85,7 +93,7 @@ func NewYamlConfig(host string, logoutRedirect string, brand operatorv1.Brand, d
 		}, {
 			Key: "auth", Value: authServerYaml(logoutRedirect),
 		}, {
-			Key: "clusterInfo", Value: clusterInfo(host),
+			Key: "clusterInfo", Value: clusterInfo(host, apiServerURL),
 		}, {
 			Key: "customization", Value: customization(brand, docURL),
 		}, {
@@ -124,12 +132,14 @@ func customization(brand operatorv1.Brand, docURL string) yaml.MapSlice {
 	}
 }
 
-func clusterInfo(host string) yaml.MapSlice {
+func clusterInfo(host string, apiServerURL string) yaml.MapSlice {
 	return yaml.MapSlice{
 		{
 			Key: "consoleBaseAddress", Value: consoleBaseAddr(host),
 		}, {
 			Key: "consoleBasePath", Value: "",
+		}, {
+			Key: "masterPublicURL", Value: apiServerURL,
 		},
 	}
 
