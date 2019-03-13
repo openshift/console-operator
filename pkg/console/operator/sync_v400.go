@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 
@@ -107,26 +108,25 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	// but we will handle the state of the operand below
 	co.ConditionResourceSyncSuccess(operatorConfig)
 	// the operand is in a transitional state if any of the above resources changed
-	// or if we have not settled on the desired number of replicas
-	if toUpdate || actualDeployment.Status.ReadyReplicas != deploymentsub.ConsoleReplicas {
+	// or if we have not settled on the desired number of replicas or deployment is not uptodate.
+	if toUpdate {
 		co.ConditionResourceSyncProgressing(operatorConfig, "Changes made during sync updates, additional sync expected.")
 	} else {
-		co.ConditionResourceSyncNotProgressing(operatorConfig)
+		version := os.Getenv("RELEASE_VERSION")
+		if !deploymentsub.IsAvailableAndUpdated(actualDeployment) {
+			co.ConditionResourceSyncProgressing(operatorConfig, fmt.Sprintf("Moving to version %s", strings.Split(version, "-")[0]))
+		} else {
+			if co.versionGetter.GetVersions()["operator"] != version {
+				co.versionGetter.SetVersion("operator", version)
+			}
+			co.ConditionResourceSyncNotProgressing(operatorConfig)
+		}
 	}
+
 	// the operand is available if all resources are present & if we have all the replicas
 	// available is currently defined as "met the users intent"
 	if deploymentsub.IsReady(actualDeployment) && routesub.IsAdmitted(rt) {
 		co.ConditionDeploymentAvailable(operatorConfig)
-
-		if deploymentsub.IsReadyAndUpdated(actualDeployment) {
-			co.ConditionNotProgressing(operatorConfig)
-			version := os.Getenv("RELEASE_VERSION")
-			if co.versionGetter.GetVersions()["operator"] != version {
-				co.versionGetter.SetVersion("operator", version)
-			}
-		} else {
-			co.ConditionProgressing(operatorConfig)
-		}
 	} else {
 		co.ConditionDeploymentNotAvailable(operatorConfig)
 	}

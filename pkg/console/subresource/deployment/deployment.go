@@ -260,7 +260,7 @@ func IsReady(deployment *appsv1.Deployment) bool {
 	return deployment.Status.ReadyReplicas >= 1
 }
 
-func IsReadyAndUpdated(deployment *appsv1.Deployment) bool {
+func IsAvailableAndUpdated(deployment *appsv1.Deployment) bool {
 	return deployment.Status.AvailableReplicas > 0 &&
 		deployment.Status.ObservedGeneration >= deployment.Generation &&
 		deployment.Status.UpdatedReplicas == deployment.Status.Replicas
