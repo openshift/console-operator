@@ -18,6 +18,7 @@ import (
 
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/library-go/pkg/operator/events"
+	"github.com/openshift/library-go/pkg/operator/management"
 	"github.com/openshift/library-go/pkg/operator/status"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 )
@@ -66,7 +67,7 @@ func NewStaticPodStateController(
 		configMapGetter:      configMapGetter,
 		podsGetter:           podsGetter,
 		versionRecorder:      versionRecorder,
-		eventRecorder:        eventRecorder,
+		eventRecorder:        eventRecorder.WithComponentSuffix("static-pod-state-controller"),
 
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "StaticPodStateController"),
 	}
@@ -83,14 +84,7 @@ func (c *StaticPodStateController) sync() error {
 		return err
 	}
 
-	switch operatorSpec.ManagementState {
-	case operatorv1.Managed:
-	case operatorv1.Unmanaged:
-		return nil
-	case operatorv1.Removed:
-		// TODO probably just fail
-		return nil
-	default:
+	if !management.IsOperatorManaged(operatorSpec.ManagementState) {
 		return nil
 	}
 
@@ -113,7 +107,7 @@ func (c *StaticPodStateController) sync() error {
 				// We will still reflect the container not ready state in error conditions, but we don't set the operator as failed.
 				errs = append(errs, fmt.Errorf("nodes/%s pods/%s container=%q is not ready", node.NodeName, pod.Name, containerStatus.Name))
 			}
-			if containerStatus.State.Waiting != nil {
+			if containerStatus.State.Waiting != nil && containerStatus.State.Waiting.Message != "PodInitializing" {
 				errs = append(errs, fmt.Errorf("nodes/%s pods/%s container=%q is waiting: %q - %q", node.NodeName, pod.Name, containerStatus.Name, containerStatus.State.Waiting.Reason, containerStatus.State.Waiting.Message))
 				failingErrorCount++
 			}

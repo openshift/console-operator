@@ -10,11 +10,13 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/evanphx/json-patch"
 	"gopkg.in/yaml.v2"
 
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	crdgenerator "sigs.k8s.io/controller-tools/pkg/crd/generator"
 )
 
@@ -65,7 +67,7 @@ func Run() error {
 		return err
 	}
 
-	// generate kubebuilder NamedYaml manifests into temp dir
+	// generate kubebuilder KindGroupYaml manifests into temp dir
 	g := crdgenerator.Generator{
 		RootPath:          tmpDir,
 		Domain:            "openshift.io",
@@ -75,9 +77,9 @@ func Run() error {
 
 	if len(*outputDir) != 0 {
 		g.OutputDir = *outputDir
-		fmt.Printf("Creating kubebuilder manifests %s...", *outputDir)
+		fmt.Printf("Creating kubebuilder manifests %q ...\n", *outputDir)
 	} else {
-		fmt.Printf("Creating kubebuilder manifests in ...\n")
+		fmt.Printf("Creating kubebuilder manifests ...\n")
 	}
 
 	if err := g.ValidateAndInitFields(); err != nil {
@@ -98,32 +100,78 @@ func Run() error {
 
 	existingFileNames := map[string]string{}
 	for fn, crd := range existing {
-		existingFileNames[crd.Name] = fn
+		existingFileNames[crd.KindGroup] = fn
 	}
 
 	// update existing manifests with validations of kubebuilder output
 	dirty := false
 	for fn, withValidation := range fromKubebuilder {
-		existingFileName, ok := existingFileNames[withValidation.Name]
+		existingFileName, ok := existingFileNames[withValidation.KindGroup]
 		if !ok {
 			continue
 		}
 
 		crd := existing[existingFileName]
+
 		// TODO: support multiple versions
 		validation, _, err := nested(withValidation.Yaml, "spec", "validation")
 		if err != nil {
 			return fmt.Errorf("failed to access spec.validation in %s: %v", fn, err)
 		}
+
+		// yaml merge patch exists?
+		patchFileName := existingFileName + "-merge-patch"
+		if _, err := os.Stat(patchFileName); err == nil {
+			fmt.Printf("Applying patch %q ...\n", patchFileName)
+
+			yamlPatch, err := ioutil.ReadFile(patchFileName)
+			if err != nil {
+				return fmt.Errorf("failed to read yaml-merge-patch %q: %v", patchFileName, err)
+			}
+			var patch yaml.MapSlice
+			if err := yaml.Unmarshal(yamlPatch, &patch); err != nil {
+				return fmt.Errorf("failed to unmarshal yaml merge patch %q: %v", patchFileName, err)
+			}
+			if !onlyHasNoneOr(patch, "spec", "validation") {
+				return fmt.Errorf("patch in %q can only have spec.validation", patchFileName)
+			}
+			validationPatch, _, err := nested(patch, "spec", "validation")
+			if err != nil {
+				return fmt.Errorf("failed to get spec.validation from %q: %v", patchFileName, err)
+			}
+			if yamlPatch, err = yaml.Marshal(validationPatch); err != nil {
+				return fmt.Errorf("failed to marshal spec.validation of %q: %v", patchFileName, err)
+			}
+			jsonPatch, err := utilyaml.ToJSON(yamlPatch)
+			if err != nil {
+				return fmt.Errorf("failed to convert yaml of %q to json: %v", patchFileName, err)
+			}
+			yamlValidation, err := yaml.Marshal(validation)
+			if err != nil {
+				return fmt.Errorf("failed to marshal generated validation schema of %q: %v", existingFileName, err)
+			}
+			jsonValidation, err := utilyaml.ToJSON(yamlValidation)
+			if err != nil {
+				return fmt.Errorf("failed to convert yaml validation of %q to json: %v", existingFileName, err)
+			}
+			if jsonValidation, err = jsonpatch.MergePatch(jsonValidation, jsonPatch); err != nil {
+				return fmt.Errorf("failed to patch %q with %q: %v", existingFileName, patchFileName, err)
+			}
+			if err := yaml.Unmarshal(jsonValidation, &validation); err != nil {
+				return fmt.Errorf("failed to unmarshal patched validation schema of %q: %v", existingFileName, err)
+			}
+		}
+
 		if validation == nil {
 			continue
 		}
+
 		updated, err := set(crd.Yaml, validation, "spec", "validation")
 		if err != nil {
 			return fmt.Errorf("failed to set spec.validation in %s: %v", existingFileName, err)
 		}
 		if reflect.DeepEqual(updated, crd.Yaml) {
-			fmt.Printf("Validation of %s in %s did not change\n", crd.Name, existingFileName)
+			fmt.Printf("Validation of %s in %s did not change.\n", crd.KindGroup, existingFileName)
 			continue
 		}
 
@@ -137,7 +185,7 @@ func Run() error {
 		if *verifyOnly {
 			newFn = filepath.Join(tmpDir, filepath.Base(existingFileName))
 		} else {
-			fmt.Printf("Updating validation of %s in %s\n", crd.Name, existingFileName)
+			fmt.Printf("Updating validation of %s in %s.\n", crd.KindGroup, existingFileName)
 		}
 		if err := ioutil.WriteFile(newFn, bs, 0644); err != nil {
 			return err
@@ -234,14 +282,37 @@ func set(x interface{}, v interface{}, pth ...string) (interface{}, error) {
 	return ret, nil
 }
 
-type NamedYaml struct {
-	Name string
-	Yaml interface{}
+// onlyHasNoneOr checks for existance of the given path, but nothing next to it is allowed
+func onlyHasNoneOr(x interface{}, pth ...string) bool {
+	if len(pth) == 0 {
+		return true
+	}
+	m, ok := x.(yaml.MapSlice)
+	if !ok {
+		return false
+	}
+	switch len(m) {
+	case 0:
+		return true
+	case 1:
+		s, ok := m[0].Key.(string)
+		if !ok || s != pth[0] {
+			return false
+		}
+		return onlyHasNoneOr(m[0].Value, pth[1:]...)
+	default:
+		return false
+	}
+}
+
+type KindGroupYaml struct {
+	KindGroup string
+	Yaml      interface{}
 }
 
 // crdsFromDirectory returns CRDs by file path
-func crdsFromDirectory(dir string) (map[string]NamedYaml, error) {
-	ret := map[string]NamedYaml{}
+func crdsFromDirectory(dir string) (map[string]KindGroupYaml, error) {
+	ret := map[string]KindGroupYaml{}
 	infos, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -272,7 +343,8 @@ func crdsFromDirectory(dir string) (map[string]NamedYaml, error) {
 			fmt.Printf("Warning: failed to unmarshal %q, skipping\n", info.Name())
 			continue
 		}
-		ret[filepath.Join(dir, info.Name())] = NamedYaml{crd.Name, y}
+		key := crd.Spec.Names.Kind + "." + crd.Spec.Group
+		ret[filepath.Join(dir, info.Name())] = KindGroupYaml{key, y}
 	}
 	if err != nil {
 		return nil, err
