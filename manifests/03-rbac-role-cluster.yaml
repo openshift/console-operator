@@ -1,0 +1,50 @@
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: console-operator
+rules:
+- apiGroups:
+  - oauth.openshift.io
+  resources:
+  - oauthclients
+  verbs:
+  - get
+  - list
+  - update
+  - watch
+  resourceNames:
+  - console
+- apiGroups:
+  - config.openshift.io
+  resources:
+  - infrastructures
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - config.openshift.io
+  resources:
+  - consoles
+  - consoles/status
+  - clusteroperators
+  - clusteroperators/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
+- apiGroups:
+  - operator.openshift.io
+  resources:
+  - consoles
+  - consoles/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
