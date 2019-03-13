@@ -2,9 +2,11 @@ package starter
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	// kube
+
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 
@@ -131,6 +133,8 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		Client:    operatorConfigClient.OperatorV1(),
 	}
 
+	versionGetter := status.NewVersionGetter()
+
 	// TODO: rearrange these into informer,client pairs, NOT separated.
 	consoleOperator := operator.NewConsoleOperator(
 		// informers
@@ -149,8 +153,12 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		kubeClient.AppsV1(),
 		routesClient.RouteV1(),
 		oauthClient.OauthV1(),
+		versionGetter,
 		recorder,
 	)
+
+	versionRecorder := status.NewVersionGetter()
+	versionRecorder.SetVersion("operator", os.Getenv("RELEASE_VERSION"))
 
 	clusterOperatorStatus := status.NewClusterOperatorStatusController(
 		"console",
@@ -163,7 +171,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		},
 		configClient.ConfigV1(),
 		operatorClient,
-		status.NewVersionGetter(),
+		versionRecorder,
 		ctx.EventRecorder,
 	)
 

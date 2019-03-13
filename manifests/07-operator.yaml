@@ -42,6 +42,8 @@ spec:
         env:
         - name: IMAGE
           value: docker.io/openshift/origin-console:latest
+        - name: RELEASE_VERSION
+          value: "0.0.1-snapshot"
         - name: OPERATOR_NAME
           value: "console-operator"
         - name: POD_NAME

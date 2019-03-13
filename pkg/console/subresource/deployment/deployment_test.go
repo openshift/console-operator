@@ -390,3 +390,104 @@ func TestIsReady(t *testing.T) {
 	}
 
 }
+
+func TestIsAvailableAndUpdated(t *testing.T) {
+	type args struct {
+		deployment *appsv1.Deployment
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "Test IsAvailableAndUpdated(): Deployment has one available replica, with matching generation and matching replica count",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Status: appsv1.DeploymentStatus{
+						AvailableReplicas:  1,
+						ObservedGeneration: 1,
+						UpdatedReplicas:    1,
+						Replicas:           1,
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Generation: 1,
+					},
+				},
+			},
+			want: true,
+		}, {
+			name: "Test IsAvailableAndUpdated(): Deployment has multiple available replicas, with higher observed generation and matching replica count",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Status: appsv1.DeploymentStatus{
+						AvailableReplicas:  5,
+						ObservedGeneration: 2,
+						UpdatedReplicas:    1,
+						Replicas:           1,
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Generation: 1,
+					},
+				},
+			},
+			want: true,
+		}, {
+			name: "Test IsAvailableAndUpdated(): Deployment has no available replicas",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Status: appsv1.DeploymentStatus{
+						AvailableReplicas:  0,
+						ObservedGeneration: 1,
+						UpdatedReplicas:    1,
+						Replicas:           1,
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Generation: 1,
+					},
+				},
+			},
+			want: false,
+		}, {
+			name: "Test IsAvailableAndUpdated(): Deployment has one available replica, with none matching generation and matching replica count",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Status: appsv1.DeploymentStatus{
+						AvailableReplicas:  1,
+						ObservedGeneration: 0,
+						UpdatedReplicas:    1,
+						Replicas:           1,
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Generation: 1,
+					},
+				},
+			},
+			want: false,
+		}, {
+			name: "Test IsAvailableAndUpdated(): Deployment has one available replica, with matching generation and none matching replica count",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Status: appsv1.DeploymentStatus{
+						AvailableReplicas:  1,
+						ObservedGeneration: 1,
+						UpdatedReplicas:    1,
+						Replicas:           0,
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Generation: 1,
+					},
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsAvailableAndUpdated(tt.args.deployment); got != tt.want {
+				t.Errorf("IsAvailableAndUpdated() = \n%v\n want \n%v", got, tt.want)
+			}
+		})
+	}
+
+}

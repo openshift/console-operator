@@ -259,3 +259,9 @@ func IsReady(deployment *appsv1.Deployment) bool {
 	logrus.Printf("Deployment is avalable: %v \n", deployment.Status.ReadyReplicas >= 1)
 	return deployment.Status.ReadyReplicas >= 1
 }
+
+func IsAvailableAndUpdated(deployment *appsv1.Deployment) bool {
+	return deployment.Status.AvailableReplicas > 0 &&
+		deployment.Status.ObservedGeneration >= deployment.Generation &&
+		deployment.Status.UpdatedReplicas == deployment.Status.Replicas
+}
