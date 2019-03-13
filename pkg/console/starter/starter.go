@@ -6,8 +6,9 @@ import (
 	"time"
 
 	// kube
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 
 	// "k8s.io/client-go/dynamic"
@@ -16,8 +17,9 @@ import (
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
+	oauthv1 "github.com/openshift/api/oauth/v1"
+	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
-	operatorclient "github.com/openshift/console-operator/pkg/console/operatorclient"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/status"
 
@@ -30,6 +32,7 @@ import (
 
 	operatorversionedclient "github.com/openshift/client-go/operator/clientset/versioned"
 	operatorinformers "github.com/openshift/client-go/operator/informers/externalversions"
+	"github.com/openshift/console-operator/pkg/console/operatorclient"
 
 	routesclient "github.com/openshift/client-go/route/clientset/versioned"
 	routesinformers "github.com/openshift/client-go/route/informers/externalversions"
@@ -76,19 +79,19 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	// TODO: can perhaps put this back the way it was, but may
 	// need to create a couple different version for
 	// resources w/different names
-	tweakListOptions := func(options *v1.ListOptions) {
+	tweakListOptions := func(options *metav1.ListOptions) {
 		// options.FieldSelector = fields.OneTermEqualSelector("metadata.name", operator.ConfigResourceName).String()
 	}
 
-	tweakListOptionsForConfigs := func(options *v1.ListOptions) {
+	tweakListOptionsForConfigs := func(options *metav1.ListOptions) {
 		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.ConfigResourceName).String()
 	}
 
-	tweakListOptionsForOAuth := func(options *v1.ListOptions) {
+	tweakListOptionsForOAuth := func(options *metav1.ListOptions) {
 		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OAuthClientName).String()
 	}
 
-	tweakListOptionsForRoute := func(options *v1.ListOptions) {
+	tweakListOptionsForRoute := func(options *metav1.ListOptions) {
 		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OpenShiftConsoleRouteName).String()
 	}
 
@@ -125,7 +128,6 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		oauthinformers.WithTweakListOptions(tweakListOptionsForOAuth),
 	)
 
-	// TODO: Replace this with real event recorder (use ControllerContext).
 	recorder := ctx.EventRecorder
 
 	operatorClient := &operatorclient.OperatorClient{
@@ -139,8 +141,8 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	consoleOperator := operator.NewConsoleOperator(
 		// informers
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
-		// configInformers.Config().V1().Consoles(),           // ConsoleConfig
-		configInformers,
+		configInformers,                                    // ConsoleConfig
+
 		kubeInformersNamespaced.Core().V1(),               // Secrets, ConfigMaps, Service
 		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
 		routesInformersNamespaced.Route().V1().Routes(),   // Route
@@ -161,17 +163,30 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	versionRecorder.SetVersion("operator", os.Getenv("RELEASE_VERSION"))
 
 	clusterOperatorStatus := status.NewClusterOperatorStatusController(
-		"console",
+		// name
+		api.OpenShiftConsoleName,
+		// related objects
 		[]configv1.ObjectReference{
-			{Group: "operator.openshift.io", Resource: "consoles", Name: api.ConfigResourceName},
-			{Group: "config.openshift.io", Resource: "consoles", Name: api.ConfigResourceName},
-			{Group: "oauth.openshift.io", Resource: "oauthclients", Name: api.OAuthClientName},
-			{Resource: "namespaces", Name: api.OpenShiftConsoleOperatorNamespace},
-			{Resource: "namespaces", Name: api.OpenShiftConsoleNamespace},
+			// top level configs
+			{Group: configv1.GroupName, Resource: "consoles", Name: api.ConfigResourceName},
+			{Group: configv1.GroupName, Resource: "infrastructures", Name: api.ConfigResourceName},
+			// operator configs
+			{Group: operatorv1.GroupName, Resource: "consoles", Name: api.ConfigResourceName},
+			// resources
+			{Group: oauthv1.GroupName, Resource: "oauthclients", Name: api.OAuthClientName},
+			{Group: corev1.GroupName, Resource: "namespaces", Name: api.OpenShiftConsoleOperatorNamespace},
+			{Group: corev1.GroupName, Resource: "namespaces", Name: api.OpenShiftConsoleNamespace},
 		},
+
+		// cluster operator client
 		configClient.ConfigV1(),
+		// cluster operator informer
+		configInformers.Config().V1().ClusterOperators(),
+		// operator client
 		operatorClient,
+		// version getter
 		versionRecorder,
+		// recorder
 		ctx.EventRecorder,
 	)
 
