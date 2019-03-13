@@ -17,48 +17,88 @@ import (
 	"github.com/openshift/service-ca-operator/pkg/controller/api"
 )
 
+func validateActions(t *testing.T, expectedActionsNum int, actions []clienttesting.Action) {
+	if len(actions) != expectedActionsNum {
+		t.Fatal(spew.Sdump(actions))
+	}
+	if expectedActionsNum == 0 {
+		return
+	}
+	if !actions[0].Matches("update", "apiservices") {
+		t.Error(spew.Sdump(actions))
+	}
+	actual := actions[0].(clienttesting.UpdateAction).GetObject().(*apiregistrationapiv1.APIService)
+	if expected := "content"; string(actual.Spec.CABundle) != expected {
+		t.Error(diff.ObjectDiff(expected, actual))
+	}
+}
+
 func TestSyncAPIService(t *testing.T) {
 	tests := []struct {
 		name                string
 		startingAPIServices []runtime.Object
 		key                 string
 		caBundle            []byte
-		validateActions     func(t *testing.T, actions []clienttesting.Action)
+		expectedActionsNum  int
 	}{
 		{
-			name:     "missing",
-			key:      "foo",
-			caBundle: []byte("content"),
-			validateActions: func(t *testing.T, actions []clienttesting.Action) {
-				if len(actions) != 0 {
-					t.Fatal(spew.Sdump(actions))
-				}
-			},
+			name:               "missing",
+			key:                "foo",
+			caBundle:           []byte("content"),
+			expectedActionsNum: 0,
 		},
 		{
 			name: "requested and empty",
 			startingAPIServices: []runtime.Object{
 				&apiregistrationapiv1.APIService{
-					ObjectMeta: metav1.ObjectMeta{Name: "foo", Annotations: map[string]string{api.InjectCABundleAnnotationName: "true"}},
+					ObjectMeta: metav1.ObjectMeta{Name: "foo", Annotations: map[string]string{api.AlphaInjectCABundleAnnotationName: "true"}},
 				},
 			},
-			key:      "foo",
-			caBundle: []byte("content"),
-			validateActions: func(t *testing.T, actions []clienttesting.Action) {
-				if len(actions) != 1 {
-					t.Fatal(spew.Sdump(actions))
-				}
-				if !actions[0].Matches("update", "apiservices") {
-					t.Error(spew.Sdump(actions))
-				}
-				actual := actions[0].(clienttesting.UpdateAction).GetObject().(*apiregistrationapiv1.APIService)
-				if expected := "content"; string(actual.Spec.CABundle) != expected {
-					t.Error(diff.ObjectDiff(expected, actual))
-				}
-			},
+			key:                "foo",
+			caBundle:           []byte("content"),
+			expectedActionsNum: 1,
 		},
 		{
 			name: "requested and nochange",
+			startingAPIServices: []runtime.Object{
+				&apiregistrationapiv1.APIService{
+					ObjectMeta: metav1.ObjectMeta{Name: "foo", Annotations: map[string]string{api.AlphaInjectCABundleAnnotationName: "true"}},
+					Spec: apiregistrationapiv1.APIServiceSpec{
+						CABundle: []byte("content"),
+					},
+				},
+			},
+			key:                "foo",
+			caBundle:           []byte("content"),
+			expectedActionsNum: 0,
+		},
+		{
+			name: "requested and different",
+			startingAPIServices: []runtime.Object{
+				&apiregistrationapiv1.APIService{
+					ObjectMeta: metav1.ObjectMeta{Name: "foo", Annotations: map[string]string{api.AlphaInjectCABundleAnnotationName: "true"}},
+					Spec: apiregistrationapiv1.APIServiceSpec{
+						CABundle: []byte("old"),
+					},
+				},
+			},
+			key:                "foo",
+			caBundle:           []byte("content"),
+			expectedActionsNum: 1,
+		},
+		{
+			name: "requested and empty beta",
+			startingAPIServices: []runtime.Object{
+				&apiregistrationapiv1.APIService{
+					ObjectMeta: metav1.ObjectMeta{Name: "foo", Annotations: map[string]string{api.InjectCABundleAnnotationName: "true"}},
+				},
+			},
+			key:                "foo",
+			caBundle:           []byte("content"),
+			expectedActionsNum: 1,
+		},
+		{
+			name: "requested and nochange beta",
 			startingAPIServices: []runtime.Object{
 				&apiregistrationapiv1.APIService{
 					ObjectMeta: metav1.ObjectMeta{Name: "foo", Annotations: map[string]string{api.InjectCABundleAnnotationName: "true"}},
@@ -67,16 +107,12 @@ func TestSyncAPIService(t *testing.T) {
 					},
 				},
 			},
-			key:      "foo",
-			caBundle: []byte("content"),
-			validateActions: func(t *testing.T, actions []clienttesting.Action) {
-				if len(actions) != 0 {
-					t.Fatal(spew.Sdump(actions))
-				}
-			},
+			key:                "foo",
+			caBundle:           []byte("content"),
+			expectedActionsNum: 0,
 		},
 		{
-			name: "requested and differe",
+			name: "requested and different beta",
 			startingAPIServices: []runtime.Object{
 				&apiregistrationapiv1.APIService{
 					ObjectMeta: metav1.ObjectMeta{Name: "foo", Annotations: map[string]string{api.InjectCABundleAnnotationName: "true"}},
@@ -85,20 +121,9 @@ func TestSyncAPIService(t *testing.T) {
 					},
 				},
 			},
-			key:      "foo",
-			caBundle: []byte("content"),
-			validateActions: func(t *testing.T, actions []clienttesting.Action) {
-				if len(actions) != 1 {
-					t.Fatal(spew.Sdump(actions))
-				}
-				if !actions[0].Matches("update", "apiservices") {
-					t.Error(spew.Sdump(actions))
-				}
-				actual := actions[0].(clienttesting.UpdateAction).GetObject().(*apiregistrationapiv1.APIService)
-				if expected := "content"; string(actual.Spec.CABundle) != expected {
-					t.Error(diff.ObjectDiff(expected, actual))
-				}
-			},
+			key:                "foo",
+			caBundle:           []byte("content"),
+			expectedActionsNum: 1,
 		},
 	}
 	for _, tc := range tests {
@@ -122,7 +147,7 @@ func TestSyncAPIService(t *testing.T) {
 				}
 			}
 
-			tc.validateActions(t, fakeClient.Actions())
+			validateActions(t, tc.expectedActionsNum, fakeClient.Actions())
 		})
 	}
 }

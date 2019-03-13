@@ -41,6 +41,16 @@ func syncConfigMapCABundleController_v4_00_to_latest(c serviceCAOperator, operat
 		return fmt.Errorf("%q: %v", "clusterrolebinding", err)
 	}
 
+	requiredRole := resourceread.ReadRoleV1OrDie(v4_00_assets.MustAsset("v4.0.0/configmap-cabundle-controller/role.yaml"))
+	if _, _, err = resourceapply.ApplyRole(c.rbacv1Client, c.eventRecorder, requiredRole); err != nil {
+		return fmt.Errorf("%q: %v", "role", err)
+	}
+
+	requiredRoleBinding := resourceread.ReadRoleBindingV1OrDie(v4_00_assets.MustAsset("v4.0.0/configmap-cabundle-controller/rolebinding.yaml"))
+	if _, _, err = resourceapply.ApplyRoleBinding(c.rbacv1Client, c.eventRecorder, requiredRoleBinding); err != nil {
+		return fmt.Errorf("%q: %v", "rolebinding", err)
+	}
+
 	requiredSA := resourceread.ReadServiceAccountV1OrDie(v4_00_assets.MustAsset("v4.0.0/configmap-cabundle-controller/sa.yaml"))
 	_, saModified, err := resourceapply.ApplyServiceAccount(c.corev1Client, c.eventRecorder, requiredSA)
 	if err != nil {
@@ -113,7 +123,7 @@ func manageConfigMapCABundle(client coreclientv1.CoreV1Interface, eventRecorder 
 		return existing, false, err
 	}
 
-	configMap.Data["cabundle.crt"] = string(currentSigningKeySecret.Data["tls.crt"])
+	configMap.Data["ca-bundle.crt"] = string(currentSigningKeySecret.Data["tls.crt"])
 
 	return resourceapply.ApplyConfigMap(client, eventRecorder, configMap)
 }

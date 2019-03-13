@@ -1,5 +1,5 @@
 hash: 3248e3aefbca2aefa73f2a268e09ce0759103e4f1bd3129c03afe7952322e5f7
-updated: 2019-02-27T16:32:29.275358-05:00
+updated: 2019-03-12T16:21:56.49864-04:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -198,7 +198,7 @@ imports:
 - name: github.com/NYTimes/gziphandler
   version: 56545f4a5d46df9a6648819d1664c3a03a13ffdb
 - name: github.com/openshift/api
-  version: c58918e29f89383d2e1467bad7156e2b0c49497f
+  version: 7fa446eb33f1df4d5e4175a31591191368137f10
   subpackages:
   - apps
   - apps/v1
@@ -244,7 +244,7 @@ imports:
   - webconsole
   - webconsole/v1
 - name: github.com/openshift/client-go
-  version: 31ef839c86359881d2c312c4f0131febc6662400
+  version: 2d89985ca24a8307e4b5db2574a62d3e6c2444b4
   subpackages:
   - config/clientset/versioned
   - config/clientset/versioned/scheme
@@ -279,7 +279,7 @@ imports:
   - route/informers/externalversions/route/v1
   - route/listers/route/v1
 - name: github.com/openshift/library-go
-  version: 69961ead429165ef411c77e5be913b7bbb7357eb
+  version: 51a1e47ef123a462296101395ff83998715da643
   subpackages:
   - pkg/config/client
   - pkg/config/clusteroperator/v1helpers
@@ -291,13 +291,14 @@ imports:
   - pkg/controller/metrics
   - pkg/crypto
   - pkg/operator/events
+  - pkg/operator/management
   - pkg/operator/resource/resourceapply
   - pkg/operator/resource/resourcemerge
   - pkg/operator/status
   - pkg/operator/v1helpers
   - pkg/serviceability
 - name: github.com/openshift/service-ca-operator
-  version: 53850701f3a06456ac96079e37eac859820231a4
+  version: ffa65e08e01a5ee1b325842d26376cacc90c7e78
   subpackages:
   - tools/gotest2junit/pkg/api
   - tools/junitreport/pkg/api
@@ -342,7 +343,7 @@ imports:
 - name: github.com/sirupsen/logrus
   version: 89742aefa4b206dcf400792f3bd35b542998eb3b
 - name: github.com/spf13/cobra
-  version: 7547e83b2d85fd1893c7d76916f67689d761fecb
+  version: ba1052d4cbce7aac421a96de820558f75199ccbc
 - name: github.com/spf13/pflag
   version: 583c0c0531f06d5278b7d917446061adc344b5cd
 - name: github.com/ugorji/go
@@ -404,7 +405,7 @@ imports:
   subpackages:
   - imports
 - name: google.golang.org/appengine
-  version: 54a98f90d1c46b7731eb8fb305d2a321c30ef610
+  version: 267c27e7492265b84fc6719503b14a1e17975d79
   subpackages:
   - internal
   - internal/base
@@ -443,7 +444,7 @@ imports:
 - name: gopkg.in/natefinch/lumberjack.v2
   version: 20b71e5b60d756d3d2f80def009790325acc2b23
 - name: gopkg.in/yaml.v2
-  version: 670d4cfef0544295bc27a114dbac37980d83185a
+  version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
 - name: k8s.io/api
   version: 6db15a15d2d3874a6c3ddb2140ac9f3bc7058428
   subpackages:

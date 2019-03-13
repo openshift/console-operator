@@ -7,5 +7,5 @@ roleRef:
   name: system:openshift:controller:service-serving-cert-signer
 subjects:
 - kind: ServiceAccount
-  namespace: openshift-service-cert-signer
+  namespace: openshift-service-ca
   name: service-serving-cert-signer-sa
