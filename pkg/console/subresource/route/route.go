@@ -175,7 +175,7 @@ func IsAdmitted(route *routev1.Route) bool {
 			admitted = true
 		}
 	}
-	logrus.Printf("Route is admitted: %s", admitted)
+	logrus.Printf("Route is admitted: %v", admitted)
 	return admitted
 }
 
