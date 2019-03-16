@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: openshift-console
+  name: downloads
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: console
+      component: downloads
+  template:
+    metadata:
+      name: downloads
+      labels:
+        app: console
+        component: downloads
+    spec:
+      tolerations:
+      - operator: Exists
+      containers:
+      - name: download-server
+        image: docker.io/openshift/origin-cli:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        command: ["/bin/sh"]
+        args:
+        - '-c'
+        - |
+          cat <<EOF >>/tmp/serve.py
+          import BaseHTTPServer, os, re, SimpleHTTPServer, socket, tarfile, tempfile, threading, time, zipfile
+
+          # Launch multiple listeners as threads
+          class Thread(threading.Thread):
+              def __init__(self, i, socket):
+                  threading.Thread.__init__(self)
+                  self.i = i
+                  self.socket = socket
+                  self.daemon = True
+                  self.start()
+
+              def run(self):
+                  httpd = BaseHTTPServer.HTTPServer(addr, SimpleHTTPServer.SimpleHTTPRequestHandler, False)
+
+                  # Prevent the HTTP server from re-binding every handler.
+                  # https://stackoverflow.com/questions/46210672/
+                  httpd.socket = self.socket
+                  httpd.server_bind = self.server_close = lambda self: None
+
+                  httpd.serve_forever()
+
+          temp_dir = tempfile.mkdtemp()
+          print('serving from {}'.format(temp_dir))
+          os.chdir(temp_dir)
+          for arch in ['amd64']:
+              os.mkdir(arch)
+              for operating_system in ['linux']:
+                  os.mkdir(os.path.join(arch, operating_system))
+
+          for path in [ # TODO: get binaries for other platforms
+                  '/usr/bin/oc',
+                  ]:
+              basename = os.path.basename(path)
+              target_path = os.path.join('amd64', 'linux', basename)
+              os.symlink(path, target_path)
+              with tarfile.open('{}.tar'.format(target_path), 'w') as tar:
+                  tar.add(path, basename)
+              with zipfile.ZipFile('{}.zip'.format(target_path), 'w') as zip:
+                  zip.write(path, basename)
+
+          # Create socket
+          addr = ('', 8080)
+          sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+          sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+          sock.bind(addr)
+          sock.listen(5)
+
+          [Thread(i, socket=sock) for i in range(100)]
+          time.sleep(9e9)
+          EOF
+          python2 /tmp/serve.py  # the cli image only has Python 2.7
