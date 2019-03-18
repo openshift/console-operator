@@ -23,6 +23,7 @@ import (
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
+	operatorsv1 "github.com/openshift/api/operator/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/crypto"
 	"github.com/openshift/library-go/pkg/operator/events"
@@ -123,12 +124,23 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 		}
 	}
 
-	// the operand is available if all resources are present & if we have all the replicas
+	// the operand is available if all resources are:
+	// - present
+	// - if we have at least one ready replica
+	// - route is admitted
 	// available is currently defined as "met the users intent"
-	if deploymentsub.IsReady(actualDeployment) && routesub.IsAdmitted(rt) {
-		co.ConditionDeploymentAvailable(operatorConfig)
-	} else {
+	if !deploymentsub.IsReady(actualDeployment) {
 		co.ConditionDeploymentNotAvailable(operatorConfig)
+	} else if !routesub.IsAdmitted(rt) {
+		co.SetStatusCondition(
+			operatorConfig,
+			operatorsv1.OperatorStatusTypeAvailable,
+			operatorv1.ConditionFalse,
+			"RouteNotAdmitted",
+			"Console route is not admitted",
+		)
+	} else {
+		co.ConditionDeploymentAvailable(operatorConfig)
 	}
 
 	// finally write out the set of conditions currently set if anything has changed
