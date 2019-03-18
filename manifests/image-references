@@ -10,4 +10,7 @@ spec:
     from:
       kind: DockerImage
       name: docker.io/openshift/origin-console:latest
-
+  - name: cli
+    from:
+      kind: DockerImage
+      name: docker.io/openshift/origin-cli:latest
