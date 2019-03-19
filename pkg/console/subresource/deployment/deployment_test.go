@@ -27,6 +27,17 @@ func TestDefaultDeployment(t *testing.T) {
 		ca  *corev1.ConfigMap
 		sec *corev1.Secret
 	}
+
+	consoleOperatorConfig := &operatorsv1.Console{
+		TypeMeta:   metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{},
+		Spec: operatorsv1.ConsoleSpec{
+			OperatorSpec: operatorsv1.OperatorSpec{
+				LogLevel: operatorsv1.Debug,
+			},
+		},
+		Status: operatorsv1.ConsoleStatus{},
+	}
 	tests := []struct {
 		name string
 		args args
@@ -35,14 +46,7 @@ func TestDefaultDeployment(t *testing.T) {
 		{
 			name: "Test Default Config Map",
 			args: args{
-				cr: &operatorsv1.Console{
-					TypeMeta:   metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{},
-					Spec: operatorsv1.ConsoleSpec{
-						OperatorSpec: operatorsv1.OperatorSpec{},
-					},
-					Status: operatorsv1.ConsoleStatus{},
-				},
+				cr: consoleOperatorConfig,
 				cm: &corev1.ConfigMap{
 					TypeMeta: metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{
@@ -149,7 +153,7 @@ func TestDefaultDeployment(t *testing.T) {
 							TerminationGracePeriodSeconds: &gracePeriod,
 							SecurityContext:               &corev1.PodSecurityContext{},
 							Containers: []corev1.Container{
-								consoleContainer(nil),
+								consoleContainer(consoleOperatorConfig),
 							},
 							Volumes: consoleVolumes(volumeConfigList),
 						},

@@ -1,6 +1,8 @@
 package deployment
 
 import (
+	"fmt"
+
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -196,6 +198,22 @@ func consoleVolumeMounts(vc []volumeConfig) []corev1.VolumeMount {
 
 func consoleContainer(cr *operatorv1.Console) corev1.Container {
 	volumeMounts := consoleVolumeMounts(volumeConfigList)
+	level := ""
+	// Since the console-operator logging has different logging levels then the capnslog,
+	// that we use for console server(bridge) we need to map them to each other
+	switch cr.Spec.LogLevel {
+	case operatorv1.Normal:
+		level = "NOTICE"
+	case operatorv1.Debug:
+		level = "DEBUG"
+	case operatorv1.Trace:
+		fallthrough
+	case operatorv1.TraceAll:
+		fallthrough
+	default:
+		level = "TRACE"
+	}
+	flag := fmt.Sprintf("--log-level=*=%s", level)
 
 	return corev1.Container{
 		Image:           util.GetImageEnv(),
@@ -206,6 +224,7 @@ func consoleContainer(cr *operatorv1.Console) corev1.Container {
 			"--public-dir=/opt/bridge/static",
 			"--config=/var/console-config/console-config.yaml",
 			"--service-ca-file=/var/service-ca/service-ca.crt",
+			flag,
 		},
 		// TODO: can probably remove, this is used for local dev
 		//Env: []corev1.EnvVar{{
