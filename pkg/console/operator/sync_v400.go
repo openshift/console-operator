@@ -173,8 +173,12 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 }
 
 func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, route *routev1.Route) (*configv1.Console, error) {
-	logrus.Printf("Updating console.config.openshift.io with hostname: %v \n", route.Spec.Host)
-	consoleConfig.Status.ConsoleURL = util.HTTPS(route.Spec.Host)
+	host, err := routesub.GetCanonicalHost(route)
+	if err != nil {
+		return nil, err
+	}
+	logrus.Printf("Updating console.config.openshift.io with hostname: %v \n", host)
+	consoleConfig.Status.ConsoleURL = util.HTTPS(host)
 	return co.consoleConfigClient.UpdateStatus(consoleConfig)
 }
 
@@ -203,6 +207,10 @@ func SyncDeployment(co *consoleOperator, recorder events.Recorder, operatorConfi
 // should not be called until route & secret dependencies are verified
 func SyncOAuthClient(co *consoleOperator, operatorConfig *operatorv1.Console, sec *corev1.Secret, rt *routev1.Route) (*oauthv1.OAuthClient, bool, error) {
 	logrus.Printf("validating oauthclient...")
+	host, err := routesub.GetCanonicalHost(rt)
+	if err != nil {
+		return nil, false, err
+	}
 	oauthClient, err := co.oauthClient.OAuthClients().Get(oauthsub.Stub().Name, metav1.GetOptions{})
 	if err != nil {
 		logrus.Errorf("%q: %v \n", "oauth", err)
@@ -210,7 +218,7 @@ func SyncOAuthClient(co *consoleOperator, operatorConfig *operatorv1.Console, se
 		return nil, false, errors.New("oauth client for console does not exist.")
 	}
 	// this should take care of all of our syncronization
-	oauthsub.RegisterConsoleToOAuthClient(oauthClient, rt, secretsub.GetSecretString(sec))
+	oauthsub.RegisterConsoleToOAuthClient(oauthClient, host, secretsub.GetSecretString(sec))
 	oauthClient, oauthChanged, oauthErr := oauthsub.ApplyOAuth(co.oauthClient, oauthClient)
 	if oauthErr != nil {
 		logrus.Errorf("%q: %v \n", "oauth", oauthErr)

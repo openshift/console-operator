@@ -1,7 +1,10 @@
 package route
 
 import (
+	"fmt"
+
 	"github.com/sirupsen/logrus"
+
 	// kube
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -9,7 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	// openshift
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	routeclient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
@@ -17,6 +19,12 @@ import (
 
 	// operator
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
+)
+
+const (
+	// ingress instance named "default" is the OOTB ingresscontroller
+	// this is an implicit stable API
+	defaultIngressController = "default"
 )
 
 // We can't blindly ApplyRoute() as we need the server to annotate the
@@ -162,31 +170,41 @@ func wildcard() routev1.WildcardPolicyType {
 	return routev1.WildcardPolicyNone
 }
 
-// for the purpose of availability, we simply need to know when the
-// route has been admitted.
-func IsAdmitted(route *routev1.Route) bool {
-	ingress := getIngressForHost(route)
-	admitted := false
-	if ingress == nil {
-		return false
+func GetCanonicalHost(route *routev1.Route) (string, error) {
+	for _, ingress := range route.Status.Ingress {
+		if ingress.RouterName != defaultIngressController {
+			logrus.Printf("ignoring route ingress '%v'", ingress.RouterName)
+			continue
+		}
+		// ingress must be admitted before it is useful to us
+		if !isIngressAdmitted(ingress) {
+			logrus.Printf("route ingress '%v' not admitted", ingress.RouterName)
+			continue
+		}
+		logrus.Printf("route ingress '%v' found and admitted, host: %v \n", defaultIngressController, ingress.Host)
+		return ingress.Host, nil
 	}
+	return "", fmt.Errorf("route ingress not yet ready for console")
+}
+
+// for the purpose of availability, we simply need to know when the
+// route has been admitted.  we may have multiple ingress on the route, each
+// with an admitted attribute.
+func IsAdmitted(route *routev1.Route) bool {
+	for _, ingress := range route.Status.Ingress {
+		if isIngressAdmitted(ingress) {
+			return true
+		}
+	}
+	return false
+}
+
+func isIngressAdmitted(ingress routev1.RouteIngress) bool {
+	admitted := false
 	for _, condition := range ingress.Conditions {
 		if condition.Type == routev1.RouteAdmitted && condition.Status == corev1.ConditionTrue {
 			admitted = true
 		}
 	}
-	logrus.Printf("Route is admitted: %v", admitted)
 	return admitted
-}
-
-// we only care about the ingress that matches the Route.Spec.Host
-// as this is the only one that is registered with OAuth
-func getIngressForHost(route *routev1.Route) *routev1.RouteIngress {
-	actualHost := route.Spec.Host
-	for _, ingress := range route.Status.Ingress {
-		if ingress.Host == actualHost {
-			return &ingress
-		}
-	}
-	return nil
 }

@@ -63,10 +63,10 @@ type consoleOperator struct {
 	serviceClient    coreclientv1.ServicesGetter
 	deploymentClient appsv1.DeploymentsGetter
 	// openshift
-	routeClient          routeclientv1.RoutesGetter
-	oauthClient          oauthclientv1.OAuthClientsGetter
-	infrastructureClient configclientv1.InfrastructureInterface
-	versionGetter        status.VersionGetter
+	routeClient                routeclientv1.RoutesGetter
+	oauthClient                oauthclientv1.OAuthClientsGetter
+	infrastructureConfigClient configclientv1.InfrastructureInterface
+	versionGetter              status.VersionGetter
 	// recorder
 	recorder events.Recorder
 }
@@ -94,9 +94,9 @@ func NewConsoleOperator(
 ) operator.Runner {
 	c := &consoleOperator{
 		// configs
-		operatorConfigClient: operatorConfigClient.Consoles(),
-		consoleConfigClient:  configClient.Consoles(),
-		infrastructureClient: configClient.Infrastructures(),
+		operatorConfigClient:       operatorConfigClient.Consoles(),
+		consoleConfigClient:        configClient.Consoles(),
+		infrastructureConfigClient: configClient.Infrastructures(),
 		// console resources
 		// core kube
 		secretsClient:    corev1Client,
@@ -159,16 +159,17 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	// ensure we have top level console config
 	consoleConfig, err := c.consoleConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
 	if errors.IsNotFound(err) && CreateDefaultConsoleFlag {
+		logrus.Infof("no console config found. creating default config.")
 		if _, err := c.consoleConfigClient.Create(c.defaultConsoleConfig()); err != nil {
-			logrus.Errorf("No console config found. Creating. %v \n", err)
+			logrus.Errorf("error creating console config: %v \n", err)
 			return err
 		}
 	}
 
 	// we need infrastructure config for apiServerURL
-	infrastructureConfig, err := c.infrastructureClient.Get(api.ConfigResourceName, metav1.GetOptions{})
+	infrastructureConfig, err := c.infrastructureConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
-		logrus.Errorf("Infrastructure config error: %v \n", err)
+		logrus.Errorf("infrastructure config error: %v \n", err)
 		return err
 	}
 
