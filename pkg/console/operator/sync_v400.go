@@ -23,7 +23,6 @@ import (
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
-	operatorsv1 "github.com/openshift/api/operator/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/crypto"
 	"github.com/openshift/library-go/pkg/operator/events"
@@ -134,7 +133,7 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	} else if !routesub.IsAdmitted(rt) {
 		co.SetStatusCondition(
 			operatorConfig,
-			operatorsv1.OperatorStatusTypeAvailable,
+			operatorv1.OperatorStatusTypeAvailable,
 			operatorv1.ConditionFalse,
 			"RouteNotAdmitted",
 			"Console route is not admitted",
