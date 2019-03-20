@@ -1,7 +1,10 @@
 package route
 
 import (
+	"fmt"
+
 	"github.com/sirupsen/logrus"
+
 	// kube
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -10,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	// openshift
+	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	routeclient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
@@ -162,31 +166,42 @@ func wildcard() routev1.WildcardPolicyType {
 	return routev1.WildcardPolicyNone
 }
 
-// for the purpose of availability, we simply need to know when the
-// route has been admitted.
-func IsAdmitted(route *routev1.Route) bool {
-	ingress := getIngressForHost(route)
-	admitted := false
-	if ingress == nil {
-		return false
+// The canonical host is the ingress on the route with a host that matches the
+// ingressConfig.Spec.Domain.  When we have an ingress that matches, and when it
+// is admitted, the console will be fully accessible.
+func GetCanonicalHost(route *routev1.Route, ingressConfig *configv1.Ingress) (string, error) {
+	// only checking canonical host against admitted ingress
+	for _, ingress := range route.Status.Ingress {
+		if !isIngressAdmitted(ingress) {
+			continue
+		}
+		if ingress.RouterCanonicalHostname == ingressConfig.Spec.Domain {
+			logrus.Printf("route has ingress matching canonical domain from ingress config: %v \n", ingressConfig.Spec.Domain)
+			return ingress.Host, nil
+		}
 	}
+	// can't trust route.Spec.Host
+	return "", fmt.Errorf("route has no ingress matching canonical domain from ingress config: %v \n", ingressConfig.Spec.Domain)
+}
+
+// for the purpose of availability, we simply need to know when the
+// route has been admitted.  we may have multiple ingress on the route, each
+// with an admitted attribute.
+func IsAdmitted(route *routev1.Route) bool {
+	for _, ingress := range route.Status.Ingress {
+		if isIngressAdmitted(ingress) {
+			return true
+		}
+	}
+	return false
+}
+
+func isIngressAdmitted(ingress routev1.RouteIngress) bool {
+	admitted := false
 	for _, condition := range ingress.Conditions {
 		if condition.Type == routev1.RouteAdmitted && condition.Status == corev1.ConditionTrue {
 			admitted = true
 		}
 	}
-	logrus.Printf("Route is admitted: %v", admitted)
 	return admitted
-}
-
-// we only care about the ingress that matches the Route.Spec.Host
-// as this is the only one that is registered with OAuth
-func getIngressForHost(route *routev1.Route) *routev1.RouteIngress {
-	actualHost := route.Spec.Host
-	for _, ingress := range route.Status.Ingress {
-		if ingress.Host == actualHost {
-			return &ingress
-		}
-	}
-	return nil
 }

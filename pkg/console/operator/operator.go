@@ -63,10 +63,11 @@ type consoleOperator struct {
 	serviceClient    coreclientv1.ServicesGetter
 	deploymentClient appsv1.DeploymentsGetter
 	// openshift
-	routeClient          routeclientv1.RoutesGetter
-	oauthClient          oauthclientv1.OAuthClientsGetter
-	infrastructureClient configclientv1.InfrastructureInterface
-	versionGetter        status.VersionGetter
+	routeClient                routeclientv1.RoutesGetter
+	oauthClient                oauthclientv1.OAuthClientsGetter
+	infrastructureConfigClient configclientv1.InfrastructureInterface
+	ingressConfigClient        configclientv1.IngressInterface
+	versionGetter              status.VersionGetter
 	// recorder
 	recorder events.Recorder
 }
@@ -94,9 +95,10 @@ func NewConsoleOperator(
 ) operator.Runner {
 	c := &consoleOperator{
 		// configs
-		operatorConfigClient: operatorConfigClient.Consoles(),
-		consoleConfigClient:  configClient.Consoles(),
-		infrastructureClient: configClient.Infrastructures(),
+		operatorConfigClient:       operatorConfigClient.Consoles(),
+		consoleConfigClient:        configClient.Consoles(),
+		infrastructureConfigClient: configClient.Infrastructures(),
+		ingressConfigClient:        configClient.Ingresses(),
 		// console resources
 		// core kube
 		secretsClient:    corev1Client,
@@ -124,6 +126,7 @@ func NewConsoleOperator(
 		operator.WithInformer(configV1Informers.Consoles(), configNameFilter),
 		operator.WithInformer(operatorConfigInformer, configNameFilter),
 		operator.WithInformer(configV1Informers.Infrastructures(), configNameFilter),
+		operator.WithInformer(configV1Informers.Ingresses(), configNameFilter),
 		// console resources
 		operator.WithInformer(deployments, targetNameFilter),
 		operator.WithInformer(routes, targetNameFilter),
@@ -159,21 +162,28 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	// ensure we have top level console config
 	consoleConfig, err := c.consoleConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
 	if errors.IsNotFound(err) && CreateDefaultConsoleFlag {
+		logrus.Infof("no console config found. creating default config.")
 		if _, err := c.consoleConfigClient.Create(c.defaultConsoleConfig()); err != nil {
-			logrus.Errorf("No console config found. Creating. %v \n", err)
+			logrus.Errorf("error creating console config: %v \n", err)
 			return err
 		}
 	}
 
 	// we need infrastructure config for apiServerURL
-	infrastructureConfig, err := c.infrastructureClient.Get(api.ConfigResourceName, metav1.GetOptions{})
+	infrastructureConfig, err := c.infrastructureConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
-		logrus.Errorf("Infrastructure config error: %v \n", err)
+		logrus.Errorf("infrastructure config error: %v \n", err)
 		return err
 	}
 
+	// we need ingress config to find the best match for the admitted ingress for the console route
+	ingressConfig, err := c.ingressConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		logrus.Errorf("ingress config error: %v \n", err)
+		return err
+	}
 	// all configs needed to do a sync
-	if err := c.handleSync(operatorConfig, consoleConfig, infrastructureConfig); err != nil {
+	if err := c.handleSync(operatorConfig, consoleConfig, infrastructureConfig, ingressConfig); err != nil {
 		c.SyncStatus(c.ConditionFailing(operatorConfig, "SyncLoopError", "Operator sync loop failed to completele."))
 		return err
 	}
@@ -181,7 +191,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	return nil
 }
 
-func (c *consoleOperator) handleSync(originalOperatorConfig *operatorsv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure) error {
+func (c *consoleOperator) handleSync(originalOperatorConfig *operatorsv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, ingressConfig *configv1.Ingress) error {
 	operatorConfig := originalOperatorConfig.DeepCopy()
 
 	switch operatorConfig.Spec.ManagementState {
@@ -201,7 +211,7 @@ func (c *consoleOperator) handleSync(originalOperatorConfig *operatorsv1.Console
 		return fmt.Errorf("unknown state: %v", operatorConfig.Spec.ManagementState)
 	}
 
-	_, _, _, err := sync_v400(c, operatorConfig, consoleConfig, infrastructureConfig)
+	_, _, _, err := sync_v400(c, operatorConfig, consoleConfig, infrastructureConfig, ingressConfig)
 	if err != nil {
 		return err
 	}

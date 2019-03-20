@@ -6,7 +6,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	oauthv1 "github.com/openshift/api/oauth/v1"
-	routev1 "github.com/openshift/api/route/v1"
 	oauthclient "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 
@@ -54,8 +53,8 @@ func ApplyOAuth(client oauthclient.OAuthClientsGetter, required *oauthv1.OAuthCl
 }
 
 // registers the console on the oauth client as a valid application
-func RegisterConsoleToOAuthClient(client *oauthv1.OAuthClient, route *routev1.Route, randomBits string) *oauthv1.OAuthClient {
-	SetRedirectURI(client, route)
+func RegisterConsoleToOAuthClient(client *oauthv1.OAuthClient, host string, randomBits string) *oauthv1.OAuthClient {
+	SetRedirectURI(client, host)
 	// client.Secret = randomBits
 	SetSecretString(client, randomBits)
 	return client
@@ -95,9 +94,8 @@ func SetSecretString(client *oauthv1.OAuthClient, randomBits string) *oauthv1.OA
 // we are the only application for this client
 // in the future we may accept multiple routes
 // for now, we can clobber the slice & reset the entire thing
-func SetRedirectURI(client *oauthv1.OAuthClient, route *routev1.Route) *oauthv1.OAuthClient {
-	uri := route.Spec.Host
+func SetRedirectURI(client *oauthv1.OAuthClient, host string) *oauthv1.OAuthClient {
 	client.RedirectURIs = []string{}
-	client.RedirectURIs = append(client.RedirectURIs, util.HTTPS(uri)+"/auth/callback")
+	client.RedirectURIs = append(client.RedirectURIs, util.HTTPS(host)+"/auth/callback")
 	return client
 }
