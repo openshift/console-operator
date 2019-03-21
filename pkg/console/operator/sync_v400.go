@@ -329,12 +329,6 @@ func SyncRoute(co *consoleOperator, operatorConfig *operatorv1.Console) (*routev
 	return rt, rtIsNew, rtErr
 }
 
-func secretAndOauthMatch(secret *corev1.Secret, client *oauthv1.OAuthClient) bool {
-	secretString := secretsub.GetSecretString(secret)
-	clientSecretString := oauthsub.GetSecretString(client)
-	return secretString == clientSecretString
-}
-
 func getDeploymentGeneration(co *consoleOperator) int64 {
 	deployment, err := co.deploymentClient.Deployments(api.TargetNamespace).Get(deploymentsub.Stub().Name, metav1.GetOptions{})
 	if err != nil {
@@ -342,10 +336,3 @@ func getDeploymentGeneration(co *consoleOperator) int64 {
 	}
 	return deployment.Generation
 }
-
-// the top level config for the console
-// this needs the console.status.publicHostname set
-func setConsoleConfigStatus() {}
-
-// the operator config expects standard operator status
-func setConsoleOperatorConfigStatus() {}
