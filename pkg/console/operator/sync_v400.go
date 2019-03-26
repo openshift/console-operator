@@ -101,6 +101,9 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	}
 	toUpdate = toUpdate || depChanged
 
+	resourcemerge.SetDeploymentGeneration(&operatorConfig.Status.Generations, actualDeployment)
+	operatorConfig.Status.ObservedGeneration = operatorConfig.ObjectMeta.Generation
+
 	logrus.Println("-----------------------")
 	logrus.Printf("sync loop 4.0.0 resources updated: %v \n", toUpdate)
 	logrus.Println("-----------------------")
@@ -180,7 +183,15 @@ func SyncDeployment(co *consoleOperator, recorder events.Recorder, operatorConfi
 	logrus.Printf("validating console deployment...")
 	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, sec)
 	expectedGeneration := getDeploymentGeneration(co)
-	deployment, deploymentChanged, applyDepErr := resourceapply.ApplyDeployment(co.deploymentClient, recorder, requiredDeployment, expectedGeneration, false)
+	deployment, deploymentChanged, applyDepErr := resourceapply.ApplyDeployment(
+		co.deploymentClient,
+		recorder,
+		requiredDeployment,
+		expectedGeneration,
+		// redeploy on operatorConfig.spec changes
+		operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration,
+	)
+
 	if applyDepErr != nil {
 		logrus.Errorf("%q: %v \n", "deployment", applyDepErr)
 		return nil, false, applyDepErr
