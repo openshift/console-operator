@@ -67,7 +67,7 @@ func TestDefaultConfigMap(t *testing.T) {
 				},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
-						APIServerURL: "https://api.some.cluster.openshift.com:6443",
+						APIServerURL: mockAPIServer,
 					},
 				},
 				rt: &routev1.Route{
