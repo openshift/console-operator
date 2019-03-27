@@ -250,6 +250,7 @@ func (c *consoleOperator) defaultConsoleOperatorConfig() *operatorsv1.Console {
 		Spec: operatorsv1.ConsoleSpec{
 			OperatorSpec: operatorsv1.OperatorSpec{
 				ManagementState: operatorsv1.Managed,
+				LogLevel:        operatorsv1.Normal,
 			},
 		},
 	}
