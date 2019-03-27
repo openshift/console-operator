@@ -95,7 +95,7 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 
 	actualDeployment, depChanged, depErr := SyncDeployment(co, recorder, operatorConfig, cm, serviceCAConfigMap, sec)
 	if depErr != nil {
-		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "route", depErr)))
+		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "deployment", depErr)))
 		return operatorConfig, consoleConfig, toUpdate, depErr
 	}
 	toUpdate = toUpdate || depChanged
