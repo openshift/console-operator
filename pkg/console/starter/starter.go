@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/openshift/library-go/pkg/operator/unsupportedconfigoverridescontroller"
+
 	// kube
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -159,6 +161,8 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		ctx.EventRecorder,
 	)
 
+	configUpgradeableController := unsupportedconfigoverridescontroller.NewUnsupportedConfigOverridesController(operatorClient, ctx.EventRecorder)
+
 	kubeInformersNamespaced.Start(ctx.Done())
 	operatorConfigInformers.Start(ctx.Done())
 	configInformers.Start(ctx.Done())
@@ -167,7 +171,8 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 
 	go consoleOperator.Run(ctx.Done())
 	go clusterOperatorStatus.Run(1, ctx.Done())
-	<-ctx.Done()
+	go configUpgradeableController.Run(1, ctx.Done())
 
+	<-ctx.Done()
 	return fmt.Errorf("stopped")
 }

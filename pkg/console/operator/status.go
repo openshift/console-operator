@@ -55,6 +55,7 @@ const (
 	reasonSyncLoopProgressing = "SyncLoopProgressing"
 	reasonNoPodsAvailable     = "NoPodsAvailable"
 	reasonSyncError           = "SyncError"
+	reasonAsExpected          = "AsExpected"
 )
 
 // Lets transition to using this, and get the repetition out of all of the above.
@@ -183,14 +184,14 @@ func (c *consoleOperator) ConditionResourceSyncFailure(operatorConfig *operators
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
 		Type:               operatorsv1.OperatorStatusTypeAvailable,
 		Status:             operatorsv1.ConditionUnknown,
-		Reason:             reasonUnmanaged,
+		Reason:             reasonSyncError,
 		Message:            message,
 		LastTransitionTime: metav1.Now(),
 	})
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
 		Type:               operatorsv1.OperatorStatusTypeProgressing,
 		Status:             operatorsv1.ConditionTrue,
-		Reason:             reasonUnmanaged,
+		Reason:             reasonSyncError,
 		Message:            message,
 		LastTransitionTime: metav1.Now(),
 	})
