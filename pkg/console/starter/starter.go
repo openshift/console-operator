@@ -38,12 +38,6 @@ import (
 )
 
 func RunOperator(ctx *controllercmd.ControllerContext) error {
-	// TODO: reenable this after upgradeing library-go
-	// only for the ClusterStatus, everything else has a specific client
-	//dynamicClient, err := dynamic.NewForConfig(ctx.KubeConfig)
-	//if err != nil {
-	//	return err
-	//}
 
 	kubeClient, err := kubernetes.NewForConfig(ctx.ProtoKubeConfig)
 	if err != nil {
@@ -72,14 +66,6 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 
 	const resync = 10 * time.Minute
 
-	// NOOP for now
-	// TODO: can perhaps put this back the way it was, but may
-	// need to create a couple different version for
-	// resources w/different names
-	tweakListOptions := func(options *v1.ListOptions) {
-		// options.FieldSelector = fields.OneTermEqualSelector("metadata.name", operator.ConfigResourceName).String()
-	}
-
 	tweakListOptionsForConfigs := func(options *v1.ListOptions) {
 		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.ConfigResourceName).String()
 	}
@@ -96,7 +82,6 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		kubeClient,
 		resync,
 		informers.WithNamespace(api.TargetNamespace),
-		informers.WithTweakListOptions(tweakListOptions),
 	)
 
 	configInformers := configinformers.NewSharedInformerFactoryWithOptions(
@@ -125,7 +110,6 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		oauthinformers.WithTweakListOptions(tweakListOptionsForOAuth),
 	)
 
-	// TODO: Replace this with real event recorder (use ControllerContext).
 	recorder := ctx.EventRecorder
 
 	operatorClient := &operatorclient.OperatorClient{
@@ -139,12 +123,11 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	consoleOperator := operator.NewConsoleOperator(
 		// informers
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
-		// configInformers.Config().V1().Consoles(),           // ConsoleConfig
-		configInformers,
-		kubeInformersNamespaced.Core().V1(),               // Secrets, ConfigMaps, Service
-		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
-		routesInformersNamespaced.Route().V1().Routes(),   // Route
-		oauthInformers.Oauth().V1().OAuthClients(),        // OAuth clients
+		configInformers,                                    // ConsoleConfig
+		kubeInformersNamespaced.Core().V1(),                // Secrets, ConfigMaps, Service
+		kubeInformersNamespaced.Apps().V1().Deployments(),  // Deployments
+		routesInformersNamespaced.Route().V1().Routes(),    // Route
+		oauthInformers.Oauth().V1().OAuthClients(),         // OAuth clients
 		// clients
 		operatorConfigClient.OperatorV1(),
 		configClient.ConfigV1(),
