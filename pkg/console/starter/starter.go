@@ -83,6 +83,11 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		informers.WithNamespace(api.TargetNamespace),
 	)
 
+	kubeInformersManagedNamespaced := informers.NewSharedInformerFactoryWithOptions(
+		kubeClient,
+		resync,
+		informers.WithNamespace(api.OpenshiftConfigManagedNamespace),
+	)
 	// configs are all named "cluster", but our clusteroperator is named "console"
 	configInformers := configinformers.NewSharedInformerFactoryWithOptions(
 		configClient,
@@ -108,12 +113,12 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		oauthinformers.WithTweakListOptions(tweakListOptionsForOAuth),
 	)
 
-	recorder := ctx.EventRecorder
-
 	operatorClient := &operatorclient.OperatorClient{
 		Informers: operatorConfigInformers,
 		Client:    operatorConfigClient.OperatorV1(),
 	}
+
+	recorder := ctx.EventRecorder
 
 	versionGetter := status.NewVersionGetter()
 
@@ -123,6 +128,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
 		configInformers,                                    // ConsoleConfig
 		kubeInformersNamespaced.Core().V1(),                // Secrets, ConfigMaps, Service
+		kubeInformersManagedNamespaced.Core().V1(),         // Managed ConfigMaps
 		kubeInformersNamespaced.Apps().V1().Deployments(),  // Deployments
 		routesInformersNamespaced.Route().V1().Routes(),    // Route
 		oauthInformers.Oauth().V1().OAuthClients(),         // OAuth clients
@@ -163,11 +169,18 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 
 	configUpgradeableController := unsupportedconfigoverridescontroller.NewUnsupportedConfigOverridesController(operatorClient, ctx.EventRecorder)
 
-	kubeInformersNamespaced.Start(ctx.Done())
-	operatorConfigInformers.Start(ctx.Done())
-	configInformers.Start(ctx.Done())
-	routesInformersNamespaced.Start(ctx.Done())
-	oauthInformers.Start(ctx.Done())
+	for _, informer := range []interface {
+		Start(stopCh <-chan struct{})
+	}{
+		kubeInformersNamespaced,
+		kubeInformersManagedNamespaced,
+		operatorConfigInformers,
+		configInformers,
+		routesInformersNamespaced,
+		oauthInformers,
+	} {
+		informer.Start(ctx.Done())
+	}
 
 	go consoleOperator.Run(ctx.Done())
 	go clusterOperatorStatus.Run(1, ctx.Done())

@@ -77,6 +77,7 @@ func NewConsoleOperator(
 	configInformer configinformer.SharedInformerFactory,
 
 	coreV1 corev1.Interface,
+	managedCoreV1 corev1.Interface,
 	deployments appsinformersv1.DeploymentInformer,
 	routes routesinformersv1.RouteInformer,
 	oauthClients oauthinformersv1.OAuthClientInformer,
@@ -113,6 +114,7 @@ func NewConsoleOperator(
 
 	secretsInformer := coreV1.Secrets()
 	configMapInformer := coreV1.ConfigMaps()
+	managedConfigMapInformer := managedCoreV1.ConfigMaps()
 	serviceInformer := coreV1.Services()
 	configV1Informers := configInformer.Config().V1()
 
@@ -131,6 +133,7 @@ func NewConsoleOperator(
 		operator.WithInformer(oauthClients, targetNameFilter),
 		// special resources with unique names
 		operator.WithInformer(configMapInformer, operator.FilterByNames(configmap.ConsoleConfigMapName, configmap.ServiceCAConfigMapName)),
+		operator.WithInformer(managedConfigMapInformer, operator.FilterByNames(configmap.ConsoleConfigMapName)),
 		operator.WithInformer(secretsInformer, operator.FilterByNames(deployment.ConsoleOauthConfigName)),
 	)
 }
