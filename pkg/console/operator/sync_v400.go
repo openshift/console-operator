@@ -220,19 +220,13 @@ func SyncOAuthClient(co *consoleOperator, operatorConfig *operatorv1.Console, se
 	return oauthClient, oauthChanged, nil
 }
 
-// handleSecret() func, return secret, err
-// give me a good secret or die
-// we want the sync loop to die if we have to create.  thats fine, next pass will fix the rest of things.
-// adopt this pattern so we dont have to deal with too much complexity.
 func SyncSecret(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console) (*corev1.Secret, bool, error) {
 	logrus.Printf("validating oauth secret...")
 	secret, err := co.secretsClient.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name, metav1.GetOptions{})
-	// if we have to create it, or if the actual Secret is empty/invalid, then we want to return an error
-	// to kill this round of the sync loop. The next round can pick up and make progress.
 	if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) == "" {
-		_, secChanged, secErr := resourceapply.ApplySecret(co.secretsClient, recorder, secretsub.DefaultSecret(operatorConfig, crypto.Random256BitsString()))
-		return nil, secChanged, fmt.Errorf("secret not found, creating new secret, create error = %v", secErr)
+		return resourceapply.ApplySecret(co.secretsClient, recorder, secretsub.DefaultSecret(operatorConfig, crypto.Random256BitsString()))
 	}
+	// any error should be returned & kill the sync loop
 	if err != nil {
 		logrus.Errorf("%q: %v \n", "secret", err)
 		return nil, false, err
