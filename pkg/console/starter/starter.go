@@ -82,16 +82,15 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		informers.WithNamespace(api.TargetNamespace),
 	)
 
+	// configs are all named "cluster", but our clusteroperator is named "console"
 	configInformers := configinformers.NewSharedInformerFactoryWithOptions(
 		configClient,
 		resync,
-		configinformers.WithTweakListOptions(tweakListOptionsForConfigs),
 	)
 
 	operatorConfigInformers := operatorinformers.NewSharedInformerFactoryWithOptions(
 		operatorConfigClient,
 		resync,
-		operatorinformers.WithTweakListOptions(tweakListOptionsForConfigs),
 	)
 
 	routesInformersNamespaced := routesinformers.NewSharedInformerFactoryWithOptions(
@@ -151,7 +150,11 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 			{Resource: "namespaces", Name: api.OpenShiftConsoleOperatorNamespace},
 			{Resource: "namespaces", Name: api.OpenShiftConsoleNamespace},
 		},
+		// clusteroperator client
 		configClient.ConfigV1(),
+		// cluster operator informer
+		configInformers.Config().V1().ClusterOperators(),
+		// operator client
 		operatorClient,
 		versionRecorder,
 		ctx.EventRecorder,
