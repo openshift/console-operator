@@ -7,5 +7,5 @@ roleRef:
   name: system:openshift:controller:configmap-cabundle-injector
 subjects:
 - kind: ServiceAccount
-  namespace: openshift-service-cert-signer
+  namespace: openshift-service-ca
   name: configmap-cabundle-injector-sa
