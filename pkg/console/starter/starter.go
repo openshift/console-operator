@@ -5,14 +5,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/openshift/library-go/pkg/operator/unsupportedconfigoverridescontroller"
-
 	// kube
-
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-
-	// "k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 
@@ -22,6 +17,7 @@ import (
 	operatorclient "github.com/openshift/console-operator/pkg/console/operatorclient"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/status"
+	"github.com/openshift/library-go/pkg/operator/unsupportedconfigoverridescontroller"
 
 	// clients
 	configclient "github.com/openshift/client-go/config/clientset/versioned"
@@ -68,15 +64,15 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 
 	const resync = 10 * time.Minute
 
-	tweakListOptionsForConfigs := func(options *v1.ListOptions) {
+	tweakListOptionsForConfigs := func(options *metav1.ListOptions) {
 		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.ConfigResourceName).String()
 	}
 
-	tweakListOptionsForOAuth := func(options *v1.ListOptions) {
+	tweakListOptionsForOAuth := func(options *metav1.ListOptions) {
 		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OAuthClientName).String()
 	}
 
-	tweakListOptionsForRoute := func(options *v1.ListOptions) {
+	tweakListOptionsForRoute := func(options *metav1.ListOptions) {
 		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OpenShiftConsoleRouteName).String()
 	}
 
