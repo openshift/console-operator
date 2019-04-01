@@ -1,5 +1,5 @@
 hash: 205fbc4dc5682daa7c24f8ef66b3abff6766349e51f73c791ce4d55acb94bf27
-updated: 2019-02-21T01:46:32.5010739Z
+updated: 2019-03-15T17:11:16.109143914+01:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -135,7 +135,7 @@ imports:
   - proto
   - sortkeys
 - name: github.com/golang/glog
-  version: 44145f04b68cf362d9c4df2182967c2275eaefed
+  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
 - name: github.com/golang/groupcache
   version: 02826c3e79038b59d737d3b1c0a1d937f71a4433
   subpackages:
@@ -196,7 +196,7 @@ imports:
 - name: github.com/NYTimes/gziphandler
   version: 56545f4a5d46df9a6648819d1664c3a03a13ffdb
 - name: github.com/openshift/api
-  version: cec6269883be26556e63500b6df19a0b6691992e
+  version: bfb0ed87be3165db53680be57b13e13aadf94a0e
   subpackages:
   - apps
   - apps/v1
@@ -242,11 +242,14 @@ imports:
   - webconsole
   - webconsole/v1
 - name: github.com/openshift/client-go
-  version: 31ef839c86359881d2c312c4f0131febc6662400
+  version: 8ae2a9c33ba2a3d2ed5dc13d536ca935fc9625b9
   subpackages:
   - config/clientset/versioned
   - config/clientset/versioned/scheme
   - config/clientset/versioned/typed/config/v1
+  - config/informers/externalversions/config/v1
+  - config/informers/externalversions/internalinterfaces
+  - config/listers/config/v1
   - operator/clientset/versioned
   - operator/clientset/versioned/scheme
   - operator/clientset/versioned/typed/operator/v1
@@ -256,7 +259,7 @@ imports:
   - operator/informers/externalversions/operator/v1
   - operator/listers/operator/v1
 - name: github.com/openshift/library-go
-  version: d170fbc9c3810304952ed060299de658e8208fa8
+  version: a0287b264e12953480d8e068aa161d8e8520f539
   subpackages:
   - pkg/config/client
   - pkg/config/clusteroperator/v1helpers
@@ -269,9 +272,11 @@ imports:
   - pkg/controller/metrics
   - pkg/crypto
   - pkg/operator/events
+  - pkg/operator/management
   - pkg/operator/resource/resourceapply
   - pkg/operator/resource/resourcemerge
   - pkg/operator/resource/resourceread
+  - pkg/operator/resourcesynccontroller
   - pkg/operator/status
   - pkg/operator/v1helpers
   - pkg/serviceability
@@ -308,9 +313,9 @@ imports:
 - name: github.com/sirupsen/logrus
   version: 89742aefa4b206dcf400792f3bd35b542998eb3b
 - name: github.com/spf13/cobra
-  version: c439c4fa093711d42e1b01acb1235b52004753c1
+  version: ba1052d4cbce7aac421a96de820558f75199ccbc
 - name: github.com/spf13/pflag
-  version: 583c0c0531f06d5278b7d917446061adc344b5cd
+  version: 24fa6976df40757dce6aea913e7b81ade90530e1
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:

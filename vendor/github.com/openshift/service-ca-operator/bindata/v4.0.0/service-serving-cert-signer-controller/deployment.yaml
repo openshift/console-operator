@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: openshift-service-cert-signer
+  namespace: openshift-service-ca
   name: service-serving-cert-signer
   labels:
     app: openshift-service-serving-cert-signer

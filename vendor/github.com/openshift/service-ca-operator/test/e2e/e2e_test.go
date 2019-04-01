@@ -7,23 +7,24 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openshift/service-ca-operator/pkg/controller/api"
+	"github.com/openshift/service-ca-operator/pkg/operator/operatorclient"
+
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-
-	"github.com/openshift/service-ca-operator/pkg/controller/api"
 )
 
 const (
-	serviceCAOperatorNamespace   = "openshift-service-ca-operator"
-	serviceCAControllerNamespace = "openshift-service-cert-signer"
-	serviceCAOperatorPodPrefix   = "service-ca-operator"
-	apiInjectorPodPrefix         = "apiservice-cabundle-injector"
-	configMapInjectorPodPrefix   = "configmap-cabundle-injector"
-	caControllerPodPrefix        = "service-serving-cert-signer"
+	serviceCAOperatorNamespace   = operatorclient.OperatorNamespace
+	serviceCAOperatorPodPrefix   = operatorclient.OperatorNamespace // Same as operator namespace
+	serviceCAControllerNamespace = operatorclient.TargetNamespace
+	apiInjectorPodPrefix         = api.APIServiceInjectorDeploymentName
+	configMapInjectorPodPrefix   = api.ConfigMapInjectorDeploymentName
+	caControllerPodPrefix        = api.SignerControllerDeploymentName
 )
 
 func hasPodWithPrefixName(client *kubernetes.Clientset, name, namespace string) bool {
@@ -58,7 +59,7 @@ func createServingCertAnnotatedService(client *kubernetes.Clientset, secretName,
 		ObjectMeta: metav1.ObjectMeta{
 			Name: serviceName,
 			Annotations: map[string]string{
-				api.ServingCertSecretAnnotation: secretName,
+				api.AlphaServingCertSecretAnnotation: secretName,
 			},
 		},
 		Spec: v1.ServiceSpec{

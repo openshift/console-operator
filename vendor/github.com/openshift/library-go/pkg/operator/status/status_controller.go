@@ -17,8 +17,11 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
+	configv1informers "github.com/openshift/client-go/config/informers/externalversions/config/v1"
+	configv1listers "github.com/openshift/client-go/config/listers/config/v1"
 	configv1helpers "github.com/openshift/library-go/pkg/config/clusteroperator/v1helpers"
 	"github.com/openshift/library-go/pkg/operator/events"
+	"github.com/openshift/library-go/pkg/operator/management"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	operatorv1helpers "github.com/openshift/library-go/pkg/operator/v1helpers"
 )
@@ -41,6 +44,7 @@ type StatusSyncer struct {
 	versionGetter         VersionGetter
 	operatorClient        operatorv1helpers.OperatorClient
 	clusterOperatorClient configv1client.ClusterOperatorsGetter
+	clusterOperatorLister configv1listers.ClusterOperatorLister
 	eventRecorder         events.Recorder
 
 	// queue only ever has one item, but it has nice error handling backoff/retry semantics
@@ -51,7 +55,8 @@ func NewClusterOperatorStatusController(
 	name string,
 	relatedObjects []configv1.ObjectReference,
 	clusterOperatorClient configv1client.ClusterOperatorsGetter,
-	operatorStatusProvider operatorv1helpers.OperatorClient,
+	clusterOperatorInformer configv1informers.ClusterOperatorInformer,
+	operatorClient operatorv1helpers.OperatorClient,
 	versionGetter VersionGetter,
 	recorder events.Recorder,
 ) *StatusSyncer {
@@ -60,14 +65,15 @@ func NewClusterOperatorStatusController(
 		relatedObjects:        relatedObjects,
 		versionGetter:         versionGetter,
 		clusterOperatorClient: clusterOperatorClient,
-		operatorClient:        operatorStatusProvider,
-		eventRecorder:         recorder,
+		clusterOperatorLister: clusterOperatorInformer.Lister(),
+		operatorClient:        operatorClient,
+		eventRecorder:         recorder.WithComponentSuffix("status-controller"),
 
 		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "StatusSyncer-"+name),
 	}
 
-	operatorStatusProvider.Informer().AddEventHandler(c.eventHandler())
-	// TODO watch clusterOperator.status changes when it moves to openshift/api
+	operatorClient.Informer().AddEventHandler(c.eventHandler())
+	clusterOperatorInformer.Informer().AddEventHandler(c.eventHandler())
 
 	return c
 }
@@ -87,7 +93,7 @@ func (c StatusSyncer) sync() error {
 		return err
 	}
 
-	originalClusterOperatorObj, err := c.clusterOperatorClient.ClusterOperators().Get(c.clusterOperatorName, metav1.GetOptions{})
+	originalClusterOperatorObj, err := c.clusterOperatorLister.Get(c.clusterOperatorName)
 	if err != nil && !apierrors.IsNotFound(err) {
 		c.eventRecorder.Warningf("StatusFailed", "Unable to get current operator status for %s: %v", c.clusterOperatorName, err)
 		return err
@@ -113,9 +119,9 @@ func (c StatusSyncer) sync() error {
 	}
 	clusterOperatorObj := originalClusterOperatorObj.DeepCopy()
 
-	// if we are unmanaged, force everything to Unknown.
-	if detailedSpec.ManagementState == operatorv1.Unmanaged {
+	if detailedSpec.ManagementState == operatorv1.Unmanaged && !management.IsOperatorAlwaysManaged() {
 		clusterOperatorObj.Status = configv1.ClusterOperatorStatus{}
+
 		configv1helpers.SetStatusCondition(&clusterOperatorObj.Status.Conditions, configv1.ClusterOperatorStatusCondition{Type: configv1.OperatorAvailable, Status: configv1.ConditionUnknown, Reason: "Unmanaged"})
 		configv1helpers.SetStatusCondition(&clusterOperatorObj.Status.Conditions, configv1.ClusterOperatorStatusCondition{Type: configv1.OperatorProgressing, Status: configv1.ConditionUnknown, Reason: "Unmanaged"})
 		configv1helpers.SetStatusCondition(&clusterOperatorObj.Status.Conditions, configv1.ClusterOperatorStatusCondition{Type: configv1.OperatorFailing, Status: configv1.ConditionUnknown, Reason: "Unmanaged"})
