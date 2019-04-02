@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	routev1 "github.com/openshift/api/route/v1"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -140,18 +142,24 @@ func DeleteCompletely(getObject func() (runtime.Object, error), deleteObject fun
 // IsResourceAvailable checks if tested resource is available(recreated by console-operator),
 // during 10 second period. If not error will be returned.
 func IsResourceAvailable(errChan chan error, client *Clientset, resource string) {
+	var myObj runtime.Object
 	counter := 0
 	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
-		_, err = GetResource(client, resource)
+		logrus.Printf("polling (%v) for resource %v... \n", counter, resource)
+		myObj, err = GetResource(client, resource)
+		//logrus.Printf("%v", myObj.)
 		if err == nil {
+			logrus.Printf("%v found, recreated. \n", resource)
 			return true, nil
 		}
 		if counter == 10 {
 			if err != nil {
 				return true, fmt.Errorf("deleted console %s was not recreated", resource)
 			}
+			logrus.Printf("max retries for %v \n", resource)
 			return true, nil
 		}
+
 		counter++
 		return false, nil
 	})
@@ -161,17 +169,23 @@ func IsResourceAvailable(errChan chan error, client *Clientset, resource string)
 // IsResourceUnavailable checks if tested resource is unavailable(not recreated by console-operator),
 // during 10 second period. If not error will be returned.
 func IsResourceUnavailable(errChan chan error, client *Clientset, resource string) {
+	var myObj runtime.Object
 	counter := 0
 	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
-		_, err = GetResource(client, resource)
+		logrus.Printf("polling (%v) for resource %v... \n", counter, resource)
+		myObj, err = GetResource(client, resource)
+		//logrus.Printf("%v", myObj)
 		if err == nil {
+			logrus.Printf("%v found, incorrectly recreated. \n", resource)
 			return true, fmt.Errorf("deleted console %s was recreated", resource)
 		}
 		if !errors.IsNotFound(err) {
+			logrus.Printf("%v \n", err)
 			return true, err
 		}
 		counter++
 		if counter == 10 {
+			logrus.Printf("max retries for %v \n", resource)
 			return true, nil
 		}
 		return false, nil
