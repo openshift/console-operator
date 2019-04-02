@@ -64,10 +64,6 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 
 	const resync = 10 * time.Minute
 
-	tweakListOptionsForConfigs := func(options *metav1.ListOptions) {
-		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.ConfigResourceName).String()
-	}
-
 	tweakListOptionsForOAuth := func(options *metav1.ListOptions) {
 		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OAuthClientName).String()
 	}
