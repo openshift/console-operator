@@ -64,10 +64,6 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 
 	const resync = 10 * time.Minute
 
-	tweakListOptionsForConfigs := func(options *metav1.ListOptions) {
-		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.ConfigResourceName).String()
-	}
-
 	tweakListOptionsForOAuth := func(options *metav1.ListOptions) {
 		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OAuthClientName).String()
 	}
@@ -82,16 +78,15 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		informers.WithNamespace(api.TargetNamespace),
 	)
 
+	// configs are all named "cluster", but our clusteroperator is named "console"
 	configInformers := configinformers.NewSharedInformerFactoryWithOptions(
 		configClient,
 		resync,
-		configinformers.WithTweakListOptions(tweakListOptionsForConfigs),
 	)
 
 	operatorConfigInformers := operatorinformers.NewSharedInformerFactoryWithOptions(
 		operatorConfigClient,
 		resync,
-		operatorinformers.WithTweakListOptions(tweakListOptionsForConfigs),
 	)
 
 	routesInformersNamespaced := routesinformers.NewSharedInformerFactoryWithOptions(
@@ -151,7 +146,11 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 			{Resource: "namespaces", Name: api.OpenShiftConsoleOperatorNamespace},
 			{Resource: "namespaces", Name: api.OpenShiftConsoleNamespace},
 		},
+		// clusteroperator client
 		configClient.ConfigV1(),
+		// cluster operator informer
+		configInformers.Config().V1().ClusterOperators(),
+		// operator client
 		operatorClient,
 		versionRecorder,
 		ctx.EventRecorder,

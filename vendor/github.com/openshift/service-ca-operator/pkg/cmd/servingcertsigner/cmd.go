@@ -11,7 +11,7 @@ import (
 
 const (
 	componentName      = "openshift-service-serving-cert-signer-serving-ca"
-	componentNamespace = "openshift-service-cert-signer"
+	componentNamespace = "openshift-service-ca"
 )
 
 func NewController() *cobra.Command {

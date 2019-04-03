@@ -4,7 +4,7 @@ kind: ServiceCA
 metadata:
   name: cluster
 spec:
-  managementState: Paused
+  managementState: Managed
   version: 4.0.0
   logLevel: "4"
   replicas: 1

@@ -101,10 +101,10 @@ func (sc *serviceServingCertUpdateController) requiresRegeneration(secret *v1.Se
 		return false, nil
 	}
 
-	if sharedService.Annotations[api.ServingCertSecretAnnotation] != secret.Name {
+	if sharedService.Annotations[api.ServingCertSecretAnnotation] != secret.Name && sharedService.Annotations[api.AlphaServingCertSecretAnnotation] != secret.Name {
 		return false, nil
 	}
-	if secret.Annotations[api.ServiceUIDAnnotation] != string(sharedService.UID) {
+	if secret.Annotations[api.ServiceUIDAnnotation] != string(sharedService.UID) && secret.Annotations[api.AlphaServiceUIDAnnotation] != string(sharedService.UID) {
 		return false, nil
 	}
 
@@ -118,7 +118,10 @@ func (sc *serviceServingCertUpdateController) requiresRegeneration(secret *v1.Se
 	// secondary logic flow that creates the expiry dates
 	expiryString, ok := secret.Annotations[api.ServingCertExpiryAnnotation]
 	if !ok {
-		return true, sharedService
+		expiryString, ok = secret.Annotations[api.AlphaServingCertExpiryAnnotation]
+		if !ok {
+			return true, sharedService
+		}
 	}
 	expiry, err := time.Parse(time.RFC3339, expiryString)
 	if err != nil {
@@ -134,5 +137,8 @@ func (sc *serviceServingCertUpdateController) requiresRegeneration(secret *v1.Se
 
 func toServiceName(secret *v1.Secret) (string, bool) {
 	serviceName := secret.Annotations[api.ServiceNameAnnotation]
+	if len(serviceName) == 0 {
+		serviceName = secret.Annotations[api.AlphaServiceNameAnnotation]
+	}
 	return serviceName, len(serviceName) != 0
 }
