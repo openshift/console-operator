@@ -12,8 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	// openshift
-	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	routeclient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
@@ -21,6 +19,12 @@ import (
 
 	// operator
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
+)
+
+const (
+	// ingress instance named "default" is the OOTB ingresscontroller
+	// this is an implicit stable API
+	defaultIngressController = "default"
 )
 
 // We can't blindly ApplyRoute() as we need the server to annotate the
@@ -166,22 +170,21 @@ func wildcard() routev1.WildcardPolicyType {
 	return routev1.WildcardPolicyNone
 }
 
-// The canonical host is the ingress on the route with a host that matches the
-// ingressConfig.Spec.Domain.  When we have an ingress that matches, and when it
-// is admitted, the console will be fully accessible.
-func GetCanonicalHost(route *routev1.Route, ingressConfig *configv1.Ingress) (string, error) {
-	// only checking canonical host against admitted ingress
+func GetCanonicalHost(route *routev1.Route) (string, error) {
 	for _, ingress := range route.Status.Ingress {
-		if !isIngressAdmitted(ingress) {
+		if ingress.RouterName != defaultIngressController {
+			logrus.Printf("ignoring route ingress '%v'", ingress.RouterName)
 			continue
 		}
-		if ingress.RouterCanonicalHostname == ingressConfig.Spec.Domain {
-			logrus.Printf("route has ingress matching canonical domain from ingress config: %v \n", ingressConfig.Spec.Domain)
-			return ingress.Host, nil
+		// ingress must be admitted before it is useful to us
+		if !isIngressAdmitted(ingress) {
+			logrus.Printf("route ingress '%v' not admitted", ingress.RouterName)
+			continue
 		}
+		logrus.Printf("route ingress '%v' found and admitted, host: %v \n", defaultIngressController, ingress.Host)
+		return ingress.Host, nil
 	}
-	// can't trust route.Spec.Host
-	return "", fmt.Errorf("route has no ingress matching canonical domain from ingress config: %v \n", ingressConfig.Spec.Domain)
+	return "", fmt.Errorf("route ingress not yet ready for console")
 }
 
 // for the purpose of availability, we simply need to know when the
