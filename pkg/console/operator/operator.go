@@ -176,14 +176,8 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 		return err
 	}
 
-	// we need ingress config to find the best match for the admitted ingress for the console route
-	ingressConfig, err := c.ingressConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		logrus.Errorf("ingress config error: %v \n", err)
-		return err
-	}
 	// all configs needed to do a sync
-	if err := c.handleSync(operatorConfig, consoleConfig, infrastructureConfig, ingressConfig); err != nil {
+	if err := c.handleSync(operatorConfig, consoleConfig, infrastructureConfig); err != nil {
 		c.SyncStatus(c.ConditionFailing(operatorConfig, "SyncLoopError", "Operator sync loop failed to completele."))
 		return err
 	}
@@ -191,7 +185,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	return nil
 }
 
-func (c *consoleOperator) handleSync(originalOperatorConfig *operatorsv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, ingressConfig *configv1.Ingress) error {
+func (c *consoleOperator) handleSync(originalOperatorConfig *operatorsv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure) error {
 	operatorConfig := originalOperatorConfig.DeepCopy()
 
 	switch operatorConfig.Spec.ManagementState {
@@ -211,7 +205,7 @@ func (c *consoleOperator) handleSync(originalOperatorConfig *operatorsv1.Console
 		return fmt.Errorf("unknown state: %v", operatorConfig.Spec.ManagementState)
 	}
 
-	_, _, _, err := sync_v400(c, operatorConfig, consoleConfig, infrastructureConfig, ingressConfig)
+	_, _, _, err := sync_v400(c, operatorConfig, consoleConfig, infrastructureConfig)
 	if err != nil {
 		return err
 	}

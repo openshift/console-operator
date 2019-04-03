@@ -43,7 +43,7 @@ import (
 // The next loop will pick up where they previous left off and move the process forward one step.
 // This ensures the logic is simpler as we do not have to handle coordination between objects within
 // the loop.
-func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, ingressConfig *configv1.Ingress) (*operatorv1.Console, *configv1.Console, bool, error) {
+func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure) (*operatorv1.Console, *configv1.Console, bool, error) {
 	operatorConfig := originalOperatorConfig.DeepCopy()
 	logrus.Println("running sync loop 4.0.0")
 	recorder := co.recorder
@@ -86,7 +86,7 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	}
 	toUpdate = toUpdate || secChanged
 
-	_, oauthChanged, oauthErr := SyncOAuthClient(co, operatorConfig, ingressConfig, sec, rt)
+	_, oauthChanged, oauthErr := SyncOAuthClient(co, operatorConfig, sec, rt)
 	if oauthErr != nil {
 		co.SyncStatus(co.ConditionResourceSyncFailure(operatorConfig, fmt.Sprintf("%q: %v\n", "oauth", oauthErr)))
 		return operatorConfig, consoleConfig, toUpdate, oauthErr
@@ -154,7 +154,7 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	// if we survive the gauntlet, we need to update the console config with the
 	// public hostname so that the world can know the console is ready to roll
 	logrus.Println("sync_v400: updating console status")
-	if updatedConfig, err := SyncConsoleConfig(co, consoleConfig, ingressConfig, rt); err != nil {
+	if updatedConfig, err := SyncConsoleConfig(co, consoleConfig, rt); err != nil {
 		logrus.Errorf("Could not update console config status: %v \n", err)
 		return operatorConfig, updatedConfig, toUpdate, err
 	}
@@ -172,8 +172,8 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	return operatorConfig, consoleConfig, toUpdate, nil
 }
 
-func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, ingressConfig *configv1.Ingress, route *routev1.Route) (*configv1.Console, error) {
-	host, err := routesub.GetCanonicalHost(route, ingressConfig)
+func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, route *routev1.Route) (*configv1.Console, error) {
+	host, err := routesub.GetCanonicalHost(route)
 	if err != nil {
 		return nil, err
 	}
@@ -205,9 +205,9 @@ func SyncDeployment(co *consoleOperator, recorder events.Recorder, operatorConfi
 
 // applies changes to the oauthclient
 // should not be called until route & secret dependencies are verified
-func SyncOAuthClient(co *consoleOperator, operatorConfig *operatorv1.Console, ingressConfig *configv1.Ingress, sec *corev1.Secret, rt *routev1.Route) (*oauthv1.OAuthClient, bool, error) {
+func SyncOAuthClient(co *consoleOperator, operatorConfig *operatorv1.Console, sec *corev1.Secret, rt *routev1.Route) (*oauthv1.OAuthClient, bool, error) {
 	logrus.Printf("validating oauthclient...")
-	host, err := routesub.GetCanonicalHost(rt, ingressConfig)
+	host, err := routesub.GetCanonicalHost(rt)
 	if err != nil {
 		return nil, false, err
 	}
