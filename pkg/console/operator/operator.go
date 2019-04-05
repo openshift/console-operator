@@ -3,12 +3,12 @@ package operator
 import (
 	// standard lib
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/sirupsen/logrus"
 
 	// kube
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -39,6 +39,7 @@ import (
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 
 	// operator
+	customerrors "github.com/openshift/console-operator/pkg/console/errors"
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	"github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
@@ -48,8 +49,7 @@ import (
 )
 
 const (
-	controllerName           = "Console"
-	workloadFailingCondition = "WorkloadFailing"
+	controllerName = "Console"
 )
 
 var CreateDefaultConsoleFlag bool
@@ -176,38 +176,58 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 		return err
 	}
 
-	// all configs needed to do a sync
 	if err := c.handleSync(operatorConfig, consoleConfig, infrastructureConfig); err != nil {
-		c.SyncStatus(c.ConditionDegraded(operatorConfig, "SyncLoopError", "Operator sync loop failed to complete."))
 		return err
 	}
-	c.SyncStatus(c.ConditionNotDegraded(operatorConfig))
+
 	return nil
 }
 
-func (c *consoleOperator) handleSync(originalOperatorConfig *operatorsv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure) error {
-	operatorConfig := originalOperatorConfig.DeepCopy()
+func (c *consoleOperator) handleSync(operatorConfig *operatorsv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure) error {
+	operatorConfigCopy := operatorConfig.DeepCopy()
 
-	switch operatorConfig.Spec.ManagementState {
+	switch operatorConfigCopy.Spec.ManagementState {
 	case operatorsv1.Managed:
 		logrus.Println("console is in a managed state.")
 		// handled below
 	case operatorsv1.Unmanaged:
 		logrus.Println("console is in an unmanaged state.")
-		c.SyncStatus(c.ConditionsManagementStateUnmanaged(operatorConfig))
+		c.ConditionsManagementStateUnmanaged(operatorConfigCopy)
+		if !reflect.DeepEqual(operatorConfigCopy, operatorConfig) {
+			c.SyncStatus(operatorConfigCopy)
+		}
 		return nil
 	case operatorsv1.Removed:
 		logrus.Println("console has been removed.")
-		c.SyncStatus(c.ConditionsManagementStateRemoved(operatorConfig))
-		return c.deleteAllResources(operatorConfig)
+		c.ConditionsManagementStateRemoved(operatorConfigCopy)
+		if !reflect.DeepEqual(operatorConfigCopy, operatorConfig) {
+			c.SyncStatus(operatorConfigCopy)
+		}
+		return c.deleteAllResources(operatorConfigCopy)
 	default:
-		// TODO should update status
-		return fmt.Errorf("unknown state: %v", operatorConfig.Spec.ManagementState)
+		c.ConditionsManagementStateInvalid(operatorConfigCopy)
+		if !reflect.DeepEqual(operatorConfigCopy, operatorConfig) {
+			c.SyncStatus(operatorConfigCopy)
+		}
+		return fmt.Errorf("console is in an unknown state: %v", operatorConfigCopy.Spec.ManagementState)
 	}
 
-	_, _, _, err := sync_v400(c, operatorConfig, consoleConfig, infrastructureConfig)
+	// we can default to not failing, and wait to see if sync returns an error
+	c.ConditionNotDegraded(operatorConfigCopy)
+	err := sync_v400(c, operatorConfigCopy, consoleConfig, infrastructureConfig)
 	if err != nil {
-		return err
+		if !customerrors.IsSyncError(err) {
+			c.SyncStatus(c.ConditionResourceSyncDegraded(operatorConfigCopy, err.Error()))
+			return err
+		} else {
+			c.SyncStatus(operatorConfigCopy)
+			return nil
+		}
+	}
+	// finally write out the set of conditions currently set if anything has changed
+	// to avoid a hot loop
+	if !reflect.DeepEqual(operatorConfigCopy, operatorConfig) {
+		c.SyncStatus(operatorConfigCopy)
 	}
 	return nil
 }

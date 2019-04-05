@@ -2,10 +2,11 @@ package configmap
 
 import (
 	"fmt"
+
 	"github.com/sirupsen/logrus"
 
 	yaml2 "github.com/ghodss/yaml"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -98,9 +99,6 @@ func DefaultConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv
 	}
 
 	configMap.Data[consoleConfigYamlFile] = string(outConfigYaml)
-
-	logrus.Println("generated console config yaml:")
-	logrus.Printf("%s \n", string(outConfigYaml))
 	util.AddOwnerRef(configMap, util.OwnerRefFrom(operatorConfig))
 
 	return configMap, didMerge, nil

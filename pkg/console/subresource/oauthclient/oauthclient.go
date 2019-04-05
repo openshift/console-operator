@@ -18,7 +18,7 @@ import (
 // - should look like resourceapply.ApplyService and the other Apply funcs
 //   once its in a trustworthy state, PR to library-go so it can live with
 //   the other Apply funcs
-func ApplyOAuth(client oauthclient.OAuthClientsGetter, required *oauthv1.OAuthClient) (*oauthv1.OAuthClient, bool, error) {
+func CustomApplyOAuth(client oauthclient.OAuthClientsGetter, required *oauthv1.OAuthClient) (*oauthv1.OAuthClient, bool, error) {
 	existing, err := client.OAuthClients().Get(required.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		actual, err := client.OAuthClients().Create(required)

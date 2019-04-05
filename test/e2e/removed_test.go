@@ -6,15 +6,14 @@ import (
 	"github.com/openshift/console-operator/pkg/testframework"
 )
 
-// TestRemoved sets console-operator to Removed state. After that all the resources
-// from the 'openshift-console' namespace (Deployment, ConfigMap, Router, Service),
-// are tested for unavailability since the operator should delete them.
+// TestRemoved() sets ManagementState:Removed and verifies that all
+// console resources are deleted.
 func TestRemoved(t *testing.T) {
 	client := testframework.MustNewClientset(t, nil)
 	defer testframework.MustManageConsole(t, client)
 	testframework.MustRemoveConsole(t, client)
 
-	t.Logf("waiting to check if the operator has not recreate removed console resources...")
+	t.Logf("validating that the operator does not recreate removed resources when ManagementState:Removed...")
 
 	errChan := make(chan error)
 	go testframework.IsResourceUnavailable(errChan, client, "ConfigMap")

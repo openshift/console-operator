@@ -14,7 +14,6 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	routeclient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 
-	// operator
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
@@ -24,8 +23,9 @@ const (
 	defaultIngressController = "default"
 )
 
-// We can't blindly ApplyRoute() as we need the server to annotate the
-// route.Spec.Host, so we need this func
+// ensures route exists.
+// handles 404 with a create
+// returns any other error
 func GetOrCreate(client routeclient.RoutesGetter, required *routev1.Route) (*routev1.Route, bool, error) {
 	isNew := false
 	existing, err := client.Routes(required.Namespace).Get(required.Name, metav1.GetOptions{})
