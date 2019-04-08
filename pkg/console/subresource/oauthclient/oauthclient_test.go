@@ -1,13 +1,13 @@
 package oauthclient
 
 import (
-	"github.com/go-test/deep"
-	"github.com/openshift/console-operator/pkg/api"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 
+	"github.com/go-test/deep"
+	"github.com/openshift/console-operator/pkg/api"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	oauthv1 "github.com/openshift/api/oauth/v1"
-	routev1 "github.com/openshift/api/route/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -87,7 +87,7 @@ func TestStub(t *testing.T) {
 func TestSetRedirectURI(t *testing.T) {
 	type args struct {
 		client *oauthv1.OAuthClient
-		route  *routev1.Route
+		host   string
 	}
 	tests := []struct {
 		name string
@@ -109,14 +109,7 @@ func TestSetRedirectURI(t *testing.T) {
 					AccessTokenMaxAgeSeconds:            nil,
 					AccessTokenInactivityTimeoutSeconds: nil,
 				},
-				route: &routev1.Route{
-					TypeMeta:   metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{},
-					Spec: routev1.RouteSpec{
-						Host: "example.com",
-					},
-					Status: routev1.RouteStatus{},
-				},
+				host: "example.com",
 			},
 			want: &oauthv1.OAuthClient{
 				TypeMeta:                            metav1.TypeMeta{},
@@ -134,7 +127,7 @@ func TestSetRedirectURI(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(SetRedirectURI(tt.args.client, tt.args.route), tt.want); diff != nil {
+			if diff := deep.Equal(SetRedirectURI(tt.args.client, tt.args.host), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
