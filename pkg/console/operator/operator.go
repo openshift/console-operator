@@ -140,7 +140,7 @@ func (c *consoleOperator) Key() (metav1.Object, error) {
 	operatorConfig, err := c.operatorConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
 	if errors.IsNotFound(err) && CreateDefaultConsoleFlag {
 		if _, err := c.operatorConfigClient.Create(c.defaultConsoleOperatorConfig()); err != nil {
-			logrus.Errorf("No console operator config found. Creating. %v \n", err)
+			logrus.Errorf("no console operator config found. Creating. %v \n", err)
 			return nil, err
 		}
 	}

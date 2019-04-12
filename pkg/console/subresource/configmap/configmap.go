@@ -94,7 +94,7 @@ func DefaultConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv
 	// if we actually merged config overrides, log this information
 	didMerge := len(operatorConfig.Spec.UnsupportedConfigOverrides.Raw) != 0
 	if didMerge {
-		logrus.Println(fmt.Sprintf("With UnsupportedConfigOverrides: %v", string(unsupportedRaw)))
+		logrus.Println(fmt.Sprintf("with UnsupportedConfigOverrides: %v", string(unsupportedRaw)))
 	}
 
 	configMap.Data[consoleConfigYamlFile] = string(outConfigYaml)
