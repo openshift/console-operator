@@ -155,7 +155,7 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 	// public hostname so that the world can know the console is ready to roll
 	logrus.Println("sync_v400: updating console status")
 	if updatedConfig, err := SyncConsoleConfig(co, consoleConfig, rt); err != nil {
-		logrus.Errorf("Could not update console config status: %v \n", err)
+		logrus.Errorf("could not update console config status: %v \n", err)
 		return operatorConfig, updatedConfig, toUpdate, err
 	}
 
@@ -177,7 +177,7 @@ func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, rou
 	if err != nil {
 		return nil, err
 	}
-	logrus.Printf("Updating console.config.openshift.io with hostname: %v \n", host)
+	logrus.Printf("updating console.config.openshift.io with hostname: %v \n", host)
 	consoleConfig.Status.ConsoleURL = util.HTTPS(host)
 	return co.consoleConfigClient.UpdateStatus(consoleConfig)
 }
