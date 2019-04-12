@@ -20,6 +20,7 @@ spec:
       - operator: Exists
       containers:
       - name: download-server
+        terminationMessagePolicy: FallbackToLogsOnError
         image: docker.io/openshift/origin-cli:latest
         imagePullPolicy: IfNotPresent
         ports:
