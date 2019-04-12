@@ -6,6 +6,8 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	operatorv1client "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	operatorv1informers "github.com/openshift/client-go/operator/informers/externalversions"
+
+	"github.com/openshift/service-ca-operator/pkg/controller/api"
 )
 
 type OperatorClient struct {
@@ -16,8 +18,9 @@ type OperatorClient struct {
 func (c *OperatorClient) Informer() cache.SharedIndexInformer {
 	return c.Informers.Operator().V1().ServiceCAs().Informer()
 }
+
 func (c *OperatorClient) GetOperatorState() (*operatorv1.OperatorSpec, *operatorv1.OperatorStatus, string, error) {
-	instance, err := c.Informers.Operator().V1().ServiceCAs().Lister().Get("cluster")
+	instance, err := c.Informers.Operator().V1().ServiceCAs().Lister().Get(api.OperatorConfigInstanceName)
 	if err != nil {
 		return nil, nil, "", err
 	}
@@ -26,7 +29,7 @@ func (c *OperatorClient) GetOperatorState() (*operatorv1.OperatorSpec, *operator
 }
 
 func (c *OperatorClient) UpdateOperatorSpec(resourceVersion string, spec *operatorv1.OperatorSpec) (*operatorv1.OperatorSpec, string, error) {
-	original, err := c.Informers.Operator().V1().ServiceCAs().Lister().Get("cluster")
+	original, err := c.Informers.Operator().V1().ServiceCAs().Lister().Get(api.OperatorConfigInstanceName)
 	if err != nil {
 		return nil, "", err
 	}
@@ -42,7 +45,7 @@ func (c *OperatorClient) UpdateOperatorSpec(resourceVersion string, spec *operat
 	return &ret.Spec.OperatorSpec, ret.ResourceVersion, nil
 }
 func (c *OperatorClient) UpdateOperatorStatus(resourceVersion string, status *operatorv1.OperatorStatus) (*operatorv1.OperatorStatus, error) {
-	original, err := c.Informers.Operator().V1().ServiceCAs().Lister().Get("cluster")
+	original, err := c.Informers.Operator().V1().ServiceCAs().Lister().Get(api.OperatorConfigInstanceName)
 	if err != nil {
 		return nil, err
 	}

@@ -1,70 +1,74 @@
 package operator
 
 import (
-	"fmt"
-
+	"github.com/golang/glog"
 	operatorv1 "github.com/openshift/api/operator/v1"
 )
 
 func syncControllers(c serviceCAOperator, operatorConfig *operatorv1.ServiceCA) error {
+	// Any modification of resource we want to trickle down to force deploy all of the controllers.
 	// Sync the controller NS and the other resources. These should be mostly static.
-	modified, err := manageControllerNS(c)
+	needsDeploy, err := manageControllerNS(c)
 	if err != nil {
-		return fmt.Errorf("Error syncing NS: %v", err)
+		return err
 	}
-	modified, reason := manageSignerControllerResources(c)
+
+	err = manageSignerControllerResources(c, &needsDeploy)
 	if err != nil {
-		return fmt.Errorf("Error syncing signer controller resources: %v", reason)
+		return err
 	}
-	modified, reason = manageAPIServiceControllerResources(c)
+
+	err = manageAPIServiceControllerResources(c, &needsDeploy)
 	if err != nil {
-		return fmt.Errorf("Error syncing API service controller resources: %v", reason)
+		return err
 	}
-	modified, reason = manageConfigMapCABundleControllerResources(c)
+
+	err = manageConfigMapCABundleControllerResources(c, &needsDeploy)
 	if err != nil {
-		return fmt.Errorf("Error syncing CA bundle controller resources: %v", reason)
+		return err
 	}
 
 	// Sync the CA (regenerate if missing).
-	_, modified, err = manageSignerCA(c.corev1Client, c.eventRecorder)
+	caModified, err := manageSignerCA(c.corev1Client, c.eventRecorder)
 	if err != nil {
-		return fmt.Errorf("Error syncing signer CA: %v", err)
+		return err
 	}
 	// Sync the CA bundle. This will be updated if the CA has changed.
-	_, modified, err = manageSignerCABundle(c.corev1Client, c.eventRecorder)
+	_, err = manageSignerCABundle(c.corev1Client, c.eventRecorder, caModified)
 	if err != nil {
-		return fmt.Errorf("Error syncing signer CA bundle: %v", err)
+		return err
 	}
 
 	// Sync the signing controller.
-	_, modified, err = manageSignerControllerConfig(c.corev1Client, c.eventRecorder)
+	configModified, err := manageSignerControllerConfig(c.corev1Client, c.eventRecorder)
 	if err != nil {
-		return fmt.Errorf("Error syncing signing controller config: %v", err)
+		return err
 	}
-	_, modified, err = manageSignerControllerDeployment(c.appsv1Client, c.eventRecorder, operatorConfig, modified)
+	_, err = manageSignerControllerDeployment(c.appsv1Client, c.eventRecorder, operatorConfig, needsDeploy || caModified || configModified)
 	if err != nil {
-		return fmt.Errorf("Error syncing signing controller deployment: %v", err)
-	}
-
-	// Sync the API service controller.
-	_, modified, err = manageAPIServiceControllerConfig(c.corev1Client, c.eventRecorder)
-	if err != nil {
-		return fmt.Errorf("Error syncing API service controller config: %v", err)
-	}
-	_, modified, err = manageAPIServiceControllerDeployment(c.appsv1Client, c.eventRecorder, operatorConfig, modified)
-	if err != nil {
-		return fmt.Errorf("Error syncing API service controller deployment: %v", err)
+		return err
 	}
 
 	// Sync the API service controller.
-	_, modified, err = manageConfigMapCABundleControllerConfig(c.corev1Client, c.eventRecorder)
+	configModified, err = manageAPIServiceControllerConfig(c.corev1Client, c.eventRecorder)
 	if err != nil {
-		return fmt.Errorf("Error syncing CA bundle controller config: %v", err)
+		return err
 	}
-	_, _, err = manageConfigMapCABundleControllerDeployment(c.appsv1Client, c.eventRecorder, operatorConfig, modified)
+	_, err = manageAPIServiceControllerDeployment(c.appsv1Client, c.eventRecorder, operatorConfig, needsDeploy || caModified || configModified)
 	if err != nil {
-		return fmt.Errorf("Error syncing CA bundle controller deployment: %v", err)
+		return err
 	}
 
+	// Sync the API service controller.
+	configModified, err = manageConfigMapCABundleControllerConfig(c.corev1Client, c.eventRecorder)
+	if err != nil {
+		return err
+	}
+	_, err = manageConfigMapCABundleControllerDeployment(c.appsv1Client, c.eventRecorder, operatorConfig, needsDeploy || caModified || configModified)
+	if err != nil {
+		return err
+	}
+
+	glog.V(4).Infof("synced all controller resources")
 	return nil
 }

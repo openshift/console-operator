@@ -31,6 +31,9 @@ func validateActions(t *testing.T, expectedActionsNum int, actions []clienttesti
 	if expected := "content"; string(actual.Data[api.InjectionDataKey]) != expected {
 		t.Error(diff.ObjectDiff(expected, actual))
 	}
+	if len(actual.Data) != 1 {
+		t.Errorf("expected only one data key in CM, got %#v", actual.Data)
+	}
 }
 
 func TestSyncConfigMapCABundle(t *testing.T) {
@@ -77,6 +80,26 @@ func TestSyncConfigMapCABundle(t *testing.T) {
 					},
 					Data: map[string]string{
 						api.InjectionDataKey: "foo",
+					},
+				},
+			},
+			namespace:          "foo",
+			cmName:             "foo",
+			caBundle:           "content",
+			expectedActionsNum: 1,
+		},
+		{
+			name: "requested and same and added-data",
+			startingConfigMaps: []runtime.Object{
+				&v1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "foo",
+						Annotations: map[string]string{api.InjectCABundleAnnotationName: "true"},
+						Namespace:   "foo",
+					},
+					Data: map[string]string{
+						api.InjectionDataKey: "content",
+						"blah":               "foo",
 					},
 				},
 			},

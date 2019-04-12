@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -25,15 +26,16 @@ import (
 )
 
 const (
-	resyncDuration      = 10 * time.Minute
-	clusterOperatorName = "service-ca"
+	resyncDuration         = 10 * time.Minute
+	clusterOperatorName    = "service-ca"
+	operatorVersionEnvName = "OPERATOR_IMAGE_VERSION"
 )
 
-var deploymentNames []string = []string{
+var targetDeploymentNames = sets.NewString(
 	api.SignerControllerDeploymentName,
 	api.APIServiceInjectorDeploymentName,
 	api.ConfigMapInjectorDeploymentName,
-}
+)
 
 func RunOperator(ctx *controllercmd.ControllerContext) error {
 
@@ -54,8 +56,9 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	if err != nil {
 		return err
 	}
-	configInformers := configv1informers.NewSharedInformerFactory(configClient, 10*time.Minute)
+	configInformers := configv1informers.NewSharedInformerFactory(configClient, resyncDuration)
 	operatorConfigInformers := operatorv1informers.NewSharedInformerFactory(operatorConfigClient, resyncDuration)
+
 	kubeInformersNamespaced := informers.NewFilteredSharedInformerFactory(kubeClient, resyncDuration, operatorclient.TargetNamespace, nil)
 	kubeInformersForNamespaces := v1helpers.NewKubeInformersForNamespaces(kubeClient,
 		"",
@@ -107,9 +110,8 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	}
 
 	operator := NewServiceCAOperator(
-		operatorConfigInformers.Operator().V1().ServiceCAs(),
+		operatorClient,
 		kubeInformersNamespaced,
-		operatorClient.Client,
 		kubeClient.AppsV1(),
 		kubeClient.CoreV1(),
 		kubeClient.RbacV1(),

@@ -13,12 +13,13 @@ import (
 	"github.com/openshift/service-ca-operator/pkg/controller/api"
 )
 
-func TestRequiresRegenerationServiceUIDMismatch(t *testing.T) {
+func TestRequiresRegenerationOrReplace(t *testing.T) {
 	tests := []struct {
-		name          string
-		primeServices func(cache.Indexer)
-		secret        *v1.Secret
-		expected      bool
+		name            string
+		primeServices   func(cache.Indexer)
+		secret          *v1.Secret
+		expected   bool
+		serviceIsValid  bool
 	}{
 		{
 			name:          "no service annotation",
@@ -29,7 +30,8 @@ func TestRequiresRegenerationServiceUIDMismatch(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 			},
-			expected: false,
+			expected:  false,
+			serviceIsValid: false,
 		},
 		{
 			name:          "missing service",
@@ -42,7 +44,8 @@ func TestRequiresRegenerationServiceUIDMismatch(t *testing.T) {
 					},
 				},
 			},
-			expected: false,
+			expected:  false,
+			serviceIsValid: false,
 		},
 		{
 			name: "service-uid-mismatch",
@@ -61,7 +64,8 @@ func TestRequiresRegenerationServiceUIDMismatch(t *testing.T) {
 					OwnerReferences: []metav1.OwnerReference{ownerRef(&v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "foo", UID: types.UID("uid-2")}})},
 				},
 			},
-			expected: false,
+			expected:  false,
+			serviceIsValid: false,
 		},
 		{
 			name: "service secret name mismatch",
@@ -80,7 +84,8 @@ func TestRequiresRegenerationServiceUIDMismatch(t *testing.T) {
 					OwnerReferences: []metav1.OwnerReference{ownerRef(&v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "foo", UID: types.UID("uid-1")}})},
 				},
 			},
-			expected: false,
+			expected:  false,
+			serviceIsValid: false,
 		},
 		{
 			name: "no expiry",
@@ -99,7 +104,8 @@ func TestRequiresRegenerationServiceUIDMismatch(t *testing.T) {
 					OwnerReferences: []metav1.OwnerReference{ownerRef(&v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "foo", UID: types.UID("uid-1")}})},
 				},
 			},
-			expected: true,
+			serviceIsValid: true,
+			expected:  true,
 		},
 		{
 			name: "bad expiry",
@@ -119,7 +125,8 @@ func TestRequiresRegenerationServiceUIDMismatch(t *testing.T) {
 					OwnerReferences: []metav1.OwnerReference{ownerRef(&v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "foo", UID: types.UID("uid-1")}})},
 				},
 			},
-			expected: true,
+			expected:  true,
+			serviceIsValid: true,
 		},
 		{
 			name: "expired expiry",
@@ -139,7 +146,8 @@ func TestRequiresRegenerationServiceUIDMismatch(t *testing.T) {
 					OwnerReferences: []metav1.OwnerReference{ownerRef(&v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "foo", UID: types.UID("uid-1")}})},
 				},
 			},
-			expected: true,
+			expected:  true,
+			serviceIsValid: true,
 		},
 		{
 			name: "distant expiry",
@@ -158,8 +166,13 @@ func TestRequiresRegenerationServiceUIDMismatch(t *testing.T) {
 					},
 					OwnerReferences: []metav1.OwnerReference{ownerRef(&v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "foo", UID: types.UID("uid-1")}})},
 				},
+				Data: map[string][]byte{
+					v1.TLSCertKey:       []byte("content"),
+					v1.TLSPrivateKeyKey: []byte("morecontent"),
+				},
 			},
-			expected: false,
+			expected:   false,
+			serviceIsValid:  true,
 		},
 		{
 			name: "missing ownerref",
@@ -179,7 +192,8 @@ func TestRequiresRegenerationServiceUIDMismatch(t *testing.T) {
 					OwnerReferences: []metav1.OwnerReference{ownerRef(&v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "foo", UID: types.UID("uid-2")}})},
 				},
 			},
-			expected: true,
+			expected:  true,
+			serviceIsValid: true,
 		},
 	}
 	for _, tc := range tests {
@@ -187,14 +201,26 @@ func TestRequiresRegenerationServiceUIDMismatch(t *testing.T) {
 			index := cache.NewIndexer(cache.DeletionHandlingMetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 			c := &serviceServingCertUpdateController{
 				serviceLister: listers.NewServiceLister(index),
+				secretLister:  listers.NewSecretLister(index),
 			}
 			tc.primeServices(index)
-			actual, service := c.requiresRegeneration(tc.secret)
-			if tc.expected != actual {
-				t.Errorf("%s: expected %v, got %v", tc.name, tc.expected, actual)
-			}
-			if service == nil && tc.expected {
-				t.Errorf("%s: should have returned service", tc.name)
+			service := c.getServiceForSecret(tc.secret)
+			if service == nil {
+				if tc.expected {
+					t.Errorf("%s: should have returned service", tc.name)
+				}
+			} else {
+				isValid := isSecretValidForService(service, tc.secret)
+				if tc.serviceIsValid != isValid {
+					t.Errorf("validService result: %v unexpected", isValid)
+				}
+				if tc.serviceIsValid {
+					minTimeLeft := 1 * time.Hour
+					actualRegen := c.requiresRegeneration(service, tc.secret, minTimeLeft)
+					if tc.expected != actualRegen {
+						t.Errorf("%s: expected %v, got %v", tc.name, tc.expected, actualRegen)
+					}
+				}
 			}
 		})
 	}
@@ -202,10 +228,11 @@ func TestRequiresRegenerationServiceUIDMismatch(t *testing.T) {
 
 func TestRequiresRegenerationServiceUIDMismatchBetaAnnotation(t *testing.T) {
 	tests := []struct {
-		name          string
-		primeServices func(cache.Indexer)
-		secret        *v1.Secret
-		expected      bool
+		name           string
+		primeServices  func(cache.Indexer)
+		secret         *v1.Secret
+		expected       bool
+		serviceIsValid bool
 	}{
 		{
 			name:          "no service annotation",
@@ -216,7 +243,8 @@ func TestRequiresRegenerationServiceUIDMismatchBetaAnnotation(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 			},
-			expected: false,
+			expected:       false,
+			serviceIsValid: false,
 		},
 		{
 			name:          "missing service",
@@ -229,7 +257,8 @@ func TestRequiresRegenerationServiceUIDMismatchBetaAnnotation(t *testing.T) {
 					},
 				},
 			},
-			expected: false,
+			expected:       false,
+			serviceIsValid: false,
 		},
 		{
 			name: "service-uid-mismatch",
@@ -248,7 +277,8 @@ func TestRequiresRegenerationServiceUIDMismatchBetaAnnotation(t *testing.T) {
 					OwnerReferences: []metav1.OwnerReference{ownerRef(&v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "foo", UID: types.UID("uid-2")}})},
 				},
 			},
-			expected: false,
+			expected:       false,
+			serviceIsValid: false,
 		},
 		{
 			name: "service secret name mismatch",
@@ -267,7 +297,8 @@ func TestRequiresRegenerationServiceUIDMismatchBetaAnnotation(t *testing.T) {
 					OwnerReferences: []metav1.OwnerReference{ownerRef(&v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "foo", UID: types.UID("uid-1")}})},
 				},
 			},
-			expected: false,
+			expected:       false,
+			serviceIsValid: false,
 		},
 		{
 			name: "no expiry",
@@ -286,7 +317,8 @@ func TestRequiresRegenerationServiceUIDMismatchBetaAnnotation(t *testing.T) {
 					OwnerReferences: []metav1.OwnerReference{ownerRef(&v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "foo", UID: types.UID("uid-1")}})},
 				},
 			},
-			expected: true,
+			serviceIsValid: true,
+			expected:       true,
 		},
 		{
 			name: "bad expiry",
@@ -306,7 +338,8 @@ func TestRequiresRegenerationServiceUIDMismatchBetaAnnotation(t *testing.T) {
 					OwnerReferences: []metav1.OwnerReference{ownerRef(&v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "foo", UID: types.UID("uid-1")}})},
 				},
 			},
-			expected: true,
+			expected:       true,
+			serviceIsValid: true,
 		},
 		{
 			name: "expired expiry",
@@ -326,7 +359,8 @@ func TestRequiresRegenerationServiceUIDMismatchBetaAnnotation(t *testing.T) {
 					OwnerReferences: []metav1.OwnerReference{ownerRef(&v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "foo", UID: types.UID("uid-1")}})},
 				},
 			},
-			expected: true,
+			expected:       true,
+			serviceIsValid: true,
 		},
 		{
 			name: "distant expiry",
@@ -345,8 +379,13 @@ func TestRequiresRegenerationServiceUIDMismatchBetaAnnotation(t *testing.T) {
 					},
 					OwnerReferences: []metav1.OwnerReference{ownerRef(&v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "foo", UID: types.UID("uid-1")}})},
 				},
+				Data: map[string][]byte{
+					v1.TLSCertKey:       []byte("content"),
+					v1.TLSPrivateKeyKey: []byte("morecontent"),
+				},
 			},
-			expected: false,
+			expected:       false,
+			serviceIsValid: true,
 		},
 		{
 			name: "missing ownerref",
@@ -366,23 +405,37 @@ func TestRequiresRegenerationServiceUIDMismatchBetaAnnotation(t *testing.T) {
 					OwnerReferences: []metav1.OwnerReference{ownerRef(&v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "foo", UID: types.UID("uid-2")}})},
 				},
 			},
-			expected: true,
+			expected:       true,
+			serviceIsValid: true,
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			index := cache.NewIndexer(cache.DeletionHandlingMetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 			c := &serviceServingCertUpdateController{
+				secretLister:  listers.NewSecretLister(index),
 				serviceLister: listers.NewServiceLister(index),
 			}
 			tc.primeServices(index)
-			actual, service := c.requiresRegeneration(tc.secret)
-			if tc.expected != actual {
-				t.Errorf("%s: expected %v, got %v", tc.name, tc.expected, actual)
-			}
-			if service == nil && tc.expected {
-				t.Errorf("%s: should have returned service", tc.name)
+			service := c.getServiceForSecret(tc.secret)
+			if service == nil {
+				if tc.expected {
+					t.Errorf("%s: should have returned service", tc.name)
+				}
+			} else {
+				isValid := isSecretValidForService(service, tc.secret)
+				if tc.serviceIsValid != isValid {
+					t.Errorf("validService result: %v unexpected", isValid)
+				}
+				if tc.serviceIsValid {
+					minTimeLeft := 1 * time.Hour
+					actualRegen := c.requiresRegeneration(service, tc.secret, minTimeLeft)
+					if tc.expected != actualRegen {
+						t.Errorf("%s: expected %v, got %v", tc.name, tc.expected, actualRegen)
+					}
+				}
 			}
 		})
 	}
 }
+

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	kapierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -466,7 +466,7 @@ func TestAlreadyExistingSecretForDifferentUIDControllerFlow(t *testing.T) {
 	defer close(stopChannel)
 	received := make(chan bool)
 
-	expectedError := "secret/new-secret references serviceUID wrong-uid, which does not match some-uid"
+	expectedError := "secret ns/new-secret does not have corresponding service UID some-uid"
 	expectedSecretName := "new-secret"
 	serviceName := "svc-name"
 	serviceUID := "some-uid"
@@ -553,7 +553,7 @@ func TestAlreadyExistingSecretForDifferentUIDControllerFlowBetaAnnotation(t *tes
 	defer close(stopChannel)
 	received := make(chan bool)
 
-	expectedError := "secret/new-secret references serviceUID wrong-uid, which does not match some-uid"
+	expectedError := "secret ns/new-secret does not have corresponding service UID some-uid"
 	expectedSecretName := "new-secret"
 	serviceName := "svc-name"
 	serviceUID := "some-uid"

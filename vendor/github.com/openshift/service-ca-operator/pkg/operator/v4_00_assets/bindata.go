@@ -43,7 +43,6 @@ import (
 	"strings"
 	"time"
 )
-
 type asset struct {
 	bytes []byte
 	info  os.FileInfo
@@ -166,6 +165,10 @@ authentication:
   disabled: true
 authorization:
   disabled: true
+leaderElection:
+  leaseDuration: "15s"
+  renewDeadline: "10s"
+  retryPeriod: "2s"
 `)
 
 func v400ApiserviceCabundleControllerDefaultconfigYamlBytes() ([]byte, error) {
@@ -491,6 +494,10 @@ authentication:
   disabled: true
 authorization:
   disabled: true
+leaderElection:
+  leaseDuration: "15s"
+  renewDeadline: "10s"
+  retryPeriod: "2s"
 `)
 
 func v400ConfigmapCabundleControllerDefaultconfigYamlBytes() ([]byte, error) {
@@ -854,6 +861,10 @@ authentication:
   disabled: true
 authorization:
   disabled: true
+leaderElection:
+  leaseDuration: "15s"
+  renewDeadline: "10s"
+  retryPeriod: "2s"
 `)
 
 func v400ServiceServingCertSignerControllerDefaultconfigYamlBytes() ([]byte, error) {
@@ -1143,37 +1154,37 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"v4.0.0/apiservice-cabundle-controller/clusterrole.yaml":                v400ApiserviceCabundleControllerClusterroleYaml,
-	"v4.0.0/apiservice-cabundle-controller/clusterrolebinding.yaml":         v400ApiserviceCabundleControllerClusterrolebindingYaml,
-	"v4.0.0/apiservice-cabundle-controller/cm.yaml":                         v400ApiserviceCabundleControllerCmYaml,
-	"v4.0.0/apiservice-cabundle-controller/defaultconfig.yaml":              v400ApiserviceCabundleControllerDefaultconfigYaml,
-	"v4.0.0/apiservice-cabundle-controller/deployment.yaml":                 v400ApiserviceCabundleControllerDeploymentYaml,
-	"v4.0.0/apiservice-cabundle-controller/ns.yaml":                         v400ApiserviceCabundleControllerNsYaml,
-	"v4.0.0/apiservice-cabundle-controller/role.yaml":                       v400ApiserviceCabundleControllerRoleYaml,
-	"v4.0.0/apiservice-cabundle-controller/rolebinding.yaml":                v400ApiserviceCabundleControllerRolebindingYaml,
-	"v4.0.0/apiservice-cabundle-controller/sa.yaml":                         v400ApiserviceCabundleControllerSaYaml,
-	"v4.0.0/apiservice-cabundle-controller/signing-cabundle.yaml":           v400ApiserviceCabundleControllerSigningCabundleYaml,
-	"v4.0.0/configmap-cabundle-controller/clusterrole.yaml":                 v400ConfigmapCabundleControllerClusterroleYaml,
-	"v4.0.0/configmap-cabundle-controller/clusterrolebinding.yaml":          v400ConfigmapCabundleControllerClusterrolebindingYaml,
-	"v4.0.0/configmap-cabundle-controller/cm.yaml":                          v400ConfigmapCabundleControllerCmYaml,
-	"v4.0.0/configmap-cabundle-controller/defaultconfig.yaml":               v400ConfigmapCabundleControllerDefaultconfigYaml,
-	"v4.0.0/configmap-cabundle-controller/deployment.yaml":                  v400ConfigmapCabundleControllerDeploymentYaml,
-	"v4.0.0/configmap-cabundle-controller/ns.yaml":                          v400ConfigmapCabundleControllerNsYaml,
-	"v4.0.0/configmap-cabundle-controller/role.yaml":                        v400ConfigmapCabundleControllerRoleYaml,
-	"v4.0.0/configmap-cabundle-controller/rolebinding.yaml":                 v400ConfigmapCabundleControllerRolebindingYaml,
-	"v4.0.0/configmap-cabundle-controller/sa.yaml":                          v400ConfigmapCabundleControllerSaYaml,
-	"v4.0.0/configmap-cabundle-controller/signing-cabundle.yaml":            v400ConfigmapCabundleControllerSigningCabundleYaml,
-	"v4.0.0/service-ca-operator/operator-config.yaml":                       v400ServiceCaOperatorOperatorConfigYaml,
-	"v4.0.0/service-serving-cert-signer-controller/clusterrole.yaml":        v400ServiceServingCertSignerControllerClusterroleYaml,
+	"v4.0.0/apiservice-cabundle-controller/clusterrole.yaml": v400ApiserviceCabundleControllerClusterroleYaml,
+	"v4.0.0/apiservice-cabundle-controller/clusterrolebinding.yaml": v400ApiserviceCabundleControllerClusterrolebindingYaml,
+	"v4.0.0/apiservice-cabundle-controller/cm.yaml": v400ApiserviceCabundleControllerCmYaml,
+	"v4.0.0/apiservice-cabundle-controller/defaultconfig.yaml": v400ApiserviceCabundleControllerDefaultconfigYaml,
+	"v4.0.0/apiservice-cabundle-controller/deployment.yaml": v400ApiserviceCabundleControllerDeploymentYaml,
+	"v4.0.0/apiservice-cabundle-controller/ns.yaml": v400ApiserviceCabundleControllerNsYaml,
+	"v4.0.0/apiservice-cabundle-controller/role.yaml": v400ApiserviceCabundleControllerRoleYaml,
+	"v4.0.0/apiservice-cabundle-controller/rolebinding.yaml": v400ApiserviceCabundleControllerRolebindingYaml,
+	"v4.0.0/apiservice-cabundle-controller/sa.yaml": v400ApiserviceCabundleControllerSaYaml,
+	"v4.0.0/apiservice-cabundle-controller/signing-cabundle.yaml": v400ApiserviceCabundleControllerSigningCabundleYaml,
+	"v4.0.0/configmap-cabundle-controller/clusterrole.yaml": v400ConfigmapCabundleControllerClusterroleYaml,
+	"v4.0.0/configmap-cabundle-controller/clusterrolebinding.yaml": v400ConfigmapCabundleControllerClusterrolebindingYaml,
+	"v4.0.0/configmap-cabundle-controller/cm.yaml": v400ConfigmapCabundleControllerCmYaml,
+	"v4.0.0/configmap-cabundle-controller/defaultconfig.yaml": v400ConfigmapCabundleControllerDefaultconfigYaml,
+	"v4.0.0/configmap-cabundle-controller/deployment.yaml": v400ConfigmapCabundleControllerDeploymentYaml,
+	"v4.0.0/configmap-cabundle-controller/ns.yaml": v400ConfigmapCabundleControllerNsYaml,
+	"v4.0.0/configmap-cabundle-controller/role.yaml": v400ConfigmapCabundleControllerRoleYaml,
+	"v4.0.0/configmap-cabundle-controller/rolebinding.yaml": v400ConfigmapCabundleControllerRolebindingYaml,
+	"v4.0.0/configmap-cabundle-controller/sa.yaml": v400ConfigmapCabundleControllerSaYaml,
+	"v4.0.0/configmap-cabundle-controller/signing-cabundle.yaml": v400ConfigmapCabundleControllerSigningCabundleYaml,
+	"v4.0.0/service-ca-operator/operator-config.yaml": v400ServiceCaOperatorOperatorConfigYaml,
+	"v4.0.0/service-serving-cert-signer-controller/clusterrole.yaml": v400ServiceServingCertSignerControllerClusterroleYaml,
 	"v4.0.0/service-serving-cert-signer-controller/clusterrolebinding.yaml": v400ServiceServingCertSignerControllerClusterrolebindingYaml,
-	"v4.0.0/service-serving-cert-signer-controller/cm.yaml":                 v400ServiceServingCertSignerControllerCmYaml,
-	"v4.0.0/service-serving-cert-signer-controller/defaultconfig.yaml":      v400ServiceServingCertSignerControllerDefaultconfigYaml,
-	"v4.0.0/service-serving-cert-signer-controller/deployment.yaml":         v400ServiceServingCertSignerControllerDeploymentYaml,
-	"v4.0.0/service-serving-cert-signer-controller/ns.yaml":                 v400ServiceServingCertSignerControllerNsYaml,
-	"v4.0.0/service-serving-cert-signer-controller/role.yaml":               v400ServiceServingCertSignerControllerRoleYaml,
-	"v4.0.0/service-serving-cert-signer-controller/rolebinding.yaml":        v400ServiceServingCertSignerControllerRolebindingYaml,
-	"v4.0.0/service-serving-cert-signer-controller/sa.yaml":                 v400ServiceServingCertSignerControllerSaYaml,
-	"v4.0.0/service-serving-cert-signer-controller/signing-secret.yaml":     v400ServiceServingCertSignerControllerSigningSecretYaml,
+	"v4.0.0/service-serving-cert-signer-controller/cm.yaml": v400ServiceServingCertSignerControllerCmYaml,
+	"v4.0.0/service-serving-cert-signer-controller/defaultconfig.yaml": v400ServiceServingCertSignerControllerDefaultconfigYaml,
+	"v4.0.0/service-serving-cert-signer-controller/deployment.yaml": v400ServiceServingCertSignerControllerDeploymentYaml,
+	"v4.0.0/service-serving-cert-signer-controller/ns.yaml": v400ServiceServingCertSignerControllerNsYaml,
+	"v4.0.0/service-serving-cert-signer-controller/role.yaml": v400ServiceServingCertSignerControllerRoleYaml,
+	"v4.0.0/service-serving-cert-signer-controller/rolebinding.yaml": v400ServiceServingCertSignerControllerRolebindingYaml,
+	"v4.0.0/service-serving-cert-signer-controller/sa.yaml": v400ServiceServingCertSignerControllerSaYaml,
+	"v4.0.0/service-serving-cert-signer-controller/signing-secret.yaml": v400ServiceServingCertSignerControllerSigningSecretYaml,
 }
 
 // AssetDir returns the file names below a certain
@@ -1215,47 +1226,46 @@ type bintree struct {
 	Func     func() (*asset, error)
 	Children map[string]*bintree
 }
-
 var _bintree = &bintree{nil, map[string]*bintree{
 	"v4.0.0": &bintree{nil, map[string]*bintree{
 		"apiservice-cabundle-controller": &bintree{nil, map[string]*bintree{
-			"clusterrole.yaml":        &bintree{v400ApiserviceCabundleControllerClusterroleYaml, map[string]*bintree{}},
+			"clusterrole.yaml": &bintree{v400ApiserviceCabundleControllerClusterroleYaml, map[string]*bintree{}},
 			"clusterrolebinding.yaml": &bintree{v400ApiserviceCabundleControllerClusterrolebindingYaml, map[string]*bintree{}},
-			"cm.yaml":                 &bintree{v400ApiserviceCabundleControllerCmYaml, map[string]*bintree{}},
-			"defaultconfig.yaml":      &bintree{v400ApiserviceCabundleControllerDefaultconfigYaml, map[string]*bintree{}},
-			"deployment.yaml":         &bintree{v400ApiserviceCabundleControllerDeploymentYaml, map[string]*bintree{}},
-			"ns.yaml":                 &bintree{v400ApiserviceCabundleControllerNsYaml, map[string]*bintree{}},
-			"role.yaml":               &bintree{v400ApiserviceCabundleControllerRoleYaml, map[string]*bintree{}},
-			"rolebinding.yaml":        &bintree{v400ApiserviceCabundleControllerRolebindingYaml, map[string]*bintree{}},
-			"sa.yaml":                 &bintree{v400ApiserviceCabundleControllerSaYaml, map[string]*bintree{}},
-			"signing-cabundle.yaml":   &bintree{v400ApiserviceCabundleControllerSigningCabundleYaml, map[string]*bintree{}},
+			"cm.yaml": &bintree{v400ApiserviceCabundleControllerCmYaml, map[string]*bintree{}},
+			"defaultconfig.yaml": &bintree{v400ApiserviceCabundleControllerDefaultconfigYaml, map[string]*bintree{}},
+			"deployment.yaml": &bintree{v400ApiserviceCabundleControllerDeploymentYaml, map[string]*bintree{}},
+			"ns.yaml": &bintree{v400ApiserviceCabundleControllerNsYaml, map[string]*bintree{}},
+			"role.yaml": &bintree{v400ApiserviceCabundleControllerRoleYaml, map[string]*bintree{}},
+			"rolebinding.yaml": &bintree{v400ApiserviceCabundleControllerRolebindingYaml, map[string]*bintree{}},
+			"sa.yaml": &bintree{v400ApiserviceCabundleControllerSaYaml, map[string]*bintree{}},
+			"signing-cabundle.yaml": &bintree{v400ApiserviceCabundleControllerSigningCabundleYaml, map[string]*bintree{}},
 		}},
 		"configmap-cabundle-controller": &bintree{nil, map[string]*bintree{
-			"clusterrole.yaml":        &bintree{v400ConfigmapCabundleControllerClusterroleYaml, map[string]*bintree{}},
+			"clusterrole.yaml": &bintree{v400ConfigmapCabundleControllerClusterroleYaml, map[string]*bintree{}},
 			"clusterrolebinding.yaml": &bintree{v400ConfigmapCabundleControllerClusterrolebindingYaml, map[string]*bintree{}},
-			"cm.yaml":                 &bintree{v400ConfigmapCabundleControllerCmYaml, map[string]*bintree{}},
-			"defaultconfig.yaml":      &bintree{v400ConfigmapCabundleControllerDefaultconfigYaml, map[string]*bintree{}},
-			"deployment.yaml":         &bintree{v400ConfigmapCabundleControllerDeploymentYaml, map[string]*bintree{}},
-			"ns.yaml":                 &bintree{v400ConfigmapCabundleControllerNsYaml, map[string]*bintree{}},
-			"role.yaml":               &bintree{v400ConfigmapCabundleControllerRoleYaml, map[string]*bintree{}},
-			"rolebinding.yaml":        &bintree{v400ConfigmapCabundleControllerRolebindingYaml, map[string]*bintree{}},
-			"sa.yaml":                 &bintree{v400ConfigmapCabundleControllerSaYaml, map[string]*bintree{}},
-			"signing-cabundle.yaml":   &bintree{v400ConfigmapCabundleControllerSigningCabundleYaml, map[string]*bintree{}},
+			"cm.yaml": &bintree{v400ConfigmapCabundleControllerCmYaml, map[string]*bintree{}},
+			"defaultconfig.yaml": &bintree{v400ConfigmapCabundleControllerDefaultconfigYaml, map[string]*bintree{}},
+			"deployment.yaml": &bintree{v400ConfigmapCabundleControllerDeploymentYaml, map[string]*bintree{}},
+			"ns.yaml": &bintree{v400ConfigmapCabundleControllerNsYaml, map[string]*bintree{}},
+			"role.yaml": &bintree{v400ConfigmapCabundleControllerRoleYaml, map[string]*bintree{}},
+			"rolebinding.yaml": &bintree{v400ConfigmapCabundleControllerRolebindingYaml, map[string]*bintree{}},
+			"sa.yaml": &bintree{v400ConfigmapCabundleControllerSaYaml, map[string]*bintree{}},
+			"signing-cabundle.yaml": &bintree{v400ConfigmapCabundleControllerSigningCabundleYaml, map[string]*bintree{}},
 		}},
 		"service-ca-operator": &bintree{nil, map[string]*bintree{
 			"operator-config.yaml": &bintree{v400ServiceCaOperatorOperatorConfigYaml, map[string]*bintree{}},
 		}},
 		"service-serving-cert-signer-controller": &bintree{nil, map[string]*bintree{
-			"clusterrole.yaml":        &bintree{v400ServiceServingCertSignerControllerClusterroleYaml, map[string]*bintree{}},
+			"clusterrole.yaml": &bintree{v400ServiceServingCertSignerControllerClusterroleYaml, map[string]*bintree{}},
 			"clusterrolebinding.yaml": &bintree{v400ServiceServingCertSignerControllerClusterrolebindingYaml, map[string]*bintree{}},
-			"cm.yaml":                 &bintree{v400ServiceServingCertSignerControllerCmYaml, map[string]*bintree{}},
-			"defaultconfig.yaml":      &bintree{v400ServiceServingCertSignerControllerDefaultconfigYaml, map[string]*bintree{}},
-			"deployment.yaml":         &bintree{v400ServiceServingCertSignerControllerDeploymentYaml, map[string]*bintree{}},
-			"ns.yaml":                 &bintree{v400ServiceServingCertSignerControllerNsYaml, map[string]*bintree{}},
-			"role.yaml":               &bintree{v400ServiceServingCertSignerControllerRoleYaml, map[string]*bintree{}},
-			"rolebinding.yaml":        &bintree{v400ServiceServingCertSignerControllerRolebindingYaml, map[string]*bintree{}},
-			"sa.yaml":                 &bintree{v400ServiceServingCertSignerControllerSaYaml, map[string]*bintree{}},
-			"signing-secret.yaml":     &bintree{v400ServiceServingCertSignerControllerSigningSecretYaml, map[string]*bintree{}},
+			"cm.yaml": &bintree{v400ServiceServingCertSignerControllerCmYaml, map[string]*bintree{}},
+			"defaultconfig.yaml": &bintree{v400ServiceServingCertSignerControllerDefaultconfigYaml, map[string]*bintree{}},
+			"deployment.yaml": &bintree{v400ServiceServingCertSignerControllerDeploymentYaml, map[string]*bintree{}},
+			"ns.yaml": &bintree{v400ServiceServingCertSignerControllerNsYaml, map[string]*bintree{}},
+			"role.yaml": &bintree{v400ServiceServingCertSignerControllerRoleYaml, map[string]*bintree{}},
+			"rolebinding.yaml": &bintree{v400ServiceServingCertSignerControllerRolebindingYaml, map[string]*bintree{}},
+			"sa.yaml": &bintree{v400ServiceServingCertSignerControllerSaYaml, map[string]*bintree{}},
+			"signing-secret.yaml": &bintree{v400ServiceServingCertSignerControllerSigningSecretYaml, map[string]*bintree{}},
 		}},
 	}},
 }}
@@ -1306,3 +1316,4 @@ func _filePath(dir, name string) string {
 	cannonicalName := strings.Replace(name, "\\", "/", -1)
 	return filepath.Join(append([]string{dir}, strings.Split(cannonicalName, "/")...)...)
 }
+

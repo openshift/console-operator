@@ -7,3 +7,7 @@ authentication:
   disabled: true
 authorization:
   disabled: true
+leaderElection:
+  leaseDuration: "15s"
+  renewDeadline: "10s"
+  retryPeriod: "2s"

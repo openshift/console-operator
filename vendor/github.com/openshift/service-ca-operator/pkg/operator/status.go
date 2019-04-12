@@ -2,19 +2,16 @@ package operator
 
 import (
 	"fmt"
-
-	"github.com/golang/glog"
+	"os"
 
 	appsv1 "k8s.io/api/apps/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
-	"github.com/openshift/service-ca-operator/pkg/operator/operatorclient"
 )
 
-func (c *serviceCAOperator) setFailingStatus(operatorConfig *operatorv1.ServiceCA, reason, message string) {
+func setFailingTrue(operatorConfig *operatorv1.ServiceCA, reason, message string) {
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions,
 		operatorv1.OperatorCondition{
 			Type:    operatorv1.OperatorStatusTypeFailing,
@@ -22,71 +19,65 @@ func (c *serviceCAOperator) setFailingStatus(operatorConfig *operatorv1.ServiceC
 			Reason:  reason,
 			Message: message,
 		})
+}
 
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
-		Type:   operatorv1.OperatorStatusTypeProgressing,
-		Status: operatorv1.ConditionFalse,
-	})
-
+func setFailingFalse(operatorConfig *operatorv1.ServiceCA, reason string) {
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions,
 		operatorv1.OperatorCondition{
-			Type:   operatorv1.OperatorStatusTypeAvailable,
+			Type:   operatorv1.OperatorStatusTypeFailing,
 			Status: operatorv1.ConditionFalse,
+			Reason: reason,
 		})
 }
 
-func (c *serviceCAOperator) setProgressingStatus(operatorConfig *operatorv1.ServiceCA, message string) {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions,
-		operatorv1.OperatorCondition{
-			Type:    operatorv1.OperatorStatusTypeProgressing,
-			Status:  operatorv1.ConditionTrue,
-			Message: message,
-		})
-
+func setProgressingTrue(operatorConfig *operatorv1.ServiceCA, reason, message string) {
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
-		Type:   operatorv1.OperatorStatusTypeFailing,
-		Status: operatorv1.ConditionFalse,
+		Type:    operatorv1.OperatorStatusTypeProgressing,
+		Status:  operatorv1.ConditionTrue,
+		Reason:  reason,
+		Message: message,
 	})
-
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions,
-		operatorv1.OperatorCondition{
-			Type:   operatorv1.OperatorStatusTypeAvailable,
-			Status: operatorv1.ConditionFalse,
-		})
 }
 
-func (c *serviceCAOperator) setAvailableStatus(operatorConfig *operatorv1.ServiceCA) {
+func setAvailableTrue(operatorConfig *operatorv1.ServiceCA, reason string) {
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
 		Type:   operatorv1.OperatorStatusTypeAvailable,
 		Status: operatorv1.ConditionTrue,
-	})
-
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
-		Type:   operatorv1.OperatorStatusTypeProgressing,
-		Status: operatorv1.ConditionFalse,
-	})
-
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
-		Type:   operatorv1.OperatorStatusTypeFailing,
-		Status: operatorv1.ConditionFalse,
+		Reason: reason,
 	})
 }
 
-func isDeploymentStatusAvailable(deploy *appsv1.Deployment) bool {
+func setProgressingFalse(operatorConfig *operatorv1.ServiceCA, reason, message string) {
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
+		Type:    operatorv1.OperatorStatusTypeProgressing,
+		Status:  operatorv1.ConditionFalse,
+		Reason:  reason,
+		Message: message,
+	})
+}
+
+func setAvailableFalse(operatorConfig *operatorv1.ServiceCA, reason, message string) {
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
+		Type:    operatorv1.OperatorStatusTypeAvailable,
+		Status:  operatorv1.ConditionFalse,
+		Reason:  reason,
+		Message: message,
+	})
+}
+
+func isDeploymentStatusAvailable(deploy appsv1.Deployment) bool {
 	return deploy.Status.AvailableReplicas > 0
 }
 
-// isDeploymentStatusAvailableAndUpdated returns true when at least one
-// replica instance exists and all replica instances are current,
-// there are no replica instances remaining from the previous deployment.
+// Return true if no replica instances remaining from the previous deployment.
 // There may still be additional replica instances being created.
-func isDeploymentStatusAvailableAndUpdated(deploy *appsv1.Deployment) bool {
+func isDeploymentStatusAvailableAndUpdated(deploy appsv1.Deployment) bool {
 	return deploy.Status.AvailableReplicas > 0 &&
 		deploy.Status.ObservedGeneration >= deploy.Generation &&
 		deploy.Status.UpdatedReplicas == deploy.Status.Replicas
 }
 
-func isDeploymentStatusComplete(deploy *appsv1.Deployment) bool {
+func isDeploymentStatusComplete(deploy appsv1.Deployment) bool {
 	replicas := int32(1)
 	if deploy.Spec.Replicas != nil {
 		replicas = *(deploy.Spec.Replicas)
@@ -97,57 +88,79 @@ func isDeploymentStatusComplete(deploy *appsv1.Deployment) bool {
 		deploy.Status.ObservedGeneration >= deploy.Generation
 }
 
-func (c *serviceCAOperator) syncStatus(operatorConfigCopy *operatorv1.ServiceCA, deployments []string) (bool, error) {
-	ready := 0
-	existingDeploymentsAndReplicas := 0
-	for _, dep := range deployments {
-		existing, err := c.appsv1Client.Deployments(operatorclient.TargetNamespace).Get(dep, metav1.GetOptions{})
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				statusMsg := fmt.Sprintf("Deployment %s does not exist", dep)
-				c.setProgressingStatus(operatorConfigCopy, statusMsg)
-				return false, nil
-			}
-			c.setFailingStatus(operatorConfigCopy, "Error getting service-ca-operator managed deployments", err.Error())
-			return false, err
+func (c *serviceCAOperator) syncStatus(operatorConfigCopy *operatorv1.ServiceCA, existingDeployments *appsv1.DeploymentList, targetDeploymentNames sets.String) {
+	versionUpdatable := true
+	versionUpdatableAndDeploymentsComplete := true
+	statusMsg := ""
+	existingDeploymentNames := sets.String{}
+	for _, dep := range existingDeployments.Items {
+		existingDeploymentNames.Insert(dep.Name)
+		// If there isn't at least one replica from each deployment, Available=False
+		reason := "ManagedDeploymentsNotReady"
+		if dep.DeletionTimestamp != nil {
+			statusMsg += fmt.Sprintf("\n%s deleting", dep.Name)
+			setProgressingTrue(operatorConfigCopy, reason, statusMsg)
+			setAvailableFalse(operatorConfigCopy, reason, statusMsg)
+			versionUpdatable = false
+			versionUpdatableAndDeploymentsComplete = false
+			continue
 		}
-		if existing.DeletionTimestamp != nil {
-			glog.Infof("Deployment %s is being deleted", dep)
-			statusMsg := fmt.Sprintf("Deployment %s is being deleted", dep)
-			c.setProgressingStatus(operatorConfigCopy, statusMsg)
-			return false, nil
+		if !isDeploymentStatusAvailable(dep) {
+			statusMsg += fmt.Sprintf("\n%s does not have available replicas", dep.Name)
+			setProgressingTrue(operatorConfigCopy, reason, statusMsg)
+			setAvailableFalse(operatorConfigCopy, reason, statusMsg)
+			versionUpdatable = false
+			versionUpdatableAndDeploymentsComplete = false
+			continue
 		}
-		if !isDeploymentStatusAvailable(existing) {
-			glog.Infof("Deployment %s does not have available replicas", dep)
-			statusMsg := fmt.Sprintf("Deployment %s does not have available replicas", dep)
-			c.setProgressingStatus(operatorConfigCopy, statusMsg)
-			return false, nil
+		if !isDeploymentStatusAvailableAndUpdated(dep) {
+			statusMsg += fmt.Sprintf("\n%s is updating", dep.Name)
+			versionUpdatable = false
+			versionUpdatableAndDeploymentsComplete = false
+			continue
+		} else if !isDeploymentStatusComplete(dep) {
+			versionUpdatableAndDeploymentsComplete = false
+			statusMsg += fmt.Sprintf("\n%s is creating replicas.", dep.Name)
+			continue
 		}
-		existingDeploymentsAndReplicas++
+	}
+	missing := targetDeploymentNames.Difference(existingDeploymentNames)
+	if len(missing) > 0 {
+		reason := "ManagedDeploymentsNotFound"
+		statusMsg = fmt.Sprintf("Deployments %v not found", missing)
+		setProgressingTrue(operatorConfigCopy, reason, statusMsg)
+		setAvailableFalse(operatorConfigCopy, reason, statusMsg)
+		return
+	}
 
-		if !isDeploymentStatusComplete(existing) {
-			glog.Infof("The deployment %s has not completed", dep)
-			statusMsg := fmt.Sprintf("Deployment %s has not completed", dep)
-			c.setProgressingStatus(operatorConfigCopy, statusMsg)
-			return false, nil
-		}
-		if isDeploymentStatusAvailableAndUpdated(existing) {
-			glog.Infof("Deployment %s is available and updated", dep)
-			ready++
-		}
+	// All deployments and their replicas are available and updated, no previous instances exist
+	if versionUpdatableAndDeploymentsComplete {
+		reason := "ManagedDeploymentsCompleteAndUpdated"
+		setAvailableTrue(operatorConfigCopy, reason)
+		setProgressingFalse(operatorConfigCopy, reason, "All service-ca-operator deployments updated")
+		c.setVersion()
+		return
 	}
-	// set Available if replica instances are created.
-	// report version if all deployments are available and updated
-	if ready == len(deployments) {
-		glog.Infof("All deployments managed by service-ca-operator are available and updated")
-		c.setAvailableStatus(operatorConfigCopy)
-		return true, nil
+	// No instances of previous deployments,
+	// some replicas are missing, but each has at least 1 available; set Progressing=true
+	if versionUpdatable {
+		reason := "ManagedDeploymentsAvailableAndUpdated"
+		setAvailableTrue(operatorConfigCopy, reason)
+		setProgressingTrue(operatorConfigCopy, reason, statusMsg)
+		c.setVersion()
+		return
 	}
-	// report Available is deployments and replicas exist, but don't report version
-	// if there are replica instances remaining from previous deployment
-	if existingDeploymentsAndReplicas == len(deployments) {
-		c.setAvailableStatus(operatorConfigCopy)
-		return false, nil
+	// All deployments have at least 1 replica, but some are of previous versions
+	// don't report new version, set Progressing=true
+	reason := "ManagedDeploymentsAvailable"
+	setAvailableTrue(operatorConfigCopy, reason)
+	setProgressingTrue(operatorConfigCopy, reason, statusMsg)
+}
+
+func (c *serviceCAOperator) setVersion() {
+	version := os.Getenv(operatorVersionEnvName)
+	if c.versionGetter.GetVersions()["operator"] != version {
+		// Set current version
+		c.versionGetter.SetVersion("operator", version)
 	}
-	return false, nil
 }

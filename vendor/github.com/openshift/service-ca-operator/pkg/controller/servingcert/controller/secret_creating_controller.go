@@ -1,14 +1,13 @@
 package controller
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/golang/glog"
 
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	kapierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -70,7 +69,7 @@ func NewServiceServingCertController(services informers.ServiceInformer, secrets
 		}),
 		controller.WithInformer(secrets, controller.FilterFuncs{
 			ParentFunc: func(obj metav1.Object) (namespace, name string) {
-				secret := obj.(*v1.Secret)
+				secret := obj.(*corev1.Secret)
 				serviceName, _ := toServiceName(secret)
 				return secret.Namespace, serviceName
 			},
@@ -84,7 +83,7 @@ func NewServiceServingCertController(services informers.ServiceInformer, secrets
 // deleteSecret handles the case when the service certificate secret is manually removed.
 // In that case the secret will be automatically recreated.
 func (sc *serviceServingCertController) deleteSecret(obj metav1.Object) bool {
-	secret := obj.(*v1.Secret)
+	secret := obj.(*corev1.Secret)
 	serviceName, ok := toServiceName(secret)
 	if !ok {
 		return false
@@ -111,7 +110,7 @@ func (sc *serviceServingCertController) Sync(obj metav1.Object) error {
 }
 
 func (sc *serviceServingCertController) syncService(obj metav1.Object) error {
-	sharedService := obj.(*v1.Service)
+	sharedService := obj.(*corev1.Service)
 
 	if !sc.requiresCertGeneration(sharedService) {
 		return nil
@@ -122,7 +121,8 @@ func (sc *serviceServingCertController) syncService(obj metav1.Object) error {
 	return sc.generateCert(serviceCopy)
 }
 
-func (sc *serviceServingCertController) generateCert(serviceCopy *v1.Service) error {
+func (sc *serviceServingCertController) generateCert(serviceCopy *corev1.Service) error {
+	glog.V(4).Infof("generating new cert for %s/%s", serviceCopy.GetNamespace(), serviceCopy.GetName())
 	if serviceCopy.Annotations == nil {
 		serviceCopy.Annotations = map[string]string{}
 	}
@@ -134,69 +134,33 @@ func (sc *serviceServingCertController) generateCert(serviceCopy *v1.Service) er
 
 	_, err := sc.secretClient.Secrets(serviceCopy.Namespace).Create(secret)
 	if err != nil && !kapierrors.IsAlreadyExists(err) {
-		// if we have an error creating the secret, then try to update the service with that information.  If it fails,
-		// then we'll just try again later on re-list or because the service had already been updated and we'll get triggered again.
-		serviceCopy.Annotations[api.ServingCertErrorAnnotation] = err.Error()
-		serviceCopy.Annotations[api.AlphaServingCertErrorAnnotation] = err.Error()
-		numFailure := strconv.Itoa(getNumFailures(serviceCopy) + 1)
-		serviceCopy.Annotations[api.ServingCertErrorNumAnnotation] = numFailure
-		serviceCopy.Annotations[api.AlphaServingCertErrorNumAnnotation] = numFailure
-		_, updateErr := sc.serviceClient.Services(serviceCopy.Namespace).Update(serviceCopy)
-
-		// if we're past the max retries and we successfully updated, then the sync loop successfully handled this service and we want to forget it
-		if updateErr == nil && getNumFailures(serviceCopy) >= sc.maxRetries {
-			return nil
-		}
-		return err
+		return sc.updateServiceFailure(serviceCopy, err)
 	}
 	if kapierrors.IsAlreadyExists(err) {
 		actualSecret, err := sc.secretClient.Secrets(serviceCopy.Namespace).Get(secret.Name, metav1.GetOptions{})
 		if err != nil {
-			// if we have an error creating the secret, then try to update the service with that information.  If it fails,
-			// then we'll just try again later on  re-list or because the service had already been updated and we'll get triggered again.
-			serviceCopy.Annotations[api.ServingCertErrorAnnotation] = err.Error()
-			serviceCopy.Annotations[api.AlphaServingCertErrorAnnotation] = err.Error()
-			numFailure := strconv.Itoa(getNumFailures(serviceCopy) + 1)
-			serviceCopy.Annotations[api.AlphaServingCertErrorNumAnnotation] = numFailure
-			serviceCopy.Annotations[api.ServingCertErrorNumAnnotation] = numFailure
-			_, updateErr := sc.serviceClient.Services(serviceCopy.Namespace).Update(serviceCopy)
-
-			// if we're past the max retries and we successfully updated, then the sync loop successfully handled this service and we want to forget it
-			if updateErr == nil && getNumFailures(serviceCopy) >= sc.maxRetries {
-				return nil
-			}
-			return err
+			return sc.updateServiceFailure(serviceCopy, err)
 		}
 
-		if (actualSecret.Annotations[api.AlphaServiceUIDAnnotation] != string(serviceCopy.UID)) && (actualSecret.Annotations[api.ServiceUIDAnnotation] != string(serviceCopy.UID)) {
-			serviceCopy.Annotations[api.AlphaServingCertErrorAnnotation] = fmt.Sprintf("secret/%v references serviceUID %v, which does not match %v", actualSecret.Name, actualSecret.Annotations[api.AlphaServiceUIDAnnotation], serviceCopy.UID)
-			serviceCopy.Annotations[api.ServingCertErrorAnnotation] = fmt.Sprintf("secret/%v references serviceUID %v, which does not match %v", actualSecret.Name, actualSecret.Annotations[api.ServiceUIDAnnotation], serviceCopy.UID)
-			numFailure := strconv.Itoa(getNumFailures(serviceCopy) + 1)
-			serviceCopy.Annotations[api.ServingCertErrorNumAnnotation] = numFailure
-			serviceCopy.Annotations[api.AlphaServingCertErrorNumAnnotation] = numFailure
-			_, updateErr := sc.serviceClient.Services(serviceCopy.Namespace).Update(serviceCopy)
-
-			// if we're past the max retries and we successfully updated, then the sync loop successfully handled this service and we want to forget it
-			if updateErr == nil && getNumFailures(serviceCopy) >= sc.maxRetries {
-				return nil
-			}
-			// TODO: Return ServingCertErrorAnnotation when removing alpha annotations.
-			return errors.New(serviceCopy.Annotations[api.AlphaServingCertErrorAnnotation])
+		if !uidsEqual(actualSecret, serviceCopy) {
+			uidErr := fmt.Errorf("secret %s/%s does not have corresponding service UID %v", actualSecret.GetNamespace(), actualSecret.GetName(), serviceCopy.UID)
+			return sc.updateServiceFailure(serviceCopy, uidErr)
+		}
+		glog.V(4).Infof("renewing cert in existing secret %s/%s", secret.GetNamespace(), secret.GetName())
+		// Actually update the secret in the regeneration case (the secret already exists but we want to update to a new cert).
+		_, updateErr := sc.secretClient.Secrets(secret.GetNamespace()).Update(secret)
+		if updateErr != nil {
+			return sc.updateServiceFailure(serviceCopy, updateErr)
 		}
 	}
 
-	serviceCopy.Annotations[api.AlphaServingCertCreatedByAnnotation] = sc.commonName()
-	serviceCopy.Annotations[api.ServingCertCreatedByAnnotation] = sc.commonName()
-	delete(serviceCopy.Annotations, api.AlphaServingCertErrorAnnotation)
-	delete(serviceCopy.Annotations, api.AlphaServingCertErrorNumAnnotation)
-	delete(serviceCopy.Annotations, api.ServingCertErrorAnnotation)
-	delete(serviceCopy.Annotations, api.ServingCertErrorNumAnnotation)
+	sc.resetServiceAnnotations(serviceCopy)
 	_, err = sc.serviceClient.Services(serviceCopy.Namespace).Update(serviceCopy)
 
 	return err
 }
 
-func getNumFailures(service *v1.Service) int {
+func getNumFailures(service *corev1.Service) int {
 	numFailuresString := service.Annotations[api.ServingCertErrorNumAnnotation]
 	if len(numFailuresString) == 0 {
 		numFailuresString = service.Annotations[api.AlphaServingCertErrorNumAnnotation]
@@ -213,7 +177,7 @@ func getNumFailures(service *v1.Service) int {
 	return numFailures
 }
 
-func (sc *serviceServingCertController) requiresCertGeneration(service *v1.Service) bool {
+func (sc *serviceServingCertController) requiresCertGeneration(service *corev1.Service) bool {
 	// check the secret since it could not have been created yet
 	secretName := service.Annotations[api.ServingCertSecretAnnotation]
 	if len(secretName) == 0 {
@@ -251,7 +215,36 @@ func (sc *serviceServingCertController) commonName() string {
 	return sc.ca.Config.Certs[0].Subject.CommonName
 }
 
-func ownerRef(service *v1.Service) metav1.OwnerReference {
+// updateServiceFailure updates the service's error annotations with err.
+// Returns the passed in err normally, or nil if the amount of failures has hit the max. This is so it can act as a
+// return to the sync method.
+func (sc *serviceServingCertController) updateServiceFailure(service *corev1.Service, err error) error {
+	setErrAnnotation(service, err)
+	incrementFailureNumAnnotation(service)
+	_, updateErr := sc.serviceClient.Services(service.Namespace).Update(service)
+	if updateErr != nil {
+		glog.V(4).Infof("warning: failed to update failure annotations on service %s: %v", service.Name, updateErr)
+	}
+	// Past the max retries means we've handled this failure enough, so forget it from the queue.
+	if updateErr == nil && getNumFailures(service) >= sc.maxRetries {
+		return nil
+	}
+
+	// Return the original error.
+	return err
+}
+
+// Sets the service CA common name and clears any errors.
+func (sc *serviceServingCertController) resetServiceAnnotations(service *corev1.Service) {
+	service.Annotations[api.AlphaServingCertCreatedByAnnotation] = sc.commonName()
+	service.Annotations[api.ServingCertCreatedByAnnotation] = sc.commonName()
+	delete(service.Annotations, api.AlphaServingCertErrorAnnotation)
+	delete(service.Annotations, api.AlphaServingCertErrorNumAnnotation)
+	delete(service.Annotations, api.ServingCertErrorAnnotation)
+	delete(service.Annotations, api.ServingCertErrorNumAnnotation)
+}
+
+func ownerRef(service *corev1.Service) metav1.OwnerReference {
 	return metav1.OwnerReference{
 		APIVersion: "v1",
 		Kind:       "Service",
@@ -260,10 +253,10 @@ func ownerRef(service *v1.Service) metav1.OwnerReference {
 	}
 }
 
-func toBaseSecret(service *v1.Service) *v1.Secret {
+func toBaseSecret(service *corev1.Service) *corev1.Secret {
 	// Use beta annotations
 	if _, ok := service.Annotations[api.ServingCertSecretAnnotation]; ok {
-		return &v1.Secret{
+		return &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      service.Annotations[api.ServingCertSecretAnnotation],
 				Namespace: service.Namespace,
@@ -272,11 +265,11 @@ func toBaseSecret(service *v1.Service) *v1.Secret {
 					api.ServiceNameAnnotation: service.Name,
 				},
 			},
-			Type: v1.SecretTypeTLS,
+			Type: corev1.SecretTypeTLS,
 		}
 	}
 	// Use alpha annotations
-	return &v1.Secret{
+	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      service.Annotations[api.AlphaServingCertSecretAnnotation],
 			Namespace: service.Namespace,
@@ -285,11 +278,11 @@ func toBaseSecret(service *v1.Service) *v1.Secret {
 				api.AlphaServiceNameAnnotation: service.Name,
 			},
 		},
-		Type: v1.SecretTypeTLS,
+		Type: corev1.SecretTypeTLS,
 	}
 }
 
-func toRequiredSecret(dnsSuffix string, ca *crypto.CA, service *v1.Service, secretCopy *v1.Secret) error {
+func getServingCert(dnsSuffix string, ca *crypto.CA, service *corev1.Service) (*crypto.TLSCertificateConfig, error) {
 	dnsName := service.Name + "." + service.Namespace + ".svc"
 	fqDNSName := dnsName + "." + dnsSuffix
 	certificateLifetime := 365 * 2 // 2 years
@@ -299,26 +292,50 @@ func toRequiredSecret(dnsSuffix string, ca *crypto.CA, service *v1.Service, secr
 		cryptoextensions.ServiceServerCertificateExtensionV1(service),
 	)
 	if err != nil {
+		return nil, err
+	}
+	return servingCert, nil
+}
+
+func toRequiredSecret(dnsSuffix string, ca *crypto.CA, service *corev1.Service, secretCopy *corev1.Secret) error {
+	servingCert, err := getServingCert(dnsSuffix, ca, service)
+	if err != nil {
 		return err
 	}
 	certBytes, keyBytes, err := servingCert.GetPEMBytes()
 	if err != nil {
 		return err
 	}
-
 	if secretCopy.Annotations == nil {
 		secretCopy.Annotations = map[string]string{}
 	}
-	if secretCopy.Data == nil {
-		secretCopy.Data = map[string][]byte{}
+	// let garbage collector cleanup map allocation, for simplicity
+	secretCopy.Data = map[string][]byte{
+		corev1.TLSCertKey:       certBytes,
+		corev1.TLSPrivateKeyKey: keyBytes,
 	}
 
 	secretCopy.Annotations[api.AlphaServingCertExpiryAnnotation] = servingCert.Certs[0].NotAfter.Format(time.RFC3339)
 	secretCopy.Annotations[api.ServingCertExpiryAnnotation] = servingCert.Certs[0].NotAfter.Format(time.RFC3339)
-	secretCopy.Data[v1.TLSCertKey] = certBytes
-	secretCopy.Data[v1.TLSPrivateKeyKey] = keyBytes
 
 	ocontroller.EnsureOwnerRef(secretCopy, ownerRef(service))
 
 	return nil
+}
+
+func setErrAnnotation(service *corev1.Service, err error) {
+	service.Annotations[api.ServingCertErrorAnnotation] = err.Error()
+	service.Annotations[api.AlphaServingCertErrorAnnotation] = err.Error()
+}
+
+func incrementFailureNumAnnotation(service *corev1.Service) {
+	numFailure := strconv.Itoa(getNumFailures(service) + 1)
+	service.Annotations[api.ServingCertErrorNumAnnotation] = numFailure
+	service.Annotations[api.AlphaServingCertErrorNumAnnotation] = numFailure
+}
+
+func uidsEqual(secret *corev1.Secret, service *corev1.Service) bool {
+	suid := string(service.UID)
+	return secret.Annotations[api.AlphaServiceUIDAnnotation] == suid ||
+		secret.Annotations[api.ServiceUIDAnnotation] == suid
 }
