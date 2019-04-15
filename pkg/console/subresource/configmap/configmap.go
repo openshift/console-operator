@@ -2,11 +2,10 @@ package configmap
 
 import (
 	"fmt"
-
 	"github.com/sirupsen/logrus"
 
 	yaml2 "github.com/ghodss/yaml"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -65,7 +64,7 @@ func getApiUrl(infrastructureConfig *configv1.Infrastructure) string {
 // - a new configmap,
 // - a bool indicating if config was merged (unsupportedConfigOverrides)
 // - an error
-func DefaultConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
+func DefaultConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, managedConfig *corev1.ConfigMap, infrastructureConfig *configv1.Infrastructure, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
 	logoutRedirect := getLogoutRedirect(consoleConfig)
 	brand := getBrand(operatorConfig)
 	docURL := getDocURL(operatorConfig)
@@ -77,11 +76,12 @@ func DefaultConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv
 	configMap := Stub()
 	configMap.Data = map[string]string{}
 	unsupportedRaw := operatorConfig.Spec.UnsupportedConfigOverrides.Raw
+	newConfig := extractYAML(managedConfig)
 
 	// merge config overrides, if we have them
-	mergedConfig, err := resourcemerge.MergeProcessConfig(nil, config, unsupportedRaw)
+	mergedConfig, err := resourcemerge.MergeProcessConfig(nil, config, newConfig, unsupportedRaw)
 	if err != nil {
-		logrus.Errorf("failed to generate configmap: %v \n", err)
+		logrus.Errorf("failed to merge configmap: %v \n", err)
 		return nil, false, err
 	}
 
@@ -192,4 +192,14 @@ func authServerYaml(logoutRedirect string) yaml.MapSlice {
 
 func consoleBaseAddr(host string) string {
 	return util.HTTPS(host)
+}
+
+// Helper function that pulls the yaml struct out of the data section of a configmap yaml
+func extractYAML(managedConfig *corev1.ConfigMap) []byte {
+	data := managedConfig.Data
+	for _, v := range data {
+		return []byte(v)
+	}
+
+	return []byte{}
 }

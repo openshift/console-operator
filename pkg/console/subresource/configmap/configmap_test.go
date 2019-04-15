@@ -40,6 +40,31 @@ servingInfo:
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
 `
+	exampleManagedConfigMapData = `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1beta1
+customization:
+  branding: online
+  documentationBaseURL: https://docs.okd.io/4.0/
+`
+	exampleYamlWithManagedConfig = `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1beta1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  logoutRedirect: ""
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  consoleBasePath: ""
+  masterPublicURL: ` + mockAPIServer + `
+customization:
+  branding: online 
+  documentationBaseURL: https://docs.okd.io/4.0/
+servingInfo:
+  bindAddress: https://0.0.0.0:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+`
 )
 
 // To manually run these tests: go test -v ./pkg/console/subresource/configmap/...
@@ -47,6 +72,7 @@ func TestDefaultConfigMap(t *testing.T) {
 	type args struct {
 		operatorConfig       *operatorv1.Console
 		consoleConfig        *configv1.Console
+		managedConfig        *corev1.ConfigMap
 		infrastructureConfig *configv1.Infrastructure
 		rt                   *routev1.Route
 	}
@@ -56,7 +82,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		want *corev1.ConfigMap
 	}{
 		{
-			name: "Test Default Config Map",
+			name: "Test generating default configmap without managed config override",
 			args: args{
 				operatorConfig: &operatorv1.Console{
 					TypeMeta:   metav1.TypeMeta{},
@@ -68,6 +94,7 @@ func TestDefaultConfigMap(t *testing.T) {
 					Spec:   configv1.ConsoleSpec{},
 					Status: configv1.ConsoleStatus{},
 				},
+				managedConfig: &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -77,13 +104,7 @@ func TestDefaultConfigMap(t *testing.T) {
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
 					Spec: routev1.RouteSpec{
-						Host:              host,
-						Path:              "",
-						To:                routev1.RouteTargetReference{},
-						AlternateBackends: nil,
-						Port:              nil,
-						TLS:               nil,
-						WildcardPolicy:    "",
+						Host: host,
 					},
 					Status: routev1.RouteStatus{},
 				},
@@ -91,40 +112,77 @@ func TestDefaultConfigMap(t *testing.T) {
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:                       ConsoleConfigMapName,
-					GenerateName:               "",
-					Namespace:                  api.OpenShiftConsoleNamespace,
-					SelfLink:                   "",
-					UID:                        "",
-					ResourceVersion:            "",
-					Generation:                 0,
-					CreationTimestamp:          metav1.Time{},
-					DeletionTimestamp:          nil,
-					DeletionGracePeriodSeconds: nil,
-					Labels:          map[string]string{"app": api.OpenShiftConsoleName},
-					Annotations:     map[string]string{},
-					OwnerReferences: nil,
-					Initializers:    nil,
-					Finalizers:      nil,
-					ClusterName:     "",
+					Name:        ConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
 				},
-				Data:       map[string]string{configKey: exampleYaml},
-				BinaryData: nil,
+				Data: map[string]string{configKey: exampleYaml},
+			},
+		},
+		{
+			name: "Test generating configmap with managed config to override branding",
+			args: args{
+				operatorConfig: &operatorv1.Console{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec:       operatorv1.ConsoleSpec{},
+					Status:     operatorv1.ConsoleStatus{},
+				},
+				consoleConfig: &configv1.Console{
+					Spec:   configv1.ConsoleSpec{},
+					Status: configv1.ConsoleStatus{},
+				},
+				managedConfig: &corev1.ConfigMap{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "ConfigMap",
+						APIVersion: "v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "console-config",
+						Namespace: "openshift-config-managed",
+					},
+					Data:       map[string]string{configKey: exampleManagedConfigMapData},
+					BinaryData: nil,
+				},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL: mockAPIServer,
+					},
+				},
+				rt: &routev1.Route{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: routev1.RouteSpec{
+						Host: host,
+					},
+					Status: routev1.RouteStatus{},
+				},
+			},
+			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        ConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Data: map[string]string{configKey: exampleYamlWithManagedConfig},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, _, _ := DefaultConfigMap(tt.args.operatorConfig, tt.args.consoleConfig, tt.args.infrastructureConfig, tt.args.rt)
+			cm, _, _ := DefaultConfigMap(tt.args.operatorConfig, tt.args.consoleConfig, tt.args.managedConfig, tt.args.infrastructureConfig, tt.args.rt)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below
 			var exampleConfig map[string]interface{}
-			exampleBytes := []byte(exampleYaml)
+			exampleBytes := []byte(tt.want.Data[configKey])
 			err := yaml.Unmarshal(exampleBytes, &exampleConfig)
 			if err != nil {
 				t.Error(err)
+				fmt.Printf("%v\n", exampleConfig)
 			}
-			fmt.Printf("%v\n", exampleConfig)
 
 			// the reason we have to marshall blindly into map[string]interface{}
 			// is that we don't have the definition for the console config struct.
@@ -255,6 +313,51 @@ func Test_consoleBaseAddr(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if diff := deep.Equal(consoleBaseAddr(tt.args.host), tt.want); diff != nil {
 				t.Error(diff)
+			}
+		})
+	}
+}
+
+func Test_extractYAML(t *testing.T) {
+	type args struct {
+		newConfig *corev1.ConfigMap
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "Test getting data from configmap as yaml",
+			args: args{
+				newConfig: &corev1.ConfigMap{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "ConfigMap",
+						APIVersion: "v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "console-config",
+						Namespace: "openshift-config-managed",
+					},
+					Data:       map[string]string{configKey: exampleManagedConfigMapData},
+					BinaryData: nil,
+				},
+			},
+			want: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1beta1
+customization:
+  branding: online
+  documentationBaseURL: https://docs.okd.io/4.0/
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractYAML(tt.args.newConfig)
+			if diff := deep.Equal(result, []byte(tt.want)); diff != nil {
+				t.Error(diff)
+				t.Errorf("Got: %v \n", result)
+				t.Errorf("Want: %v \n", []byte(tt.want))
 			}
 		})
 	}

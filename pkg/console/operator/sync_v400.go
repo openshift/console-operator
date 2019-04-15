@@ -7,10 +7,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/openshift/console-operator/pkg/console/subresource/util"
-
-	"github.com/openshift/console-operator/pkg/api"
-
 	// 3rd party
 	"github.com/sirupsen/logrus"
 	// kube
@@ -24,6 +20,8 @@ import (
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
+	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	"github.com/openshift/console-operator/pkg/crypto"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
@@ -249,11 +247,16 @@ func SyncSecret(co *consoleOperator, recorder events.Recorder, operatorConfig *o
 func SyncConfigMap(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
 	logrus.Printf("validating console configmap...")
 
-	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, infrastructureConfig, rt)
+	managedConfig, mcErr := co.configMapClient.ConfigMaps(api.OpenshiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
+	if mcErr != nil && !apierrors.IsNotFound(mcErr) {
+		logrus.Errorf("managed config error: %v \n", mcErr)
+		return nil, false, mcErr
+	}
+
+	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, rt)
 	if err != nil {
 		return nil, false, err
 	}
-
 	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, recorder, defaultConfigmap)
 	if cmErr != nil {
 		logrus.Errorf("%q: %v \n", "configmap", cmErr)
