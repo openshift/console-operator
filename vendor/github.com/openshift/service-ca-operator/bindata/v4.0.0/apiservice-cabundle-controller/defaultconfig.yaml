@@ -1,7 +1,0 @@
-apiVersion: servicecertsigner.config.openshift.io/v1alpha1
-kind: APIServiceCABundleInjectorConfig
-caBundleFile: /var/run/configmaps/signing-cabundle/ca-bundle.crt
-authentication:
-  disabled: true
-authorization:
-  disabled: true
