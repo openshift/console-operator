@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -33,9 +33,8 @@ type Controller struct {
 func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
-
-	glog.Infof("Starting %s", c.name)
-	defer glog.Infof("Shutting down %s", c.name)
+	klog.Infof("Starting %s", c.name)
+	defer klog.Infof("Shutting down %s", c.name)
 
 	if !cache.WaitForCacheSync(stopCh, c.cacheSyncs...) {
 		utilruntime.HandleError(fmt.Errorf("timed out waiting for caches to sync"))
