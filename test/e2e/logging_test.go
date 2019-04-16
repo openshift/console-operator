@@ -32,7 +32,7 @@ func TestDebugLogLevel(t *testing.T) {
 	}
 	flagToTest := deploymentsub.GetLogLevelFlag(operatorsv1.Debug)
 	if !isFlagInCommand(t, deployment.Spec.Template.Spec.Containers[0].Command, flagToTest) {
-		t.Fatalf("error: flag not found in command %v \n", deployment.Spec.Template.Spec.Containers[0].Command)
+		t.Fatalf("error: flag (%s) not found in command %v \n", flagToTest, deployment.Spec.Template.Spec.Containers[0].Command)
 	}
 }
 
@@ -53,7 +53,7 @@ func TestTraceLogLevel(t *testing.T) {
 	}
 	flagToTest := deploymentsub.GetLogLevelFlag(operatorsv1.Trace)
 	if !isFlagInCommand(t, deployment.Spec.Template.Spec.Containers[0].Command, flagToTest) {
-		t.Fatalf("error: flag not found in command %v \n", deployment.Spec.Template.Spec.Containers[0].Command)
+		t.Fatalf("error: flag (%s) not found in command %v \n", flagToTest, deployment.Spec.Template.Spec.Containers[0].Command)
 	}
 }
 
@@ -74,7 +74,7 @@ func TestTraceAllLogLevel(t *testing.T) {
 	}
 	flagToTest := deploymentsub.GetLogLevelFlag(operatorsv1.TraceAll)
 	if !isFlagInCommand(t, deployment.Spec.Template.Spec.Containers[0].Command, flagToTest) {
-		t.Fatalf("error: flag not found in command %v \n", deployment.Spec.Template.Spec.Containers[0].Command)
+		t.Fatalf("error: flag (%s) not found in command %v \n", flagToTest, deployment.Spec.Template.Spec.Containers[0].Command)
 	}
 }
 
