@@ -120,7 +120,7 @@ func NewYamlConfig(host string, logoutRedirect string, brand operatorv1.Brand, d
 		{
 			Key: "kind", Value: "ConsoleConfig",
 		}, {
-			Key: "apiVersion", Value: "console.openshift.io/v1beta1",
+			Key: "apiVersion", Value: "console.openshift.io/v1",
 		}, {
 			Key: "auth", Value: authServerYaml(logoutRedirect),
 		}, {
