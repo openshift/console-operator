@@ -44,7 +44,7 @@ servingInfo:
 apiVersion: console.openshift.io/v1beta1
 customization:
   branding: online
-  documentationBaseURL: https://docs.okd.io/4.0/
+  documentationBaseURL: https://docs.okd.io/4.1/
 `
 	exampleYamlWithManagedConfig = `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1beta1
@@ -59,7 +59,7 @@ clusterInfo:
   masterPublicURL: ` + mockAPIServer + `
 customization:
   branding: online 
-  documentationBaseURL: https://docs.okd.io/4.0/
+  documentationBaseURL: https://docs.okd.io/4.1/
 servingInfo:
   bindAddress: https://0.0.0.0:8443
   certFile: /var/serving-cert/tls.crt
@@ -347,7 +347,7 @@ func Test_extractYAML(t *testing.T) {
 apiVersion: console.openshift.io/v1beta1
 customization:
   branding: online
-  documentationBaseURL: https://docs.okd.io/4.0/
+  documentationBaseURL: https://docs.okd.io/4.1/
 `,
 		},
 	}
