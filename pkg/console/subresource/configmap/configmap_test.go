@@ -22,7 +22,7 @@ const (
 	mockAPIServer = "https://api.some.cluster.openshift.com:6443"
 	configKey     = "console-config.yaml"
 	exampleYaml   = `kind: ConsoleConfig
-apiVersion: console.openshift.io/v1beta1
+apiVersion: console.openshift.io/v1
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
@@ -41,13 +41,13 @@ servingInfo:
   keyFile: /var/serving-cert/tls.key
 `
 	exampleManagedConfigMapData = `kind: ConsoleConfig
-apiVersion: console.openshift.io/v1beta1
+apiVersion: console.openshift.io/v1
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.0/
 `
 	exampleYamlWithManagedConfig = `kind: ConsoleConfig
-apiVersion: console.openshift.io/v1beta1
+apiVersion: console.openshift.io/v1
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
@@ -344,7 +344,7 @@ func Test_extractYAML(t *testing.T) {
 				},
 			},
 			want: `kind: ConsoleConfig
-apiVersion: console.openshift.io/v1beta1
+apiVersion: console.openshift.io/v1
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.0/
