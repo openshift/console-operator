@@ -171,9 +171,9 @@ func sync_v400(co *consoleOperator, originalOperatorConfig *operatorv1.Console, 
 }
 
 func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, route *routev1.Route) (*configv1.Console, error) {
-	host, err := routesub.GetCanonicalHost(route)
-	if err != nil {
-		return nil, err
+	host := routesub.GetCanonicalHost(route)
+	if host == "" {
+		return nil, errors.New("waiting on host")
 	}
 	logrus.Printf("updating console.config.openshift.io with hostname: %v \n", host)
 	consoleConfig.Status.ConsoleURL = util.HTTPS(host)
@@ -205,9 +205,9 @@ func SyncDeployment(co *consoleOperator, recorder events.Recorder, operatorConfi
 // should not be called until route & secret dependencies are verified
 func SyncOAuthClient(co *consoleOperator, operatorConfig *operatorv1.Console, sec *corev1.Secret, rt *routev1.Route) (*oauthv1.OAuthClient, bool, error) {
 	logrus.Printf("validating oauthclient...")
-	host, err := routesub.GetCanonicalHost(rt)
-	if err != nil {
-		return nil, false, err
+	host := routesub.GetCanonicalHost(rt)
+	if host == "" {
+		return nil, false, errors.New("waiting on host")
 	}
 	oauthClient, err := co.oauthClient.OAuthClients().Get(oauthsub.Stub().Name, metav1.GetOptions{})
 	if err != nil {
@@ -332,10 +332,10 @@ func SyncRoute(co *consoleOperator, operatorConfig *operatorv1.Console) (*routev
 
 	// we will not proceed until the route is valid. this eliminates complexity with the
 	// configmap, secret & oauth client as they can be certain they have a host if we pass this point.
-	if len(rt.Spec.Host) == 0 {
-		// TODO STATUS
+	host := routesub.GetCanonicalHost(rt)
+	if host == "" {
 		logrus.Errorf("%q: %v \n", "route", rtErr)
-		return nil, false, errors.New("waiting on route.spec.host")
+		return nil, false, errors.New("waiting on host")
 	}
 
 	if validatedRoute, changed := routesub.Validate(rt); changed {

@@ -1,8 +1,6 @@
 package route
 
 import (
-	"fmt"
-
 	"github.com/sirupsen/logrus"
 
 	// kube
@@ -123,7 +121,7 @@ func wildcard() routev1.WildcardPolicyType {
 	return routev1.WildcardPolicyNone
 }
 
-func GetCanonicalHost(route *routev1.Route) (string, error) {
+func GetCanonicalHost(route *routev1.Route) string {
 	for _, ingress := range route.Status.Ingress {
 		if ingress.RouterName != defaultIngressController {
 			logrus.Printf("ignoring route ingress '%v'", ingress.RouterName)
@@ -135,9 +133,10 @@ func GetCanonicalHost(route *routev1.Route) (string, error) {
 			continue
 		}
 		logrus.Printf("route ingress '%v' found and admitted, host: %v \n", defaultIngressController, ingress.Host)
-		return ingress.Host, nil
+		return ingress.Host
 	}
-	return "", fmt.Errorf("route ingress not yet ready for console")
+	logrus.Printf("route ingress not yet ready for console")
+	return ""
 }
 
 // for the purpose of availability, we simply need to know when the
