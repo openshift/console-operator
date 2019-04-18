@@ -26,7 +26,7 @@ func TestUnmanaged(t *testing.T) {
 	checkErr := <-errChan
 
 	if checkErr != nil {
-		t.Fatal(checkErr)
+		t.Fatalf("error: %s", checkErr)
 	}
 }
 

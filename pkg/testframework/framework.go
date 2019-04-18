@@ -141,12 +141,13 @@ func DeleteCompletely(getObject func() (runtime.Object, error), deleteObject fun
 // during 10 second period. If not error will be returned.
 func IsResourceAvailable(errChan chan error, client *Clientset, resource string) {
 	counter := 0
+	maxCount := 20
 	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
 		_, err = GetResource(client, resource)
 		if err == nil {
 			return true, nil
 		}
-		if counter == 10 {
+		if counter == maxCount {
 			if err != nil {
 				return true, fmt.Errorf("deleted console %s was not recreated", resource)
 			}
