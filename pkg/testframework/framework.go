@@ -165,9 +165,10 @@ func IsResourceUnavailable(errChan chan error, client *Clientset, resource strin
 	counter := 0
 	maxCount := 15
 	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
-		_, err = GetResource(client, resource)
+		res, err := GetResource(client, resource)
 		if err == nil {
-			return true, fmt.Errorf("deleted console %s was recreated", resource)
+			fmt.Printf("%s : %#v \n", resource, res)
+			return true, fmt.Errorf("deleted console %s was recreated: %#v", resource, res)
 		}
 		if !errors.IsNotFound(err) {
 			return true, err

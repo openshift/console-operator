@@ -57,12 +57,12 @@ func ensureConsoleIsInDesiredState(t *testing.T, client *Clientset, state operat
 }
 
 func ManageConsole(t *testing.T, client *Clientset) error {
-	cr, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
-	if isOperatorManaged(cr) {
+	if isOperatorManaged(operatorConfig) {
 		t.Logf("console operator already in 'Managed' state")
 		return nil
 	}
@@ -81,12 +81,12 @@ func ManageConsole(t *testing.T, client *Clientset) error {
 }
 
 func UnmanageConsole(t *testing.T, client *Clientset) error {
-	cr, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
-	if isOperatorUnmanaged(cr) {
+	if isOperatorUnmanaged(operatorConfig) {
 		t.Logf("console operator already in 'Unmanaged' state")
 		return nil
 	}
@@ -105,12 +105,12 @@ func UnmanageConsole(t *testing.T, client *Clientset) error {
 }
 
 func RemoveConsole(t *testing.T, client *Clientset) error {
-	cr, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
-	if isOperatorRemoved(cr) {
+	if isOperatorRemoved(operatorConfig) {
 		t.Logf("console operator already in 'Removed' state")
 		return nil
 	}
@@ -146,4 +146,62 @@ func MustRemoveConsole(t *testing.T, client *Clientset) error {
 		t.Fatal(err)
 	}
 	return nil
+}
+
+func MustNormalLogLevel(t *testing.T, client *Clientset) error {
+	operatorConfig, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("checking if console operator LogLevel is set to 'Normal'...")
+	if operatorConfig.Spec.LogLevel == operatorsv1.Normal {
+		return nil
+	}
+	err = SetLogLevel(t, client, operatorsv1.Normal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return nil
+}
+
+func SetLogLevel(t *testing.T, client *Clientset, logLevel operatorsv1.LogLevel) error {
+	operatorConfig, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	deployment, err := GetConsoleDeployment(client)
+	if err != nil {
+		return err
+	}
+	currentDeploymentGeneration := deployment.ObjectMeta.Generation
+	currentOperatorConfigGeneration := operatorConfig.ObjectMeta.Generation
+
+	t.Logf("setting console operator to '%s' LogLevel ...", logLevel)
+	_, err = client.Consoles().Patch(consoleapi.ConfigResourceName, types.MergePatchType, []byte(fmt.Sprintf(`{"spec": {"logLevel": "%s"}}`, logLevel)))
+	if err != nil {
+		return err
+	}
+
+	err = wait.PollImmediate(1*time.Second, 1*time.Minute, func() (bool, error) {
+		newOperatorConfig, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
+		newDeployment, err := GetConsoleDeployment(client)
+		if err != nil {
+			return false, nil
+		}
+		if GenerationChanged(newOperatorConfig.ObjectMeta.Generation, currentOperatorConfigGeneration) {
+			return false, nil
+		}
+		if GenerationChanged(newDeployment.ObjectMeta.Generation, currentDeploymentGeneration) {
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func GenerationChanged(oldGeneration, newGeneration int64) bool {
+	return oldGeneration == newGeneration
 }
