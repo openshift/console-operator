@@ -1,5 +1,5 @@
 hash: f567b9830f081e56a769abb7a719b954157be1a00e8b35824308ba1a704f5330
-updated: 2019-04-12T11:39:18.886867-04:00
+updated: 2019-04-18T11:44:52.715519-04:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -136,8 +136,6 @@ imports:
   - proto
   - protoc-gen-gogo/descriptor
   - sortkeys
-- name: github.com/golang/glog
-  version: 44145f04b68cf362d9c4df2182967c2275eaefed
 - name: github.com/golang/groupcache
   version: 02826c3e79038b59d737d3b1c0a1d937f71a4433
   subpackages:
@@ -195,7 +193,7 @@ imports:
 - name: github.com/NYTimes/gziphandler
   version: 56545f4a5d46df9a6648819d1664c3a03a13ffdb
 - name: github.com/openshift/api
-  version: 0f522af5ff8bb3aa7a7181e163a7b9294b55cc4d
+  version: 55a3077b7d6ca97aee00a064de38065fdc280cee
   subpackages:
   - apps
   - apps/v1
@@ -276,7 +274,7 @@ imports:
   - route/informers/externalversions/route/v1
   - route/listers/route/v1
 - name: github.com/openshift/library-go
-  version: 5565b0112c2efd6e428244bbf5b60320ee7d9cf5
+  version: ea6360154514f20ae0d722d21ced35021a931e6f
   subpackages:
   - pkg/config/client
   - pkg/config/clusteroperator/v1helpers
@@ -295,19 +293,6 @@ imports:
   - pkg/operator/unsupportedconfigoverridescontroller
   - pkg/operator/v1helpers
   - pkg/serviceability
-- name: github.com/openshift/service-ca-operator
-  version: b0e23e6f800bd4cf80620bf83fb817e51310a751
-  subpackages:
-  - tools/gotest2junit/pkg/api
-  - tools/junitreport/pkg/api
-  - tools/junitreport/pkg/builder
-  - tools/junitreport/pkg/builder/flat
-  - tools/junitreport/pkg/builder/nested
-  - tools/junitreport/pkg/cmd
-  - tools/junitreport/pkg/parser
-  - tools/junitreport/pkg/parser/gotest
-  - tools/junitreport/pkg/parser/oscmd
-  - tools/junitreport/pkg/parser/stack
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/peterbourgon/diskv
