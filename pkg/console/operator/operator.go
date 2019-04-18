@@ -178,7 +178,6 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 
 	// all configs needed to do a sync
 	if err := c.handleSync(operatorConfig, consoleConfig, infrastructureConfig); err != nil {
-		c.SyncStatus(c.ConditionFailing(operatorConfig, "SyncLoopError", "Operator sync loop failed to complete."))
 		return err
 	}
 	c.SyncStatus(c.ConditionNotFailing(operatorConfig))
