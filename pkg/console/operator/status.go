@@ -37,11 +37,11 @@ import (
 //    example: the assigned route .spec.host changes for the console.  the oauthclient
 //      must be updated, as must the configmap, etc.  numerous resources are in flux,
 //      the operator reports progressing until the resources stabilize
-// Failing = the operator (not the operand) is failing
+// Degraded = the operator (not the operand) is failing
 //    example: The console operator is unable to update the console config with
 //      a new logoutRedirect URL. The operator is failing to do its job, however the
 //      console (operand) may or may not be functional (see Available above).
-//
+// Failing = deprecated.
 //
 // Status Condition Reason & Message
 // Reason:  OperatorSyncLoopError
@@ -53,8 +53,8 @@ const (
 	reasonUnmanaged           = "ManagementStateUnmanaged"
 	reasonRemoved             = "ManagementStateRemoved"
 	reasonSyncLoopProgressing = "SyncLoopProgressing"
+	reasonSyncError           = "SynchronizationError"
 	reasonNoPodsAvailable     = "NoPodsAvailable"
-	reasonSyncError           = "SyncError"
 	reasonAsExpected          = "AsExpected"
 )
 
@@ -114,9 +114,9 @@ func (c *consoleOperator) SetStatusCondition(operatorConfig *operatorsv1.Console
 
 // examples:
 //   conditionFailing(operatorConfig, "SyncLoopError", "Sync loop failed to complete successfully")
-func (c *consoleOperator) ConditionFailing(operatorConfig *operatorsv1.Console, conditionReason string, conditionMessage string) *operatorsv1.Console {
+func (c *consoleOperator) ConditionDegraded(operatorConfig *operatorsv1.Console, conditionReason string, conditionMessage string) *operatorsv1.Console {
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeFailing,
+		Type:               operatorsv1.OperatorStatusTypeDegraded,
 		Status:             operatorsv1.ConditionTrue,
 		Reason:             conditionReason,
 		Message:            conditionMessage,
@@ -126,9 +126,9 @@ func (c *consoleOperator) ConditionFailing(operatorConfig *operatorsv1.Console, 
 	return operatorConfig
 }
 
-func (c *consoleOperator) ConditionNotFailing(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
+func (c *consoleOperator) ConditionNotDegraded(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeFailing,
+		Type:               operatorsv1.OperatorStatusTypeDegraded,
 		Status:             operatorsv1.ConditionFalse,
 		LastTransitionTime: metav1.Now(),
 	})
@@ -196,7 +196,7 @@ func (c *consoleOperator) ConditionResourceSyncFailure(operatorConfig *operators
 		LastTransitionTime: metav1.Now(),
 	})
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeFailing,
+		Type:               operatorsv1.OperatorStatusTypeDegraded,
 		Status:             operatorsv1.ConditionTrue,
 		Message:            message,
 		Reason:             reasonSyncError,
@@ -208,7 +208,7 @@ func (c *consoleOperator) ConditionResourceSyncFailure(operatorConfig *operators
 
 func (c *consoleOperator) ConditionResourceSyncSuccess(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeFailing,
+		Type:               operatorsv1.OperatorStatusTypeDegraded,
 		Status:             operatorsv1.ConditionFalse,
 		LastTransitionTime: metav1.Now(),
 	})
@@ -280,10 +280,10 @@ func (c *consoleOperator) ConditionsManagementStateUnmanaged(operatorConfig *ope
 		LastTransitionTime: metav1.Now(),
 	})
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeFailing,
+		Type:               operatorsv1.OperatorStatusTypeDegraded,
 		Status:             operatorsv1.ConditionFalse,
 		Reason:             reasonUnmanaged,
-		Message:            "The operator is in an unmanaged state, therefore no operator actions are failing.",
+		Message:            "The operator is in an unmanaged state, therefore no operator actions are degraded.",
 		LastTransitionTime: metav1.Now(),
 	})
 
@@ -310,10 +310,10 @@ func (c *consoleOperator) ConditionsManagementStateRemoved(operatorConfig *opera
 		LastTransitionTime: metav1.Now(),
 	})
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeFailing,
+		Type:               operatorsv1.OperatorStatusTypeDegraded,
 		Status:             operatorsv1.ConditionFalse,
 		Reason:             reasonRemoved,
-		Message:            "The operator is in a removed state, therefore no operator actions are failing.",
+		Message:            "The operator is in a removed state, therefore no operator actions are degraded.",
 		LastTransitionTime: metav1.Now(),
 	})
 
