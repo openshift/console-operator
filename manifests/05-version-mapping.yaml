@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  namespace: openshift-console-operator
-  name: version-mapping
-data:
-  "0.0.1-snapshot": "docker.io/openshift/origin-console-operator:v4.0"
