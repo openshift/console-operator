@@ -2,5 +2,7 @@ apiVersion: oauth.openshift.io/v1
 kind: OAuthClient
 metadata:
   name: console
+  annotations:
+    "release.openshift.io/create-only": "true"
 grantMethod: auto
 respondWithChallenges: false
