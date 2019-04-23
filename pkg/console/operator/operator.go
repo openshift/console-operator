@@ -52,8 +52,6 @@ const (
 	controllerName = "Console"
 )
 
-var CreateDefaultConsoleFlag bool
-
 type consoleOperator struct {
 	operatorConfigClient operatorclientv1.ConsoleInterface
 	consoleConfigClient  configclientv1.ConsoleInterface
@@ -140,15 +138,7 @@ func NewConsoleOperator(
 
 // key is actually the pivot point for the operator, which is our Console custom resource
 func (c *consoleOperator) Key() (metav1.Object, error) {
-	operatorConfig, err := c.operatorConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
-	if errors.IsNotFound(err) && CreateDefaultConsoleFlag {
-		if _, err := c.operatorConfigClient.Create(c.defaultConsoleOperatorConfig()); err != nil {
-			logrus.Errorf("no console operator config found. Creating. %v \n", err)
-			return nil, err
-		}
-	}
-
-	return operatorConfig, err
+	return c.operatorConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
 }
 
 func (c *consoleOperator) Sync(obj metav1.Object) error {
@@ -161,12 +151,9 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 
 	// ensure we have top level console config
 	consoleConfig, err := c.consoleConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
-	if errors.IsNotFound(err) && CreateDefaultConsoleFlag {
-		logrus.Infof("no console config found. creating default config.")
-		if _, err := c.consoleConfigClient.Create(c.defaultConsoleConfig()); err != nil {
-			logrus.Errorf("error creating console config: %v \n", err)
-			return err
-		}
+	if err != nil {
+		logrus.Errorf("console config error: %v \n", err)
+		return err
 	}
 
 	// we need infrastructure config for apiServerURL
@@ -254,28 +241,4 @@ func (c *consoleOperator) deleteAllResources(cr *operatorsv1.Console) error {
 	errs = append(errs, c.deploymentClient.Deployments(api.TargetNamespace).Delete(deployment.Stub().Name, &metav1.DeleteOptions{}))
 
 	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
-}
-
-// see https://github.com/openshift/api/blob/master/config/v1/types_console.go
-func (c *consoleOperator) defaultConsoleConfig() *configv1.Console {
-	return &configv1.Console{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: api.ConfigResourceName,
-		},
-	}
-}
-
-// see https://github.com/openshift/api/blob/master/operator/v1/types_console.go
-func (c *consoleOperator) defaultConsoleOperatorConfig() *operatorsv1.Console {
-	return &operatorsv1.Console{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: api.ConfigResourceName,
-		},
-		Spec: operatorsv1.ConsoleSpec{
-			OperatorSpec: operatorsv1.OperatorSpec{
-				ManagementState: operatorsv1.Managed,
-				LogLevel:        operatorsv1.Normal,
-			},
-		},
-	}
 }

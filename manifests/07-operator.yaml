@@ -33,7 +33,6 @@ spec:
         - operator
         args:
         - "-v=2"
-        - "--create-default-console=true"
         - "--config=/var/run/configmaps/config/controller-config.yaml"
         imagePullPolicy: IfNotPresent
         volumeMounts:
