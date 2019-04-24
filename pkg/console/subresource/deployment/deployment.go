@@ -4,13 +4,18 @@ import (
 	"fmt"
 
 	"github.com/sirupsen/logrus"
+
+	// kube
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	appsclientv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 
+	// openshift
 	operatorv1 "github.com/openshift/api/operator/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
@@ -31,6 +36,15 @@ const (
 	serviceCAConfigMapResourceVersionAnnotation = "console.openshift.io/service-ca-config-version"
 	secretResourceVersionAnnotation             = "console.openshift.io/oauth-secret-version"
 	consoleImageAnnotation                      = "console.openshift.io/image"
+)
+
+var (
+	resourceAnnotations = []string{
+		configMapResourceVersionAnnotation,
+		serviceCAConfigMapResourceVersionAnnotation,
+		secretResourceVersionAnnotation,
+		consoleImageAnnotation,
+	}
 )
 
 type volumeConfig struct {
@@ -69,7 +83,7 @@ var volumeConfigList = []volumeConfig{
 	},
 }
 
-func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret) *appsv1.Deployment {
+func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route) *appsv1.Deployment {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
@@ -152,6 +166,25 @@ func Stub() *appsv1.Deployment {
 		ObjectMeta: meta,
 	}
 	return dep
+}
+
+func LogDeploymentAnnotationChanges(client appsclientv1.DeploymentsGetter, updated *appsv1.Deployment) {
+	existing, err := client.Deployments(updated.Namespace).Get(updated.Name, metav1.GetOptions{})
+	if err != nil {
+		logrus.Printf("%v \n", err)
+		return
+	}
+
+	changed := false
+	for _, annot := range resourceAnnotations {
+		if existing.ObjectMeta.Annotations[annot] != updated.ObjectMeta.Annotations[annot] {
+			changed = true
+			logrus.Printf("deployment annotation[%v] has changed from: %v to %v \n", annot, existing.ObjectMeta.Annotations[annot], updated.ObjectMeta.Annotations[annot])
+		}
+	}
+	if changed {
+		logrus.Println("deployment resource versions have changed")
+	}
 }
 
 // deduplication, use the same volume config to generate Volumes, and VolumeMounts
@@ -274,8 +307,13 @@ func livenessProbe() *corev1.Probe {
 // for the purpose of availability, ready is when we have at least
 // one ready replica
 func IsReady(deployment *appsv1.Deployment) bool {
-	logrus.Printf("deployment is available: %v \n", deployment.Status.ReadyReplicas >= 1)
-	return deployment.Status.ReadyReplicas >= 1
+	avail := deployment.Status.ReadyReplicas >= 1
+	if avail {
+		logrus.Printf("deployment is available, ready replicas: %v \n", deployment.Status.ReadyReplicas)
+	} else {
+		fmt.Printf("deployment is not available, ready replicas: %v \n", deployment.Status.ReadyReplicas)
+	}
+	return avail
 }
 
 func IsAvailableAndUpdated(deployment *appsv1.Deployment) bool {

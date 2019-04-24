@@ -6,18 +6,15 @@ import (
 	"github.com/openshift/console-operator/pkg/testframework"
 )
 
-// TestUnmanaged sets console-operator to Unmanaged state. After that "openshift-console
-// deployment is deleted after which the deploymnet is tested for unavailability, to
-// check that it wasn't recreated byt the console operator. Other resources from the
-// 'openshift-console' namespace (ConfigMap, Router, Service) are tested for availability
-// since they have not been deleted.
+// TestUnmanaged() sets ManagementState:Unmanaged then deletes a set of console
+// resources and verifies that the operator does not recreate them.
 func TestUnmanaged(t *testing.T) {
 	client := testframework.MustNewClientset(t, nil)
 	defer testframework.MustManageConsole(t, client)
 	testframework.MustUnmanageConsole(t, client)
 	testframework.DeleteAll(t, client)
 
-	t.Logf("waiting to check if the operator has not recreate deleted resources...")
+	t.Logf("validating that the operator does not recreate deleted resources when ManagementState:Unmanaged...")
 	errChan := make(chan error)
 	go testframework.IsResourceUnavailable(errChan, client, "ConfigMap")
 	go testframework.IsResourceUnavailable(errChan, client, "Route")

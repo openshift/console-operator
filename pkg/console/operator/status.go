@@ -50,17 +50,28 @@ import (
 //
 
 const (
+	reasonAsExpected          = "AsExpected"
+	reasonWorkloadFailing     = "WorkloadFailing"
 	reasonUnmanaged           = "ManagementStateUnmanaged"
 	reasonRemoved             = "ManagementStateRemoved"
+	reasonInvalid             = "ManagementStateInvalid"
 	reasonSyncLoopProgressing = "SyncLoopProgressing"
 	reasonSyncError           = "SynchronizationError"
 	reasonNoPodsAvailable     = "NoPodsAvailable"
-	reasonAsExpected          = "AsExpected"
+	reasonSyncLoopError       = "SyncLoopError"
 )
+
+// TODO:
+// a single builder helper would be sufficiently easy to read and
+// reason about. Consider migrating to this structure as part of aggregating status
+// AddStatus(ConditionFail)
+//			.To(ConditionTrue)
+//			.Reason("FooBar")
+//			.Message("This truly broke FooBar"))
 
 // Lets transition to using this, and get the repetition out of all of the above.
 func (c *consoleOperator) SyncStatus(operatorConfig *operatorsv1.Console) (*operatorsv1.Console, error) {
-	logConditions(operatorConfig.Status.Conditions)
+	c.logConditions(operatorConfig.Status.Conditions)
 	updatedConfig, err := c.operatorConfigClient.UpdateStatus(operatorConfig)
 	if err != nil {
 		errMsg := fmt.Errorf("status update error: %v \n", err)
@@ -75,8 +86,9 @@ func (c *consoleOperator) SyncStatus(operatorConfig *operatorsv1.Console) (*oper
 //   Status.Condition.<Condition>: <Bool> (<Reason>)
 //   Status.Condition.<Condition>: <Bool> (<Reason>) <Message>
 //   Status.Condition.<Condition>: <Bool> <Message>
-func logConditions(conditions []operatorsv1.OperatorCondition) {
+func (c *consoleOperator) logConditions(conditions []operatorsv1.OperatorCondition) {
 	logrus.Println("Operator.Status.Conditions")
+
 	for _, condition := range conditions {
 		buf := bytes.Buffer{}
 		buf.WriteString(fmt.Sprintf("Status.Condition.%s: %s", condition.Type, condition.Status))
@@ -112,6 +124,67 @@ func (c *consoleOperator) SetStatusCondition(operatorConfig *operatorsv1.Console
 	return operatorConfig
 }
 
+func (c *consoleOperator) ConditionResourceSyncSuccess(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+		Type:               operatorsv1.OperatorStatusTypeFailing,
+		Status:             operatorsv1.ConditionFalse,
+		LastTransitionTime: metav1.Now(),
+	})
+
+	return operatorConfig
+}
+
+func (c *consoleOperator) ConditionDeploymentAvailable(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+		Type:               operatorsv1.OperatorStatusTypeAvailable,
+		Status:             operatorsv1.ConditionTrue,
+		LastTransitionTime: metav1.Now(),
+	})
+
+	return operatorConfig
+}
+
+func (c *consoleOperator) ConditionDeploymentNotAvailable(operatorConfig *operatorsv1.Console, message string) *operatorsv1.Console {
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+		Type:               operatorsv1.OperatorStatusTypeAvailable,
+		Status:             operatorsv1.ConditionFalse,
+		Reason:             reasonNoPodsAvailable,
+		Message:            message,
+		LastTransitionTime: metav1.Now(),
+	})
+
+	return operatorConfig
+}
+
+// ConditionResourceSyncProgressing()
+// When a sync loop aborts early:
+// - we dont know if the operand is available, so it is best not to set it.
+// - on install, an incomplete sync will mean the operator is unavailable.
+// - however, on a later sync when a change is encountered, this is not true.
+// - we do know that we encountered a component of the operand in an incorrect state
+// - we do know we are progressing because we are trying to change something about the operand
+func (c *consoleOperator) ConditionResourceSyncProgressing(operatorConfig *operatorsv1.Console, message string) *operatorsv1.Console {
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+		Type:               operatorsv1.OperatorStatusTypeProgressing,
+		Status:             operatorsv1.ConditionTrue,
+		Reason:             reasonSyncLoopProgressing,
+		Message:            message,
+		LastTransitionTime: metav1.Now(),
+	})
+
+	return operatorConfig
+}
+
+func (c *consoleOperator) ConditionResourceSyncNotProgressing(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+		Type:               operatorsv1.OperatorStatusTypeProgressing,
+		Status:             operatorsv1.ConditionFalse,
+		LastTransitionTime: metav1.Now(),
+	})
+
+	return operatorConfig
+}
+
 // examples:
 //   conditionFailing(operatorConfig, "SyncLoopError", "Sync loop failed to complete successfully")
 func (c *consoleOperator) ConditionDegraded(operatorConfig *operatorsv1.Console, conditionReason string, conditionMessage string) *operatorsv1.Console {
@@ -130,64 +203,19 @@ func (c *consoleOperator) ConditionNotDegraded(operatorConfig *operatorsv1.Conso
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
 		Type:               operatorsv1.OperatorStatusTypeDegraded,
 		Status:             operatorsv1.ConditionFalse,
+		Reason:             reasonAsExpected,
 		LastTransitionTime: metav1.Now(),
 	})
 
 	return operatorConfig
 }
 
-func (c *consoleOperator) ConditionProgressing(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeProgressing,
-		Status:             operatorsv1.ConditionTrue,
-		LastTransitionTime: metav1.Now(),
-	})
-
-	return operatorConfig
-}
-func (c *consoleOperator) ConditionNotProgressing(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeProgressing,
-		Status:             operatorsv1.ConditionFalse,
-		LastTransitionTime: metav1.Now(),
-	})
-
-	return operatorConfig
-}
-
-func (c *consoleOperator) ConditionAvailable(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeAvailable,
-		Status:             operatorsv1.ConditionTrue,
-		LastTransitionTime: metav1.Now(),
-	})
-
-	return operatorConfig
-}
-
-func (c *consoleOperator) ConditionNotAvailable(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeAvailable,
-		Status:             operatorsv1.ConditionFalse,
-		LastTransitionTime: metav1.Now(),
-	})
-
-	return operatorConfig
-}
-
-// When a sync failure happens,
-// we dont know if the operand is available
-// we do know we are progressing because we are trying to change something about the operand
-// we do know we failed to make the update
-func (c *consoleOperator) ConditionResourceSyncFailure(operatorConfig *operatorsv1.Console, message string) *operatorsv1.Console {
-	// message := "The operator failed to update a resource of the operand."
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeAvailable,
-		Status:             operatorsv1.ConditionUnknown,
-		Reason:             reasonSyncError,
-		Message:            message,
-		LastTransitionTime: metav1.Now(),
-	})
+// When a sync error happens,
+// - we don't know if the operand is Available, best to leave Available alone
+// - we do know we are Progressing because we are trying to change an operand resource
+// - we do know that we are likely Degraded as some resources may be mismatched until a
+//  successful loop completes.
+func (c *consoleOperator) ConditionResourceSyncDegraded(operatorConfig *operatorsv1.Console, message string) *operatorsv1.Console {
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
 		Type:               operatorsv1.OperatorStatusTypeProgressing,
 		Status:             operatorsv1.ConditionTrue,
@@ -200,60 +228,6 @@ func (c *consoleOperator) ConditionResourceSyncFailure(operatorConfig *operators
 		Status:             operatorsv1.ConditionTrue,
 		Message:            message,
 		Reason:             reasonSyncError,
-		LastTransitionTime: metav1.Now(),
-	})
-
-	return operatorConfig
-}
-
-func (c *consoleOperator) ConditionResourceSyncSuccess(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeDegraded,
-		Status:             operatorsv1.ConditionFalse,
-		LastTransitionTime: metav1.Now(),
-	})
-
-	return operatorConfig
-}
-
-func (c *consoleOperator) ConditionDeploymentAvailable(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeAvailable,
-		Status:             operatorsv1.ConditionTrue,
-		LastTransitionTime: metav1.Now(),
-	})
-
-	return operatorConfig
-}
-
-func (c *consoleOperator) ConditionDeploymentNotAvailable(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeAvailable,
-		Status:             operatorsv1.ConditionFalse,
-		Reason:             reasonNoPodsAvailable,
-		Message:            "No pods available for console deployment.",
-		LastTransitionTime: metav1.Now(),
-	})
-
-	return operatorConfig
-}
-
-func (c *consoleOperator) ConditionResourceSyncProgressing(operatorConfig *operatorsv1.Console, message string) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeProgressing,
-		Status:             operatorsv1.ConditionTrue,
-		Reason:             reasonSyncLoopProgressing,
-		Message:            message,
-		LastTransitionTime: metav1.Now(),
-	})
-
-	return operatorConfig
-}
-
-func (c *consoleOperator) ConditionResourceSyncNotProgressing(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeProgressing,
-		Status:             operatorsv1.ConditionFalse,
 		LastTransitionTime: metav1.Now(),
 	})
 
@@ -314,6 +288,36 @@ func (c *consoleOperator) ConditionsManagementStateRemoved(operatorConfig *opera
 		Status:             operatorsv1.ConditionFalse,
 		Reason:             reasonRemoved,
 		Message:            "The operator is in a removed state, therefore no operator actions are degraded.",
+		LastTransitionTime: metav1.Now(),
+	})
+
+	return operatorConfig
+}
+
+// If ManagementState is invalid,
+// We don't know if the operand is available bc we exit the sync loop w/o assessing resources
+// We aren't progressing because we exit the sync loop
+// We don't know if we are degraded because we exit the sync loop
+func (c *consoleOperator) ConditionsManagementStateInvalid(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+		Type:               operatorsv1.OperatorStatusTypeAvailable,
+		Status:             operatorsv1.ConditionUnknown,
+		Reason:             reasonInvalid,
+		Message:            "The operator management state is invalid",
+		LastTransitionTime: metav1.Now(),
+	})
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+		Type:               operatorsv1.OperatorStatusTypeProgressing,
+		Status:             operatorsv1.ConditionFalse,
+		Reason:             reasonInvalid,
+		Message:            "The operator management state is invalid",
+		LastTransitionTime: metav1.Now(),
+	})
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+		Type:               operatorsv1.OperatorStatusTypeDegraded,
+		Status:             operatorsv1.ConditionUnknown,
+		Reason:             reasonInvalid,
+		Message:            "The operator management state is invalid",
 		LastTransitionTime: metav1.Now(),
 	})
 

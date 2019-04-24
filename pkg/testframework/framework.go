@@ -137,11 +137,11 @@ func DeleteCompletely(getObject func() (runtime.Object, error), deleteObject fun
 	})
 }
 
-// IsResourceAvailable checks if tested resource is available(recreated by console-operator),
-// during 10 second period. If not error will be returned.
+// IsResourceAvailable checks if tested resource is available during a 30 second period.
+// if the resource does not exist by the end of the period, an error will be returned.
 func IsResourceAvailable(errChan chan error, client *Clientset, resource string) {
 	counter := 0
-	maxCount := 20
+	maxCount := 30
 	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
 		_, err = GetResource(client, resource)
 		if err == nil {
@@ -159,10 +159,11 @@ func IsResourceAvailable(errChan chan error, client *Clientset, resource string)
 	errChan <- err
 }
 
-// IsResourceUnavailable checks if tested resource is unavailable(not recreated by console-operator),
-// during 10 second period. If not error will be returned.
+// IsResourceUnavailable checks if tested resource is unavailable during a 15 second period.
+// If the resource exists during that time, an error will be returned.
 func IsResourceUnavailable(errChan chan error, client *Clientset, resource string) {
 	counter := 0
+	maxCount := 15
 	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
 		_, err = GetResource(client, resource)
 		if err == nil {
@@ -172,7 +173,7 @@ func IsResourceUnavailable(errChan chan error, client *Clientset, resource strin
 			return true, err
 		}
 		counter++
-		if counter == 10 {
+		if counter == maxCount {
 			return true, nil
 		}
 		return false, nil
