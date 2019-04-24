@@ -241,8 +241,9 @@ func (c *consoleOperator) deleteAllResources(cr *operatorsv1.Console) error {
 	errs = append(errs, c.serviceClient.Services(api.TargetNamespace).Delete(service.Stub().Name, &metav1.DeleteOptions{}))
 	// route
 	errs = append(errs, c.routeClient.Routes(api.TargetNamespace).Delete(route.Stub().Name, &metav1.DeleteOptions{}))
-	// configmap
+	// configmaps
 	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(configmap.Stub().Name, &metav1.DeleteOptions{}))
+	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(configmap.ServiceCAStub().Name, &metav1.DeleteOptions{}))
 	// secret
 	errs = append(errs, c.secretsClient.Secrets(api.TargetNamespace).Delete(secret.Stub().Name, &metav1.DeleteOptions{}))
 	// existingOAuthClient is not a delete, it is a deregister/neutralize
@@ -251,6 +252,7 @@ func (c *consoleOperator) deleteAllResources(cr *operatorsv1.Console) error {
 	_, updateAuthErr := c.oauthClient.OAuthClients().Update(oauthclient.DeRegisterConsoleFromOAuthClient(existingOAuthClient))
 	errs = append(errs, updateAuthErr)
 	// deployment
+	// NOTE: CVO controls the deployment for downloads, console-operator cannot delete it.
 	errs = append(errs, c.deploymentClient.Deployments(api.TargetNamespace).Delete(deployment.Stub().Name, &metav1.DeleteOptions{}))
 
 	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
