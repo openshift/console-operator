@@ -2,8 +2,12 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: openshift-console
+  annotations:
+    openshift.io/node-selector: ""
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
   name: openshift-console-operator
+  annotations:
+    openshift.io/node-selector: ""
