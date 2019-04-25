@@ -77,6 +77,11 @@ func ManageConsole(t *testing.T, client *Clientset) error {
 		return fmt.Errorf("unable to change console operator state to 'Managed': %s", err)
 	}
 
+	err = ConsoleResourcesAvailable(client)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	return nil
 }
 

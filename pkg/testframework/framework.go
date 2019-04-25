@@ -75,7 +75,9 @@ func GetConsoleRoute(client *Clientset) (*routev1.Route, error) {
 }
 
 func GetConsoleDeployment(client *Clientset) (*appv1.Deployment, error) {
-	return client.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleDeploymentName, metav1.GetOptions{})
+	deployment, err := client.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleDeploymentName, metav1.GetOptions{})
+	fmt.Printf("\nUID - %s\n", deployment.ObjectMeta.UID)
+	return deployment, err
 }
 
 func deleteResource(client *Clientset, resource string) error {
@@ -137,6 +139,17 @@ func DeleteCompletely(getObject func() (runtime.Object, error), deleteObject fun
 	})
 }
 
+func ConsoleResourcesAvailable(client *Clientset) error {
+	errChan := make(chan error)
+	go IsResourceAvailable(errChan, client, "ConfigMap")
+	go IsResourceAvailable(errChan, client, "Route")
+	go IsResourceAvailable(errChan, client, "Service")
+	go IsResourceAvailable(errChan, client, "Deployment")
+	checkErr := <-errChan
+
+	return checkErr
+}
+
 // IsResourceAvailable checks if tested resource is available during a 30 second period.
 // if the resource does not exist by the end of the period, an error will be returned.
 func IsResourceAvailable(errChan chan error, client *Clientset, resource string) {
@@ -157,6 +170,17 @@ func IsResourceAvailable(errChan chan error, client *Clientset, resource string)
 		return false, nil
 	})
 	errChan <- err
+}
+
+func ConsoleResourcesUnavailable(client *Clientset) error {
+	errChan := make(chan error)
+	go IsResourceUnavailable(errChan, client, "ConfigMap")
+	go IsResourceUnavailable(errChan, client, "Route")
+	go IsResourceUnavailable(errChan, client, "Service")
+	go IsResourceUnavailable(errChan, client, "Deployment")
+	checkErr := <-errChan
+
+	return checkErr
 }
 
 // IsResourceUnavailable checks if tested resource is unavailable during a 15 second period.

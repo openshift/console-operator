@@ -16,15 +16,9 @@ func TestManaged(t *testing.T) {
 
 	t.Logf("validating that the operator recreates resources when ManagementState:Managed...")
 
-	errChan := make(chan error)
-	go testframework.IsResourceAvailable(errChan, client, "ConfigMap")
-	go testframework.IsResourceAvailable(errChan, client, "Route")
-	go testframework.IsResourceAvailable(errChan, client, "Service")
-	go testframework.IsResourceAvailable(errChan, client, "Deployment")
-	checkErr := <-errChan
-
-	if checkErr != nil {
-		t.Fatal(checkErr)
+	err := testframework.ConsoleResourcesAvailable(client)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

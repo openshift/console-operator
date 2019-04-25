@@ -15,14 +15,8 @@ func TestRemoved(t *testing.T) {
 
 	t.Logf("validating that the operator does not recreate removed resources when ManagementState:Removed...")
 
-	errChan := make(chan error)
-	go testframework.IsResourceUnavailable(errChan, client, "ConfigMap")
-	go testframework.IsResourceUnavailable(errChan, client, "Route")
-	go testframework.IsResourceUnavailable(errChan, client, "Service")
-	go testframework.IsResourceUnavailable(errChan, client, "Deployment")
-	checkErr := <-errChan
-
-	if checkErr != nil {
-		t.Fatal(checkErr)
+	err := testframework.ConsoleResourcesUnavailable(client)
+	if err != nil {
+		t.Fatal(err)
 	}
 }

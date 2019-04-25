@@ -229,20 +229,24 @@ func consoleVolumeMounts(vc []volumeConfig) []corev1.VolumeMount {
 	return volMountList
 }
 
-type LogMapping map[operatorv1.LogLevel]string
-
-var LogMap = LogMapping{
-	operatorv1.Normal:   "--log-level=*=NOTICE",
-	operatorv1.Debug:    "--log-level=*=DEBUG",
-	operatorv1.Trace:    "--log-level=*=TRACE",
-	operatorv1.TraceAll: "--log-level=*=TRACE",
+func GetLogLevelFlag(logLevel operatorv1.LogLevel) string {
+	flag := ""
+	switch logLevel {
+	case operatorv1.Normal:
+		flag = "--log-level=*=NOTICE"
+	case operatorv1.Debug:
+		flag = "--log-level=*=DEBUG"
+	case operatorv1.Trace, operatorv1.TraceAll:
+		flag = "--log-level=*=TRACE"
+	}
+	return flag
 }
 
 func consoleContainer(cr *operatorv1.Console) corev1.Container {
 	volumeMounts := consoleVolumeMounts(volumeConfigList)
 	// Since the console-operator logging has different logging levels then the capnslog,
 	// that we use for console server(bridge) we need to map them to each other
-	flag := LogMap[cr.Spec.LogLevel]
+	flag := GetLogLevelFlag(cr.Spec.LogLevel)
 
 	return corev1.Container{
 		Image:           util.GetImageEnv(),
