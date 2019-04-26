@@ -15,15 +15,9 @@ func TestUnmanaged(t *testing.T) {
 	testframework.DeleteAll(t, client)
 
 	t.Logf("validating that the operator does not recreate deleted resources when ManagementState:Unmanaged...")
-	errChan := make(chan error)
-	go testframework.IsResourceUnavailable(errChan, client, "ConfigMap")
-	go testframework.IsResourceUnavailable(errChan, client, "Route")
-	go testframework.IsResourceUnavailable(errChan, client, "Service")
-	go testframework.IsResourceUnavailable(errChan, client, "Deployment")
-	checkErr := <-errChan
-
-	if checkErr != nil {
-		t.Fatalf("error: %s", checkErr)
+	err := testframework.ConsoleResourcesUnavailable(client)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
