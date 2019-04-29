@@ -76,7 +76,6 @@ func GetConsoleRoute(client *Clientset) (*routev1.Route, error) {
 
 func GetConsoleDeployment(client *Clientset) (*appv1.Deployment, error) {
 	deployment, err := client.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleDeploymentName, metav1.GetOptions{})
-	fmt.Printf("\nUID - %s\n", deployment.ObjectMeta.UID)
 	return deployment, err
 }
 
