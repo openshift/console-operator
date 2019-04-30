@@ -9,6 +9,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
@@ -19,7 +20,6 @@ import (
 )
 
 const (
-	ConsoleConfigMapName    = "console-config"
 	consoleConfigYamlFile   = "console-config.yaml"
 	clientSecretFilePath    = "/var/oauth-config/clientSecret"
 	oauthEndpointCAFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
@@ -104,9 +104,31 @@ func DefaultConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv
 	return configMap, didMerge, nil
 }
 
+func DefaultPublicConfig(consoleURL string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      api.OpenShiftConsolePublicConfigMapName,
+			Namespace: api.OpenShiftConfigManagedNamespace,
+		},
+		Data: map[string]string{
+			"consoleURL": consoleURL,
+		},
+	}
+}
+
+func EmptyPublicConfig() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      api.OpenShiftConsolePublicConfigMapName,
+			Namespace: api.OpenShiftConfigManagedNamespace,
+		},
+		Data: map[string]string{},
+	}
+}
+
 func Stub() *corev1.ConfigMap {
 	meta := util.SharedMeta()
-	meta.Name = ConsoleConfigMapName
+	meta.Name = api.OpenShiftConsoleConfigMapName
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: meta,
 	}

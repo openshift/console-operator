@@ -12,7 +12,6 @@ import (
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	v1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
@@ -267,11 +266,11 @@ func Test_consoleVolumes(t *testing.T) {
 					},
 				},
 				{
-					Name: configmap.ConsoleConfigMapName,
+					Name: api.OpenShiftConsoleConfigMapName,
 					VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
 							LocalObjectReference: corev1.LocalObjectReference{
-								Name: configmap.ConsoleConfigMapName,
+								Name: api.OpenShiftConsoleConfigMapName,
 							},
 							Items:       nil,
 							DefaultMode: nil,
@@ -280,11 +279,11 @@ func Test_consoleVolumes(t *testing.T) {
 					},
 				},
 				{
-					Name: configmap.ServiceCAConfigMapName,
+					Name: api.ServiceCAConfigMapName,
 					VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
 							LocalObjectReference: corev1.LocalObjectReference{
-								Name: configmap.ServiceCAConfigMapName,
+								Name: api.ServiceCAConfigMapName,
 							},
 							Items:       nil,
 							DefaultMode: nil,
@@ -329,12 +328,12 @@ func Test_consoleVolumeMounts(t *testing.T) {
 					MountPath: "/var/oauth-config",
 				},
 				{
-					Name:      configmap.ConsoleConfigMapName,
+					Name:      api.OpenShiftConsoleConfigMapName,
 					ReadOnly:  true,
 					MountPath: "/var/console-config",
 				},
 				{
-					Name:      configmap.ServiceCAConfigMapName,
+					Name:      api.ServiceCAConfigMapName,
 					ReadOnly:  true,
 					MountPath: "/var/service-ca",
 				},

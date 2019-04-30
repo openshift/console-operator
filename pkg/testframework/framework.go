@@ -50,6 +50,8 @@ func GetResource(client *Clientset, resource string) (runtime.Object, error) {
 	switch resource {
 	case "ConfigMap":
 		res, err = GetConsoleConfigMap(client)
+	case "ConfigMapPublic":
+		res, err = GetPublicConsoleConfigMap(client)
 	case "Service":
 		res, err = GetConsoleService(client)
 	case "Route":
@@ -64,6 +66,10 @@ func GetResource(client *Clientset, resource string) (runtime.Object, error) {
 
 func GetConsoleConfigMap(client *Clientset) (*corev1.ConfigMap, error) {
 	return client.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
+}
+
+func GetPublicConsoleConfigMap(client *Clientset) (*corev1.ConfigMap, error) {
+	return client.ConfigMaps(consoleapi.OpenShiftConfigManagedNamespace).Get(consoleapi.OpenShiftConsolePublicConfigMapName, metav1.GetOptions{})
 }
 
 func GetConsoleService(client *Clientset) (*corev1.Service, error) {
@@ -141,6 +147,7 @@ func DeleteCompletely(getObject func() (runtime.Object, error), deleteObject fun
 func ConsoleResourcesAvailable(client *Clientset) error {
 	errChan := make(chan error)
 	go IsResourceAvailable(errChan, client, "ConfigMap")
+	go IsResourceAvailable(errChan, client, "ConfigMapPublic")
 	go IsResourceAvailable(errChan, client, "Route")
 	go IsResourceAvailable(errChan, client, "Service")
 	go IsResourceAvailable(errChan, client, "Deployment")

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: console-public
+  namespace: openshift-config-managed
+  annotations:
+    "release.openshift.io/create-only": "true"
