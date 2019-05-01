@@ -45,6 +45,7 @@ var (
 		secretResourceVersionAnnotation,
 		consoleImageAnnotation,
 	}
+	tolerationSeconds = int64(120)
 )
 
 type volumeConfig struct {
@@ -96,6 +97,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	meta.Annotations[consoleImageAnnotation] = util.GetImageEnv()
 	replicas := int32(ConsoleReplicas)
 	gracePeriod := int64(30)
+	tolerationSeconds := int64(120)
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: meta,
@@ -141,6 +143,18 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 							Key:      "node-role.kubernetes.io/master",
 							Operator: corev1.TolerationOpExists,
 							Effect:   corev1.TaintEffectNoSchedule,
+						},
+						{
+							Key:               "node.kubernetes.io/unreachable",
+							Operator:          corev1.TolerationOpExists,
+							Effect:            corev1.TaintEffectNoExecute,
+							TolerationSeconds: &tolerationSeconds,
+						},
+						{
+							Key:               "node.kubernetes.io/not-reachable",
+							Operator:          corev1.TolerationOpExists,
+							Effect:            corev1.TaintEffectNoExecute,
+							TolerationSeconds: &tolerationSeconds,
 						},
 					},
 					PriorityClassName:             "system-cluster-critical",
