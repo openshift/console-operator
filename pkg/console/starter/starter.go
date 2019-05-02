@@ -86,7 +86,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	kubeInformersManagedNamespaced := informers.NewSharedInformerFactoryWithOptions(
 		kubeClient,
 		resync,
-		informers.WithNamespace(api.OpenshiftConfigManagedNamespace),
+		informers.WithNamespace(api.OpenShiftConfigManagedNamespace),
 	)
 	// configs are all named "cluster", but our clusteroperator is named "console"
 	configInformers := configinformers.NewSharedInformerFactoryWithOptions(
@@ -156,6 +156,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 			{Group: oauth.GroupName, Resource: "oauthclients", Name: api.OAuthClientName},
 			{Group: corev1.GroupName, Resource: "namespaces", Name: api.OpenShiftConsoleOperatorNamespace},
 			{Group: corev1.GroupName, Resource: "namespaces", Name: api.OpenShiftConsoleNamespace},
+			{Group: corev1.GroupName, Resource: "configmaps", Name: api.OpenShiftConsolePublicConfigMapName, Namespace: api.OpenShiftConfigManagedNamespace},
 		},
 		// clusteroperator client
 		configClient.ConfigV1(),

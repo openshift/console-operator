@@ -18,10 +18,11 @@ import (
 )
 
 const (
-	host          = "localhost"
-	mockAPIServer = "https://api.some.cluster.openshift.com:6443"
-	configKey     = "console-config.yaml"
-	exampleYaml   = `kind: ConsoleConfig
+	host           = "localhost"
+	mockAPIServer  = "https://api.some.cluster.openshift.com:6443"
+	mockConsoleURL = "https://console-openshift-console.apps.some.cluster.openshift.com"
+	configKey      = "console-config.yaml"
+	exampleYaml    = `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
 auth:
   clientID: console
@@ -112,7 +113,7 @@ func TestDefaultConfigMap(t *testing.T) {
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        ConsoleConfigMapName,
+					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
@@ -162,7 +163,7 @@ func TestDefaultConfigMap(t *testing.T) {
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        ConsoleConfigMapName,
+					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
@@ -225,7 +226,7 @@ func TestStub(t *testing.T) {
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:                       ConsoleConfigMapName,
+					Name:                       api.OpenShiftConsoleConfigMapName,
 					GenerateName:               "",
 					Namespace:                  api.OpenShiftConsoleNamespace,
 					SelfLink:                   "",
@@ -250,6 +251,46 @@ func TestStub(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if diff := deep.Equal(Stub(), tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestDefaultPublicConfigMap(t *testing.T) {
+	tests := []struct {
+		name string
+		want *corev1.ConfigMap
+	}{
+		{
+			name: "Test generating default public configmap with console URL",
+			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:                       api.OpenShiftConsolePublicConfigMapName,
+					GenerateName:               "",
+					Namespace:                  api.OpenShiftConfigManagedNamespace,
+					SelfLink:                   "",
+					UID:                        "",
+					ResourceVersion:            "",
+					Generation:                 0,
+					CreationTimestamp:          metav1.Time{},
+					DeletionTimestamp:          nil,
+					DeletionGracePeriodSeconds: nil,
+					Labels:          nil,
+					Annotations:     nil,
+					OwnerReferences: nil,
+					Initializers:    nil,
+					Finalizers:      nil,
+					ClusterName:     "",
+				},
+				Data: map[string]string{"consoleURL": mockConsoleURL},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if diff := deep.Equal(DefaultPublicConfig(mockConsoleURL), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})

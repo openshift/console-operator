@@ -32,7 +32,7 @@ func TestDefaultServiceCAConfigMap(t *testing.T) {
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:                       ServiceCAConfigMapName,
+					Name:                       api.ServiceCAConfigMapName,
 					Namespace:                  api.OpenShiftConsoleNamespace,
 					Generation:                 0,
 					CreationTimestamp:          metav1.Time{},
@@ -66,7 +66,7 @@ func TestServiceCAStub(t *testing.T) {
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:                       ServiceCAConfigMapName,
+					Name:                       api.ServiceCAConfigMapName,
 					Namespace:                  api.OpenShiftConsoleNamespace,
 					Generation:                 0,
 					CreationTimestamp:          metav1.Time{},

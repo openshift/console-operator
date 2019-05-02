@@ -17,7 +17,6 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
@@ -70,13 +69,13 @@ var volumeConfigList = []volumeConfig{
 		isSecret: true,
 	},
 	{
-		name:        configmap.ConsoleConfigMapName,
+		name:        api.OpenShiftConsoleConfigMapName,
 		readOnly:    true,
 		path:        "/var/console-config",
 		isConfigMap: true,
 	},
 	{
-		name:        configmap.ServiceCAConfigMapName,
+		name:        api.ServiceCAConfigMapName,
 		readOnly:    true,
 		path:        "/var/service-ca",
 		isConfigMap: true,

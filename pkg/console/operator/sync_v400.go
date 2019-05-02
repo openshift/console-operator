@@ -162,8 +162,20 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 	// if we survive the gauntlet, we need to update the console config with the
 	// public hostname so that the world can know the console is ready to roll
 	logrus.Println("sync_v400: updating console status")
-	if _, err := SyncConsoleConfig(co, consoleConfig, rt); err != nil {
+	consoleURL := getConsoleURL(rt)
+	if consoleURL == "" {
+		err := customerrors.NewSyncError("waiting on route host")
+		logrus.Errorf("%q: %v \n", "route", err)
+		return err
+	}
+
+	if _, err := SyncConsoleConfig(co, consoleConfig, consoleURL); err != nil {
 		logrus.Errorf("could not update console config status: %v \n", err)
+		return err
+	}
+
+	if _, _, err := SyncConsolePublicConfig(co, recorder, consoleURL); err != nil {
+		logrus.Errorf("could not update public console config: %v \n", err)
 		return err
 	}
 
@@ -195,19 +207,25 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 	return nil
 }
 
-func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, route *routev1.Route) (*configv1.Console, error) {
+func getConsoleURL(route *routev1.Route) string {
 	host := routesub.GetCanonicalHost(route)
 	if host == "" {
-		customErr := customerrors.NewSyncError("waiting on route host")
-		logrus.Errorf("%q: %v \n", "route", customErr)
-		return nil, customErr
+		return ""
 	}
-	httpsHost := util.HTTPS(host)
-	if consoleConfig.Status.ConsoleURL != httpsHost {
-		logrus.Printf("updating console.config.openshift.io with hostname: %v \n", host)
-		consoleConfig.Status.ConsoleURL = httpsHost
+	return util.HTTPS(host)
+}
+
+func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, consoleURL string) (*configv1.Console, error) {
+	if consoleConfig.Status.ConsoleURL != consoleURL {
+		logrus.Printf("updating console.config.openshift.io with url: %v \n", consoleURL)
+		consoleConfig.Status.ConsoleURL = consoleURL
 	}
 	return co.consoleConfigClient.UpdateStatus(consoleConfig)
+}
+
+func SyncConsolePublicConfig(co *consoleOperator, recorder events.Recorder, consoleURL string) (*corev1.ConfigMap, bool, error) {
+	requiredConfigMap := configmapsub.DefaultPublicConfig(consoleURL)
+	return resourceapply.ApplyConfigMap(co.configMapClient, recorder, requiredConfigMap)
 }
 
 func SyncDeployment(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route) (*appsv1.Deployment, bool, error) {
@@ -277,7 +295,7 @@ func SyncSecret(co *consoleOperator, recorder events.Recorder, operatorConfig *o
 // by the time we get to the configmap, we can assume the route exits & is configured properly
 // therefore no additional error handling is needed here.
 func SyncConfigMap(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
-	managedConfig, mcErr := co.configMapClient.ConfigMaps(api.OpenshiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
+	managedConfig, mcErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 	if mcErr != nil && !apierrors.IsNotFound(mcErr) {
 		logrus.Errorf("managed config error: %v \n", mcErr)
 		return nil, false, mcErr

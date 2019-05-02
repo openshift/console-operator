@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/boilerplate/operator"
 	"github.com/openshift/library-go/pkg/operator/events"
+	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/status"
 
 	// informers
@@ -132,8 +133,8 @@ func NewConsoleOperator(
 		operator.WithInformer(serviceInformer, targetNameFilter),
 		operator.WithInformer(oauthClients, targetNameFilter),
 		// special resources with unique names
-		operator.WithInformer(configMapInformer, operator.FilterByNames(configmap.ConsoleConfigMapName, configmap.ServiceCAConfigMapName)),
-		operator.WithInformer(managedConfigMapInformer, operator.FilterByNames(configmap.ConsoleConfigMapName)),
+		operator.WithInformer(configMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName)),
+		operator.WithInformer(managedConfigMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName)),
 		operator.WithInformer(secretsInformer, operator.FilterByNames(deployment.ConsoleOauthConfigName)),
 	)
 }
@@ -203,7 +204,7 @@ func (c *consoleOperator) handleSync(operatorConfig *operatorsv1.Console, consol
 		if !reflect.DeepEqual(operatorConfigCopy, operatorConfig) {
 			c.SyncStatus(operatorConfigCopy)
 		}
-		return c.deleteAllResources(operatorConfigCopy)
+		return c.removeConsole(operatorConfigCopy)
 	default:
 		c.ConditionsManagementStateInvalid(operatorConfigCopy)
 		if !reflect.DeepEqual(operatorConfigCopy, operatorConfig) {
@@ -233,7 +234,7 @@ func (c *consoleOperator) handleSync(operatorConfig *operatorsv1.Console, consol
 }
 
 // this may need to move to sync_v400 if versions ever have custom delete logic
-func (c *consoleOperator) deleteAllResources(cr *operatorsv1.Console) error {
+func (c *consoleOperator) removeConsole(cr *operatorsv1.Console) error {
 	logrus.Info("deleting console resources")
 	defer logrus.Info("finished deleting console resources")
 	var errs []error
@@ -254,6 +255,9 @@ func (c *consoleOperator) deleteAllResources(cr *operatorsv1.Console) error {
 	// deployment
 	// NOTE: CVO controls the deployment for downloads, console-operator cannot delete it.
 	errs = append(errs, c.deploymentClient.Deployments(api.TargetNamespace).Delete(deployment.Stub().Name, &metav1.DeleteOptions{}))
+	// clear the console URL from the public config map in openshift-config-managed
+	_, _, updateConfigErr := resourceapply.ApplyConfigMap(c.configMapClient, c.recorder, configmap.EmptyPublicConfig())
+	errs = append(errs, updateConfigErr)
 
 	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
 }
