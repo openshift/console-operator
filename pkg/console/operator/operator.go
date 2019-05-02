@@ -249,8 +249,10 @@ func (c *consoleOperator) deleteAllResources(cr *operatorsv1.Console) error {
 	// existingOAuthClient is not a delete, it is a deregister/neutralize
 	existingOAuthClient, getAuthErr := c.oauthClient.OAuthClients().Get(oauthclient.Stub().Name, metav1.GetOptions{})
 	errs = append(errs, getAuthErr)
-	_, updateAuthErr := c.oauthClient.OAuthClients().Update(oauthclient.DeRegisterConsoleFromOAuthClient(existingOAuthClient))
-	errs = append(errs, updateAuthErr)
+	if len(existingOAuthClient.RedirectURIs) != 0 {
+		_, updateAuthErr := c.oauthClient.OAuthClients().Update(oauthclient.DeRegisterConsoleFromOAuthClient(existingOAuthClient))
+		errs = append(errs, updateAuthErr)
+	}
 	// deployment
 	// NOTE: CVO controls the deployment for downloads, console-operator cannot delete it.
 	errs = append(errs, c.deploymentClient.Deployments(api.TargetNamespace).Delete(deployment.Stub().Name, &metav1.DeleteOptions{}))
