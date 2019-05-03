@@ -16,8 +16,12 @@ spec:
         app: console
         component: downloads
     spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
       tolerations:
-      - operator: Exists
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
       containers:
       - name: download-server
         terminationMessagePolicy: FallbackToLogsOnError
