@@ -151,6 +151,18 @@ func TestDefaultDeployment(t *testing.T) {
 									Operator: corev1.TolerationOpExists,
 									Effect:   corev1.TaintEffectNoSchedule,
 								},
+								{
+									Key:               "node.kubernetes.io/unreachable",
+									Operator:          corev1.TolerationOpExists,
+									Effect:            corev1.TaintEffectNoExecute,
+									TolerationSeconds: &tolerationSeconds,
+								},
+								{
+									Key:               "node.kubernetes.io/not-reachable",
+									Operator:          corev1.TolerationOpExists,
+									Effect:            corev1.TaintEffectNoExecute,
+									TolerationSeconds: &tolerationSeconds,
+								},
 							},
 							PriorityClassName:             "system-cluster-critical",
 							RestartPolicy:                 corev1.RestartPolicyAlways,
