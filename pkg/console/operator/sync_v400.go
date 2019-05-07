@@ -6,8 +6,6 @@ import (
 	"os"
 	"strings"
 
-	// 3rd party
-	"github.com/sirupsen/logrus"
 	// kube
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -15,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
@@ -42,7 +41,7 @@ import (
 // This ensures the logic is simpler as we do not have to handle coordination between objects within
 // the loop.
 func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure) error {
-	logrus.Println("running sync loop 4.0.0")
+	klog.V(4).Infoln("running sync loop 4.0.0")
 	recorder := co.recorder
 
 	// track changes, may trigger ripples & update operator config or console config status
@@ -50,8 +49,8 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 
 	rt, rtChanged, rtErr := SyncRoute(co, operatorConfig)
 	if rtErr != nil {
-		msg := fmt.Sprintf("%v: %s\n", "route", rtErr)
-		logrus.Printf("incomplete sync: %v \n", msg)
+		msg := fmt.Sprintf("%v: %s", "route", rtErr)
+		klog.V(4).Infof("incomplete sync: %v", msg)
 		co.ConditionResourceSyncProgressing(operatorConfig, msg)
 		return rtErr
 	}
@@ -59,8 +58,8 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 
 	svc, svcChanged, svcErr := SyncService(co, recorder, operatorConfig)
 	if svcErr != nil {
-		msg := fmt.Sprintf("%q: %v\n", "service", svcErr)
-		logrus.Printf("incomplete sync: %v \n", msg)
+		msg := fmt.Sprintf("%q: %v", "service", svcErr)
+		klog.V(4).Infof("incomplete sync: %v", msg)
 		co.ConditionResourceSyncProgressing(operatorConfig, msg)
 		return svcErr
 	}
@@ -68,8 +67,8 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 
 	cm, cmChanged, cmErr := SyncConfigMap(co, recorder, operatorConfig, consoleConfig, infrastructureConfig, rt)
 	if cmErr != nil {
-		msg := fmt.Sprintf("%q: %v\n", "configmap", cmErr)
-		logrus.Printf("incomplete sync: %v \n", msg)
+		msg := fmt.Sprintf("%q: %v", "configmap", cmErr)
+		klog.V(4).Infof("incomplete sync: %v", msg)
 		co.ConditionResourceSyncProgressing(operatorConfig, msg)
 		return cmErr
 	}
@@ -77,8 +76,8 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 
 	serviceCAConfigMap, serviceCAConfigMapChanged, serviceCAConfigMapErr := SyncServiceCAConfigMap(co, operatorConfig)
 	if serviceCAConfigMapErr != nil {
-		msg := fmt.Sprintf("%q: %v\n", "serviceCAconfigmap", serviceCAConfigMapErr)
-		logrus.Printf("incomplete sync: %v \n", msg)
+		msg := fmt.Sprintf("%q: %v", "serviceCAconfigmap", serviceCAConfigMapErr)
+		klog.V(4).Infof("incomplete sync: %v", msg)
 		co.ConditionResourceSyncProgressing(operatorConfig, msg)
 		return serviceCAConfigMapErr
 	}
@@ -86,8 +85,8 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 
 	sec, secChanged, secErr := SyncSecret(co, recorder, operatorConfig)
 	if secErr != nil {
-		msg := fmt.Sprintf("%q: %v\n", "secret", secErr)
-		logrus.Printf("incomplete sync: %v \n", msg)
+		msg := fmt.Sprintf("%q: %v", "secret", secErr)
+		klog.V(4).Infof("incomplete sync: %v", msg)
 		co.ConditionResourceSyncProgressing(operatorConfig, msg)
 		return secErr
 	}
@@ -95,8 +94,8 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 
 	oauthClient, oauthChanged, oauthErr := SyncOAuthClient(co, operatorConfig, sec, rt)
 	if oauthErr != nil {
-		msg := fmt.Sprintf("%q: %v\n", "oauth", oauthErr)
-		logrus.Printf("incomplete sync: %v \n", msg)
+		msg := fmt.Sprintf("%q: %v", "oauth", oauthErr)
+		klog.V(4).Infof("incomplete sync: %v", msg)
 		co.ConditionResourceSyncProgressing(operatorConfig, msg)
 		return oauthErr
 	}
@@ -104,8 +103,8 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 
 	actualDeployment, depChanged, depErr := SyncDeployment(co, recorder, operatorConfig, cm, serviceCAConfigMap, sec, rt)
 	if depErr != nil {
-		msg := fmt.Sprintf("%q: %v\n", "deployment", depErr)
-		logrus.Printf("incomplete sync: %v \n", msg)
+		msg := fmt.Sprintf("%q: %v", "deployment", depErr)
+		klog.V(4).Infof("incomplete sync: %v", msg)
 		co.ConditionResourceSyncProgressing(operatorConfig, msg)
 		return depErr
 	}
@@ -114,9 +113,9 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 	resourcemerge.SetDeploymentGeneration(&operatorConfig.Status.Generations, actualDeployment)
 	operatorConfig.Status.ObservedGeneration = operatorConfig.ObjectMeta.Generation
 
-	logrus.Println("-----------------------")
-	logrus.Printf("sync loop 4.0.0 resources updated: %v \n", toUpdate)
-	logrus.Println("-----------------------")
+	klog.V(4).Infoln("-----------------------")
+	klog.V(4).Infof("sync loop 4.0.0 resources updated: %v", toUpdate)
+	klog.V(4).Infoln("-----------------------")
 
 	// if we made it this far, the operator is not failing
 	// but we will handle the state of the operand below
@@ -144,10 +143,10 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 	// available is currently defined as "met the users intent"
 	if !deploymentsub.IsReady(actualDeployment) {
 		msg := fmt.Sprintf("%v pods available for console deployment", actualDeployment.Status.ReadyReplicas)
-		logrus.Println(msg)
+		klog.V(4).Infoln(msg)
 		co.ConditionDeploymentNotAvailable(operatorConfig, msg)
 	} else if !routesub.IsAdmitted(rt) {
-		logrus.Println("console route is not admitted")
+		klog.V(4).Infoln("console route is not admitted")
 		co.SetStatusCondition(
 			operatorConfig,
 			operatorv1.OperatorStatusTypeAvailable,
@@ -161,46 +160,46 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 
 	// if we survive the gauntlet, we need to update the console config with the
 	// public hostname so that the world can know the console is ready to roll
-	logrus.Println("sync_v400: updating console status")
+	klog.V(4).Infoln("sync_v400: updating console status")
 	consoleURL := getConsoleURL(rt)
 	if consoleURL == "" {
 		err := customerrors.NewSyncError("waiting on route host")
-		logrus.Errorf("%q: %v \n", "route", err)
+		klog.Errorf("%q: %v", "route", err)
 		return err
 	}
 
 	if _, err := SyncConsoleConfig(co, consoleConfig, consoleURL); err != nil {
-		logrus.Errorf("could not update console config status: %v \n", err)
+		klog.Errorf("could not update console config status: %v", err)
 		return err
 	}
 
 	if _, _, err := SyncConsolePublicConfig(co, recorder, consoleURL); err != nil {
-		logrus.Errorf("could not update public console config: %v \n", err)
+		klog.Errorf("could not update public console config status: %v", err)
 		return err
 	}
 
 	defer func() {
-		logrus.Printf("sync loop 4.0.0 complete")
+		klog.V(4).Infof("sync loop 4.0.0 complete")
 		if svcChanged {
-			logrus.Printf("\t service changed: %v", svc.GetResourceVersion())
+			klog.V(4).Infof("\t service changed: %v", svc.GetResourceVersion())
 		}
 		if rtChanged {
-			logrus.Printf("\t route changed: %v", rt.GetResourceVersion())
+			klog.V(4).Infof("\t route changed: %v", rt.GetResourceVersion())
 		}
 		if cmChanged {
-			logrus.Printf("\t configmap changed: %v", cm.GetResourceVersion())
+			klog.V(4).Infof("\t configmap changed: %v", cm.GetResourceVersion())
 		}
 		if serviceCAConfigMapChanged {
-			logrus.Printf("\t service-ca configmap changed: %v", serviceCAConfigMap.GetResourceVersion())
+			klog.V(4).Infof("\t service-ca configmap changed: %v", serviceCAConfigMap.GetResourceVersion())
 		}
 		if secChanged {
-			logrus.Printf("\t secret changed: %v", sec.GetResourceVersion())
+			klog.V(4).Infof("\t secret changed: %v", sec.GetResourceVersion())
 		}
 		if oauthChanged {
-			logrus.Printf("\t oauth changed: %v", oauthClient.GetResourceVersion())
+			klog.V(4).Infof("\t oauth changed: %v", oauthClient.GetResourceVersion())
 		}
 		if depChanged {
-			logrus.Printf("\t deployment changed: %v", actualDeployment.GetResourceVersion())
+			klog.V(4).Infof("\t deployment changed: %v", actualDeployment.GetResourceVersion())
 		}
 	}()
 
@@ -217,7 +216,7 @@ func getConsoleURL(route *routev1.Route) string {
 
 func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, consoleURL string) (*configv1.Console, error) {
 	if consoleConfig.Status.ConsoleURL != consoleURL {
-		logrus.Printf("updating console.config.openshift.io with url: %v \n", consoleURL)
+		klog.V(4).Infof("updating console.config.openshift.io with url: %v", consoleURL)
 		consoleConfig.Status.ConsoleURL = consoleURL
 	}
 	return co.consoleConfigClient.UpdateStatus(consoleConfig)
@@ -234,7 +233,7 @@ func SyncDeployment(co *consoleOperator, recorder events.Recorder, operatorConfi
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
 	if genChanged {
-		logrus.Printf("deployment generation changed from %d to %d \n", operatorConfig.ObjectMeta.Generation, operatorConfig.Status.ObservedGeneration)
+		klog.V(4).Infof("deployment generation changed from %d to %d", operatorConfig.ObjectMeta.Generation, operatorConfig.Status.ObservedGeneration)
 	}
 	deploymentsub.LogDeploymentAnnotationChanges(co.deploymentClient, requiredDeployment)
 
@@ -248,7 +247,7 @@ func SyncDeployment(co *consoleOperator, recorder events.Recorder, operatorConfi
 	)
 
 	if applyDepErr != nil {
-		logrus.Errorf("%q: %v \n", "deployment", applyDepErr)
+		klog.Errorf("%q: %v", "deployment", applyDepErr)
 		return nil, false, applyDepErr
 	}
 	return deployment, deploymentChanged, nil
@@ -260,19 +259,19 @@ func SyncOAuthClient(co *consoleOperator, operatorConfig *operatorv1.Console, se
 	host := routesub.GetCanonicalHost(rt)
 	if host == "" {
 		customErr := customerrors.NewSyncError("waiting on route host")
-		logrus.Errorf("%q: %v \n", "oauth", customErr)
+		klog.Errorf("%q: %v", "oauth", customErr)
 		return nil, false, customErr
 	}
 	oauthClient, err := co.oauthClient.OAuthClients().Get(oauthsub.Stub().Name, metav1.GetOptions{})
 	if err != nil {
-		logrus.Errorf("%q: %v \n", "oauth", err)
+		klog.Errorf("%q: %v", "oauth", err)
 		// at this point we must die & wait for someone to fix the lack of an outhclient. there is nothing we can do.
 		return nil, false, errors.New("oauth client for console does not exist and cannot be created")
 	}
 	oauthsub.RegisterConsoleToOAuthClient(oauthClient, host, secretsub.GetSecretString(sec))
 	oauthClient, oauthChanged, oauthErr := oauthsub.CustomApplyOAuth(co.oauthClient, oauthClient)
 	if oauthErr != nil {
-		logrus.Errorf("%q: %v \n", "oauth", oauthErr)
+		klog.Errorf("%q: %v", "oauth", oauthErr)
 		return nil, false, oauthErr
 	}
 	return oauthClient, oauthChanged, nil
@@ -285,7 +284,7 @@ func SyncSecret(co *consoleOperator, recorder events.Recorder, operatorConfig *o
 	}
 	// any error should be returned & kill the sync loop
 	if err != nil {
-		logrus.Errorf("%q: %v \n", "secret", err)
+		klog.Errorf("%q: %v", "secret", err)
 		return nil, false, err
 	}
 	return secret, false, nil
@@ -297,7 +296,7 @@ func SyncSecret(co *consoleOperator, recorder events.Recorder, operatorConfig *o
 func SyncConfigMap(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
 	managedConfig, mcErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 	if mcErr != nil && !apierrors.IsNotFound(mcErr) {
-		logrus.Errorf("managed config error: %v \n", mcErr)
+		klog.Errorf("managed config error: %v", mcErr)
 		return nil, false, mcErr
 	}
 
@@ -307,12 +306,12 @@ func SyncConfigMap(co *consoleOperator, recorder events.Recorder, operatorConfig
 	}
 	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, recorder, defaultConfigmap)
 	if cmErr != nil {
-		logrus.Errorf("%q: %v \n", "configmap", cmErr)
+		klog.Errorf("%q: %v", "configmap", cmErr)
 		return nil, false, cmErr
 	}
 	if cmChanged {
-		logrus.Println("new console config yaml:")
-		logrus.Printf("%s \n", cm.Data)
+		klog.V(4).Infoln("new console config yaml:")
+		klog.V(4).Infof("%s", cm.Data)
 	}
 	return cm, cmChanged, cmErr
 }
@@ -325,29 +324,29 @@ func SyncServiceCAConfigMap(co *consoleOperator, operatorConfig *operatorv1.Cons
 	if apierrors.IsNotFound(err) {
 		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(required)
 		if err == nil {
-			logrus.Println("service-ca configmap created")
+			klog.V(4).Infoln("service-ca configmap created")
 		} else {
-			logrus.Errorf("%q: %v \n", "service-ca configmap", err)
+			klog.Errorf("%q: %v", "service-ca configmap", err)
 		}
 		return actual, true, err
 	}
 	if err != nil {
-		logrus.Errorf("%q: %v \n", "service-ca configmap", err)
+		klog.Errorf("%q: %v", "service-ca configmap", err)
 		return nil, false, err
 	}
 
 	modified := resourcemerge.BoolPtr(false)
 	resourcemerge.EnsureObjectMeta(modified, &existing.ObjectMeta, required.ObjectMeta)
 	if !*modified {
-		logrus.Println("service-ca configmap exists and is in the correct state")
+		klog.V(4).Infoln("service-ca configmap exists and is in the correct state")
 		return existing, false, nil
 	}
 
 	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(existing)
 	if err == nil {
-		logrus.Println("service-ca configmap updated")
+		klog.V(4).Infoln("service-ca configmap updated")
 	} else {
-		logrus.Errorf("%q: %v \n", "service-ca configmap", err)
+		klog.Errorf("%q: %v", "service-ca configmap", err)
 	}
 	return actual, true, err
 }
@@ -357,7 +356,7 @@ func SyncServiceCAConfigMap(co *consoleOperator, operatorConfig *operatorv1.Cons
 func SyncService(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console) (*corev1.Service, bool, error) {
 	svc, svcChanged, svcErr := resourceapply.ApplyService(co.serviceClient, recorder, servicesub.DefaultService(operatorConfig))
 	if svcErr != nil {
-		logrus.Errorf("%q: %v \n", "service", svcErr)
+		klog.Errorf("%q: %v", "service", svcErr)
 		return nil, false, svcErr
 	}
 	return svc, svcChanged, svcErr
@@ -372,7 +371,7 @@ func SyncRoute(co *consoleOperator, operatorConfig *operatorv1.Console) (*routev
 	// ensure we have a route. any error returned is a non-404 error
 	rt, rtIsNew, rtErr := routesub.GetOrCreate(co.routeClient, routesub.DefaultRoute(operatorConfig))
 	if rtErr != nil {
-		logrus.Errorf("%q: %v \n", "route", rtErr)
+		klog.Errorf("%q: %v", "route", rtErr)
 		return nil, false, rtErr
 	}
 
@@ -381,7 +380,7 @@ func SyncRoute(co *consoleOperator, operatorConfig *operatorv1.Console) (*routev
 	host := routesub.GetCanonicalHost(rt)
 	if host == "" {
 		customErr := customerrors.NewSyncError("waiting on route host")
-		logrus.Errorf("%q: %v \n", "route", customErr)
+		klog.Errorf("%q: %v", "route", customErr)
 		return nil, false, customErr
 	}
 
@@ -389,12 +388,12 @@ func SyncRoute(co *consoleOperator, operatorConfig *operatorv1.Console) (*routev
 		// if validation changed the route, issue an update
 		if _, err := co.routeClient.Routes(api.TargetNamespace).Update(validatedRoute); err != nil {
 			// error is unexpected, this is a real error
-			logrus.Errorf("%q: %v \n", "route", err)
+			klog.Errorf("%q: %v", "route", err)
 			return nil, false, err
 		}
 		// abort sync, route changed, let it settle & retry
 		customErr := customerrors.NewSyncError("route is invalid, correcting route state")
-		logrus.Error(customErr)
+		klog.Error(customErr)
 		return nil, true, customErr
 	}
 	// only return the route if it is valid with a host

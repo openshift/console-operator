@@ -1,14 +1,13 @@
 package route
 
 import (
-	"github.com/sirupsen/logrus"
-
 	// kube
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/klog"
 
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -124,18 +123,18 @@ func wildcard() routev1.WildcardPolicyType {
 func GetCanonicalHost(route *routev1.Route) string {
 	for _, ingress := range route.Status.Ingress {
 		if ingress.RouterName != defaultIngressController {
-			logrus.Printf("ignoring route ingress '%v'", ingress.RouterName)
+			klog.V(4).Infof("ignoring route ingress '%v'", ingress.RouterName)
 			continue
 		}
 		// ingress must be admitted before it is useful to us
 		if !isIngressAdmitted(ingress) {
-			logrus.Printf("route ingress '%v' not admitted", ingress.RouterName)
+			klog.V(4).Infof("route ingress '%v' not admitted", ingress.RouterName)
 			continue
 		}
-		logrus.Printf("route ingress '%v' found and admitted, host: %v \n", defaultIngressController, ingress.Host)
+		klog.V(4).Infof("route ingress '%v' found and admitted, host: %v", defaultIngressController, ingress.Host)
 		return ingress.Host
 	}
-	logrus.Printf("route ingress not yet ready for console")
+	klog.V(4).Infoln("route ingress not yet ready for console")
 	return ""
 }
 

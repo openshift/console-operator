@@ -5,14 +5,13 @@ import (
 	"os"
 	"strings"
 
-	operatorv1 "github.com/openshift/api/operator/v1"
-
-	"github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog"
 
+	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 )
 
@@ -54,9 +53,10 @@ func LogYaml(obj runtime.Object) {
 	// deployJSON, err := json.Marshal(d)
 	objYaml, err := yaml.Marshal(obj)
 	if err != nil {
-		logrus.Info("failed to show yaml in log")
+		klog.V(4).Infoln("failed to show yaml in log")
+	} else {
+		klog.V(4).Infof("%v", string(objYaml))
 	}
-	logrus.Infof("%v", string(objYaml))
 }
 
 // objects can have more than one ownerRef, potentially
@@ -97,7 +97,7 @@ func GetImageEnv() string {
 func HTTPS(host string) string {
 	protocol := "https://"
 	if host == "" {
-		logrus.Infof("util.HTTPS() cannot accept an empty string.")
+		klog.V(4).Infoln("util.HTTPS() cannot accept an empty string.")
 		return ""
 	}
 	if strings.HasPrefix(host, protocol) {

@@ -1,9 +1,6 @@
 package deployment
 
 import (
-	"fmt"
-
-	"github.com/sirupsen/logrus"
 
 	// kube
 	appsv1 "k8s.io/api/apps/v1"
@@ -12,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	appsclientv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	"k8s.io/klog"
 
 	// openshift
 	operatorv1 "github.com/openshift/api/operator/v1"
@@ -184,7 +182,7 @@ func Stub() *appsv1.Deployment {
 func LogDeploymentAnnotationChanges(client appsclientv1.DeploymentsGetter, updated *appsv1.Deployment) {
 	existing, err := client.Deployments(updated.Namespace).Get(updated.Name, metav1.GetOptions{})
 	if err != nil {
-		logrus.Printf("%v \n", err)
+		klog.V(4).Infof("%v", err)
 		return
 	}
 
@@ -192,11 +190,11 @@ func LogDeploymentAnnotationChanges(client appsclientv1.DeploymentsGetter, updat
 	for _, annot := range resourceAnnotations {
 		if existing.ObjectMeta.Annotations[annot] != updated.ObjectMeta.Annotations[annot] {
 			changed = true
-			logrus.Printf("deployment annotation[%v] has changed from: %v to %v \n", annot, existing.ObjectMeta.Annotations[annot], updated.ObjectMeta.Annotations[annot])
+			klog.V(4).Infof("deployment annotation[%v] has changed from: %v to %v", annot, existing.ObjectMeta.Annotations[annot], updated.ObjectMeta.Annotations[annot])
 		}
 	}
 	if changed {
-		logrus.Println("deployment resource versions have changed")
+		klog.V(4).Infoln("deployment resource versions have changed")
 	}
 }
 
@@ -322,9 +320,9 @@ func livenessProbe() *corev1.Probe {
 func IsReady(deployment *appsv1.Deployment) bool {
 	avail := deployment.Status.ReadyReplicas >= 1
 	if avail {
-		logrus.Printf("deployment is available, ready replicas: %v \n", deployment.Status.ReadyReplicas)
+		klog.V(4).Infof("deployment is available, ready replicas: %v", deployment.Status.ReadyReplicas)
 	} else {
-		fmt.Printf("deployment is not available, ready replicas: %v \n", deployment.Status.ReadyReplicas)
+		klog.V(4).Infof("deployment is not available, ready replicas: %v", deployment.Status.ReadyReplicas)
 	}
 	return avail
 }
