@@ -6,12 +6,17 @@ import (
 	"github.com/openshift/console-operator/pkg/testframework"
 )
 
+func setupUnmanagedTestCase(t *testing.T) *testframework.Clientset {
+	client := testframework.MustNewClientset(t, nil)
+	testframework.MustUnmanageConsole(t, client)
+	return client
+}
+
 // TestUnmanaged() sets ManagementState:Unmanaged then deletes a set of console
 // resources and verifies that the operator does not recreate them.
 func TestUnmanaged(t *testing.T) {
-	client := testframework.MustNewClientset(t, nil)
+	client := setupUnmanagedTestCase(t)
 	defer testframework.MustManageConsole(t, client)
-	testframework.MustUnmanageConsole(t, client)
 	testframework.DeleteAll(t, client)
 
 	t.Logf("validating that the operator does not recreate deleted resources when ManagementState:Unmanaged...")
@@ -22,9 +27,8 @@ func TestUnmanaged(t *testing.T) {
 }
 
 func TestEditUnmanagedConfigMap(t *testing.T) {
-	client := testframework.MustNewClientset(t, nil)
+	client := setupUnmanagedTestCase(t)
 	defer testframework.MustManageConsole(t, client)
-	testframework.MustUnmanageConsole(t, client)
 
 	err := patchAndCheckConfigMap(t, client, false)
 	if err != nil {
@@ -33,9 +37,8 @@ func TestEditUnmanagedConfigMap(t *testing.T) {
 }
 
 func TestEditUnmanagedService(t *testing.T) {
-	client := testframework.MustNewClientset(t, nil)
+	client := setupUnmanagedTestCase(t)
 	defer testframework.MustManageConsole(t, client)
-	testframework.MustUnmanageConsole(t, client)
 
 	err := patchAndCheckService(t, client, false)
 	if err != nil {
@@ -44,9 +47,8 @@ func TestEditUnmanagedService(t *testing.T) {
 }
 
 func TestEditUnmanagedRoute(t *testing.T) {
-	client := testframework.MustNewClientset(t, nil)
+	client := setupUnmanagedTestCase(t)
 	defer testframework.MustManageConsole(t, client)
-	testframework.MustUnmanageConsole(t, client)
 
 	err := patchAndCheckRoute(t, client, false)
 	if err != nil {

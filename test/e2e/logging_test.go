@@ -8,7 +8,7 @@ import (
 	"github.com/openshift/console-operator/pkg/testframework"
 )
 
-func setupTestCase(t *testing.T) *testframework.Clientset {
+func setupLoggingTestCase(t *testing.T) *testframework.Clientset {
 	client := testframework.MustNewClientset(t, nil)
 	testframework.MustManageConsole(t, client)
 	testframework.MustNormalLogLevel(t, client)
@@ -18,7 +18,7 @@ func setupTestCase(t *testing.T) *testframework.Clientset {
 // TestDebugLogLevel sets 'Debug' LogLevel on the console operator and tests
 // if '--log-level=*=DEBUG' flag is set on the console deployment
 func TestDebugLogLevel(t *testing.T) {
-	client := setupTestCase(t)
+	client := setupLoggingTestCase(t)
 	defer testframework.SetLogLevel(t, client, operatorsv1.Normal)
 
 	err := testframework.SetLogLevel(t, client, operatorsv1.Debug)
@@ -39,7 +39,7 @@ func TestDebugLogLevel(t *testing.T) {
 // TestTraceLogLevel sets 'Trace' LogLevel on the console operator and tests
 // if '--log-level=*=TRACE' flag is set on the console deployment
 func TestTraceLogLevel(t *testing.T) {
-	client := setupTestCase(t)
+	client := setupLoggingTestCase(t)
 	defer testframework.SetLogLevel(t, client, operatorsv1.Normal)
 
 	err := testframework.SetLogLevel(t, client, operatorsv1.Trace)
@@ -60,7 +60,7 @@ func TestTraceLogLevel(t *testing.T) {
 // TestTraceLogLevel sets 'TraceAll' LogLevel on the console operator and tests
 // if '--log-level=*=TRACE' flag is set on the console deployment
 func TestTraceAllLogLevel(t *testing.T) {
-	client := setupTestCase(t)
+	client := setupLoggingTestCase(t)
 	defer testframework.SetLogLevel(t, client, operatorsv1.Normal)
 
 	err := testframework.SetLogLevel(t, client, operatorsv1.TraceAll)
