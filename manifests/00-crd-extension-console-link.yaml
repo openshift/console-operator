@@ -1,0 +1,61 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: consolelinks.console.openshift.io
+  annotations:
+    displayName: ConsoleLinks
+    description: Extension for customizing OpenShift web console links
+spec:
+  # TODO:
+  # this relates to where the API resources live in openshift/api
+  # likely under /config/console, which might make it something like:
+  # extensions.console.config.openshift.io?
+  group: console.openshift.io
+  version: v1
+  versions:
+  - name: v1
+    served: true
+    storage: true
+  scope: Cluster
+  names:
+    plural: consolelinks
+    singular: consolelink
+    kind: ConsoleLink
+    listKind: ConsoleLinkList
+  additionalPrinterColumns:
+  - name: Text
+    type: string
+    JSONPath: .spec.text
+  - name: URL
+    type: string
+    JSONPath: .spec.href
+  - name: Menu
+    type: string
+    JSONPath: .spec.menu
+  - name: Age
+    type: date
+    JSONPath: .metadata.creationTimestamp
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          type: object
+          description: Represents console link customizations spec
+          required:
+          - text
+          - href
+          - menu
+          properties:
+            text:
+              type: string
+              description: Text of the link
+            href:
+              type: string
+              description: URL for the link
+              pattern: '^http(s)?://([\w-]+.)+[\w-]+(/[\w- ./?%&=])?$'
+            menu:
+              type: string
+              description: Determines which dropdown menu the link is added to (help, user)
+              pattern: '\bhelp\b|\buser\b'
