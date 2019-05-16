@@ -38,6 +38,10 @@ spec:
           name: http
           protocol: TCP
         command: ["/bin/sh"]
+        resources:
+          requests:
+            cpu: 10m
+            memory: 50Mi
         args:
         - '-c'
         - |
