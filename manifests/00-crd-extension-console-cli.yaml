@@ -6,10 +6,6 @@ metadata:
     displayName: ConsoleCLIDownload
     description: Extension for configuring openshift web console command line interface (CLI) downloads.
 spec:
-  # TODO:
-  # this relates to where the API resources live in openshift/api
-  # likely under /config/console, which might make it something like:
-  # extensions.console.config.openshift.io?
   group: console.openshift.io
   version: v1
   versions:
