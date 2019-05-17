@@ -34,8 +34,6 @@ type ConsoleServerCLIConfigBuilder struct {
 	docURL            string
 	apiServerURL      string
 	statusPageID      string
-	// TODO: pipe these in when they are added via the future custom branding PR
-	// This should be trivial
 	customProductName string
 	customLogoFile    string
 }
@@ -58,6 +56,16 @@ func (b *ConsoleServerCLIConfigBuilder) DocURL(docURL string) *ConsoleServerCLIC
 }
 func (b *ConsoleServerCLIConfigBuilder) APIServerURL(apiServerURL string) *ConsoleServerCLIConfigBuilder {
 	b.apiServerURL = apiServerURL
+	return b
+}
+func (b *ConsoleServerCLIConfigBuilder) CustomProductName(customProductName string) *ConsoleServerCLIConfigBuilder {
+	b.customProductName = customProductName
+	return b
+}
+func (b *ConsoleServerCLIConfigBuilder) CustomLogoFile(customLogoFile string) *ConsoleServerCLIConfigBuilder {
+	if customLogoFile != "" {
+		b.customLogoFile = "/var/logo/" + customLogoFile // append path here to prevent customLogoFile from always being just /var/logo/
+	}
 	return b
 }
 
@@ -129,6 +137,12 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 	}
 	if len(b.docURL) > 0 {
 		conf.DocumentationBaseURL = b.docURL
+	}
+	if len(b.customProductName) > 0 {
+		conf.CustomProductName = string(b.customProductName)
+	}
+	if len(b.customLogoFile) > 0 {
+		conf.CustomLogoFile = b.customLogoFile
 	}
 	return conf
 

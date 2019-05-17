@@ -198,7 +198,77 @@ providers: {}
 `,
 				},
 			},
-		}, {
+		},
+		{
+			name: "Test operator config with Custom Branding Values",
+			args: args{
+				operatorConfig: &operatorv1.Console{
+					Spec: operatorv1.ConsoleSpec{
+						OperatorSpec: operatorv1.OperatorSpec{},
+						Customization: operatorv1.ConsoleCustomization{
+							Brand:                operatorv1.BrandDedicated,
+							DocumentationBaseURL: mockOperatorDocURL,
+							CustomProductName:    "custom-product-name",
+							CustomLogoFile: configv1.ConfigMapFileReference{
+								Name: "custom-logo-file",
+								Key:  "logo.svg",
+							},
+						},
+					},
+					Status: operatorv1.ConsoleStatus{},
+				},
+				consoleConfig: &configv1.Console{},
+				managedConfig: &corev1.ConfigMap{
+					Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+customization:
+  branding: online
+  documentationBaseURL: https://docs.okd.io/4.1/
+`,
+					},
+				},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL: mockAPIServer,
+					},
+				},
+				rt: &routev1.Route{
+					Spec: routev1.RouteSpec{
+						Host: host,
+					},
+				},
+			},
+			want: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+customization:
+  branding: ` + string(operatorv1.BrandDedicated) + `
+  documentationBaseURL: ` + mockOperatorDocURL + `
+  customLogoFile: /var/logo/logo.svg
+  customProductName: custom-product-name
+servingInfo:
+  bindAddress: https://0.0.0.0:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: {}
+`,
+				},
+			},
+		},
+		{
 			name: "Test operator config with Statuspage pageID",
 			args: args{
 				operatorConfig: &operatorv1.Console{

@@ -54,33 +54,6 @@ type volumeConfig struct {
 	isConfigMap bool
 }
 
-var volumeConfigList = []volumeConfig{
-	{
-		name:     ConsoleServingCertName,
-		readOnly: true,
-		path:     "/var/serving-cert",
-		isSecret: true,
-	},
-	{
-		name:     ConsoleOauthConfigName,
-		readOnly: true,
-		path:     "/var/oauth-config",
-		isSecret: true,
-	},
-	{
-		name:        api.OpenShiftConsoleConfigMapName,
-		readOnly:    true,
-		path:        "/var/console-config",
-		isConfigMap: true,
-	},
-	{
-		name:        api.ServiceCAConfigMapName,
-		readOnly:    true,
-		path:        "/var/service-ca",
-		isConfigMap: true,
-	},
-}
-
 func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route) *appsv1.Deployment {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
@@ -95,6 +68,10 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	replicas := int32(ConsoleReplicas)
 	gracePeriod := int64(30)
 	tolerationSeconds := int64(120)
+	volumeConfig := defaultVolumeConfig()
+	if hasCustomLogo(operatorConfig) {
+		volumeConfig = append(volumeConfig, customLogoVolume(operatorConfig))
+	}
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: meta,
@@ -160,9 +137,9 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 					TerminationGracePeriodSeconds: &gracePeriod,
 					SecurityContext:               &corev1.PodSecurityContext{},
 					Containers: []corev1.Container{
-						consoleContainer(operatorConfig),
+						consoleContainer(operatorConfig, volumeConfig),
 					},
-					Volumes: consoleVolumes(volumeConfigList),
+					Volumes: consoleVolumes(volumeConfig),
 				},
 			},
 		},
@@ -253,8 +230,8 @@ func GetLogLevelFlag(logLevel operatorv1.LogLevel) string {
 	return flag
 }
 
-func consoleContainer(cr *operatorv1.Console) corev1.Container {
-	volumeMounts := consoleVolumeMounts(volumeConfigList)
+func consoleContainer(cr *operatorv1.Console, volConfigList []volumeConfig) corev1.Container {
+	volumeMounts := consoleVolumeMounts(volConfigList)
 	// Since the console-operator logging has different logging levels then the capnslog,
 	// that we use for console server(bridge) we need to map them to each other
 	flag := GetLogLevelFlag(cr.Spec.LogLevel)
@@ -331,4 +308,47 @@ func IsAvailableAndUpdated(deployment *appsv1.Deployment) bool {
 	return deployment.Status.AvailableReplicas > 0 &&
 		deployment.Status.ObservedGeneration >= deployment.Generation &&
 		deployment.Status.UpdatedReplicas == deployment.Status.Replicas
+}
+
+func defaultVolumeConfig() []volumeConfig {
+	return []volumeConfig{
+		{
+			name:     ConsoleServingCertName,
+			readOnly: true,
+			path:     "/var/serving-cert",
+			isSecret: true,
+		},
+		{
+			name:     ConsoleOauthConfigName,
+			readOnly: true,
+			path:     "/var/oauth-config",
+			isSecret: true,
+		},
+		{
+			name:        api.OpenShiftConsoleConfigMapName,
+			readOnly:    true,
+			path:        "/var/console-config",
+			isConfigMap: true,
+		},
+		{
+			name:        api.ServiceCAConfigMapName,
+			readOnly:    true,
+			path:        "/var/service-ca",
+			isConfigMap: true,
+		},
+	}
+}
+
+func hasCustomLogo(operatorConfig *operatorv1.Console) bool {
+	if logoName := operatorConfig.Spec.Customization.CustomLogoFile.Name; logoName != "" {
+		return true
+	}
+	return false
+}
+
+func customLogoVolume(operatorConfig *operatorv1.Console) volumeConfig {
+	return volumeConfig{
+		name:        api.OpenShiftCustomLogoConfigMap,
+		path:        "/var/logo/",
+		isConfigMap: true}
 }

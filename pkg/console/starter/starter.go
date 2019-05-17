@@ -2,9 +2,6 @@ package starter
 
 import (
 	"fmt"
-
-	"github.com/openshift/api/oauth"
-
 	"os"
 	"time"
 
@@ -17,12 +14,15 @@ import (
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
+	"github.com/openshift/api/oauth"
 	operatorv1 "github.com/openshift/api/operator"
 	"github.com/openshift/console-operator/pkg/api"
-	operatorclient "github.com/openshift/console-operator/pkg/console/operatorclient"
+	"github.com/openshift/console-operator/pkg/console/operatorclient"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
+	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/status"
 	"github.com/openshift/library-go/pkg/operator/unsupportedconfigoverridescontroller"
+	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	// clients
 	configclient "github.com/openshift/client-go/config/clientset/versioned"
@@ -37,6 +37,7 @@ import (
 	routesclient "github.com/openshift/client-go/route/clientset/versioned"
 	routesinformers "github.com/openshift/client-go/route/informers/externalversions"
 
+	"github.com/openshift/console-operator/pkg/console/clientwrapper"
 	"github.com/openshift/console-operator/pkg/console/operator"
 )
 
@@ -88,7 +89,8 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		resync,
 		informers.WithNamespace(api.OpenShiftConfigManagedNamespace),
 	)
-	// configs are all named "cluster", but our clusteroperator is named "console"
+
+	//configs are all named "cluster", but our clusteroperator is named "console"
 	configInformers := configinformers.NewSharedInformerFactoryWithOptions(
 		configClient,
 		resync,
@@ -122,6 +124,8 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 
 	versionGetter := status.NewVersionGetter()
 
+	resourceSyncerInformers, resourceSyncer := getResourceSyncer(ctx, clientwrapper.WithoutSecret(kubeClient), operatorClient)
+
 	// TODO: rearrange these into informer,client pairs, NOT separated.
 	consoleOperator := operator.NewConsoleOperator(
 		// informers
@@ -142,6 +146,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		oauthClient.OauthV1(),
 		versionGetter,
 		recorder,
+		resourceSyncer,
 	)
 
 	versionRecorder := status.NewVersionGetter()
@@ -175,6 +180,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	}{
 		kubeInformersNamespaced,
 		kubeInformersManagedNamespaced,
+		resourceSyncerInformers,
 		operatorConfigInformers,
 		configInformers,
 		routesInformersNamespaced,
@@ -184,9 +190,26 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	}
 
 	go consoleOperator.Run(ctx.Done())
+	go resourceSyncer.Run(1, ctx.Done())
 	go clusterOperatorStatus.Run(1, ctx.Done())
 	go configUpgradeableController.Run(1, ctx.Done())
 
 	<-ctx.Done()
 	return fmt.Errorf("stopped")
+}
+
+func getResourceSyncer(ctx *controllercmd.ControllerContext, kubeClient kubernetes.Interface, operatorClient v1helpers.OperatorClient) (v1helpers.KubeInformersForNamespaces, *resourcesynccontroller.ResourceSyncController) {
+	resourceSyncerInformers := v1helpers.NewKubeInformersForNamespaces(
+		kubeClient,
+		api.OpenShiftConfigNamespace,
+		api.OpenShiftConsoleNamespace,
+	)
+	resourceSyncer := resourcesynccontroller.NewResourceSyncController(
+		operatorClient,
+		resourceSyncerInformers,
+		v1helpers.CachedSecretGetter(kubeClient.CoreV1(), resourceSyncerInformers),
+		v1helpers.CachedConfigMapGetter(kubeClient.CoreV1(), resourceSyncerInformers),
+		ctx.EventRecorder,
+	)
+	return resourceSyncerInformers, resourceSyncer
 }
