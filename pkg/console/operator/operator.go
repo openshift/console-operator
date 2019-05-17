@@ -25,6 +25,7 @@ import (
 
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
+	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/status"
 
 	"monis.app/go/openshift/operator"
@@ -68,7 +69,8 @@ type consoleOperator struct {
 	infrastructureConfigClient configclientv1.InfrastructureInterface
 	versionGetter              status.VersionGetter
 	// recorder
-	recorder events.Recorder
+	recorder       events.Recorder
+	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
 
 func NewConsoleOperator(
@@ -92,6 +94,7 @@ func NewConsoleOperator(
 	versionGetter status.VersionGetter,
 	// recorder
 	recorder events.Recorder,
+	resourceSyncer resourcesynccontroller.ResourceSyncer,
 ) operator.Runner {
 	c := &consoleOperator{
 		// configs
@@ -109,7 +112,8 @@ func NewConsoleOperator(
 		oauthClient:   oauthv1Client,
 		versionGetter: versionGetter,
 		// recorder
-		recorder: recorder,
+		recorder:       recorder,
+		resourceSyncer: resourceSyncer,
 	}
 
 	secretsInformer := coreV1.Secrets()
@@ -132,7 +136,7 @@ func NewConsoleOperator(
 		operator.WithInformer(serviceInformer, targetNameFilter),
 		operator.WithInformer(oauthClients, targetNameFilter),
 		// special resources with unique names
-		operator.WithInformer(configMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName)),
+		operator.WithInformer(configMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName, api.OpenShiftCustomLogoConfigMap)),
 		operator.WithInformer(managedConfigMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName)),
 		operator.WithInformer(secretsInformer, operator.FilterByNames(deployment.ConsoleOauthConfigName)),
 	)
@@ -262,4 +266,46 @@ func (c *consoleOperator) removeConsole(cr *operatorsv1.Console) error {
 	errs = append(errs, updateConfigErr)
 
 	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
+}
+
+// TODO: SyncCustomLogoConfigMap
+// - when a sync loop is triggered, we need to check the operator config
+//   - if there is a custom logo defined in the operator config
+//     we need to update the resourceSyncer & ensure it knows to sync this (new?) logo configmap
+//   - sync as:
+//   	- source can be any <any-name> in openshift-config
+//      - destination must to be "custom-logo" in openshift-console
+func (c *consoleOperator) SyncCustomLogoConfigMap(operatorConfig *operatorsv1.Console) error {
+	// TODO: review this
+	c.CheckCustomLogoImageStatus(operatorConfig)
+	// TODO: if no name, then null it out via the sync
+	logoName := operatorConfig.Spec.Customization.CustomLogoFile.Name
+	if logoName != "" {
+		return c.resourceSyncer.SyncConfigMap(
+			resourcesynccontroller.ResourceLocation{Namespace: api.OpenShiftConsoleNamespace, Name: api.OpenShiftCustomLogoConfigMap},
+			resourcesynccontroller.ResourceLocation{Namespace: api.OpenShiftConfigNamespace, Name: logoName},
+		)
+	}
+	return nil
+}
+
+// TODO: visit this and see what we need to do to get it in the correct state
+// - we should not need to bury a call to c.SetStatusCondition down in here...
+func (c *consoleOperator) CheckCustomLogoImageStatus(operatorConfig *operatorsv1.Console) {
+	logo := operatorConfig.Spec.Customization.CustomLogoFile
+	if logo.Name != "" && logo.Key != "" {
+		//Check that configmap for custom logo exists
+		logoConfigMap, err := c.configMapClient.ConfigMaps(api.OpenShiftConfigNamespace).Get(logo.Name, metav1.GetOptions{})
+		if err != nil {
+			// Set Operator Status to CustomLogoInvalid
+			c.SetStatusCondition(operatorConfig, operatorsv1.OperatorStatusTypeDegraded, operatorsv1.ConditionTrue, reasonCustomLogoInvalid, "custom logo config map does not exist or has error")
+			klog.Errorf("customLogo configmap not valid, %v", err)
+		} else {
+			if logoConfigMap.BinaryData[logo.Key] == nil {
+				//Key does not exist so activate status condition
+				c.SetStatusCondition(operatorConfig, operatorsv1.OperatorStatusTypeDegraded, operatorsv1.ConditionTrue, reasonCustomLogoInvalid, "custom logo file does not exist ")
+				klog.Errorf("customLogo key is null")
+			}
+		}
+	}
 }

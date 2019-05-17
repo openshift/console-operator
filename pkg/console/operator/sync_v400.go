@@ -107,6 +107,15 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	}
 	toUpdate = toUpdate || depChanged
 
+	// TODO: verify this
+	sErr := co.SyncCustomLogoConfigMap(updatedOperatorConfig)
+	if sErr != nil {
+		msg := fmt.Sprintf("%q: %v", "customLogoSync", sErr)
+		klog.V(4).Infof("incomplete sync: %v", msg)
+		co.ConditionResourceSyncProgressing(updatedOperatorConfig, msg)
+		return sErr
+	}
+
 	resourcemerge.SetDeploymentGeneration(&updatedOperatorConfig.Status.Generations, actualDeployment)
 	updatedOperatorConfig.Status.ObservedGeneration = set.Operator.ObjectMeta.Generation
 

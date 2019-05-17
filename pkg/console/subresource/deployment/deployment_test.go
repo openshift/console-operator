@@ -170,9 +170,9 @@ func TestDefaultDeployment(t *testing.T) {
 							TerminationGracePeriodSeconds: &gracePeriod,
 							SecurityContext:               &corev1.PodSecurityContext{},
 							Containers: []corev1.Container{
-								consoleContainer(consoleOperatorConfig),
+								consoleContainer(consoleOperatorConfig, defaultVolumeConfig()),
 							},
-							Volumes: consoleVolumes(volumeConfigList),
+							Volumes: consoleVolumes(defaultVolumeConfig()),
 						},
 					},
 					Strategy:                appsv1.DeploymentStrategy{},
@@ -252,7 +252,7 @@ func Test_consoleVolumes(t *testing.T) {
 		{
 			name: "Test console volumes creation",
 			args: args{
-				vc: volumeConfigList,
+				vc: defaultVolumeConfig(),
 			},
 			want: []corev1.Volume{
 				{
@@ -326,7 +326,7 @@ func Test_consoleVolumeMounts(t *testing.T) {
 	}{
 		{name: "Test console volumes Mounts",
 			args: args{
-				vc: volumeConfigList,
+				vc: defaultVolumeConfig(),
 			},
 			want: []corev1.VolumeMount{
 				{

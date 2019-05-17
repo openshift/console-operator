@@ -58,6 +58,7 @@ const (
 	reasonSyncError           = "SynchronizationError"
 	reasonNoPodsAvailable     = "NoPodsAvailable"
 	reasonSyncLoopError       = "SyncLoopError"
+	reasonCustomLogoInvalid   = "CustomLogoInvalid"
 )
 
 // TODO:

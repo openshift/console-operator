@@ -17,11 +17,7 @@ import (
 
 const (
 	consoleConfigYamlFile = "console-config.yaml"
-)
-
-// overridden by console config
-const (
-	defaultLogoutURL = ""
+	defaultLogoutURL      = ""
 )
 
 func getApiUrl(infrastructureConfig *configv1.Infrastructure) string {
@@ -54,13 +50,14 @@ func DefaultConfigMap(
 		ConfigYAML()
 
 	extractedManagedConfig := extractYAML(managedConfig)
-
 	userDefinedBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
 	userDefinedConfig, err := userDefinedBuilder.Host(rt.Spec.Host).
 		LogoutURL(consoleConfig.Spec.Authentication.LogoutRedirect).
 		Brand(operatorConfig.Spec.Customization.Brand).
 		DocURL(operatorConfig.Spec.Customization.DocumentationBaseURL).
 		APIServerURL(getApiUrl(infrastructureConfig)).
+		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
+		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).
 		StatusPageID(statusPageId(operatorConfig)).
 		ConfigYAML()
 
