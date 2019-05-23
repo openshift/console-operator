@@ -1,18 +1,17 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: consolenotificationbanners.console.openshift.io
+  name: consolenotifications.console.openshift.io
   annotations:
     displayName: ConsoleNotification
     description: Extension for configuring openshift web console notifications.
 spec:
+  scope: Cluster
   group: console.openshift.io
-  version: v1
   versions:
   - name: v1
     served: true
     storage: true
-  scope: Cluster
   names:
     plural: consolenotifications
     singular: consolenotification
@@ -22,6 +21,9 @@ spec:
   - name: Text
     type: string
     JSONPath: .spec.text
+  - name: Location
+    type: string
+    JSONPath: .spec.location
   - name: Age
     type: date
     JSONPath: .metadata.creationTimestamp
@@ -35,31 +37,32 @@ spec:
           description: Represents console notification spec
           required:
           - text
-          - position
+          - location
           properties:
             text:
               type: string
               description: Text of the notification
-            position:
+            location:
               type: string
-              description: The location of the notification (top, bottom, topBottom)
-              pattern: '\btop\b|\bbottom\b|\btopBottom\b'
+              description: The location of the notification (BannerTop, BannerBottom, BannerTopBottom)
+              pattern: '^(BannerTop|BannerBottom|BannerTopBottom)$'
             link:
               type: object
               description: Object that holds notification link details
               required:
               - href
+              - text
               properties:
                 text:
                   type: string
                   description: Text of the link
                 href:
                   type: string
-                  description: Absolute URL for the link
-                  pattern: '^http(s)?://([\w-]+.)+[\w-]+(/[\w- ./?%&=])?$'
+                  description: Absolute secure URL for the link (must use https)
+                  pattern: '^https://([\w-]+.)+[\w-]+(/[\w- ./?%&=])?$'
             backgroundColor:
               type: string
-              description: The background color for the notification
+              description:  The background color for the notification as CSS data type color
             color:
               type: string
-              description: The color of the text for the notification
+              description:  The color of the text for the notification as CSS data type color

@@ -6,13 +6,12 @@ metadata:
     displayName: ConsoleCLIDownload
     description: Extension for configuring openshift web console command line interface (CLI) downloads.
 spec:
+  scope: Cluster
   group: console.openshift.io
-  version: v1
   versions:
   - name: v1
     served: true
     storage: true
-  scope: Cluster
   names:
     plural: consoleclidownloads
     singular: consoleclidownload
@@ -39,7 +38,7 @@ spec:
           required:
           - displayName
           - description
-          - link
+          - links
           properties:
             displayName:
               type: string
@@ -47,16 +46,20 @@ spec:
             description:
               type: string
               description: Description of the CLI download (can include markdown)
-            link:
-              type: object
-              description: Object that holds CLI download link details
-              required:
-              - href
-              properties:
-                text:
-                  type: string
-                  description: Text of the link
-                href:
-                  type: string
-                  description: Absolute secure URL for the link (must use https)
-                  pattern: '^https://([\w-]+.)+[\w-]+(/[\w- ./?%&=])?$'
+            links:
+              type: array
+              description: Objects that hold CLI download link details
+              nullable: true
+              items:
+                type: object
+                required:
+                - href
+                properties:
+                  text:
+                    type: string
+                    description: Text of the link
+                  href:
+                    type: string
+                    description: Absolute secure URL for the link (must use https)
+                    pattern: '^https://([\w-]+.)+[\w-]+(/[\w- ./?%&=])?$'
+

@@ -6,13 +6,12 @@ metadata:
     displayName: ConsoleLinks
     description: Extension for customizing OpenShift web console links
 spec:
+  scope: Cluster
   group: console.openshift.io
-  version: v1
   versions:
   - name: v1
     served: true
     storage: true
-  scope: Cluster
   names:
     plural: consolelinks
     singular: consolelink
@@ -42,16 +41,16 @@ spec:
           required:
           - text
           - href
-          - menu
+          - location
           properties:
             text:
               type: string
               description: Text of the link
             href:
               type: string
-              description: URL for the link
-              pattern: '^http(s)?://([\w-]+.)+[\w-]+(/[\w- ./?%&=])?$'
-            menu:
+              description: Absolute secure URL for the link (must use https)
+              pattern: '^https://([\w-]+.)+[\w-]+(/[\w- ./?%&=])?$'
+            location:
               type: string
-              description: Determines which dropdown menu the link is added to (help, user)
-              pattern: '\bhelp\b|\buser\b'
+              description: Determines which dropdown menu the link is added to (HelpMenu, UserMenu)
+              pattern: '\bHelpMenu\b|\bUserMenu\b'
