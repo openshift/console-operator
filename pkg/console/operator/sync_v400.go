@@ -234,7 +234,7 @@ func SyncDeployment(co *consoleOperator, recorder events.Recorder, operatorConfi
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
 	if genChanged {
-		logrus.Printf("deployment generation changed from %s to %s \n", operatorConfig.ObjectMeta.Generation, operatorConfig.Status.ObservedGeneration)
+		logrus.Printf("deployment generation changed from %d to %d \n", operatorConfig.ObjectMeta.Generation, operatorConfig.Status.ObservedGeneration)
 	}
 	deploymentsub.LogDeploymentAnnotationChanges(co.deploymentClient, requiredDeployment)
 
