@@ -1,6 +1,7 @@
 #!/bin/bash
 source "$(dirname "${BASH_SOURCE}")/lib/init.sh"
 
+
 function cleanup() {
     return_code=$?
     os::util::describe_return_code "${return_code}"
@@ -22,7 +23,7 @@ function govet_blacklist_contains() {
 }
 
 for test_dir in $(os::util::list_go_src_dirs); do
-	if ! result="$(go tool vet -shadow=false -printfuncs=Info,Infof,Warning,Warningf "${test_dir}" 2>&1)"; then
+	if ! result="$(go vet -printfuncs=Info,Infof,Warning,Warningf "${test_dir}/..." 2>&1)"; then
 		while read -r line; do
 			if ! govet_blacklist_contains "${line}"; then
 				echo "${line}"

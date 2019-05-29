@@ -126,12 +126,12 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	consoleOperator := operator.NewConsoleOperator(
 		// informers
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
-		configInformers,                                    // ConsoleConfig
-		kubeInformersNamespaced.Core().V1(),                // Secrets, ConfigMaps, Service
-		kubeInformersManagedNamespaced.Core().V1(),         // Managed ConfigMaps
-		kubeInformersNamespaced.Apps().V1().Deployments(),  // Deployments
-		routesInformersNamespaced.Route().V1().Routes(),    // Route
-		oauthInformers.Oauth().V1().OAuthClients(),         // OAuth clients
+		configInformers,                                   // ConsoleConfig
+		kubeInformersNamespaced.Core().V1(),               // Secrets, ConfigMaps, Service
+		kubeInformersManagedNamespaced.Core().V1(),        // Managed ConfigMaps
+		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
+		routesInformersNamespaced.Route().V1().Routes(),   // Route
+		oauthInformers.Oauth().V1().OAuthClients(),        // OAuth clients
 		// clients
 		operatorConfigClient.OperatorV1(),
 		configClient.ConfigV1(),

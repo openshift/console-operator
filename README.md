@@ -10,7 +10,8 @@ The console operator is installed by default and will automatically maintain a c
 
 ## Development Setup
 
-* Install Go -- https://golang.org/doc/install
+* Install Go 1.12 -- https://golang.org/dl/
+* GVM is recommended but not required -- https://github.com/moovweb/gvm
 
 ## Clone the Repo & Build Locally
 
