@@ -64,14 +64,6 @@ verify:
 .PHONY: verify
 
 
-# Verify commit comments.
-#
-# Example:
-#   make verify-commits
-verify-commits:
-	hack/verify-upstream-commits.sh
-.PHONY: verify-commits
-
 test: test-unit test-integration test-e2e
 .PHONY: test
 
@@ -112,33 +104,6 @@ clean:
 	rm -rf $(OUT_DIR)
 .PHONY: clean
 
-# Build the cross compiled release binaries
-#
-# Example:
-#   make build-cross
-build-cross:
-	hack/build-cross.sh
-.PHONY: build-cross
-
-# Build RPMs only for the Linux AMD64 target
-#
-# Args:
-#
-# Example:
-#   make build-rpms
-build-rpms:
-	OS_ONLY_BUILD_PLATFORMS='linux/amd64' hack/build-rpms.sh
-.PHONY: build-rpms
-
-# Build images from the official RPMs
-#
-# Args:
-#
-# Example:
-#   make build-images
-build-images:
-	hack/build-images.sh
-.PHONY: build-images
 
 # Update vendored dependencies
 #
