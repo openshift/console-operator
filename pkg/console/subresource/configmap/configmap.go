@@ -49,7 +49,8 @@ func DefaultConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv
 	// Build a default config that can be overwritten from other sources
 	host := rt.Spec.Host
 	apiServerURL := getApiUrl(infrastructureConfig)
-	defaultConfig := NewYamlConfig(host, defaultLogoutURL, DEFAULT_BRAND, DEFAULT_DOC_URL, apiServerURL)
+	defaultProviders := operatorv1.ConsoleProviders{}
+	defaultConfig := NewYamlConfig(host, defaultLogoutURL, DEFAULT_BRAND, DEFAULT_DOC_URL, apiServerURL, defaultProviders)
 	// Get console config from the openshift-config-managed namespace
 	extractedManagedConfig := extractYAML(managedConfig)
 
@@ -57,7 +58,8 @@ func DefaultConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv
 	logoutRedirect := consoleConfig.Spec.Authentication.LogoutRedirect
 	brand := operatorConfig.Spec.Customization.Brand
 	docURL := operatorConfig.Spec.Customization.DocumentationBaseURL
-	userDefinedConfig := NewYamlConfig(host, logoutRedirect, brand, docURL, apiServerURL)
+	providers := operatorConfig.Spec.Providers
+	userDefinedConfig := NewYamlConfig(host, logoutRedirect, brand, docURL, apiServerURL, providers)
 
 	unsupportedConfigOverride := operatorConfig.Spec.UnsupportedConfigOverrides.Raw
 
@@ -119,7 +121,7 @@ func Stub() *corev1.ConfigMap {
 	return configMap
 }
 
-func NewYamlConfig(host string, logoutRedirect string, brand operatorv1.Brand, docURL string, apiServerURL string) []byte {
+func NewYamlConfig(host string, logoutRedirect string, brand operatorv1.Brand, docURL string, apiServerURL string, providers operatorv1.ConsoleProviders) []byte {
 	conf := yaml.MapSlice{
 		{
 			Key: "kind", Value: "ConsoleConfig",
@@ -133,6 +135,8 @@ func NewYamlConfig(host string, logoutRedirect string, brand operatorv1.Brand, d
 			Key: "customization", Value: customization(brand, docURL),
 		}, {
 			Key: "servingInfo", Value: servingInfo(),
+		}, {
+			Key: "providers", Value: consoleProviders(providers),
 		},
 	}
 	yml, err := yaml.Marshal(conf)
@@ -153,6 +157,17 @@ func servingInfo() yaml.MapSlice {
 			Key: "keyFile", Value: keyFilePath,
 		},
 	}
+}
+
+func consoleProviders(providers operatorv1.ConsoleProviders) yaml.MapSlice {
+	if providers.Statuspage != nil && len(providers.Statuspage.PageID) > 0 {
+		return yaml.MapSlice{
+			{
+				Key: "statuspageID", Value: providers.Statuspage.PageID,
+			},
+		}
+	}
+	return yaml.MapSlice{}
 }
 
 func customization(brand operatorv1.Brand, docURL string) map[string]string {

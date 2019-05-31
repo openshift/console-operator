@@ -36,3 +36,10 @@ spec:
                   pattern: ^$|^(ocp|origin|okd|dedicated|online|azure)$
                   type: string
                   description: Brand may be optionally set to one of six values - azure|dedicated|ocp|okd|online|origin
+            providers:
+              properties:
+                statuspage:
+                  properties:
+                    pageID:
+                      type: string
+                      description: Contains ID for statuspage.io page that provides status info about.
