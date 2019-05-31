@@ -7,12 +7,15 @@ import (
 	"math/rand"
 	"os"
 	"time"
+
 	// 3rd party
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
 	// kube / openshift
-	utilflag "k8s.io/apiserver/pkg/util/flag"
-	"k8s.io/apiserver/pkg/util/logs"
+	utilflag "k8s.io/component-base/cli/flag"
+	"k8s.io/component-base/logs"
+
 	// us
 	"github.com/openshift/console-operator/pkg/cmd/operator"
 	"github.com/openshift/console-operator/pkg/cmd/version"
