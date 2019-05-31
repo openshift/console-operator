@@ -100,7 +100,7 @@ func TestSyncSecret(t *testing.T) {
 		kubeClient.CoreV1(),
 		eventRecorder,
 	)
-	c.preRunCachesSynced = []cache.InformerSynced{
+	c.cachesToSync = []cache.InformerSynced{
 		secretInformers.Core().V1().Secrets().Informer().HasSynced,
 	}
 	c.configMapGetter = kubeClient.CoreV1()
@@ -198,7 +198,7 @@ func TestSyncConfigMap(t *testing.T) {
 			"operator":       operatorInformers,
 		}),
 		v1helpers.CachedSecretGetter(kubeClient.CoreV1(), kubeInformersForNamespaces),
-		v1helpers.CachedConfigMapGetter(kubeClient.Core(), kubeInformersForNamespaces),
+		v1helpers.CachedConfigMapGetter(kubeClient.CoreV1(), kubeInformersForNamespaces),
 		eventRecorder,
 	)
 	c.configMapGetter = kubeClient.CoreV1()

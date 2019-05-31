@@ -3,17 +3,19 @@ import:
 
 # kube
 - package: k8s.io/apimachinery
-  version: kubernetes-1.13.4
+  version: kubernetes-1.14.0
 - package: k8s.io/api
-  version: kubernetes-1.13.4
+  version: kubernetes-1.14.0
 - package: k8s.io/apiserver
-  version: kubernetes-1.13.4
+  version: kubernetes-1.14.0
 - package: k8s.io/client-go
-  version: kubernetes-1.13.4
+  version: kubernetes-1.14.0
 - package: k8s.io/kube-aggregator
-  version: kubernetes-1.13.4
+  version: kubernetes-1.14.0
 - package: k8s.io/code-generator
-  version: kubernetes-1.13.4
+  version: kubernetes-1.14.0
+- package: k8s.io/component-base
+  version: kubernetes-1.14.0
 
 # openshift
 - package: github.com/openshift/api
