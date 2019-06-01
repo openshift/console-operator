@@ -21,16 +21,14 @@ import (
 
 	operatorv1 "github.com/openshift/api/operator/v1"
 
+	"github.com/openshift/library-go/pkg/operator/condition"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/management"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 )
 
-const (
-	operatorStatusResourceSyncControllerDegraded = "ResourceSyncControllerDegraded"
-	controllerWorkQueueKey                       = "key"
-)
+const controllerWorkQueueKey = "key"
 
 // ResourceSyncController is a controller that will copy source configmaps and secrets to their destinations.
 // It will also mirror deletions by deleting destinations.
@@ -45,16 +43,14 @@ type ResourceSyncController struct {
 	// knownNamespaces is the list of namespaces we are watching.
 	knownNamespaces sets.String
 
-	preRunCachesSynced []cache.InformerSynced
-
-	// queue only ever has one item, but it has nice error handling backoff/retry semantics
-	queue workqueue.RateLimitingInterface
-
 	configMapGetter            corev1client.ConfigMapsGetter
 	secretGetter               corev1client.SecretsGetter
 	kubeInformersForNamespaces v1helpers.KubeInformersForNamespaces
 	operatorConfigClient       v1helpers.OperatorClient
-	eventRecorder              events.Recorder
+
+	cachesToSync  []cache.InformerSynced
+	queue         workqueue.RateLimitingInterface
+	eventRecorder events.Recorder
 }
 
 var _ ResourceSyncer = &ResourceSyncController{}
@@ -88,12 +84,15 @@ func NewResourceSyncController(
 		informers := kubeInformersForNamespaces.InformersFor(namespace)
 		informers.Core().V1().ConfigMaps().Informer().AddEventHandler(c.eventHandler())
 		informers.Core().V1().Secrets().Informer().AddEventHandler(c.eventHandler())
-		c.preRunCachesSynced = append(c.preRunCachesSynced, informers.Core().V1().ConfigMaps().Informer().HasSynced)
-		c.preRunCachesSynced = append(c.preRunCachesSynced, informers.Core().V1().Secrets().Informer().HasSynced)
+
+		c.cachesToSync = append(c.cachesToSync, informers.Core().V1().ConfigMaps().Informer().HasSynced)
+		c.cachesToSync = append(c.cachesToSync, informers.Core().V1().Secrets().Informer().HasSynced)
 	}
 
 	// we watch this just in case someone messes with our status
 	operatorConfigClient.Informer().AddEventHandler(c.eventHandler())
+
+	c.cachesToSync = append(c.cachesToSync, operatorConfigClient.Informer().HasSynced)
 
 	return c
 }
@@ -190,7 +189,7 @@ func (c *ResourceSyncController) sync() error {
 
 	if len(errors) > 0 {
 		cond := operatorv1.OperatorCondition{
-			Type:    operatorStatusResourceSyncControllerDegraded,
+			Type:    condition.ResourceSyncControllerDegradedConditionType,
 			Status:  operatorv1.ConditionTrue,
 			Reason:  "Error",
 			Message: v1helpers.NewMultiLineAggregate(errors).Error(),
@@ -202,7 +201,7 @@ func (c *ResourceSyncController) sync() error {
 	}
 
 	cond := operatorv1.OperatorCondition{
-		Type:   operatorStatusResourceSyncControllerDegraded,
+		Type:   condition.ResourceSyncControllerDegradedConditionType,
 		Status: operatorv1.ConditionFalse,
 	}
 	if _, _, updateError := v1helpers.UpdateStatus(c.operatorConfigClient, v1helpers.UpdateConditionFn(cond)); updateError != nil {
@@ -217,7 +216,7 @@ func (c *ResourceSyncController) Run(workers int, stopCh <-chan struct{}) {
 
 	klog.Infof("Starting ResourceSyncController")
 	defer klog.Infof("Shutting down ResourceSyncController")
-	if !cache.WaitForCacheSync(stopCh, c.preRunCachesSynced...) {
+	if !cache.WaitForCacheSync(stopCh, c.cachesToSync...) {
 		return
 	}
 
