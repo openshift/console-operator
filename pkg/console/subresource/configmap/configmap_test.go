@@ -23,6 +23,7 @@ const (
 	mockConsoleURL     = "https://console-openshift-console.apps.some.cluster.openshift.com"
 	configKey          = "console-config.yaml"
 	mockOperatorDocURL = "https://operator.config/doc/link/"
+	mockStatuspageID   = "id-1234"
 	finalCMDefaultOKD  = `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
 auth:
@@ -41,6 +42,28 @@ servingInfo:
   bindAddress: https://0.0.0.0:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
+providers: {}
+`
+	finalCMStatuspageProvider = `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  logoutRedirect: ""
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  consoleBasePath: ""
+  masterPublicURL: ` + mockAPIServer + `
+customization:
+  branding: ` + DEFAULT_BRAND + `
+  documentationBaseURL: ` + DEFAULT_DOC_URL + `
+servingInfo:
+  bindAddress: https://0.0.0.0:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers:
+  statuspageID: id-1234
 `
 	finalCMOnline = `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
@@ -66,6 +89,7 @@ servingInfo:
   bindAddress: https://0.0.0.0:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
+providers: {}
 `
 	finalCMDedicated = `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
@@ -85,6 +109,7 @@ servingInfo:
   bindAddress: https://0.0.0.0:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
+providers: {}
 `
 )
 
@@ -302,6 +327,7 @@ func TestNewYamlConfig(t *testing.T) {
 		brand          operatorv1.Brand
 		docURL         string
 		apiServerURL   string
+		providers      operatorv1.ConsoleProviders
 	}
 	tests := []struct {
 		name string
@@ -309,20 +335,37 @@ func TestNewYamlConfig(t *testing.T) {
 		want string
 	}{
 		{
-			name: "TestNewYamlConfig",
+			name: "Test NewYamlConfig() with defaults",
 			args: args{
 				host:           host,
 				logoutRedirect: "",
 				brand:          DEFAULT_BRAND,
 				docURL:         DEFAULT_DOC_URL,
 				apiServerURL:   mockAPIServer,
+				providers:      operatorv1.ConsoleProviders{},
 			},
 			want: finalCMDefaultOKD,
+		},
+		{
+			name: "Test NewYamlConfig() with Statuspage.io provider",
+			args: args{
+				host:           host,
+				logoutRedirect: "",
+				brand:          DEFAULT_BRAND,
+				docURL:         DEFAULT_DOC_URL,
+				apiServerURL:   mockAPIServer,
+				providers: operatorv1.ConsoleProviders{
+					Statuspage: &operatorv1.StatuspageProvider{
+						PageID: mockStatuspageID,
+					},
+				},
+			},
+			want: finalCMStatuspageProvider,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(string(NewYamlConfig(tt.args.host, tt.args.logoutRedirect, tt.args.brand, tt.args.docURL, tt.args.apiServerURL)), tt.want); diff != nil {
+			if diff := deep.Equal(string(NewYamlConfig(tt.args.host, tt.args.logoutRedirect, tt.args.brand, tt.args.docURL, tt.args.apiServerURL, tt.args.providers)), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
