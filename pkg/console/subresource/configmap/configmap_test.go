@@ -23,94 +23,6 @@ const (
 	mockConsoleURL     = "https://console-openshift-console.apps.some.cluster.openshift.com"
 	configKey          = "console-config.yaml"
 	mockOperatorDocURL = "https://operator.config/doc/link/"
-	mockStatuspageID   = "id-1234"
-	finalCMDefaultOKD  = `kind: ConsoleConfig
-apiVersion: console.openshift.io/v1
-auth:
-  clientID: console
-  clientSecretFile: /var/oauth-config/clientSecret
-  logoutRedirect: ""
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-clusterInfo:
-  consoleBaseAddress: https://` + host + `
-  consoleBasePath: ""
-  masterPublicURL: ` + mockAPIServer + `
-customization:
-  branding: ` + DEFAULT_BRAND + `
-  documentationBaseURL: ` + DEFAULT_DOC_URL + `
-servingInfo:
-  bindAddress: https://0.0.0.0:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-providers: {}
-`
-	finalCMStatuspageProvider = `kind: ConsoleConfig
-apiVersion: console.openshift.io/v1
-auth:
-  clientID: console
-  clientSecretFile: /var/oauth-config/clientSecret
-  logoutRedirect: ""
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-clusterInfo:
-  consoleBaseAddress: https://` + host + `
-  consoleBasePath: ""
-  masterPublicURL: ` + mockAPIServer + `
-customization:
-  branding: ` + DEFAULT_BRAND + `
-  documentationBaseURL: ` + DEFAULT_DOC_URL + `
-servingInfo:
-  bindAddress: https://0.0.0.0:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-providers:
-  statuspageID: id-1234
-`
-	finalCMOnline = `kind: ConsoleConfig
-apiVersion: console.openshift.io/v1
-customization:
-  branding: online
-  documentationBaseURL: https://docs.okd.io/4.1/
-`
-	managedCMOnline = `kind: ConsoleConfig
-apiVersion: console.openshift.io/v1
-auth:
-  clientID: console
-  clientSecretFile: /var/oauth-config/clientSecret
-  logoutRedirect: ""
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-clusterInfo:
-  consoleBaseAddress: https://` + host + `
-  consoleBasePath: ""
-  masterPublicURL: ` + mockAPIServer + `
-customization:
-  branding: online 
-  documentationBaseURL: https://docs.okd.io/4.1/
-servingInfo:
-  bindAddress: https://0.0.0.0:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-providers: {}
-`
-	finalCMDedicated = `kind: ConsoleConfig
-apiVersion: console.openshift.io/v1
-auth:
-  clientID: console
-  clientSecretFile: /var/oauth-config/clientSecret
-  logoutRedirect: ""
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-clusterInfo:
-  consoleBaseAddress: https://` + host + `
-  consoleBasePath: ""
-  masterPublicURL: ` + mockAPIServer + `
-customization:
-  branding: ` + string(operatorv1.BrandDedicated) + `
-  documentationBaseURL: ` + mockOperatorDocURL + `
-servingInfo:
-  bindAddress: https://0.0.0.0:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-providers: {}
-`
 )
 
 // To manually run these tests: go test -v ./pkg/console/subresource/configmap/...
@@ -151,7 +63,25 @@ func TestDefaultConfigMap(t *testing.T) {
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
 				},
-				Data: map[string]string{configKey: finalCMDefaultOKD},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+customization:
+  branding: ` + DEFAULT_BRAND + `
+  documentationBaseURL: ` + DEFAULT_DOC_URL + `
+servingInfo:
+  bindAddress: https://0.0.0.0:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: {}
+`,
+				},
 			},
 		},
 		{
@@ -160,7 +90,13 @@ func TestDefaultConfigMap(t *testing.T) {
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig: &corev1.ConfigMap{
-					Data: map[string]string{configKey: finalCMOnline},
+					Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+customization:
+  branding: online
+  documentationBaseURL: https://docs.okd.io/4.1/
+`,
+					},
 				},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
@@ -180,7 +116,25 @@ func TestDefaultConfigMap(t *testing.T) {
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
 				},
-				Data: map[string]string{configKey: managedCMOnline},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+customization:
+  branding: online 
+  documentationBaseURL: https://docs.okd.io/4.1/
+servingInfo:
+  bindAddress: https://0.0.0.0:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: {}
+`,
+				},
 			},
 		},
 		{
@@ -198,7 +152,13 @@ func TestDefaultConfigMap(t *testing.T) {
 				},
 				consoleConfig: &configv1.Console{},
 				managedConfig: &corev1.ConfigMap{
-					Data: map[string]string{configKey: finalCMOnline},
+					Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+customization:
+  branding: online
+  documentationBaseURL: https://docs.okd.io/4.1/
+`,
+					},
 				},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
@@ -218,7 +178,92 @@ func TestDefaultConfigMap(t *testing.T) {
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
 				},
-				Data: map[string]string{configKey: finalCMDedicated},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+customization:
+  branding: ` + string(operatorv1.BrandDedicated) + `
+  documentationBaseURL: ` + mockOperatorDocURL + `
+servingInfo:
+  bindAddress: https://0.0.0.0:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: {}
+`,
+				},
+			},
+		}, {
+			name: "Test operator config with Statuspage pageID",
+			args: args{
+				operatorConfig: &operatorv1.Console{
+					Spec: operatorv1.ConsoleSpec{
+						OperatorSpec: operatorv1.OperatorSpec{},
+						Customization: operatorv1.ConsoleCustomization{
+							Brand:                operatorv1.BrandDedicated,
+							DocumentationBaseURL: mockOperatorDocURL,
+						},
+						Providers: operatorv1.ConsoleProviders{
+							Statuspage: &operatorv1.StatuspageProvider{
+								PageID: "id-1234",
+							},
+						},
+					},
+					Status: operatorv1.ConsoleStatus{},
+				},
+				consoleConfig: &configv1.Console{},
+				managedConfig: &corev1.ConfigMap{
+					Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+customization:
+  branding: online
+  documentationBaseURL: https://docs.okd.io/4.1/
+`,
+					},
+				},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL: mockAPIServer,
+					},
+				},
+				rt: &routev1.Route{
+					Spec: routev1.RouteSpec{
+						Host: host,
+					},
+				},
+			},
+			want: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+customization:
+  branding: ` + string(operatorv1.BrandDedicated) + `
+  documentationBaseURL: ` + mockOperatorDocURL + `
+servingInfo:
+  bindAddress: https://0.0.0.0:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: 
+  statuspageID: id-1234
+`,
+				},
 			},
 		},
 	}
@@ -318,60 +363,6 @@ func TestDefaultPublicConfigMap(t *testing.T) {
 	}
 }
 
-// This unit test relies on both NewYamlConfig and NewYamlConfigString
-// to ensure the serialized data is created from host name
-func TestNewYamlConfig(t *testing.T) {
-	type args struct {
-		host           string
-		logoutRedirect string
-		brand          operatorv1.Brand
-		docURL         string
-		apiServerURL   string
-		providers      operatorv1.ConsoleProviders
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			name: "Test NewYamlConfig() with defaults",
-			args: args{
-				host:           host,
-				logoutRedirect: "",
-				brand:          DEFAULT_BRAND,
-				docURL:         DEFAULT_DOC_URL,
-				apiServerURL:   mockAPIServer,
-				providers:      operatorv1.ConsoleProviders{},
-			},
-			want: finalCMDefaultOKD,
-		},
-		{
-			name: "Test NewYamlConfig() with Statuspage.io provider",
-			args: args{
-				host:           host,
-				logoutRedirect: "",
-				brand:          DEFAULT_BRAND,
-				docURL:         DEFAULT_DOC_URL,
-				apiServerURL:   mockAPIServer,
-				providers: operatorv1.ConsoleProviders{
-					Statuspage: &operatorv1.StatuspageProvider{
-						PageID: mockStatuspageID,
-					},
-				},
-			},
-			want: finalCMStatuspageProvider,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(string(NewYamlConfig(tt.args.host, tt.args.logoutRedirect, tt.args.brand, tt.args.docURL, tt.args.apiServerURL, tt.args.providers)), tt.want); diff != nil {
-				t.Error(diff)
-			}
-		})
-	}
-}
-
 func Test_consoleBaseAddr(t *testing.T) {
 	type args struct {
 		host string
@@ -419,7 +410,13 @@ func Test_extractYAML(t *testing.T) {
 						Name:      "console-config",
 						Namespace: "openshift-config-managed",
 					},
-					Data:       map[string]string{configKey: finalCMOnline},
+					Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+customization:
+  branding: online
+  documentationBaseURL: https://docs.okd.io/4.1/
+`,
+					},
 					BinaryData: nil,
 				},
 			},
