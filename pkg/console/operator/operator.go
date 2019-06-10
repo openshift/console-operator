@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	// kube
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,6 +13,7 @@ import (
 	corev1 "k8s.io/client-go/informers/core/v1"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/klog"
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
@@ -144,8 +143,8 @@ func (c *consoleOperator) Key() (metav1.Object, error) {
 
 func (c *consoleOperator) Sync(obj metav1.Object) error {
 	startTime := time.Now()
-	logrus.Infof("started syncing operator %q (%v)", obj.GetName(), startTime)
-	defer logrus.Infof("finished syncing operator %q (%v) \n\n", obj.GetName(), time.Since(startTime))
+	klog.V(4).Infof("started syncing operator %q (%v)", obj.GetName(), startTime)
+	defer klog.V(4).Infof("finished syncing operator %q (%v)", obj.GetName(), time.Since(startTime))
 
 	// we need to cast the operator config
 	operatorConfig := obj.(*operatorsv1.Console)
@@ -153,14 +152,14 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	// ensure we have top level console config
 	consoleConfig, err := c.consoleConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
-		logrus.Errorf("console config error: %v \n", err)
+		klog.Errorf("console config error: %v", err)
 		return err
 	}
 
 	// we need infrastructure config for apiServerURL
 	infrastructureConfig, err := c.infrastructureConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
-		logrus.Errorf("infrastructure config error: %v \n", err)
+		klog.Errorf("infrastructure config error: %v", err)
 		return err
 	}
 
@@ -176,17 +175,17 @@ func (c *consoleOperator) handleSync(operatorConfig *operatorsv1.Console, consol
 
 	switch operatorConfigCopy.Spec.ManagementState {
 	case operatorsv1.Managed:
-		logrus.Println("console is in a managed state.")
+		klog.V(4).Infoln("console is in a managed state.")
 		// handled below
 	case operatorsv1.Unmanaged:
-		logrus.Println("console is in an unmanaged state.")
+		klog.V(4).Infoln("console is in an unmanaged state.")
 		c.ConditionsManagementStateUnmanaged(operatorConfigCopy)
 		if !reflect.DeepEqual(operatorConfigCopy, operatorConfig) {
 			c.SyncStatus(operatorConfigCopy)
 		}
 		return nil
 	case operatorsv1.Removed:
-		logrus.Println("console has been removed.")
+		klog.V(4).Infoln("console has been removed.")
 		c.ConditionsManagementStateRemoved(operatorConfigCopy)
 		if !reflect.DeepEqual(operatorConfigCopy, operatorConfig) {
 			c.SyncStatus(operatorConfigCopy)
@@ -222,8 +221,8 @@ func (c *consoleOperator) handleSync(operatorConfig *operatorsv1.Console, consol
 
 // this may need to move to sync_v400 if versions ever have custom delete logic
 func (c *consoleOperator) removeConsole(cr *operatorsv1.Console) error {
-	logrus.Info("deleting console resources")
-	defer logrus.Info("finished deleting console resources")
+	klog.V(2).Info("deleting console resources")
+	defer klog.V(2).Info("finished deleting console resources")
 	var errs []error
 	// service
 	errs = append(errs, c.serviceClient.Services(api.TargetNamespace).Delete(service.Stub().Name, &metav1.DeleteOptions{}))

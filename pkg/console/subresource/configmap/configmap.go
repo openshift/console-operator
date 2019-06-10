@@ -3,7 +3,7 @@ package configmap
 import (
 	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"k8s.io/klog"
 
 	yaml2 "github.com/ghodss/yaml"
 	yaml "gopkg.in/yaml.v2"
@@ -66,20 +66,20 @@ func DefaultConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv
 	// merge configs with overrides, if we have them
 	mergedConfig, err := resourcemerge.MergeProcessConfig(nil, defaultConfig, extractedManagedConfig, userDefinedConfig, unsupportedConfigOverride)
 	if err != nil {
-		logrus.Errorf("failed to merge configmap: %v \n", err)
+		klog.Errorf("failed to merge configmap: %v", err)
 		return nil, false, err
 	}
 
 	outConfigYaml, err := yaml2.JSONToYAML(mergedConfig)
 	if err != nil {
-		logrus.Errorf("failed to generate configmap: %v \n", err)
+		klog.Errorf("failed to generate configmap: %v", err)
 		return nil, false, err
 	}
 
 	// if we actually merged config overrides, log this information
 	didMerge := len(operatorConfig.Spec.UnsupportedConfigOverrides.Raw) != 0
 	if didMerge {
-		logrus.Println(fmt.Sprintf("with UnsupportedConfigOverrides: %v", string(unsupportedConfigOverride)))
+		klog.V(4).Infoln(fmt.Sprintf("with UnsupportedConfigOverrides: %v", string(unsupportedConfigOverride)))
 	}
 
 	configMap := Stub()
@@ -141,7 +141,7 @@ func NewYamlConfig(host string, logoutRedirect string, brand operatorv1.Brand, d
 	}
 	yml, err := yaml.Marshal(conf)
 	if err != nil {
-		fmt.Printf("Could not create config yaml %v", err)
+		klog.V(4).Infof("Could not create config yaml %v", err)
 		return nil
 	}
 	return yml

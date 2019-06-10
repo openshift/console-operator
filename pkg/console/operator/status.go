@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/sirupsen/logrus"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
@@ -74,8 +73,8 @@ func (c *consoleOperator) SyncStatus(operatorConfig *operatorsv1.Console) (*oper
 	c.logConditions(operatorConfig.Status.Conditions)
 	updatedConfig, err := c.operatorConfigClient.UpdateStatus(operatorConfig)
 	if err != nil {
-		errMsg := fmt.Errorf("status update error: %v \n", err)
-		logrus.Error(errMsg)
+		errMsg := fmt.Errorf("status update error: %v", err)
+		klog.Error(errMsg)
 		return nil, errMsg
 	}
 	return updatedConfig, nil
@@ -87,7 +86,7 @@ func (c *consoleOperator) SyncStatus(operatorConfig *operatorsv1.Console) (*oper
 //   Status.Condition.<Condition>: <Bool> (<Reason>) <Message>
 //   Status.Condition.<Condition>: <Bool> <Message>
 func (c *consoleOperator) logConditions(conditions []operatorsv1.OperatorCondition) {
-	logrus.Println("Operator.Status.Conditions")
+	klog.V(4).Infoln("Operator.Status.Conditions")
 
 	for _, condition := range conditions {
 		buf := bytes.Buffer{}
@@ -103,7 +102,7 @@ func (c *consoleOperator) logConditions(conditions []operatorsv1.OperatorConditi
 				buf.WriteString(fmt.Sprintf(" %s", condition.Message))
 			}
 		}
-		logrus.Println(buf.String())
+		klog.V(4).Infoln(buf.String())
 	}
 }
 
