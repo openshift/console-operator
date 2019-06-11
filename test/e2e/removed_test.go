@@ -19,4 +19,5 @@ func TestRemoved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	testframework.WaitForSettledState(t, client)
 }

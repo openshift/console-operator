@@ -15,6 +15,10 @@ func setupLoggingTestCase(t *testing.T) *testframework.Clientset {
 	return client
 }
 
+func cleanUpLoggingTestCase(t *testing.T, client *testframework.Clientset) {
+	testframework.WaitForSettledState(t, client)
+}
+
 // TestDebugLogLevel sets 'Debug' LogLevel on the console operator and tests
 // if '--log-level=*=DEBUG' flag is set on the console deployment
 func TestDebugLogLevel(t *testing.T) {
@@ -34,6 +38,7 @@ func TestDebugLogLevel(t *testing.T) {
 	if !isFlagInCommand(t, deployment.Spec.Template.Spec.Containers[0].Command, flagToTest) {
 		t.Fatalf("error: flag (%s) not found in command %v \n", flagToTest, deployment.Spec.Template.Spec.Containers[0].Command)
 	}
+	cleanUpLoggingTestCase(t, client)
 }
 
 // TestTraceLogLevel sets 'Trace' LogLevel on the console operator and tests
@@ -55,6 +60,7 @@ func TestTraceLogLevel(t *testing.T) {
 	if !isFlagInCommand(t, deployment.Spec.Template.Spec.Containers[0].Command, flagToTest) {
 		t.Fatalf("error: flag (%s) not found in command %v \n", flagToTest, deployment.Spec.Template.Spec.Containers[0].Command)
 	}
+	cleanUpLoggingTestCase(t, client)
 }
 
 // TestTraceLogLevel sets 'TraceAll' LogLevel on the console operator and tests
@@ -76,6 +82,7 @@ func TestTraceAllLogLevel(t *testing.T) {
 	if !isFlagInCommand(t, deployment.Spec.Template.Spec.Containers[0].Command, flagToTest) {
 		t.Fatalf("error: flag (%s) not found in command %v \n", flagToTest, deployment.Spec.Template.Spec.Containers[0].Command)
 	}
+	cleanUpLoggingTestCase(t, client)
 }
 
 func isFlagInCommand(t *testing.T, command []string, loggingFlag string) bool {
