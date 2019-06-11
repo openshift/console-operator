@@ -133,10 +133,11 @@ func (c *consoleOperator) ConditionResourceSyncSuccess(operatorConfig *operators
 	return operatorConfig
 }
 
-func (c *consoleOperator) ConditionDeploymentAvailable(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
+func (c *consoleOperator) ConditionDeploymentAvailable(operatorConfig *operatorsv1.Console, message string) *operatorsv1.Console {
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
 		Type:               operatorsv1.OperatorStatusTypeAvailable,
 		Status:             operatorsv1.ConditionTrue,
+		Message:            message,
 		LastTransitionTime: metav1.Now(),
 	})
 

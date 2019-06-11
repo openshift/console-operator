@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	// kube
 	oauthv1 "github.com/openshift/api/oauth/v1"
@@ -127,7 +126,7 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 	} else {
 		version := os.Getenv("RELEASE_VERSION")
 		if !deploymentsub.IsAvailableAndUpdated(actualDeployment) {
-			co.ConditionResourceSyncProgressing(operatorConfig, fmt.Sprintf("Moving to version %s", strings.Split(version, "-")[0]))
+			co.ConditionResourceSyncProgressing(operatorConfig, fmt.Sprintf("Working toward version %s", version))
 		} else {
 			if co.versionGetter.GetVersions()["operator"] != version {
 				co.versionGetter.SetVersion("operator", version)
@@ -154,8 +153,10 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 			"RouteNotAdmitted",
 			"console route is not admitted",
 		)
+	} else if actualDeployment.Status.Replicas == actualDeployment.Status.ReadyReplicas && actualDeployment.Status.Replicas == actualDeployment.Status.UpdatedReplicas {
+		co.ConditionDeploymentAvailable(operatorConfig, fmt.Sprintf("%v replicas ready at version %s", actualDeployment.Status.ReadyReplicas, os.Getenv("RELEASE_VERSION")))
 	} else {
-		co.ConditionDeploymentAvailable(operatorConfig)
+		co.ConditionDeploymentAvailable(operatorConfig, fmt.Sprintf("%v replicas ready", actualDeployment.Status.ReadyReplicas))
 	}
 
 	// if we survive the gauntlet, we need to update the console config with the
