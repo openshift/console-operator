@@ -28,7 +28,7 @@ func setupProvidersTestCase(t *testing.T) (*testframework.Clientset, operatorsv1
 	return client, operatorConfig.Spec
 }
 
-func cleanuProvidersTestCase(t *testing.T, client *testframework.Clientset, originalOperatorConfigSpec operatorsv1.ConsoleSpec) {
+func cleanupProvidersTestCase(t *testing.T, client *testframework.Clientset, originalOperatorConfigSpec operatorsv1.ConsoleSpec) {
 	operatorConfig, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("could not get operator config, %v", err)
@@ -38,11 +38,12 @@ func cleanuProvidersTestCase(t *testing.T, client *testframework.Clientset, orig
 	if err != nil {
 		t.Fatalf("could not reset operator config to it's default state: %v", err)
 	}
+	testframework.WaitForSettledState(t, client)
 }
 
 func TestProvidersSetStatuspageID(t *testing.T) {
 	client, originalOperatorConfigSpec := setupProvidersTestCase(t)
-	defer cleanuProvidersTestCase(t, client, originalOperatorConfigSpec)
+	defer cleanupProvidersTestCase(t, client, originalOperatorConfigSpec)
 	expectedStatuspageID := "id-1234"
 	currentStatuspageID := ""
 	setOperatorConfigStatuspageIDProvider(t, client, expectedStatuspageID)
@@ -61,7 +62,7 @@ func TestProvidersSetStatuspageID(t *testing.T) {
 
 func TestProvidersSetStatuspageIDEmpty(t *testing.T) {
 	client, originalOperatorConfigSpec := setupProvidersTestCase(t)
-	defer cleanuProvidersTestCase(t, client, originalOperatorConfigSpec)
+	defer cleanupProvidersTestCase(t, client, originalOperatorConfigSpec)
 	statuspageID := ""
 	currentProviders := ""
 	expectedProviders := "{}"

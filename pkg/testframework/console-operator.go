@@ -210,3 +210,52 @@ func SetLogLevel(t *testing.T, client *Clientset, logLevel operatorsv1.LogLevel)
 func GenerationChanged(oldGeneration, newGeneration int64) bool {
 	return oldGeneration == newGeneration
 }
+
+// the operator is settled if conditions match:
+// - available: true
+// - progressing: false
+// - degraded: false
+func operatorIsSettled(operatorConfig *operatorsv1.Console) bool {
+	settled := true
+	for _, condition := range operatorConfig.Status.Conditions {
+		if condition.Type == operatorsv1.OperatorStatusTypeAvailable {
+			if condition.Status == operatorsv1.ConditionFalse {
+				settled = false
+				break
+			}
+		}
+		if condition.Type == operatorsv1.OperatorStatusTypeProgressing {
+			if condition.Status == operatorsv1.ConditionTrue {
+				settled = false
+				break
+			}
+		}
+		if condition.Type == operatorsv1.OperatorStatusTypeDegraded {
+			if condition.Status == operatorsv1.ConditionTrue {
+				settled = false
+				break
+			}
+		}
+	}
+	return settled
+}
+
+// A helper to ensure our operator config reaches a settled state before we
+// begin the next test.
+func WaitForSettledState(t *testing.T, client *Clientset) (settled bool, err error) {
+	interval := 1 * time.Second
+	// it should never take this long for a test to pass
+	max := 60 * time.Second
+	pollErr := wait.Poll(interval, max, func() (stop bool, err error) {
+		operatorConfig, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		return operatorIsSettled(operatorConfig), nil
+	})
+	if pollErr != nil {
+		t.Errorf("operator has not reached settled state in %v attempts: %v", max, pollErr)
+	}
+	return true, nil
+
+}

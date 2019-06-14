@@ -12,6 +12,10 @@ func setupUnmanagedTestCase(t *testing.T) *testframework.Clientset {
 	return client
 }
 
+func cleanUpUnmanagedTestCase(t *testing.T, client *testframework.Clientset) {
+	testframework.WaitForSettledState(t, client)
+}
+
 // TestUnmanaged() sets ManagementState:Unmanaged then deletes a set of console
 // resources and verifies that the operator does not recreate them.
 func TestUnmanaged(t *testing.T) {
@@ -24,6 +28,7 @@ func TestUnmanaged(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	cleanUpUnmanagedTestCase(t, client)
 }
 
 func TestEditUnmanagedConfigMap(t *testing.T) {
@@ -34,6 +39,7 @@ func TestEditUnmanagedConfigMap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}
+	cleanUpUnmanagedTestCase(t, client)
 }
 
 func TestEditUnmanagedService(t *testing.T) {
@@ -44,6 +50,7 @@ func TestEditUnmanagedService(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}
+	cleanUpUnmanagedTestCase(t, client)
 }
 
 func TestEditUnmanagedRoute(t *testing.T) {
@@ -54,4 +61,5 @@ func TestEditUnmanagedRoute(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}
+	cleanUpUnmanagedTestCase(t, client)
 }

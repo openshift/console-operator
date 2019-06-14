@@ -12,6 +12,10 @@ func setupManagedTestCase(t *testing.T) *testframework.Clientset {
 	return client
 }
 
+func cleanupManagedTestCase(t *testing.T, client *testframework.Clientset) {
+	testframework.WaitForSettledState(t, client)
+}
+
 // TestManaged() sets ManagementState:Managed then deletes a set of console
 // resources and verifies that the operator recreates them.
 func TestManaged(t *testing.T) {
@@ -25,6 +29,7 @@ func TestManaged(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	cleanupManagedTestCase(t, client)
 }
 
 func TestEditManagedConfigMap(t *testing.T) {
@@ -35,6 +40,7 @@ func TestEditManagedConfigMap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}
+	cleanupManagedTestCase(t, client)
 }
 
 func TestEditManagedService(t *testing.T) {
@@ -45,6 +51,7 @@ func TestEditManagedService(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}
+	cleanupManagedTestCase(t, client)
 }
 
 func TestEditManagedRoute(t *testing.T) {
@@ -55,4 +62,5 @@ func TestEditManagedRoute(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}
+	cleanupManagedTestCase(t, client)
 }
