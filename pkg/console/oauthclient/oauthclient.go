@@ -10,7 +10,7 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/console-operator/pkg/console/util"
 	"github.com/openshift/console-operator/pkg/crypto"
 )
 

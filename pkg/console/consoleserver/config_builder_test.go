@@ -3,8 +3,6 @@ package consoleserver
 import (
 	"testing"
 
-	v1 "github.com/openshift/api/operator/v1"
-
 	"github.com/openshift/console-operator/pkg/api"
 
 	"github.com/go-test/deep"
@@ -22,7 +20,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 			name: "Config builder should return default config if given no inputs",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
-				return b.Config()
+				return Config()
 			},
 			output: Config{
 				Kind:       "ConsoleConfig",
@@ -47,11 +45,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 			name: "Config builder should handle cluster info",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
-				return b.
-					APIServerURL("https://foobar.com/api").
-					Host("https://foobar.com/host").
-					LogoutURL("https://foobar.com/logout").
-					Config()
+				return Config()
 			},
 			output: Config{
 				Kind:       "ConsoleConfig",
@@ -79,7 +73,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 			name: "Config builder should handle StatuspageID",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
-				return b.StatusPageID("status-12345").Config()
+				return Config()
 			},
 			output: Config{
 				Kind:       "ConsoleConfig",
@@ -106,13 +100,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 			name: "Config builder should handle all inputs",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
-				b.Host("").
-					LogoutURL("https://foobar.com/logout").
-					Brand(v1.BrandOKD).
-					DocURL("https://foobar.com/docs").
-					APIServerURL("https://foobar.com/api").
-					StatusPageID("status-12345")
-				return b.Config()
+				StatusPageID("status-12345")
+				return Config()
 			},
 			output: Config{
 				Kind:       "ConsoleConfig",
@@ -167,7 +156,7 @@ func TestConsoleServerCLIConfigBuilderYAML(t *testing.T) {
 			name: "Config builder should return default config if given no inputs",
 			input: func() ([]byte, error) {
 				b := &ConsoleServerCLIConfigBuilder{}
-				return b.ConfigYAML()
+				return ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
@@ -188,11 +177,7 @@ providers: {}
 			name: "Config builder should handle cluster info",
 			input: func() ([]byte, error) {
 				b := &ConsoleServerCLIConfigBuilder{}
-				return b.
-					APIServerURL("https://foobar.com/api").
-					Host("https://foobar.com/host").
-					LogoutURL("https://foobar.com/logout").
-					ConfigYAML()
+				return ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
@@ -216,7 +201,7 @@ providers: {}
 			name: "Config builder should handle StatuspageID",
 			input: func() ([]byte, error) {
 				b := &ConsoleServerCLIConfigBuilder{}
-				return b.StatusPageID("status-12345").ConfigYAML()
+				return ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
@@ -238,13 +223,8 @@ providers:
 			name: "Config builder should handle all inputs",
 			input: func() ([]byte, error) {
 				b := &ConsoleServerCLIConfigBuilder{}
-				b.Host("").
-					LogoutURL("https://foobar.com/logout").
-					Brand(v1.BrandOKD).
-					DocURL("https://foobar.com/docs").
-					APIServerURL("https://foobar.com/api").
-					StatusPageID("status-12345")
-				return b.ConfigYAML()
+				StatusPageID("status-12345")
+				return ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	operatorsv1 "github.com/openshift/api/operator/v1"
-	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
+	deploymentsub "github.com/openshift/console-operator/pkg/console/deployment"
 	"github.com/openshift/console-operator/pkg/testframework"
 )
 

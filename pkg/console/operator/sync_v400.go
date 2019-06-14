@@ -18,20 +18,20 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/console-operator/pkg/console/util"
 	"github.com/openshift/console-operator/pkg/crypto"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 
+	configmapsub "github.com/openshift/console-operator/pkg/console/configmap"
+	deploymentsub "github.com/openshift/console-operator/pkg/console/deployment"
 	// operator
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
-	configmapsub "github.com/openshift/console-operator/pkg/console/subresource/configmap"
-	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
-	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
-	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
-	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
-	servicesub "github.com/openshift/console-operator/pkg/console/subresource/service"
+	oauthsub "github.com/openshift/console-operator/pkg/console/oauthclient"
+	routesub "github.com/openshift/console-operator/pkg/console/route"
+	secretsub "github.com/openshift/console-operator/pkg/console/secret"
+	servicesub "github.com/openshift/console-operator/pkg/console/service"
 )
 
 // The sync loop starts from zero and works its way through the requirements for a running console.

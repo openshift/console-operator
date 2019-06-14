@@ -3,7 +3,7 @@ package consoleserver
 import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/console-operator/pkg/console/util"
 	yaml "gopkg.in/yaml.v2"
 	"k8s.io/klog"
 )

@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"strings"
 
-	cm "github.com/openshift/console-operator/pkg/console/subresource/configmap"
+	cm "github.com/openshift/console-operator/pkg/console/configmap"
 )
 
 var (

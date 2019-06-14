@@ -40,14 +40,14 @@ import (
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 
+	"github.com/openshift/console-operator/pkg/console/configmap"
+	"github.com/openshift/console-operator/pkg/console/deployment"
 	// operator
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
-	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
-	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
-	"github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
-	"github.com/openshift/console-operator/pkg/console/subresource/route"
-	"github.com/openshift/console-operator/pkg/console/subresource/secret"
-	"github.com/openshift/console-operator/pkg/console/subresource/service"
+	"github.com/openshift/console-operator/pkg/console/oauthclient"
+	"github.com/openshift/console-operator/pkg/console/route"
+	"github.com/openshift/console-operator/pkg/console/secret"
+	"github.com/openshift/console-operator/pkg/console/service"
 )
 
 const (

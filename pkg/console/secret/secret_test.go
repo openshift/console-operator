@@ -9,7 +9,7 @@ import (
 
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
+	"github.com/openshift/console-operator/pkg/console/deployment"
 )
 
 func TestDefaultSecret(t *testing.T) {
