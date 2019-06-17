@@ -20,7 +20,6 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	"github.com/openshift/console-operator/pkg/crypto"
-	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 
@@ -39,78 +38,77 @@ import (
 // The next loop will pick up where they previous left off and move the process forward one step.
 // This ensures the logic is simpler as we do not have to handle coordination between objects within
 // the loop.
-func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure) error {
+func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, set configSet) error {
 	klog.V(4).Infoln("running sync loop 4.0.0")
-	recorder := co.recorder
 
 	// track changes, may trigger ripples & update operator config or console config status
 	toUpdate := false
 
-	rt, rtChanged, rtErr := SyncRoute(co, operatorConfig)
+	rt, rtChanged, rtErr := co.SyncRoute(set.Operator)
 	if rtErr != nil {
 		msg := fmt.Sprintf("%v: %s", "route", rtErr)
 		klog.V(4).Infof("incomplete sync: %v", msg)
-		co.ConditionResourceSyncProgressing(operatorConfig, msg)
+		co.ConditionResourceSyncProgressing(updatedOperatorConfig, msg)
 		return rtErr
 	}
 	toUpdate = toUpdate || rtChanged
 
-	svc, svcChanged, svcErr := SyncService(co, recorder, operatorConfig)
+	svc, svcChanged, svcErr := co.SyncService(set.Operator)
 	if svcErr != nil {
 		msg := fmt.Sprintf("%q: %v", "service", svcErr)
 		klog.V(4).Infof("incomplete sync: %v", msg)
-		co.ConditionResourceSyncProgressing(operatorConfig, msg)
+		co.ConditionResourceSyncProgressing(updatedOperatorConfig, msg)
 		return svcErr
 	}
 	toUpdate = toUpdate || svcChanged
 
-	cm, cmChanged, cmErr := SyncConfigMap(co, recorder, operatorConfig, consoleConfig, infrastructureConfig, rt)
+	cm, cmChanged, cmErr := co.SyncConfigMap(set.Operator, set.Console, set.Infrastructure, rt)
 	if cmErr != nil {
 		msg := fmt.Sprintf("%q: %v", "configmap", cmErr)
 		klog.V(4).Infof("incomplete sync: %v", msg)
-		co.ConditionResourceSyncProgressing(operatorConfig, msg)
+		co.ConditionResourceSyncProgressing(updatedOperatorConfig, msg)
 		return cmErr
 	}
 	toUpdate = toUpdate || cmChanged
 
-	serviceCAConfigMap, serviceCAConfigMapChanged, serviceCAConfigMapErr := SyncServiceCAConfigMap(co, operatorConfig)
+	serviceCAConfigMap, serviceCAConfigMapChanged, serviceCAConfigMapErr := co.SyncServiceCAConfigMap(set.Operator)
 	if serviceCAConfigMapErr != nil {
 		msg := fmt.Sprintf("%q: %v", "serviceCAconfigmap", serviceCAConfigMapErr)
 		klog.V(4).Infof("incomplete sync: %v", msg)
-		co.ConditionResourceSyncProgressing(operatorConfig, msg)
+		co.ConditionResourceSyncProgressing(updatedOperatorConfig, msg)
 		return serviceCAConfigMapErr
 	}
 	toUpdate = toUpdate || serviceCAConfigMapChanged
 
-	sec, secChanged, secErr := SyncSecret(co, recorder, operatorConfig)
+	sec, secChanged, secErr := co.SyncSecret(set.Operator)
 	if secErr != nil {
 		msg := fmt.Sprintf("%q: %v", "secret", secErr)
 		klog.V(4).Infof("incomplete sync: %v", msg)
-		co.ConditionResourceSyncProgressing(operatorConfig, msg)
+		co.ConditionResourceSyncProgressing(updatedOperatorConfig, msg)
 		return secErr
 	}
 	toUpdate = toUpdate || secChanged
 
-	oauthClient, oauthChanged, oauthErr := SyncOAuthClient(co, operatorConfig, sec, rt)
+	oauthClient, oauthChanged, oauthErr := co.SyncOAuthClient(set.Operator, sec, rt)
 	if oauthErr != nil {
 		msg := fmt.Sprintf("%q: %v", "oauth", oauthErr)
 		klog.V(4).Infof("incomplete sync: %v", msg)
-		co.ConditionResourceSyncProgressing(operatorConfig, msg)
+		co.ConditionResourceSyncProgressing(updatedOperatorConfig, msg)
 		return oauthErr
 	}
 	toUpdate = toUpdate || oauthChanged
 
-	actualDeployment, depChanged, depErr := SyncDeployment(co, recorder, operatorConfig, cm, serviceCAConfigMap, sec, rt)
+	actualDeployment, depChanged, depErr := co.SyncDeployment(set.Operator, cm, serviceCAConfigMap, sec, rt)
 	if depErr != nil {
 		msg := fmt.Sprintf("%q: %v", "deployment", depErr)
 		klog.V(4).Infof("incomplete sync: %v", msg)
-		co.ConditionResourceSyncProgressing(operatorConfig, msg)
+		co.ConditionResourceSyncProgressing(updatedOperatorConfig, msg)
 		return depErr
 	}
 	toUpdate = toUpdate || depChanged
 
-	resourcemerge.SetDeploymentGeneration(&operatorConfig.Status.Generations, actualDeployment)
-	operatorConfig.Status.ObservedGeneration = operatorConfig.ObjectMeta.Generation
+	resourcemerge.SetDeploymentGeneration(&updatedOperatorConfig.Status.Generations, actualDeployment)
+	updatedOperatorConfig.Status.ObservedGeneration = set.Operator.ObjectMeta.Generation
 
 	klog.V(4).Infoln("-----------------------")
 	klog.V(4).Infof("sync loop 4.0.0 resources updated: %v", toUpdate)
@@ -118,20 +116,20 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 
 	// if we made it this far, the operator is not failing
 	// but we will handle the state of the operand below
-	co.ConditionResourceSyncSuccess(operatorConfig)
+	co.ConditionResourceSyncSuccess(updatedOperatorConfig)
 	// the operand is in a transitional state if any of the above resources changed
 	// or if we have not settled on the desired number of replicas or deployment is not uptodate.
 	if toUpdate {
-		co.ConditionResourceSyncProgressing(operatorConfig, "Changes made during sync updates, additional sync expected.")
+		co.ConditionResourceSyncProgressing(updatedOperatorConfig, "Changes made during sync updates, additional sync expected.")
 	} else {
 		version := os.Getenv("RELEASE_VERSION")
 		if !deploymentsub.IsAvailableAndUpdated(actualDeployment) {
-			co.ConditionResourceSyncProgressing(operatorConfig, fmt.Sprintf("Working toward version %s", version))
+			co.ConditionResourceSyncProgressing(updatedOperatorConfig, fmt.Sprintf("Working toward version %s", version))
 		} else {
 			if co.versionGetter.GetVersions()["operator"] != version {
 				co.versionGetter.SetVersion("operator", version)
 			}
-			co.ConditionResourceSyncNotProgressing(operatorConfig)
+			co.ConditionResourceSyncNotProgressing(updatedOperatorConfig)
 		}
 	}
 
@@ -143,20 +141,20 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 	if !deploymentsub.IsReady(actualDeployment) {
 		msg := fmt.Sprintf("%v pods available for console deployment", actualDeployment.Status.ReadyReplicas)
 		klog.V(4).Infoln(msg)
-		co.ConditionDeploymentNotAvailable(operatorConfig, msg)
+		co.ConditionDeploymentNotAvailable(updatedOperatorConfig, msg)
 	} else if !routesub.IsAdmitted(rt) {
 		klog.V(4).Infoln("console route is not admitted")
 		co.SetStatusCondition(
-			operatorConfig,
+			updatedOperatorConfig,
 			operatorv1.OperatorStatusTypeAvailable,
 			operatorv1.ConditionFalse,
 			"RouteNotAdmitted",
 			"console route is not admitted",
 		)
 	} else if actualDeployment.Status.Replicas == actualDeployment.Status.ReadyReplicas && actualDeployment.Status.Replicas == actualDeployment.Status.UpdatedReplicas {
-		co.ConditionDeploymentAvailable(operatorConfig, fmt.Sprintf("%v replicas ready at version %s", actualDeployment.Status.ReadyReplicas, os.Getenv("RELEASE_VERSION")))
+		co.ConditionDeploymentAvailable(updatedOperatorConfig, fmt.Sprintf("%v replicas ready at version %s", actualDeployment.Status.ReadyReplicas, os.Getenv("RELEASE_VERSION")))
 	} else {
-		co.ConditionDeploymentAvailable(operatorConfig, fmt.Sprintf("%v replicas ready", actualDeployment.Status.ReadyReplicas))
+		co.ConditionDeploymentAvailable(updatedOperatorConfig, fmt.Sprintf("%v replicas ready", actualDeployment.Status.ReadyReplicas))
 	}
 
 	// if we survive the gauntlet, we need to update the console config with the
@@ -169,12 +167,12 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 		return err
 	}
 
-	if _, err := SyncConsoleConfig(co, consoleConfig, consoleURL); err != nil {
+	if _, err := co.SyncConsoleConfig(set.Console, consoleURL); err != nil {
 		klog.Errorf("could not update console config status: %v", err)
 		return err
 	}
 
-	if _, _, err := SyncConsolePublicConfig(co, recorder, consoleURL); err != nil {
+	if _, _, err := co.SyncConsolePublicConfig(consoleURL); err != nil {
 		klog.Errorf("could not update public console config status: %v", err)
 		return err
 	}
@@ -207,28 +205,21 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 	return nil
 }
 
-func getConsoleURL(route *routev1.Route) string {
-	host := routesub.GetCanonicalHost(route)
-	if host == "" {
-		return ""
-	}
-	return util.HTTPS(host)
-}
-
-func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, consoleURL string) (*configv1.Console, error) {
-	if consoleConfig.Status.ConsoleURL != consoleURL {
+func (co *consoleOperator) SyncConsoleConfig(consoleConfig *configv1.Console, consoleURL string) (*configv1.Console, error) {
+	updated := consoleConfig.DeepCopy()
+	if updated.Status.ConsoleURL != consoleURL {
 		klog.V(4).Infof("updating console.config.openshift.io with url: %v", consoleURL)
-		consoleConfig.Status.ConsoleURL = consoleURL
+		updated.Status.ConsoleURL = consoleURL
 	}
-	return co.consoleConfigClient.UpdateStatus(consoleConfig)
+	return co.consoleConfigClient.UpdateStatus(updated)
 }
 
-func SyncConsolePublicConfig(co *consoleOperator, recorder events.Recorder, consoleURL string) (*corev1.ConfigMap, bool, error) {
+func (co *consoleOperator) SyncConsolePublicConfig(consoleURL string) (*corev1.ConfigMap, bool, error) {
 	requiredConfigMap := configmapsub.DefaultPublicConfig(consoleURL)
-	return resourceapply.ApplyConfigMap(co.configMapClient, recorder, requiredConfigMap)
+	return resourceapply.ApplyConfigMap(co.configMapClient, co.recorder, requiredConfigMap)
 }
 
-func SyncDeployment(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route) (*appsv1.Deployment, bool, error) {
+func (co *consoleOperator) SyncDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route) (*appsv1.Deployment, bool, error) {
 	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, sec, rt)
 	expectedGeneration := getDeploymentGeneration(co)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
@@ -240,7 +231,7 @@ func SyncDeployment(co *consoleOperator, recorder events.Recorder, operatorConfi
 
 	deployment, deploymentChanged, applyDepErr := resourceapply.ApplyDeployment(
 		co.deploymentClient,
-		recorder,
+		co.recorder,
 		requiredDeployment,
 		expectedGeneration,
 		// redeploy on operatorConfig.spec changes
@@ -256,7 +247,7 @@ func SyncDeployment(co *consoleOperator, recorder events.Recorder, operatorConfi
 
 // applies changes to the oauthclient
 // should not be called until route & secret dependencies are verified
-func SyncOAuthClient(co *consoleOperator, operatorConfig *operatorv1.Console, sec *corev1.Secret, rt *routev1.Route) (*oauthv1.OAuthClient, bool, error) {
+func (co *consoleOperator) SyncOAuthClient(operatorConfig *operatorv1.Console, sec *corev1.Secret, rt *routev1.Route) (*oauthv1.OAuthClient, bool, error) {
 	host := routesub.GetCanonicalHost(rt)
 	if host == "" {
 		customErr := customerrors.NewSyncError("waiting on route host")
@@ -278,10 +269,10 @@ func SyncOAuthClient(co *consoleOperator, operatorConfig *operatorv1.Console, se
 	return oauthClient, oauthChanged, nil
 }
 
-func SyncSecret(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console) (*corev1.Secret, bool, error) {
+func (co *consoleOperator) SyncSecret(operatorConfig *operatorv1.Console) (*corev1.Secret, bool, error) {
 	secret, err := co.secretsClient.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) == "" {
-		return resourceapply.ApplySecret(co.secretsClient, recorder, secretsub.DefaultSecret(operatorConfig, crypto.Random256BitsString()))
+		return resourceapply.ApplySecret(co.secretsClient, co.recorder, secretsub.DefaultSecret(operatorConfig, crypto.Random256BitsString()))
 	}
 	// any error should be returned & kill the sync loop
 	if err != nil {
@@ -294,7 +285,7 @@ func SyncSecret(co *consoleOperator, recorder events.Recorder, operatorConfig *o
 // apply configmap (needs route)
 // by the time we get to the configmap, we can assume the route exits & is configured properly
 // therefore no additional error handling is needed here.
-func SyncConfigMap(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
+func (co *consoleOperator) SyncConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
 	managedConfig, mcErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 	if mcErr != nil && !apierrors.IsNotFound(mcErr) {
 		klog.Errorf("managed config error: %v", mcErr)
@@ -305,7 +296,7 @@ func SyncConfigMap(co *consoleOperator, recorder events.Recorder, operatorConfig
 	if err != nil {
 		return nil, false, err
 	}
-	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, recorder, defaultConfigmap)
+	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, co.recorder, defaultConfigmap)
 	if cmErr != nil {
 		klog.Errorf("%q: %v", "configmap", cmErr)
 		return nil, false, cmErr
@@ -318,7 +309,7 @@ func SyncConfigMap(co *consoleOperator, recorder events.Recorder, operatorConfig
 }
 
 // apply service-ca configmap
-func SyncServiceCAConfigMap(co *consoleOperator, operatorConfig *operatorv1.Console) (*corev1.ConfigMap, bool, error) {
+func (co *consoleOperator) SyncServiceCAConfigMap(operatorConfig *operatorv1.Console) (*corev1.ConfigMap, bool, error) {
 	required := configmapsub.DefaultServiceCAConfigMap(operatorConfig)
 	// we can't use `resourceapply.ApplyConfigMap` since it compares data, and the service serving cert operator injects the data
 	existing, err := co.configMapClient.ConfigMaps(required.Namespace).Get(required.Name, metav1.GetOptions{})
@@ -354,8 +345,8 @@ func SyncServiceCAConfigMap(co *consoleOperator, operatorConfig *operatorv1.Cons
 
 // apply service
 // there is nothing special about our service, so no additional error handling is needed here.
-func SyncService(co *consoleOperator, recorder events.Recorder, operatorConfig *operatorv1.Console) (*corev1.Service, bool, error) {
-	svc, svcChanged, svcErr := resourceapply.ApplyService(co.serviceClient, recorder, servicesub.DefaultService(operatorConfig))
+func (co *consoleOperator) SyncService(operatorConfig *operatorv1.Console) (*corev1.Service, bool, error) {
+	svc, svcChanged, svcErr := resourceapply.ApplyService(co.serviceClient, co.recorder, servicesub.DefaultService(operatorConfig))
 	if svcErr != nil {
 		klog.Errorf("%q: %v", "service", svcErr)
 		return nil, false, svcErr
@@ -368,7 +359,7 @@ func SyncService(co *consoleOperator, recorder events.Recorder, operatorConfig *
 //   default host name set by the server, or any other values. The ApplyRoute()
 //   logic will have to be sound.
 // - update to ApplyRoute() once the logic is settled
-func SyncRoute(co *consoleOperator, operatorConfig *operatorv1.Console) (*routev1.Route, bool, error) {
+func (co *consoleOperator) SyncRoute(operatorConfig *operatorv1.Console) (*routev1.Route, bool, error) {
 	// ensure we have a route. any error returned is a non-404 error
 	rt, rtIsNew, rtErr := routesub.GetOrCreate(co.routeClient, routesub.DefaultRoute(operatorConfig))
 	if rtErr != nil {
@@ -407,4 +398,12 @@ func getDeploymentGeneration(co *consoleOperator) int64 {
 		return -1
 	}
 	return deployment.Generation
+}
+
+func getConsoleURL(route *routev1.Route) string {
+	host := routesub.GetCanonicalHost(route)
+	if host == "" {
+		return ""
+	}
+	return util.HTTPS(host)
 }
