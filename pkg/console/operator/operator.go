@@ -143,6 +143,12 @@ func (c *consoleOperator) Key() (metav1.Object, error) {
 	return c.operatorConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
 }
 
+type configSet struct {
+	Console        *configv1.Console
+	Operator       *operatorsv1.Console
+	Infrastructure *configv1.Infrastructure
+}
+
 func (c *consoleOperator) Sync(obj metav1.Object) error {
 	startTime := time.Now()
 	klog.V(4).Infof("started syncing operator %q (%v)", obj.GetName(), startTime)
@@ -165,58 +171,64 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 		return err
 	}
 
-	if err := c.handleSync(operatorConfig, consoleConfig, infrastructureConfig); err != nil {
+	configs := configSet{
+		Console:        consoleConfig,
+		Operator:       operatorConfig,
+		Infrastructure: infrastructureConfig,
+	}
+
+	if err := c.handleSync(configs); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (c *consoleOperator) handleSync(operatorConfig *operatorsv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure) error {
-	operatorConfigCopy := operatorConfig.DeepCopy()
+func (c *consoleOperator) handleSync(configs configSet) error {
+	updatedStatus := configs.Operator.DeepCopy()
 
-	switch operatorConfigCopy.Spec.ManagementState {
+	switch updatedStatus.Spec.ManagementState {
 	case operatorsv1.Managed:
 		klog.V(4).Infoln("console is in a managed state.")
 		// handled below
 	case operatorsv1.Unmanaged:
 		klog.V(4).Infoln("console is in an unmanaged state.")
-		c.ConditionsManagementStateUnmanaged(operatorConfigCopy)
-		if !reflect.DeepEqual(operatorConfigCopy, operatorConfig) {
-			c.SyncStatus(operatorConfigCopy)
+		c.ConditionsManagementStateUnmanaged(updatedStatus)
+		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
+			c.SyncStatus(updatedStatus)
 		}
 		return nil
 	case operatorsv1.Removed:
 		klog.V(4).Infoln("console has been removed.")
-		c.ConditionsManagementStateRemoved(operatorConfigCopy)
-		if !reflect.DeepEqual(operatorConfigCopy, operatorConfig) {
-			c.SyncStatus(operatorConfigCopy)
+		c.ConditionsManagementStateRemoved(updatedStatus)
+		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
+			c.SyncStatus(updatedStatus)
 		}
-		return c.removeConsole(operatorConfigCopy)
+		return c.removeConsole(updatedStatus)
 	default:
-		c.ConditionsManagementStateInvalid(operatorConfigCopy)
-		if !reflect.DeepEqual(operatorConfigCopy, operatorConfig) {
-			c.SyncStatus(operatorConfigCopy)
+		c.ConditionsManagementStateInvalid(updatedStatus)
+		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
+			c.SyncStatus(updatedStatus)
 		}
-		return fmt.Errorf("console is in an unknown state: %v", operatorConfigCopy.Spec.ManagementState)
+		return fmt.Errorf("console is in an unknown state: %v", updatedStatus.Spec.ManagementState)
 	}
 
 	// we can default to not failing, and wait to see if sync returns an error
-	c.ConditionNotDegraded(operatorConfigCopy)
-	err := sync_v400(c, operatorConfigCopy, consoleConfig, infrastructureConfig)
+	c.ConditionNotDegraded(updatedStatus)
+	err := c.sync_v400(updatedStatus, configs)
 	if err != nil {
 		if !customerrors.IsSyncError(err) {
-			c.SyncStatus(c.ConditionResourceSyncDegraded(operatorConfigCopy, err.Error()))
+			c.SyncStatus(c.ConditionResourceSyncDegraded(updatedStatus, err.Error()))
 			return err
 		} else {
-			c.SyncStatus(operatorConfigCopy)
+			c.SyncStatus(updatedStatus)
 			return nil
 		}
 	}
 	// finally write out the set of conditions currently set if anything has changed
 	// to avoid a hot loop
-	if !reflect.DeepEqual(operatorConfigCopy, operatorConfig) {
-		c.SyncStatus(operatorConfigCopy)
+	if !reflect.DeepEqual(updatedStatus, configs.Operator) {
+		c.SyncStatus(updatedStatus)
 	}
 	return nil
 }
