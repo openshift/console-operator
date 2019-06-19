@@ -155,7 +155,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 // Console Server Config struct when builder.ConfigYAML() is called.
 // This YAML should be an exact representation of the struct from builder.Config()
 // and the output should make use of the YAML tags embedded in the structs
-// in config.go
+// in types.go
 func TestConsoleServerCLIConfigBuilderYAML(t *testing.T) {
 	tests := []struct {
 		name  string
