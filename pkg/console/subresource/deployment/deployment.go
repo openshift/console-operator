@@ -54,7 +54,7 @@ type volumeConfig struct {
 	isConfigMap bool
 }
 
-func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route) *appsv1.Deployment {
+func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route, canMountCustomLogo bool) *appsv1.Deployment {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
@@ -69,8 +69,8 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	gracePeriod := int64(30)
 	tolerationSeconds := int64(120)
 	volumeConfig := defaultVolumeConfig()
-	if hasCustomLogo(operatorConfig) {
-		volumeConfig = append(volumeConfig, customLogoVolume(operatorConfig))
+	if canMountCustomLogo {
+		volumeConfig = append(volumeConfig, customLogoVolume())
 	}
 
 	deployment := &appsv1.Deployment{
@@ -339,16 +339,9 @@ func defaultVolumeConfig() []volumeConfig {
 	}
 }
 
-func hasCustomLogo(operatorConfig *operatorv1.Console) bool {
-	if logoName := operatorConfig.Spec.Customization.CustomLogoFile.Name; logoName != "" {
-		return true
-	}
-	return false
-}
-
-func customLogoVolume(operatorConfig *operatorv1.Console) volumeConfig {
+func customLogoVolume() volumeConfig {
 	return volumeConfig{
-		name:        api.OpenShiftCustomLogoConfigMap,
+		name:        api.OpenShiftCustomLogoConfigMapName,
 		path:        "/var/logo/",
 		isConfigMap: true}
 }

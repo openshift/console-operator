@@ -139,7 +139,7 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 		conf.DocumentationBaseURL = b.docURL
 	}
 	if len(b.customProductName) > 0 {
-		conf.CustomProductName = string(b.customProductName)
+		conf.CustomProductName = b.customProductName
 	}
 	if len(b.customLogoFile) > 0 {
 		conf.CustomLogoFile = b.customLogoFile

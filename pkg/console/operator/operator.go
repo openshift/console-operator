@@ -136,7 +136,7 @@ func NewConsoleOperator(
 		operator.WithInformer(serviceInformer, targetNameFilter),
 		operator.WithInformer(oauthClients, targetNameFilter),
 		// special resources with unique names
-		operator.WithInformer(configMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName, api.OpenShiftCustomLogoConfigMap)),
+		operator.WithInformer(configMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName, api.OpenShiftCustomLogoConfigMapName)),
 		operator.WithInformer(managedConfigMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName)),
 		operator.WithInformer(secretsInformer, operator.FilterByNames(deployment.ConsoleOauthConfigName)),
 	)
@@ -217,14 +217,15 @@ func (c *consoleOperator) handleSync(configs configSet) error {
 		return fmt.Errorf("console is in an unknown state: %v", updatedStatus.Spec.ManagementState)
 	}
 
-	// we can default to not failing, and wait to see if sync returns an error
-	c.ConditionNotDegraded(updatedStatus)
+	// set default conditions ok first, sync can toggle if conditions are invalid
+	c.ConditionsDefault(updatedStatus)
 	err := c.sync_v400(updatedStatus, configs)
 	if err != nil {
-		if !customerrors.IsSyncError(err) {
+		if !customerrors.IsSyncError(err) || !customerrors.IsCustomLogoError(err) {
 			c.SyncStatus(c.ConditionResourceSyncDegraded(updatedStatus, err.Error()))
 			return err
 		} else {
+			// custom errors are internal
 			c.SyncStatus(updatedStatus)
 			return nil
 		}
@@ -266,46 +267,4 @@ func (c *consoleOperator) removeConsole(cr *operatorsv1.Console) error {
 	errs = append(errs, updateConfigErr)
 
 	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
-}
-
-// TODO: SyncCustomLogoConfigMap
-// - when a sync loop is triggered, we need to check the operator config
-//   - if there is a custom logo defined in the operator config
-//     we need to update the resourceSyncer & ensure it knows to sync this (new?) logo configmap
-//   - sync as:
-//   	- source can be any <any-name> in openshift-config
-//      - destination must to be "custom-logo" in openshift-console
-func (c *consoleOperator) SyncCustomLogoConfigMap(operatorConfig *operatorsv1.Console) error {
-	// TODO: review this
-	c.CheckCustomLogoImageStatus(operatorConfig)
-	// TODO: if no name, then null it out via the sync
-	logoName := operatorConfig.Spec.Customization.CustomLogoFile.Name
-	if logoName != "" {
-		return c.resourceSyncer.SyncConfigMap(
-			resourcesynccontroller.ResourceLocation{Namespace: api.OpenShiftConsoleNamespace, Name: api.OpenShiftCustomLogoConfigMap},
-			resourcesynccontroller.ResourceLocation{Namespace: api.OpenShiftConfigNamespace, Name: logoName},
-		)
-	}
-	return nil
-}
-
-// TODO: visit this and see what we need to do to get it in the correct state
-// - we should not need to bury a call to c.SetStatusCondition down in here...
-func (c *consoleOperator) CheckCustomLogoImageStatus(operatorConfig *operatorsv1.Console) {
-	logo := operatorConfig.Spec.Customization.CustomLogoFile
-	if logo.Name != "" && logo.Key != "" {
-		//Check that configmap for custom logo exists
-		logoConfigMap, err := c.configMapClient.ConfigMaps(api.OpenShiftConfigNamespace).Get(logo.Name, metav1.GetOptions{})
-		if err != nil {
-			// Set Operator Status to CustomLogoInvalid
-			c.SetStatusCondition(operatorConfig, operatorsv1.OperatorStatusTypeDegraded, operatorsv1.ConditionTrue, reasonCustomLogoInvalid, "custom logo config map does not exist or has error")
-			klog.Errorf("customLogo configmap not valid, %v", err)
-		} else {
-			if logoConfigMap.BinaryData[logo.Key] == nil {
-				//Key does not exist so activate status condition
-				c.SetStatusCondition(operatorConfig, operatorsv1.OperatorStatusTypeDegraded, operatorsv1.ConditionTrue, reasonCustomLogoInvalid, "custom logo file does not exist ")
-				klog.Errorf("customLogo key is null")
-			}
-		}
-	}
 }

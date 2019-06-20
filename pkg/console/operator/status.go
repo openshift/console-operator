@@ -324,3 +324,29 @@ func (c *consoleOperator) ConditionsManagementStateInvalid(operatorConfig *opera
 
 	return operatorConfig
 }
+
+func (c *consoleOperator) ConditionsDefault(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+		Type:               operatorsv1.OperatorStatusTypeAvailable,
+		Status:             operatorsv1.ConditionTrue,
+		Reason:             reasonAsExpected,
+		Message:            "As expected",
+		LastTransitionTime: metav1.Now(),
+	})
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+		Type:               operatorsv1.OperatorStatusTypeProgressing,
+		Status:             operatorsv1.ConditionFalse,
+		Reason:             reasonAsExpected,
+		Message:            "As expected",
+		LastTransitionTime: metav1.Now(),
+	})
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+		Type:               operatorsv1.OperatorStatusTypeDegraded,
+		Status:             operatorsv1.ConditionFalse,
+		Reason:             reasonAsExpected,
+		Message:            "As expected",
+		LastTransitionTime: metav1.Now(),
+	})
+
+	return operatorConfig
+}

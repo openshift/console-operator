@@ -22,11 +22,12 @@ func TestDefaultDeployment(t *testing.T) {
 		gracePeriod  int64 = 30
 	)
 	type args struct {
-		config *operatorsv1.Console
-		cm     *corev1.ConfigMap
-		ca     *corev1.ConfigMap
-		sec    *corev1.Secret
-		rt     *v1.Route
+		config             *operatorsv1.Console
+		cm                 *corev1.ConfigMap
+		ca                 *corev1.ConfigMap
+		sec                *corev1.Secret
+		rt                 *v1.Route
+		canMountCustomLogo bool
 	}
 
 	consoleOperatorConfig := &operatorsv1.Console{
@@ -187,7 +188,7 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.cm, tt.args.sec, tt.args.rt), tt.want); diff != nil {
+			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.cm, tt.args.sec, tt.args.rt, tt.args.canMountCustomLogo), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
