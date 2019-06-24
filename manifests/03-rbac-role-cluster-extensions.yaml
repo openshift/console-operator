@@ -11,6 +11,7 @@ rules:
   - consolelinks
   - consoleclidownloads
   - consolenotifications
+  - consoleexternalloglinks
   verbs:
   - get
   - list
