@@ -38,14 +38,16 @@ func setupBrandingTestCase(t *testing.T) (*testframework.Clientset, operatorsv1.
 }
 
 func cleanupBrandingTestCase(t *testing.T, client *testframework.Clientset, originalConfigBrand operatorsv1.Brand, originalManagedConfigMapData map[string]string) {
-
-	setOperatorConfigBrand(t, client, originalConfigBrand)
+	err := setOperatorConfigBrand(client, "")
+	if err != nil {
+		t.Fatalf("could not get operator config, %v", err)
+	}
 
 	managedConfigMap := generateTestConfigMap(operatorsv1.BrandOKD)
 	if originalManagedConfigMapData != nil {
 		managedConfigMap.Data = originalManagedConfigMapData
 	}
-	_, err := client.ConfigMaps(consoleapi.OpenShiftConfigManagedNamespace).Update(managedConfigMap)
+	_, err = client.ConfigMaps(consoleapi.OpenShiftConfigManagedNamespace).Update(managedConfigMap)
 	if err != nil {
 		t.Fatalf("could not reset managed config map  %v", err)
 	}
@@ -67,10 +69,13 @@ func TestOperatorConfigBranding(t *testing.T) {
 
 	for _, expectedBrand := range validOperatorConfigBrands {
 		t.Logf("update operator with %v", expectedBrand)
-		// helper to update the operator config
-		setOperatorConfigBrand(t, client, expectedBrand)
 		// now check if it has set the brand
-		err = wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
+		err = wait.Poll(1*time.Second, testframework.AsyncOperationTimeout, func() (stop bool, err error) {
+			// helper to update the operator config
+			err = setOperatorConfigBrand(client, expectedBrand)
+			if err != nil {
+				return false, nil
+			}
 			gotBrand := getConsoleBrand(t, client)
 			return (gotBrand == expectedBrand), nil
 		})
@@ -85,7 +90,10 @@ func TestBrandingFromManagedConfigMap(t *testing.T) {
 	client, originalConfigBrand, originalManagedConfigMapData := setupBrandingTestCase(t)
 	defer cleanupBrandingTestCase(t, client, originalConfigBrand, originalManagedConfigMapData)
 	// Set operator config to empty so it does not override the managed config map values
-	setOperatorConfigBrand(t, client, "")
+	err := setOperatorConfigBrand(client, "")
+	if err != nil {
+		t.Fatalf("could not get operator config, %v", err)
+	}
 
 	for _, expectedBrand := range validManagedConfigMapBrands {
 		t.Logf("update data for the config map in openshift-config-managed namespace with %v", expectedBrand)
@@ -128,10 +136,10 @@ customization:
 }
 
 // Set Brand on the operator config
-func setOperatorConfigBrand(t *testing.T, client *testframework.Clientset, brand operatorsv1.Brand) {
+func setOperatorConfigBrand(client *testframework.Clientset, brand operatorsv1.Brand) (err error) {
 	operatorConfig, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
-		t.Fatalf("could not get operator config, %v", err)
+		return err
 	}
 	spec := operatorsv1.ConsoleSpec{
 		OperatorSpec: operatorsv1.OperatorSpec{
@@ -144,8 +152,9 @@ func setOperatorConfigBrand(t *testing.T, client *testframework.Clientset, brand
 	operatorConfig.Spec = spec
 	_, err = client.Consoles().Update(operatorConfig)
 	if err != nil {
-		t.Fatalf("could not update operator config with brand=%v, %v", brand, err)
+		return err
 	}
+	return nil
 }
 
 // Get the brand from the console-config in the data of the console CM
