@@ -1,0 +1,17 @@
+# any logged-in user authenticated through the
+# console needs READONLY access to these resources
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: console-extensions-reader
+rules:
+- apiGroups:
+  - console.openshift.io
+  resources:
+  - consolelinks
+  - consoleclidownloads
+  - consolenotifications
+  verbs:
+  - get
+  - list
+  - watch
