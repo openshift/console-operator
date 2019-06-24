@@ -25,6 +25,7 @@ import (
 
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
+	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/status"
 
 	"monis.app/go/openshift/operator"
@@ -68,7 +69,8 @@ type consoleOperator struct {
 	infrastructureConfigClient configclientv1.InfrastructureInterface
 	versionGetter              status.VersionGetter
 	// recorder
-	recorder events.Recorder
+	recorder       events.Recorder
+	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
 
 func NewConsoleOperator(
@@ -92,6 +94,7 @@ func NewConsoleOperator(
 	versionGetter status.VersionGetter,
 	// recorder
 	recorder events.Recorder,
+	resourceSyncer resourcesynccontroller.ResourceSyncer,
 ) operator.Runner {
 	c := &consoleOperator{
 		// configs
@@ -109,7 +112,8 @@ func NewConsoleOperator(
 		oauthClient:   oauthv1Client,
 		versionGetter: versionGetter,
 		// recorder
-		recorder: recorder,
+		recorder:       recorder,
+		resourceSyncer: resourceSyncer,
 	}
 
 	secretsInformer := coreV1.Secrets()
@@ -132,7 +136,7 @@ func NewConsoleOperator(
 		operator.WithInformer(serviceInformer, targetNameFilter),
 		operator.WithInformer(oauthClients, targetNameFilter),
 		// special resources with unique names
-		operator.WithInformer(configMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName)),
+		operator.WithInformer(configMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName, api.OpenShiftCustomLogoConfigMapName)),
 		operator.WithInformer(managedConfigMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName)),
 		operator.WithInformer(secretsInformer, operator.FilterByNames(deployment.ConsoleOauthConfigName)),
 	)
@@ -213,14 +217,15 @@ func (c *consoleOperator) handleSync(configs configSet) error {
 		return fmt.Errorf("console is in an unknown state: %v", updatedStatus.Spec.ManagementState)
 	}
 
-	// we can default to not failing, and wait to see if sync returns an error
-	c.ConditionNotDegraded(updatedStatus)
+	// set default conditions ok first, sync can toggle if conditions are invalid
+	c.ConditionsDefault(updatedStatus)
 	err := c.sync_v400(updatedStatus, configs)
 	if err != nil {
-		if !customerrors.IsSyncError(err) {
+		if !customerrors.IsSyncError(err) || !customerrors.IsCustomLogoError(err) {
 			c.SyncStatus(c.ConditionResourceSyncDegraded(updatedStatus, err.Error()))
 			return err
 		} else {
+			// custom errors are internal
 			c.SyncStatus(updatedStatus)
 			return nil
 		}

@@ -16,12 +16,14 @@ import (
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
+	operatorsv1 "github.com/openshift/api/operator/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	"github.com/openshift/console-operator/pkg/crypto"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
+	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 
 	// operator
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
@@ -80,6 +82,15 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	}
 	toUpdate = toUpdate || serviceCAConfigMapChanged
 
+	customLogoCanMount, customLogoError := co.SyncCustomLogoConfigMap(updatedOperatorConfig)
+	if customLogoError != nil {
+		msg := fmt.Sprintf("%q: %v", "customlogoconfigmap", customLogoError)
+		klog.V(4).Infof("incomplete sync: %v", msg)
+		// If the custom logo sync fails for any reason, we are degraded, not progressing.
+		// The sync loop may not settle, we are unable to honor it in current state.
+		co.ConditionDegraded(updatedOperatorConfig, "CustomLogoInvalid", msg)
+	}
+
 	sec, secChanged, secErr := co.SyncSecret(set.Operator)
 	if secErr != nil {
 		msg := fmt.Sprintf("%q: %v", "secret", secErr)
@@ -98,7 +109,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	}
 	toUpdate = toUpdate || oauthChanged
 
-	actualDeployment, depChanged, depErr := co.SyncDeployment(set.Operator, cm, serviceCAConfigMap, sec, rt)
+	actualDeployment, depChanged, depErr := co.SyncDeployment(set.Operator, cm, serviceCAConfigMap, sec, rt, customLogoCanMount)
 	if depErr != nil {
 		msg := fmt.Sprintf("%q: %v", "deployment", depErr)
 		klog.V(4).Infof("incomplete sync: %v", msg)
@@ -114,11 +125,8 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	klog.V(4).Infof("sync loop 4.0.0 resources updated: %v", toUpdate)
 	klog.V(4).Infoln("-----------------------")
 
-	// if we made it this far, the operator is not failing
-	// but we will handle the state of the operand below
-	co.ConditionResourceSyncSuccess(updatedOperatorConfig)
 	// the operand is in a transitional state if any of the above resources changed
-	// or if we have not settled on the desired number of replicas or deployment is not uptodate.
+	// or if we have not settled on the desired number of replicas or deployment is not up to date.
 	if toUpdate {
 		co.ConditionResourceSyncProgressing(updatedOperatorConfig, "Changes made during sync updates, additional sync expected.")
 	} else {
@@ -219,8 +227,8 @@ func (co *consoleOperator) SyncConsolePublicConfig(consoleURL string) (*corev1.C
 	return resourceapply.ApplyConfigMap(co.configMapClient, co.recorder, requiredConfigMap)
 }
 
-func (co *consoleOperator) SyncDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route) (*appsv1.Deployment, bool, error) {
-	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, sec, rt)
+func (co *consoleOperator) SyncDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route, canMountCustomLogo bool) (*appsv1.Deployment, bool, error) {
+	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, sec, rt, canMountCustomLogo)
 	expectedGeneration := getDeploymentGeneration(co)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
@@ -390,6 +398,74 @@ func (co *consoleOperator) SyncRoute(operatorConfig *operatorv1.Console) (*route
 	}
 	// only return the route if it is valid with a host
 	return rt, rtIsNew, rtErr
+}
+
+func (c *consoleOperator) SyncCustomLogoConfigMap(operatorConfig *operatorsv1.Console) (okToMount bool, err error) {
+	// validate first, to avoid a broken volume mount & a crashlooping console
+	okToMount, err = c.ValidateCustomLogo(operatorConfig)
+
+	if okToMount {
+		if err := c.UpdateCustomLogoSyncSource(operatorConfig); err != nil {
+			klog.V(4).Infoln("custom logo sync source update error")
+			return false, customerrors.NewCustomLogoError("custom logo sync source update error")
+		}
+	}
+	return okToMount, err
+}
+
+// on each pass of the operator sync loop, we need to check the
+// operator config for a custom logo.  If this has been set, then
+// we notify the resourceSyncer that it needs to start watching this
+// configmap in its own sync loop.  Note that the resourceSyncer's actual
+// sync loop will run later.  Our operator is waiting to receive
+// the copied configmap into the console namespace for a future
+// sync loop to mount into the console deployment.
+func (c *consoleOperator) UpdateCustomLogoSyncSource(operatorConfig *operatorsv1.Console) error {
+	source := resourcesynccontroller.ResourceLocation{}
+	logoConfigMapName := operatorConfig.Spec.Customization.CustomLogoFile.Name
+
+	if logoConfigMapName != "" {
+		source.Name = logoConfigMapName
+		source.Namespace = api.OpenShiftConfigNamespace
+	}
+	// if no custom logo provided, sync an empty source to delete
+	return c.resourceSyncer.SyncConfigMap(
+		resourcesynccontroller.ResourceLocation{Namespace: api.OpenShiftConsoleNamespace, Name: api.OpenShiftCustomLogoConfigMapName},
+		source,
+	)
+}
+
+func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorsv1.Console) (okToMount bool, err error) {
+	logoConfigMapName := operatorConfig.Spec.Customization.CustomLogoFile.Name
+	logoImageKey := operatorConfig.Spec.Customization.CustomLogoFile.Key
+
+	if configmapsub.FileNameOrKeyInconsistentlySet(operatorConfig) {
+		klog.V(4).Infoln("custom logo filename or key have not been set")
+		return false, customerrors.NewCustomLogoError("either custom logo filename or key have not been set")
+	}
+	// fine if nothing set, but don't mount it
+	if configmapsub.FileNameNotSet(operatorConfig) {
+		klog.V(4).Infoln("no custom logo configured")
+		return false, nil
+	}
+	logoConfigMap, err := c.configMapClient.ConfigMaps(api.OpenShiftConfigNamespace).Get(logoConfigMapName, metav1.GetOptions{})
+	// If we 404, the logo file may not have been created yet.
+	if err != nil {
+		klog.V(4).Infof("custom logo file %v not found", logoConfigMapName)
+		return false, customerrors.NewCustomLogoError(fmt.Sprintf("custom logo file %v not found", logoConfigMapName))
+	}
+	imageBytes := logoConfigMap.BinaryData[logoImageKey]
+	if configmapsub.LogoImageIsEmpty(imageBytes) {
+		klog.V(4).Infoln("custom logo file exists but no image provided")
+		return false, customerrors.NewCustomLogoError("custom logo file exists but no image provided")
+	}
+	// we will mount it anyway, but should notify the user if doesn't look right
+	if !configmapsub.IsLikelyCommonImageFormat(imageBytes) {
+		klog.V(4).Infoln("custom logo does not appear to be a common image format")
+		return true, customerrors.NewCustomLogoError("custom logo does not appear to be a common image format")
+	}
+	klog.V(4).Infoln("custom logo ok to mount")
+	return true, nil
 }
 
 func getDeploymentGeneration(co *consoleOperator) int64 {
