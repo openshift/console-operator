@@ -53,4 +53,4 @@ spec:
             location:
               type: string
               description: Determines which dropdown menu the link is added to (HelpMenu, UserMenu)
-              pattern: '\bHelpMenu\b|\bUserMenu\b'
+              pattern: ^(HelpMenu|UserMenu)$
