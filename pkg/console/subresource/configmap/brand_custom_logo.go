@@ -38,3 +38,9 @@ func FileNameNotSet(operatorConfig *v1.Console) bool {
 func LogoImageIsEmpty(image []byte) bool {
 	return len(image) == 0
 }
+
+func IsRemoved(operatorConfig *v1.Console) bool {
+	logoConfigMapName := operatorConfig.Spec.Customization.CustomLogoFile.Name
+	logoImageKey := operatorConfig.Spec.Customization.CustomLogoFile.Key
+	return logoConfigMapName == "" && logoImageKey == ""
+}
