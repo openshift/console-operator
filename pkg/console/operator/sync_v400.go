@@ -404,7 +404,7 @@ func (c *consoleOperator) SyncCustomLogoConfigMap(operatorConfig *operatorsv1.Co
 	// validate first, to avoid a broken volume mount & a crashlooping console
 	okToMount, err = c.ValidateCustomLogo(operatorConfig)
 
-	if okToMount {
+	if okToMount || configmapsub.IsRemoved(operatorConfig) {
 		if err := c.UpdateCustomLogoSyncSource(operatorConfig); err != nil {
 			klog.V(4).Infoln("custom logo sync source update error")
 			return false, customerrors.NewCustomLogoError("custom logo sync source update error")
