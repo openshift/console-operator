@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openshift/console-operator/pkg/testframework"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	consoleapi "github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/test/e2e/framework"
 )
 
 // Each of these tests helpers are similar, they only vary in the
@@ -22,9 +22,9 @@ import (
 
 var pollTimeout = 10 * time.Second
 
-func patchAndCheckConfigMap(t *testing.T, client *testframework.Clientset, isOperatorManaged bool) error {
+func patchAndCheckConfigMap(t *testing.T, client *framework.ClientSet, isOperatorManaged bool) error {
 	t.Logf("patching Data on the console ConfigMap")
-	configMap, err := client.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.OpenShiftConsoleConfigMapName, types.MergePatchType, []byte(`{"data": {"console-config.yaml": "test"}}`))
+	configMap, err := client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.OpenShiftConsoleConfigMapName, types.MergePatchType, []byte(`{"data": {"console-config.yaml": "test"}}`))
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func patchAndCheckConfigMap(t *testing.T, client *testframework.Clientset, isOpe
 
 	t.Logf("polling for patched Data on the console ConfigMap")
 	err = wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
-		configMap, err = testframework.GetConsoleConfigMap(client)
+		configMap, err = framework.GetConsoleConfigMap(client)
 		if err != nil {
 			return true, err
 		}
@@ -45,9 +45,9 @@ func patchAndCheckConfigMap(t *testing.T, client *testframework.Clientset, isOpe
 	return err
 }
 
-func patchAndCheckService(t *testing.T, client *testframework.Clientset, isOperatorManaged bool) error {
+func patchAndCheckService(t *testing.T, client *framework.ClientSet, isOperatorManaged bool) error {
 	t.Logf("patching Annotation on the console Service")
-	service, err := client.Services(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.OpenShiftConsoleServiceName, types.MergePatchType, []byte(`{"metadata": {"annotations": {"service.alpha.openshift.io/serving-cert-secret-name": "test"}}}`))
+	service, err := client.Core.Services(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.OpenShiftConsoleServiceName, types.MergePatchType, []byte(`{"metadata": {"annotations": {"service.alpha.openshift.io/serving-cert-secret-name": "test"}}}`))
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func patchAndCheckService(t *testing.T, client *testframework.Clientset, isOpera
 
 	t.Logf("polling for patched Annotation on the console Service")
 	err = wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
-		service, err = testframework.GetConsoleService(client)
+		service, err = framework.GetConsoleService(client)
 		if err != nil {
 			return true, err
 		}
@@ -68,9 +68,9 @@ func patchAndCheckService(t *testing.T, client *testframework.Clientset, isOpera
 	return err
 }
 
-func patchAndCheckRoute(t *testing.T, client *testframework.Clientset, isOperatorManaged bool) error {
+func patchAndCheckRoute(t *testing.T, client *framework.ClientSet, isOperatorManaged bool) error {
 	t.Logf("patching TargetPort on the console Route")
-	route, err := client.Routes(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.OpenShiftConsoleRouteName, types.MergePatchType, []byte(`{"spec": {"port": {"targetPort": "http"}}}`))
+	route, err := client.Routes.Routes(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.OpenShiftConsoleRouteName, types.MergePatchType, []byte(`{"spec": {"port": {"targetPort": "http"}}}`))
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func patchAndCheckRoute(t *testing.T, client *testframework.Clientset, isOperato
 
 	t.Logf("polling for patched TargetPort on the console Route")
 	err = wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
-		route, err = testframework.GetConsoleRoute(client)
+		route, err = framework.GetConsoleRoute(client)
 		if err != nil {
 			return true, err
 		}

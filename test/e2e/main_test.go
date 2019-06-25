@@ -11,7 +11,7 @@ import (
 	kubeset "k8s.io/client-go/kubernetes"
 
 	consoleapi "github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/testframework"
+	"github.com/openshift/console-operator/test/e2e/framework"
 )
 
 var (
@@ -20,7 +20,7 @@ var (
 
 func TestMain(m *testing.M) {
 
-	kubeconfig, err := testframework.GetConfig()
+	kubeconfig, err := framework.GetConfig()
 	if err != nil {
 		fmt.Printf("unable to get kubeconfig: %s", err)
 		os.Exit(1)
