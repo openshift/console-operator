@@ -25,6 +25,14 @@ rules:
 - apiGroups:
   - config.openshift.io
   resources:
+  - proxies
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - config.openshift.io
+  resources:
   - consoles
   - consoles/status
   - clusteroperators

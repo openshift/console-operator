@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	v1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
@@ -27,6 +28,7 @@ func TestDefaultDeployment(t *testing.T) {
 		ca                 *corev1.ConfigMap
 		sec                *corev1.Secret
 		rt                 *v1.Route
+		proxy              *configv1.Proxy
 		canMountCustomLogo bool
 	}
 
@@ -39,6 +41,17 @@ func TestDefaultDeployment(t *testing.T) {
 			},
 		},
 		Status: operatorsv1.ConsoleStatus{},
+	}
+
+	proxyConfig := &configv1.Proxy{
+		TypeMeta:   metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{},
+		Spec: configv1.ProxySpec{
+			HTTPSProxy: "https://testurl.openshift.com",
+		},
+		Status: configv1.ProxyStatus{
+			HTTPSProxy: "https://testurl.openshift.com",
+		},
 	}
 	tests := []struct {
 		name string
@@ -84,6 +97,7 @@ func TestDefaultDeployment(t *testing.T) {
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
 				},
+				proxy: proxyConfig,
 			},
 			want: &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{},
@@ -171,7 +185,7 @@ func TestDefaultDeployment(t *testing.T) {
 							TerminationGracePeriodSeconds: &gracePeriod,
 							SecurityContext:               &corev1.PodSecurityContext{},
 							Containers: []corev1.Container{
-								consoleContainer(consoleOperatorConfig, defaultVolumeConfig()),
+								consoleContainer(consoleOperatorConfig, defaultVolumeConfig(), proxyConfig),
 							},
 							Volumes: consoleVolumes(defaultVolumeConfig()),
 						},
@@ -188,7 +202,7 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.cm, tt.args.sec, tt.args.rt, tt.args.canMountCustomLogo), tt.want); diff != nil {
+			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.cm, tt.args.sec, tt.args.rt, tt.args.proxy, tt.args.canMountCustomLogo), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})

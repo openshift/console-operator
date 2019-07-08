@@ -136,6 +136,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
 		routesInformersNamespaced.Route().V1().Routes(),   // Route
 		oauthInformers.Oauth().V1().OAuthClients(),        // OAuth clients
+		configInformers.Config().V1().Proxies(),           // Proxy
 		// clients
 		operatorConfigClient.OperatorV1(),
 		configClient.ConfigV1(),
