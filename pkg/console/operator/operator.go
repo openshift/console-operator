@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/client-go/informers/core/v1"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 
 	// openshift
@@ -32,6 +33,7 @@ import (
 
 	// informers
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
+	configinformerv1 "github.com/openshift/client-go/config/informers/externalversions/config/v1"
 	operatorinformerv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
@@ -39,6 +41,7 @@ import (
 
 	// clients
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
+	configlisterv1 "github.com/openshift/client-go/config/listers/config/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 
 	// operator
@@ -71,6 +74,9 @@ type consoleOperator struct {
 	// recorder
 	recorder       events.Recorder
 	resourceSyncer resourcesynccontroller.ResourceSyncer
+	//proxy
+	proxyCfgLister   configlisterv1.ProxyLister
+	proxyCfgInformer cache.SharedIndexInformer
 }
 
 func NewConsoleOperator(
@@ -83,6 +89,7 @@ func NewConsoleOperator(
 	deployments appsinformersv1.DeploymentInformer,
 	routes routesinformersv1.RouteInformer,
 	oauthClients oauthinformersv1.OAuthClientInformer,
+	proxyCfgInformer configinformerv1.ProxyInformer,
 
 	// clients
 	operatorConfigClient operatorclientv1.OperatorV1Interface,
@@ -114,6 +121,9 @@ func NewConsoleOperator(
 		// recorder
 		recorder:       recorder,
 		resourceSyncer: resourceSyncer,
+		// proxy
+		proxyCfgLister:   proxyCfgInformer.Lister(),
+		proxyCfgInformer: proxyCfgInformer.Informer(),
 	}
 
 	secretsInformer := coreV1.Secrets()
@@ -130,6 +140,7 @@ func NewConsoleOperator(
 		operator.WithInformer(configV1Informers.Consoles(), configNameFilter),
 		operator.WithInformer(operatorConfigInformer, configNameFilter),
 		operator.WithInformer(configV1Informers.Infrastructures(), configNameFilter),
+		operator.WithInformer(proxyCfgInformer, configNameFilter),
 		// console resources
 		operator.WithInformer(deployments, targetNameFilter),
 		operator.WithInformer(routes, targetNameFilter),
@@ -151,6 +162,7 @@ type configSet struct {
 	Console        *configv1.Console
 	Operator       *operatorsv1.Console
 	Infrastructure *configv1.Infrastructure
+	Proxy          *configv1.Proxy
 }
 
 func (c *consoleOperator) Sync(obj metav1.Object) error {
@@ -175,10 +187,19 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 		return err
 	}
 
+	proxyConfig, err := c.proxyCfgLister.Get("cluster")
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		proxyConfig = nil
+	}
+
 	configs := configSet{
 		Console:        consoleConfig,
 		Operator:       operatorConfig,
 		Infrastructure: infrastructureConfig,
+		Proxy:          proxyConfig,
 	}
 
 	if err := c.handleSync(configs); err != nil {
