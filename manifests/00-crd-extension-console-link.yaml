@@ -52,5 +52,17 @@ spec:
               pattern: '^https://([\w-]+.)+[\w-]+(/[\w- ./?%&=])?$'
             location:
               type: string
-              description: Determines which dropdown menu the link is added to (HelpMenu, UserMenu)
-              pattern: ^(HelpMenu|UserMenu)$
+              description: Determines which dropdown menu the link is added to (ApplicationMenu, HelpMenu, UserMenu)
+              pattern: ^(ApplicationMenu|HelpMenu|UserMenu)$
+            applicationMenu:
+              type: object
+              description: Object that holds application menu properties if the location is set to ApplicationMenu
+              required:
+                - section
+              properties:
+                section:
+                  type: string
+                  description: The section of the application menu in which the link should appear
+                imageURL:
+                  type: string
+                  description: The URL for the icon used in front of the link in the application menu.  The URL must be an HTTPS URL or a Data URI. The image should be square and will be shown at 24x24 pixels.
