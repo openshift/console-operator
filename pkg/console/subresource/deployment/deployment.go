@@ -1,6 +1,7 @@
 package deployment
 
 import (
+	"fmt"
 
 	// kube
 	appsv1 "k8s.io/api/apps/v1"
@@ -220,6 +221,8 @@ func consoleVolumeMounts(vc []volumeConfig) []corev1.VolumeMount {
 
 func GetLogLevelFlag(logLevel operatorv1.LogLevel) string {
 	flag := ""
+	// Since the console-operator logging has different logging levels then the capnslog,
+	// that we use for console server(bridge) we need to map them to each other
 	switch logLevel {
 	case operatorv1.Normal:
 		flag = "--log-level=*=NOTICE"
@@ -231,23 +234,37 @@ func GetLogLevelFlag(logLevel operatorv1.LogLevel) string {
 	return flag
 }
 
+func withLogLevelFlag(logLevel operatorv1.LogLevel, flags []string) []string {
+	if logLevelFlag := GetLogLevelFlag(logLevel); logLevelFlag != "" {
+		return append(flags, logLevelFlag)
+	}
+	return flags
+}
+
+func withStatusPageFlag(providers operatorv1.ConsoleProviders, flags []string) []string {
+	if providers.Statuspage != nil && len(providers.Statuspage.PageID) != 0 {
+		return append(flags, fmt.Sprintf("--statuspage-id=%s", providers.Statuspage.PageID))
+	}
+	return flags
+}
+
 func consoleContainer(cr *operatorv1.Console, volConfigList []volumeConfig, proxyConfig *configv1.Proxy) corev1.Container {
 	volumeMounts := consoleVolumeMounts(volConfigList)
-	// Since the console-operator logging has different logging levels then the capnslog,
-	// that we use for console server(bridge) we need to map them to each other
-	flag := GetLogLevelFlag(cr.Spec.LogLevel)
+
+	flags := []string{
+		"/opt/bridge/bin/bridge",
+		"--public-dir=/opt/bridge/static",
+		"--config=/var/console-config/console-config.yaml",
+		"--service-ca-file=/var/service-ca/service-ca.crt",
+	}
+	flags = withLogLevelFlag(cr.Spec.LogLevel, flags)
+	flags = withStatusPageFlag(cr.Spec.Providers, flags)
 
 	return corev1.Container{
 		Image:           util.GetImageEnv(),
 		ImagePullPolicy: corev1.PullPolicy("IfNotPresent"),
 		Name:            api.OpenShiftConsoleName,
-		Command: []string{
-			"/opt/bridge/bin/bridge",
-			"--public-dir=/opt/bridge/static",
-			"--config=/var/console-config/console-config.yaml",
-			"--service-ca-file=/var/service-ca/service-ca.crt",
-			flag,
-		},
+		Command:         flags,
 		// TODO: can probably remove, this is used for local dev
 		//Env: []corev1.EnvVar{{
 		//	Name:  publicURLName,
