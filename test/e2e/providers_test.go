@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -60,6 +61,26 @@ func TestProvidersSetStatuspageID(t *testing.T) {
 	}
 }
 
+func TestProvidersSetStatuspageIDFlag(t *testing.T) {
+	client, originalOperatorConfigSpec := setupProvidersTestCase(t)
+	defer cleanupProvidersTestCase(t, client, originalOperatorConfigSpec)
+	expectedStatuspageID := "id-1234"
+	expectedStatuspageFlag := fmt.Sprintf("--statuspage-id=%s", expectedStatuspageID)
+	currentStatuspageFlag := ""
+	setOperatorConfigStatuspageIDProvider(t, client, expectedStatuspageID)
+
+	err := wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
+		currentStatuspageFlag = getConsoleDeploymentCommand(t, client)
+		if expectedStatuspageFlag == currentStatuspageFlag {
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil {
+		t.Errorf("error: expected '%s' statuspage-id flag, got '%s': '%v'", expectedStatuspageFlag, currentStatuspageFlag, err)
+	}
+}
+
 func TestProvidersSetStatuspageIDEmpty(t *testing.T) {
 	client, originalOperatorConfigSpec := setupProvidersTestCase(t)
 	defer cleanupProvidersTestCase(t, client, originalOperatorConfigSpec)
@@ -78,6 +99,23 @@ func TestProvidersSetStatuspageIDEmpty(t *testing.T) {
 	if err != nil {
 		t.Errorf("error: expected '%s' statuspageID, got '%s': '%v'", expectedProviders, currentProviders, err)
 	}
+}
+
+func getConsoleDeploymentCommand(t *testing.T, client *testframework.Clientset) string {
+	deployment, err := testframework.GetConsoleDeployment(client)
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
+
+	flag := ""
+	consolePodTemplateCommand := deployment.Spec.Template.Spec.Containers[0].Command
+	for _, cmdArg := range consolePodTemplateCommand {
+		if strings.Contains(cmdArg, "--statuspage-id") {
+			flag = cmdArg
+			break
+		}
+	}
+	return flag
 }
 
 func getConsoleProviderField(t *testing.T, client *testframework.Clientset, providerField string) string {
