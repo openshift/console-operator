@@ -50,7 +50,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	if rtErr != nil {
 		msg := fmt.Sprintf("%v: %s", "route", rtErr)
 		klog.V(4).Infof("incomplete sync: %v", msg)
-		co.ConditionResourceSyncProgressing(updatedOperatorConfig, msg)
+		co.HandleProgressing(updatedOperatorConfig, "ConsoleRouteSync", rtErr)
 		return rtErr
 	}
 	toUpdate = toUpdate || rtChanged
@@ -59,7 +59,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	if svcErr != nil {
 		msg := fmt.Sprintf("%q: %v", "service", svcErr)
 		klog.V(4).Infof("incomplete sync: %v", msg)
-		co.ConditionResourceSyncProgressing(updatedOperatorConfig, msg)
+		co.HandleProgressing(updatedOperatorConfig, "ConsoleServiceSync", svcErr)
 		return svcErr
 	}
 	toUpdate = toUpdate || svcChanged
@@ -68,7 +68,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	if cmErr != nil {
 		msg := fmt.Sprintf("%q: %v", "configmap", cmErr)
 		klog.V(4).Infof("incomplete sync: %v", msg)
-		co.ConditionResourceSyncProgressing(updatedOperatorConfig, msg)
+		co.HandleProgressing(updatedOperatorConfig, "ConsoleConfigCMSync", cmErr)
 		return cmErr
 	}
 	toUpdate = toUpdate || cmChanged
@@ -77,7 +77,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	if serviceCAConfigMapErr != nil {
 		msg := fmt.Sprintf("%q: %v", "serviceCAconfigmap", serviceCAConfigMapErr)
 		klog.V(4).Infof("incomplete sync: %v", msg)
-		co.ConditionResourceSyncProgressing(updatedOperatorConfig, msg)
+		co.HandleProgressing(updatedOperatorConfig, "ServiceCASync", serviceCAConfigMapErr)
 		return serviceCAConfigMapErr
 	}
 	toUpdate = toUpdate || serviceCAConfigMapChanged
@@ -88,14 +88,14 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		klog.V(4).Infof("incomplete sync: %v", msg)
 		// If the custom logo sync fails for any reason, we are degraded, not progressing.
 		// The sync loop may not settle, we are unable to honor it in current state.
-		co.ConditionDegraded(updatedOperatorConfig, "CustomLogoInvalid", msg)
+		co.HandleDegraded(updatedOperatorConfig, "CustomLogoCMInvalid", customLogoError)
 	}
 
 	sec, secChanged, secErr := co.SyncSecret(set.Operator)
 	if secErr != nil {
 		msg := fmt.Sprintf("%q: %v", "secret", secErr)
 		klog.V(4).Infof("incomplete sync: %v", msg)
-		co.ConditionResourceSyncProgressing(updatedOperatorConfig, msg)
+		co.HandleProgressing(updatedOperatorConfig, "OauthClientSecretSync", secErr)
 		return secErr
 	}
 	toUpdate = toUpdate || secChanged
@@ -104,7 +104,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	if oauthErr != nil {
 		msg := fmt.Sprintf("%q: %v", "oauth", oauthErr)
 		klog.V(4).Infof("incomplete sync: %v", msg)
-		co.ConditionResourceSyncProgressing(updatedOperatorConfig, msg)
+		co.HandleProgressing(updatedOperatorConfig, "OAuthClientSync", oauthErr)
 		return oauthErr
 	}
 	toUpdate = toUpdate || oauthChanged
@@ -113,7 +113,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	if depErr != nil {
 		msg := fmt.Sprintf("%q: %v", "deployment", depErr)
 		klog.V(4).Infof("incomplete sync: %v", msg)
-		co.ConditionResourceSyncProgressing(updatedOperatorConfig, msg)
+		co.HandleProgressing(updatedOperatorConfig, "ConsoleDeploymentSync", depErr)
 		return depErr
 	}
 	toUpdate = toUpdate || depChanged
@@ -128,16 +128,16 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	// the operand is in a transitional state if any of the above resources changed
 	// or if we have not settled on the desired number of replicas or deployment is not up to date.
 	if toUpdate {
-		co.ConditionResourceSyncProgressing(updatedOperatorConfig, "Changes made during sync updates, additional sync expected.")
+		co.HandleProgressing(updatedOperatorConfig, "ResourceSync", errors.New("Changes made during sync updates, additional sync expected."))
 	} else {
 		version := os.Getenv("RELEASE_VERSION")
 		if !deploymentsub.IsAvailableAndUpdated(actualDeployment) {
-			co.ConditionResourceSyncProgressing(updatedOperatorConfig, fmt.Sprintf("Working toward version %s", version))
+			co.HandleProgressing(updatedOperatorConfig, "DeploymentCurrentGeneration", errors.New(fmt.Sprintf("Working toward version %s", version)))
 		} else {
 			if co.versionGetter.GetVersions()["operator"] != version {
 				co.versionGetter.SetVersion("operator", version)
 			}
-			co.ConditionResourceSyncNotProgressing(updatedOperatorConfig)
+			co.HandleProgressing(updatedOperatorConfig, "DeploymentCurrentGeneration", nil)
 		}
 	}
 
@@ -151,14 +151,9 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		klog.V(4).Infoln(msg)
 		co.ConditionDeploymentNotAvailable(updatedOperatorConfig, msg)
 	} else if !routesub.IsAdmitted(rt) {
-		klog.V(4).Infoln("console route is not admitted")
-		co.SetStatusCondition(
-			updatedOperatorConfig,
-			operatorv1.OperatorStatusTypeAvailable,
-			operatorv1.ConditionFalse,
-			"RouteNotAdmitted",
-			"console route is not admitted",
-		)
+		msg := "console route is not admitted"
+		klog.V(4).Infoln(msg)
+		co.HandleAvailable(updatedOperatorConfig, "RouteNotAdmitted", errors.New(msg))
 	} else if actualDeployment.Status.Replicas == actualDeployment.Status.ReadyReplicas && actualDeployment.Status.Replicas == actualDeployment.Status.UpdatedReplicas {
 		co.ConditionDeploymentAvailable(updatedOperatorConfig, fmt.Sprintf("%v replicas ready at version %s", actualDeployment.Status.ReadyReplicas, os.Getenv("RELEASE_VERSION")))
 	} else {
