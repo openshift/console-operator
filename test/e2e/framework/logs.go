@@ -1,4 +1,4 @@
-package testframework
+package framework
 
 import (
 	"bufio"
@@ -36,13 +36,13 @@ func (psl PodSetLogs) Contains(re *regexp.Regexp) bool {
 	return false
 }
 
-func GetLogsByLabelSelector(client *Clientset, namespace string, labelSelector *metav1.LabelSelector) (PodSetLogs, error) {
+func GetLogsByLabelSelector(client *ClientSet, namespace string, labelSelector *metav1.LabelSelector) (PodSetLogs, error) {
 	selector, err := metav1.LabelSelectorAsSelector(labelSelector)
 	if err != nil {
 		return nil, err
 	}
 
-	podList, err := client.Pods(namespace).List(metav1.ListOptions{
+	podList, err := client.Core.Pods(namespace).List(metav1.ListOptions{
 		LabelSelector: selector.String(),
 	})
 	if err != nil {
@@ -52,7 +52,7 @@ func GetLogsByLabelSelector(client *Clientset, namespace string, labelSelector *
 	podLogs := make(PodSetLogs)
 	for _, pod := range podList.Items {
 		var podLog PodLog
-		log, err := client.Pods(pod.Namespace).GetLogs(pod.Name, &corev1.PodLogOptions{}).Stream()
+		log, err := client.Core.Pods(pod.Namespace).GetLogs(pod.Name, &corev1.PodLogOptions{}).Stream()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get logs for pod %s: %s", pod.Name, err)
 		}
@@ -90,7 +90,7 @@ func DumpPodLogs(t *testing.T, podLogs PodSetLogs) {
 	}
 }
 
-func GetOperatorLogs(client *Clientset) (PodSetLogs, error) {
+func GetOperatorLogs(client *ClientSet) (PodSetLogs, error) {
 	return GetLogsByLabelSelector(client, consoleapi.OpenShiftConsoleNamespace, &metav1.LabelSelector{
 		MatchLabels: map[string]string{
 			"name": "console-operator",
@@ -98,7 +98,7 @@ func GetOperatorLogs(client *Clientset) (PodSetLogs, error) {
 	})
 }
 
-func DumpOperatorLogs(t *testing.T, client *Clientset) {
+func DumpOperatorLogs(t *testing.T, client *ClientSet) {
 	podLogs, err := GetOperatorLogs(client)
 	if err != nil {
 		t.Logf("failed to get the operator logs: %s", err)

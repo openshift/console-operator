@@ -1,17 +1,19 @@
-package testframework
+package framework
 
 import (
 	"fmt"
 	"testing"
 	"time"
 
+	configv1 "github.com/openshift/api/config/v1"
+	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	runtime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	consoleapi "github.com/openshift/console-operator/pkg/api"
@@ -26,7 +28,7 @@ var (
 	AsyncOperationTimeout = 5 * time.Minute
 )
 
-func DeleteAll(t *testing.T, client *Clientset) {
+func DeleteAll(t *testing.T, client *ClientSet) {
 	resources := []string{"Deployment", "Service", "Route", "ConfigMap"}
 
 	for _, resource := range resources {
@@ -44,7 +46,7 @@ func DeleteAll(t *testing.T, client *Clientset) {
 	}
 }
 
-func GetResource(client *Clientset, resource string) (runtime.Object, error) {
+func GetResource(client *ClientSet, resource string) (runtime.Object, error) {
 	var res runtime.Object
 	var err error
 	switch resource {
@@ -64,40 +66,53 @@ func GetResource(client *Clientset, resource string) (runtime.Object, error) {
 	return res, err
 }
 
-func GetConsoleConfigMap(client *Clientset) (*corev1.ConfigMap, error) {
-	return client.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
+func GetTopLevelConfig(client *ClientSet) (*configv1.Console, error) {
+	return client.Console.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
 }
 
-func GetPublicConsoleConfigMap(client *Clientset) (*corev1.ConfigMap, error) {
-	return client.ConfigMaps(consoleapi.OpenShiftConfigManagedNamespace).Get(consoleapi.OpenShiftConsolePublicConfigMapName, metav1.GetOptions{})
+func GetOperatorConfig(client *ClientSet) (*operatorv1.Console, error) {
+	return client.Operator.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
 }
 
-func GetConsoleService(client *Clientset) (*corev1.Service, error) {
-	return client.Services(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleServiceName, metav1.GetOptions{})
+// custom-logo in openshift-console should exist when custom branding is used
+func GetCustomLogoConfigMap(client *ClientSet) (*corev1.ConfigMap, error) {
+	return client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 }
 
-func GetConsoleRoute(client *Clientset) (*routev1.Route, error) {
-	return client.Routes(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleRouteName, metav1.GetOptions{})
+func GetConsoleConfigMap(client *ClientSet) (*corev1.ConfigMap, error) {
+	return client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 }
 
-func GetConsoleDeployment(client *Clientset) (*appv1.Deployment, error) {
-	deployment, err := client.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleDeploymentName, metav1.GetOptions{})
+func GetPublicConsoleConfigMap(client *ClientSet) (*corev1.ConfigMap, error) {
+	return client.Core.ConfigMaps(consoleapi.OpenShiftConfigManagedNamespace).Get(consoleapi.OpenShiftConsolePublicConfigMapName, metav1.GetOptions{})
+}
+
+func GetConsoleService(client *ClientSet) (*corev1.Service, error) {
+	return client.Core.Services(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleServiceName, metav1.GetOptions{})
+}
+
+func GetConsoleRoute(client *ClientSet) (*routev1.Route, error) {
+	return client.Routes.Routes(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleRouteName, metav1.GetOptions{})
+}
+
+func GetConsoleDeployment(client *ClientSet) (*appv1.Deployment, error) {
+	deployment, err := client.Apps.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleDeploymentName, metav1.GetOptions{})
 	return deployment, err
 }
 
-func deleteResource(client *Clientset, resource string) error {
+func deleteResource(client *ClientSet, resource string) error {
 	var err error
 	switch resource {
 	case "ConfigMap":
-		err = client.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleConfigMapName, &metav1.DeleteOptions{})
+		err = client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleConfigMapName, &metav1.DeleteOptions{})
 	case "Service":
-		err = client.Services(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleServiceName, &metav1.DeleteOptions{})
+		err = client.Core.Services(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleServiceName, &metav1.DeleteOptions{})
 	case "Route":
-		err = client.Routes(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleRouteName, &metav1.DeleteOptions{})
+		err = client.Routes.Routes(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleRouteName, &metav1.DeleteOptions{})
 	case "Deployment":
 		fallthrough
 	default:
-		err = client.Deployments(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleDeploymentName, &metav1.DeleteOptions{})
+		err = client.Apps.Deployments(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleDeploymentName, &metav1.DeleteOptions{})
 	}
 	return err
 }
@@ -144,7 +159,7 @@ func DeleteCompletely(getObject func() (runtime.Object, error), deleteObject fun
 	})
 }
 
-func ConsoleResourcesAvailable(client *Clientset) error {
+func ConsoleResourcesAvailable(client *ClientSet) error {
 	errChan := make(chan error)
 	go IsResourceAvailable(errChan, client, "ConfigMap")
 	go IsResourceAvailable(errChan, client, "ConfigMapPublic")
@@ -158,7 +173,7 @@ func ConsoleResourcesAvailable(client *Clientset) error {
 
 // IsResourceAvailable checks if tested resource is available during a 30 second period.
 // if the resource does not exist by the end of the period, an error will be returned.
-func IsResourceAvailable(errChan chan error, client *Clientset, resource string) {
+func IsResourceAvailable(errChan chan error, client *ClientSet, resource string) {
 	counter := 0
 	maxCount := 30
 	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
@@ -178,7 +193,7 @@ func IsResourceAvailable(errChan chan error, client *Clientset, resource string)
 	errChan <- err
 }
 
-func ConsoleResourcesUnavailable(client *Clientset) error {
+func ConsoleResourcesUnavailable(client *ClientSet) error {
 	errChan := make(chan error)
 	go IsResourceUnavailable(errChan, client, "ConfigMap")
 	go IsResourceUnavailable(errChan, client, "Route")
@@ -191,14 +206,14 @@ func ConsoleResourcesUnavailable(client *Clientset) error {
 
 // IsResourceUnavailable checks if tested resource is unavailable during a 15 second period.
 // If the resource exists during that time, an error will be returned.
-func IsResourceUnavailable(errChan chan error, client *Clientset, resource string) {
+func IsResourceUnavailable(errChan chan error, client *ClientSet, resourceType string) {
 	counter := 0
 	maxCount := 15
 	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
-		res, err := GetResource(client, resource)
+		resource, err := GetResource(client, resourceType)
 		if err == nil {
-			fmt.Printf("%s : %#v \n", resource, res)
-			return true, fmt.Errorf("deleted console %s was recreated: %#v", resource, res)
+			fmt.Printf("%s : %#v \n", resourceType, resource)
+			return true, fmt.Errorf("deleted console %s was recreated: %#v", resourceType, resource)
 		}
 		if !errors.IsNotFound(err) {
 			return true, err

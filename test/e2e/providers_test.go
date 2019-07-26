@@ -6,12 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/client-go/util/retry"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	consoleapi "github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/testframework"
+	"github.com/openshift/console-operator/test/e2e/framework"
 )
 
 const (
@@ -19,34 +21,19 @@ const (
 	providersField    = "providers"
 )
 
-func setupProvidersTestCase(t *testing.T) (*testframework.Clientset, operatorsv1.ConsoleSpec) {
-	client := testframework.MustNewClientset(t, nil)
-	testframework.MustManageConsole(t, client)
-	operatorConfig, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("error: %s", err)
-	}
-	return client, operatorConfig.Spec
+func setupProvidersTestCase(t *testing.T) (*framework.ClientSet, *operatorsv1.Console) {
+	return framework.StandardSetup(t)
 }
 
-func cleanupProvidersTestCase(t *testing.T, client *testframework.Clientset, originalOperatorConfigSpec operatorsv1.ConsoleSpec) {
-	operatorConfig, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("could not get operator config, %v", err)
-	}
-	operatorConfig.Spec = originalOperatorConfigSpec
-	_, err = client.Consoles().Update(operatorConfig)
-	if err != nil {
-		t.Fatalf("could not reset operator config to it's default state: %v", err)
-	}
-	testframework.WaitForSettledState(t, client)
+func cleanupProvidersTestCase(t *testing.T, client *framework.ClientSet) {
+	framework.StandardCleanup(t, client)
 }
 
 func TestProvidersSetStatuspageID(t *testing.T) {
-	client, originalOperatorConfigSpec := setupProvidersTestCase(t)
-	defer cleanupProvidersTestCase(t, client, originalOperatorConfigSpec)
 	expectedStatuspageID := "id-1234"
 	currentStatuspageID := ""
+	client, _ := setupProvidersTestCase(t)
+	defer cleanupProvidersTestCase(t, client)
 	setOperatorConfigStatuspageIDProvider(t, client, expectedStatuspageID)
 
 	err := wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
@@ -62,8 +49,8 @@ func TestProvidersSetStatuspageID(t *testing.T) {
 }
 
 func TestProvidersSetStatuspageIDFlag(t *testing.T) {
-	client, originalOperatorConfigSpec := setupProvidersTestCase(t)
-	defer cleanupProvidersTestCase(t, client, originalOperatorConfigSpec)
+	client, _ := setupProvidersTestCase(t)
+	defer cleanupProvidersTestCase(t, client)
 	expectedStatuspageID := "id-1234"
 	expectedStatuspageFlag := fmt.Sprintf("--statuspage-id=%s", expectedStatuspageID)
 	currentStatuspageFlag := ""
@@ -82,11 +69,11 @@ func TestProvidersSetStatuspageIDFlag(t *testing.T) {
 }
 
 func TestProvidersSetStatuspageIDEmpty(t *testing.T) {
-	client, originalOperatorConfigSpec := setupProvidersTestCase(t)
-	defer cleanupProvidersTestCase(t, client, originalOperatorConfigSpec)
 	statuspageID := ""
 	currentProviders := ""
 	expectedProviders := "{}"
+	client, _ := setupProvidersTestCase(t)
+	defer cleanupProvidersTestCase(t, client)
 	setOperatorConfigStatuspageIDProvider(t, client, statuspageID)
 
 	err := wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
@@ -101,8 +88,8 @@ func TestProvidersSetStatuspageIDEmpty(t *testing.T) {
 	}
 }
 
-func getConsoleDeploymentCommand(t *testing.T, client *testframework.Clientset) string {
-	deployment, err := testframework.GetConsoleDeployment(client)
+func getConsoleDeploymentCommand(t *testing.T, client *framework.ClientSet) string {
+	deployment, err := framework.GetConsoleDeployment(client)
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}
@@ -118,8 +105,8 @@ func getConsoleDeploymentCommand(t *testing.T, client *testframework.Clientset) 
 	return flag
 }
 
-func getConsoleProviderField(t *testing.T, client *testframework.Clientset, providerField string) string {
-	cm, err := testframework.GetConsoleConfigMap(client)
+func getConsoleProviderField(t *testing.T, client *framework.ClientSet, providerField string) string {
+	cm, err := framework.GetConsoleConfigMap(client)
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}
@@ -136,8 +123,8 @@ func getConsoleProviderField(t *testing.T, client *testframework.Clientset, prov
 	return field
 }
 
-func setOperatorConfigStatuspageIDProvider(t *testing.T, client *testframework.Clientset, statuspageID string) {
-	operatorConfig, err := client.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
+func setOperatorConfigStatuspageIDProvider(t *testing.T, client *framework.ClientSet, statuspageID string) {
+	operatorConfig, err := client.Operator.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("could not get operator config, %v", err)
 	}
@@ -152,7 +139,12 @@ func setOperatorConfigStatuspageIDProvider(t *testing.T, client *testframework.C
 			},
 		},
 	}
-	_, err = client.Consoles().Update(operatorConfig)
+
+	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		_, err = client.Operator.Consoles().Update(operatorConfig)
+		return err
+	})
+
 	if err != nil {
 		t.Fatalf("could not update operator config providers statupageID: %v", err)
 	}
