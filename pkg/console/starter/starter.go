@@ -19,6 +19,7 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
+	"github.com/openshift/library-go/pkg/operator/management"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/status"
 	"github.com/openshift/library-go/pkg/operator/unsupportedconfigoverridescontroller"
@@ -177,6 +178,8 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 
 	configUpgradeableController := unsupportedconfigoverridescontroller.NewUnsupportedConfigOverridesController(operatorClient, ctx.EventRecorder)
 	logLevelController := loglevel.NewClusterOperatorLoggingController(operatorClient, ctx.EventRecorder)
+	managementStateController := management.NewOperatorManagementStateController(api.ClusterOperatorName, operatorClient, ctx.EventRecorder)
+
 	for _, informer := range []interface {
 		Start(stopCh <-chan struct{})
 	}{
@@ -196,6 +199,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	go clusterOperatorStatus.Run(1, ctx.Done())
 	go configUpgradeableController.Run(1, ctx.Done())
 	go logLevelController.Run(1, ctx.Done())
+	go managementStateController.Run(1, ctx.Done())
 
 	<-ctx.Done()
 	return fmt.Errorf("stopped")

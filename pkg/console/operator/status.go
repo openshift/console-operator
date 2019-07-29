@@ -50,9 +50,6 @@ import (
 const (
 	reasonAsExpected          = "AsExpected"
 	reasonWorkloadFailing     = "WorkloadFailing"
-	reasonUnmanaged           = "ManagementStateUnmanaged"
-	reasonRemoved             = "ManagementStateRemoved"
-	reasonInvalid             = "ManagementStateInvalid"
 	reasonSyncLoopProgressing = "SyncLoopProgressing"
 	reasonSyncError           = "SynchronizationError"
 	reasonNoPodsAvailable     = "NoPodsAvailable"
@@ -219,87 +216,6 @@ func (c *consoleOperator) ConditionResourceSyncDegraded(operatorConfig *operator
 		Status:  operatorsv1.ConditionTrue,
 		Message: message,
 		Reason:  reasonSyncError,
-	})
-
-	return operatorConfig
-}
-
-func (c *consoleOperator) ConditionsManagementStateUnmanaged(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type: operatorsv1.OperatorStatusTypeAvailable,
-		// See https://github.com/openshift/api/pull/206
-		// While the ConditionUnknown state seems to be the correct fit, the current understanding is that
-		// If the operator is fulfilling the user's desired state, set Available:true
-		// Status:             operatorsv1.ConditionUnknown,
-		Status:  operatorsv1.ConditionTrue,
-		Reason:  reasonUnmanaged,
-		Message: "The operator is in an unmanaged state, therefore its availability is unknown.",
-	})
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeProgressing,
-		Status:  operatorsv1.ConditionFalse,
-		Reason:  reasonUnmanaged,
-		Message: "The operator is in an unmanaged state, therefore no changes are being applied.",
-	})
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeDegraded,
-		Status:  operatorsv1.ConditionFalse,
-		Reason:  reasonUnmanaged,
-		Message: "The operator is in an unmanaged state, therefore no operator actions are degraded.",
-	})
-
-	return operatorConfig
-}
-
-func (c *consoleOperator) ConditionsManagementStateRemoved(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type: operatorsv1.OperatorStatusTypeAvailable,
-		// See https://github.com/openshift/api/pull/206
-		// At present, Available is the gate for upgrades.  The removal of an operand should NOT cause
-		// an upgrade to fail. Therefore, ManagementState:Removed should delete the operand (console),
-		// BUT should still report Available:True. Hopefully this will change.
-		Status:  operatorsv1.ConditionTrue,
-		Reason:  reasonRemoved,
-		Message: "The operator is in a removed state, the console has been removed.",
-	})
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeProgressing,
-		Status:  operatorsv1.ConditionFalse,
-		Reason:  reasonRemoved,
-		Message: "The operator is in a removed state, therefore no changes are being applied.",
-	})
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeDegraded,
-		Status:  operatorsv1.ConditionFalse,
-		Reason:  reasonRemoved,
-		Message: "The operator is in a removed state, therefore no operator actions are degraded.",
-	})
-
-	return operatorConfig
-}
-
-// If ManagementState is invalid,
-// We don't know if the operand is available bc we exit the sync loop w/o assessing resources
-// We aren't progressing because we exit the sync loop
-// We don't know if we are degraded because we exit the sync loop
-func (c *consoleOperator) ConditionsManagementStateInvalid(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeAvailable,
-		Status:  operatorsv1.ConditionUnknown,
-		Reason:  reasonInvalid,
-		Message: "The operator management state is invalid",
-	})
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeProgressing,
-		Status:  operatorsv1.ConditionFalse,
-		Reason:  reasonInvalid,
-		Message: "The operator management state is invalid",
-	})
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeDegraded,
-		Status:  operatorsv1.ConditionUnknown,
-		Reason:  reasonInvalid,
-		Message: "The operator management state is invalid",
 	})
 
 	return operatorConfig
