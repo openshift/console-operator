@@ -7,6 +7,7 @@ const (
 
 // consts to maintain existing names of various sub-resources
 const (
+	ClusterOperatorName                 = "console"
 	OpenShiftConsoleName                = "console"
 	OpenShiftConsoleNamespace           = TargetNamespace
 	OpenShiftConsoleOperatorNamespace   = "openshift-console-operator"
