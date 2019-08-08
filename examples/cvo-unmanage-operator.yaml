@@ -9,3 +9,4 @@ spec:
     name: console-operator
     namespace: openshift-console-operator
     unmanaged: true
+    group: apps/v1
