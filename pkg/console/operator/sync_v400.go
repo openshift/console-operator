@@ -125,40 +125,54 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	klog.V(4).Infof("sync loop 4.0.0 resources updated: %v", toUpdate)
 	klog.V(4).Infoln("-----------------------")
 
-	// the operand is in a transitional state if any of the above resources changed
-	// or if we have not settled on the desired number of replicas or deployment is not up to date.
-	if toUpdate {
-		co.HandleProgressing(updatedOperatorConfig, "ResourceSync", errors.New("Changes made during sync updates, additional sync expected."))
-	} else {
-		version := os.Getenv("RELEASE_VERSION")
-		if !deploymentsub.IsAvailableAndUpdated(actualDeployment) {
-			co.HandleProgressing(updatedOperatorConfig, "DeploymentCurrentGeneration", errors.New(fmt.Sprintf("Working toward version %s", version)))
-		} else {
-			if co.versionGetter.GetVersions()["operator"] != version {
-				co.versionGetter.SetVersion("operator", version)
-			}
-			co.HandleProgressing(updatedOperatorConfig, "DeploymentCurrentGeneration", nil)
+	co.HandleProgressing(updatedOperatorConfig, "ResourceSync", func() error {
+		if toUpdate {
+			return errors.New("Changes made during sync updates, additional sync expected.")
 		}
-	}
+		return nil
+	}())
+
+	version := os.Getenv("RELEASE_VERSION")
+	co.HandleProgressing(updatedOperatorConfig, "DeploymentCurrentGeneration", func() error {
+		if !deploymentsub.IsAvailableAndUpdated(actualDeployment) {
+			return errors.New(fmt.Sprintf("Working toward version %s", version))
+		}
+		if co.versionGetter.GetVersions()["operator"] != version {
+			co.versionGetter.SetVersion("operator", version)
+		}
+		return nil
+	}())
 
 	// the operand is available if all resources are:
 	// - present
 	// - if we have at least one ready replica
 	// - route is admitted
 	// available is currently defined as "met the users intent"
-	if !deploymentsub.IsReady(actualDeployment) {
-		msg := fmt.Sprintf("%v pods available for console deployment", actualDeployment.Status.ReadyReplicas)
-		klog.V(4).Infoln(msg)
-		co.ConditionDeploymentNotAvailable(updatedOperatorConfig, msg)
-	} else if !routesub.IsAdmitted(rt) {
-		msg := "console route is not admitted"
-		klog.V(4).Infoln(msg)
-		co.HandleAvailable(updatedOperatorConfig, "RouteNotAdmitted", errors.New(msg))
-	} else if actualDeployment.Status.Replicas == actualDeployment.Status.ReadyReplicas && actualDeployment.Status.Replicas == actualDeployment.Status.UpdatedReplicas {
-		co.ConditionDeploymentAvailable(updatedOperatorConfig, fmt.Sprintf("%v replicas ready at version %s", actualDeployment.Status.ReadyReplicas, os.Getenv("RELEASE_VERSION")))
-	} else {
-		co.ConditionDeploymentAvailable(updatedOperatorConfig, fmt.Sprintf("%v replicas ready", actualDeployment.Status.ReadyReplicas))
-	}
+	co.HandleAvailable(updatedOperatorConfig, "DeploymentIsReady", func() error {
+		if !deploymentsub.IsReady(actualDeployment) {
+			msg := fmt.Sprintf("%v pods available for console deployment", actualDeployment.Status.ReadyReplicas)
+			klog.V(4).Infoln(msg)
+			return errors.New(msg)
+		}
+		return nil
+	}())
+
+	co.HandleAvailable(updatedOperatorConfig, "DeploymentIsUpdated", func() error {
+		if deploymentsub.IsReadyAndUpdated(actualDeployment) {
+			msg := fmt.Sprintf("%v replicas ready at version %s", actualDeployment.Status.ReadyReplicas, os.Getenv("RELEASE_VERSION"))
+			return errors.New(msg)
+		}
+		return nil
+	}())
+
+	co.HandleAvailable(updatedOperatorConfig, "RouteNotAdmitted", func() error {
+		if !routesub.IsAdmitted(rt) {
+			msg := "console route is not admitted"
+			klog.V(4).Infoln(msg)
+			return errors.New(msg)
+		}
+		return nil
+	}())
 
 	// if we survive the gauntlet, we need to update the console config with the
 	// public hostname so that the world can know the console is ready to roll

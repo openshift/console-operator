@@ -161,27 +161,6 @@ func (c *consoleOperator) logConditions(conditions []operatorsv1.OperatorConditi
 	}
 }
 
-func (c *consoleOperator) ConditionDeploymentAvailable(operatorConfig *operatorsv1.Console, message string) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeAvailable,
-		Status:  operatorsv1.ConditionTrue,
-		Message: message,
-	})
-
-	return operatorConfig
-}
-
-func (c *consoleOperator) ConditionDeploymentNotAvailable(operatorConfig *operatorsv1.Console, message string) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeAvailable,
-		Status:  operatorsv1.ConditionFalse,
-		Reason:  reasonNoPodsAvailable,
-		Message: message,
-	})
-
-	return operatorConfig
-}
-
 // When a sync error happens,
 // - we don't know if the operand is Available, best to leave Available alone
 // - we do know we are Progressing because we are trying to change an operand resource

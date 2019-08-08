@@ -355,6 +355,11 @@ func IsAvailableAndUpdated(deployment *appsv1.Deployment) bool {
 		deployment.Status.UpdatedReplicas == deployment.Status.Replicas
 }
 
+func IsReadyAndUpdated(deployment *appsv1.Deployment) bool {
+	return deployment.Status.Replicas == deployment.Status.ReadyReplicas &&
+		deployment.Status.Replicas == deployment.Status.UpdatedReplicas
+}
+
 func defaultVolumeConfig() []volumeConfig {
 	return []volumeConfig{
 		{
