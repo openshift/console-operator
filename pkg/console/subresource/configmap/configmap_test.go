@@ -94,7 +94,7 @@ providers: {}
 apiVersion: console.openshift.io/v1
 customization:
   branding: online
-  documentationBaseURL: https://docs.okd.io/4.1/
+  documentationBaseURL: https://docs.okd.io/4.2/
 `,
 					},
 				},
@@ -127,7 +127,7 @@ clusterInfo:
   masterPublicURL: ` + mockAPIServer + `
 customization:
   branding: online 
-  documentationBaseURL: https://docs.okd.io/4.1/
+  documentationBaseURL: https://docs.okd.io/4.2/
 servingInfo:
   bindAddress: https://0.0.0.0:8443
   certFile: /var/serving-cert/tls.crt
@@ -156,7 +156,7 @@ providers: {}
 apiVersion: console.openshift.io/v1
 customization:
   branding: online
-  documentationBaseURL: https://docs.okd.io/4.1/
+  documentationBaseURL: https://docs.okd.io/4.2/
 `,
 					},
 				},
@@ -223,7 +223,7 @@ providers: {}
 apiVersion: console.openshift.io/v1
 customization:
   branding: online
-  documentationBaseURL: https://docs.okd.io/4.1/
+  documentationBaseURL: https://docs.okd.io/4.2/
 `,
 					},
 				},
@@ -292,7 +292,7 @@ providers: {}
 apiVersion: console.openshift.io/v1
 customization:
   branding: online
-  documentationBaseURL: https://docs.okd.io/4.1/
+  documentationBaseURL: https://docs.okd.io/4.2/
 `,
 					},
 				},
@@ -484,7 +484,7 @@ func Test_extractYAML(t *testing.T) {
 apiVersion: console.openshift.io/v1
 customization:
   branding: online
-  documentationBaseURL: https://docs.okd.io/4.1/
+  documentationBaseURL: https://docs.okd.io/4.2/
 `,
 					},
 					BinaryData: nil,
@@ -494,7 +494,7 @@ customization:
 apiVersion: console.openshift.io/v1
 customization:
   branding: online
-  documentationBaseURL: https://docs.okd.io/4.1/
+  documentationBaseURL: https://docs.okd.io/4.2/
 `,
 		},
 	}
