@@ -218,20 +218,17 @@ func (c *consoleOperator) handleSync(configs configSet) error {
 		// handled below
 	case operatorsv1.Unmanaged:
 		klog.V(4).Infoln("console is in an unmanaged state.")
-		c.ConditionsManagementStateUnmanaged(updatedStatus)
 		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
 			c.SyncStatus(updatedStatus)
 		}
 		return nil
 	case operatorsv1.Removed:
 		klog.V(4).Infoln("console has been removed.")
-		c.ConditionsManagementStateRemoved(updatedStatus)
 		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
 			c.SyncStatus(updatedStatus)
 		}
 		return c.removeConsole(updatedStatus)
 	default:
-		c.ConditionsManagementStateInvalid(updatedStatus)
 		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
 			c.SyncStatus(updatedStatus)
 		}
