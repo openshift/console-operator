@@ -9,6 +9,12 @@ _output
 tmp/_output
 tmp/_test
 
+# local dev scripts not intended for general use
+dev_*
+
+# local dev yamls not intended for general use (likely paired with above dev scripts)
+examples_dev/
+
 
 # Created by https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 

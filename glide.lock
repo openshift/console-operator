@@ -1,12 +1,12 @@
 hash: 04f0a84ca5c855059ac263ec6abe44f9e873b79018933b771194631422d3331e
-updated: 2019-07-31T14:58:37.614978864-04:00
+updated: 2019-08-12T12:01:15.09921-04:00
 imports:
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
   - quantile
 - name: github.com/blang/semver
-  version: 1a9109f8c4a1d669a78442f567dfe8eedf982793
+  version: b38d23b8782a487059e8fc8773e9a5b228a77cb6
 - name: github.com/certifi/gocertifi
   version: ee1a9a0726d2ae45f54118cac878c990d4016ded
 - name: github.com/coreos/etcd
@@ -103,7 +103,7 @@ imports:
 - name: github.com/getsentry/raven-go
   version: c977f96e109525a5d8fa10a19165341f601f38b0
 - name: github.com/ghodss/yaml
-  version: 25d852aebe32c875e9c044af3eef9c7dc6bc777f
+  version: c7ce16629ff4cd059ed96ed06419dd3856fd3577
 - name: github.com/go-openapi/jsonpointer
   version: ef5f0afec364d3b9396b7b77b43dbe26bf1f8004
 - name: github.com/go-openapi/jsonreference
@@ -113,7 +113,7 @@ imports:
 - name: github.com/go-openapi/swag
   version: 5899d5c5e619fda5fa86e14795a835f473ca284c
 - name: github.com/go-test/deep
-  version: cf67d735e69b4a4d50cdf571a92b0144786080f7
+  version: 1888facc153dfaea996367ec0e53d0c42d1b8454
 - name: github.com/gogo/protobuf
   version: 342cbe0a04158f6dcb03ca0079991a51a4248c02
   subpackages:
@@ -172,7 +172,7 @@ imports:
 - name: github.com/NYTimes/gziphandler
   version: 56545f4a5d46df9a6648819d1664c3a03a13ffdb
 - name: github.com/openshift/api
-  version: 0922aa5a655be314e20a3e0e94f4f2b105100154
+  version: 27fb16909b15a19136ab22c12aa34e688d0d24bb
   subpackages:
   - apps
   - apps/v1
@@ -218,7 +218,7 @@ imports:
   - webconsole
   - webconsole/v1
 - name: github.com/openshift/client-go
-  version: a85ea6a6b3a5d2dbe41582ee35695dd4683e1f02
+  version: e9678e3b850da36470c5554609c6cd110aace47e
   subpackages:
   - config/clientset/versioned
   - config/clientset/versioned/scheme
@@ -256,7 +256,7 @@ imports:
   - route/informers/externalversions/route/v1
   - route/listers/route/v1
 - name: github.com/openshift/library-go
-  version: 950af653b51af28697df79f1406fc9d21f722db8
+  version: 211d32684d6cd8b9a50db92e213d4b6ea827bb63
   subpackages:
   - pkg/config/client
   - pkg/config/clusteroperator/v1helpers
@@ -269,6 +269,7 @@ imports:
   - pkg/crypto
   - pkg/operator/condition
   - pkg/operator/events
+  - pkg/operator/loglevel
   - pkg/operator/management
   - pkg/operator/resource/resourceapply
   - pkg/operator/resource/resourcemerge
@@ -282,10 +283,9 @@ imports:
 - name: github.com/pkg/profile
   version: f6fe06335df110bcf1ed6d4e852b760bfc15beee
 - name: github.com/prometheus/client_golang
-  version: 505eaef017263e299324067d40ca2c48f6a2cf50
+  version: e7e903064f5e9eb5da98208bae10b475d4db0f8c
   subpackages:
   - prometheus
-  - prometheus/internal
 - name: github.com/prometheus/client_model
   version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
   subpackages:
@@ -307,7 +307,7 @@ imports:
 - name: github.com/sirupsen/logrus
   version: 89742aefa4b206dcf400792f3bd35b542998eb3b
 - name: github.com/spf13/cobra
-  version: c439c4fa093711d42e1b01acb1235b52004753c1
+  version: b80588d523ec50c7fee20218426cf2ff70920f06
 - name: github.com/spf13/pflag
   version: 583c0c0531f06d5278b7d917446061adc344b5cd
 - name: golang.org/x/crypto
@@ -360,7 +360,7 @@ imports:
   subpackages:
   - imports
 - name: google.golang.org/appengine
-  version: b2f4a3cf3c67576a2ee09e1fe62656a5086ce880
+  version: 267c27e7492265b84fc6719503b14a1e17975d79
   subpackages:
   - internal
   - internal/base
@@ -810,7 +810,7 @@ imports:
   subpackages:
   - args
 - name: k8s.io/klog
-  version: 6a023d6d0e0954feabd46dc2d3a6a2c3c991fe1a
+  version: 8e90cee79f823779174776412c13478955131846
 - name: k8s.io/kube-aggregator
   version: da8327669ac57b6e6a06676eeb7de19c9780f76d
   subpackages:
