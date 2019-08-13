@@ -86,10 +86,10 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	if customLogoError != nil {
 		msg := fmt.Sprintf("%q: %v", "customlogoconfigmap", customLogoError)
 		klog.V(4).Infof("incomplete sync: %v", msg)
-		// If the custom logo sync fails for any reason, we are degraded, not progressing.
-		// The sync loop may not settle, we are unable to honor it in current state.
-		co.ConditionDegraded(updatedOperatorConfig, "CustomLogoInvalid", msg)
 	}
+	// If the custom logo sync fails for any reason, we are degraded, not progressing.
+	// The sync loop may not settle, we are unable to honor it in current state.
+	co.HandleDegraded(updatedOperatorConfig, "CustomLogoConfigMap", customLogoError)
 
 	sec, secChanged, secErr := co.SyncSecret(set.Operator)
 	if secErr != nil {
