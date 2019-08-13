@@ -21,6 +21,7 @@ import (
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/management"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
+	"github.com/openshift/library-go/pkg/operator/staleconditions"
 	"github.com/openshift/library-go/pkg/operator/status"
 	"github.com/openshift/library-go/pkg/operator/unsupportedconfigoverridescontroller"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
@@ -176,6 +177,20 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		ctx.EventRecorder,
 	)
 
+	staleConditionsController := staleconditions.NewRemoveStaleConditions(
+		[]string{
+			// in 4.1.0 we directly set this set of conditions. We should no longer do this.
+			// in 4.3.0+ we can remove this
+			"Degraded",
+			// in follow-up PRs, we should stop using the rest directly:
+			// "Progressing"
+			// "Available"
+			// "Faililng"
+		},
+		operatorClient,
+		ctx.EventRecorder,
+	)
+
 	configUpgradeableController := unsupportedconfigoverridescontroller.NewUnsupportedConfigOverridesController(operatorClient, ctx.EventRecorder)
 	logLevelController := loglevel.NewClusterOperatorLoggingController(operatorClient, ctx.EventRecorder)
 	managementStateController := management.NewOperatorManagementStateController(api.ClusterOperatorName, operatorClient, ctx.EventRecorder)
@@ -200,6 +215,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	go configUpgradeableController.Run(1, ctx.Done())
 	go logLevelController.Run(1, ctx.Done())
 	go managementStateController.Run(1, ctx.Done())
+	go staleConditionsController.Run(1, ctx.Done())
 
 	<-ctx.Done()
 	return fmt.Errorf("stopped")
