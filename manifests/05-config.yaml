@@ -9,7 +9,3 @@ data:
     kind: GenericOperatorConfig
     leaderElection:
       namespace: openshift-console-operator
-    authentication:
-      disabled: true
-    authorization:
-      disabled: true
