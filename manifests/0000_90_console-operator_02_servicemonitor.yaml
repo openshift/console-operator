@@ -1,0 +1,21 @@
+# Configure cluster-monitoring for console-operator
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: console-operator
+  namespace: openshift-console-operator
+spec:
+  endpoints:
+    - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      interval: 30s
+      path: /metrics
+      port: https
+      scheme: https
+      tlsConfig:
+        caFile: /etc/prometheus/configmaps/serving-certs-ca-bundle/service-ca.crt
+        serverName: metrics.openshift-console-operator.svc
+  jobLabel: component
+  selector:
+    matchLabels:
+      name: console-operator
+

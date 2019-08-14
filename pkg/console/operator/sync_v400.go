@@ -7,7 +7,9 @@ import (
 	"strings"
 
 	// 3rd party
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
+
 	// kube
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -35,6 +37,19 @@ import (
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
 	servicesub "github.com/openshift/console-operator/pkg/console/subresource/service"
 )
+
+var (
+	// metric: console_url{url="https://<url>"} 1
+	consoleURLMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "console_url",
+		Help: "URL of the console exposed on the cluster",
+		// one label
+	}, []string{"url"})
+)
+
+func init() {
+	prometheus.MustRegister(consoleURLMetric)
+}
 
 // The sync loop starts from zero and works its way through the requirements for a running console.
 // If at any point something is missing, it creates/updates that piece and immediately dies.
@@ -163,6 +178,7 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 	// public hostname so that the world can know the console is ready to roll
 	logrus.Println("sync_v400: updating console status")
 	consoleURL := getConsoleURL(rt)
+
 	if consoleURL == "" {
 		err := customerrors.NewSyncError("waiting on route host")
 		logrus.Errorf("%q: %v \n", "route", err)
@@ -213,6 +229,26 @@ func getConsoleURL(route *routev1.Route) string {
 		return ""
 	}
 	return util.HTTPS(host)
+}
+
+func (co *consoleOperator) SyncConsoleConfig(consoleConfig *configv1.Console, consoleURL string) (*configv1.Console, error) {
+	updated := consoleConfig.DeepCopy()
+
+	// track the URL state in prometheus before we update it
+	if consoleConfig.Status.ConsoleURL != consoleURL {
+		// not using this URL anymore
+		consoleURLMetric.WithLabelValues(consoleConfig.Status.ConsoleURL).Set(0)
+	}
+	if len(consoleURL) != 0 {
+		// only update to new if we have a url
+		consoleURLMetric.WithLabelValues(consoleURL).Set(1)
+	}
+
+	if updated.Status.ConsoleURL != consoleURL {
+		logrus.Printf("updating console.config.openshift.io with url: %v", consoleURL)
+		updated.Status.ConsoleURL = consoleURL
+	}
+	return co.consoleConfigClient.UpdateStatus(updated)
 }
 
 func SyncConsoleConfig(co *consoleOperator, consoleConfig *configv1.Console, consoleURL string) (*configv1.Console, error) {
