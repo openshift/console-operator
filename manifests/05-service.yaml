@@ -1,0 +1,20 @@
+# Expose operator metrics
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.alpha.openshift.io/serving-cert-secret-name: serving-cert
+  labels:
+    name: console-operator
+  name: metrics
+  namespace: openshift-console-operator
+spec:
+  ports:
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: 8443
+  selector:
+    name: console-operator
+  sessionAffinity: None
+  type: ClusterIP

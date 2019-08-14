@@ -11,3 +11,5 @@ metadata:
   name: openshift-console-operator
   annotations:
     openshift.io/node-selector: ""
+  labels:
+    openshift.io/cluster-monitoring: "true"
