@@ -183,7 +183,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 			// in 4.3.0+ we can remove this
 			"Degraded",
 			// in follow-up PRs, we should stop using the rest directly:
-			// "Progressing"
+			"Progressing",
 			// "Available"
 			// "Faililng"
 		},

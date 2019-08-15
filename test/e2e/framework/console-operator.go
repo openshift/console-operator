@@ -295,12 +295,6 @@ func operatorIsSettled(operatorConfig *operatorsv1.Console) (settled bool, unmet
 			conditionType:  operatorsv1.OperatorStatusTypeAvailable,
 			expectedStatus: operatorsv1.ConditionTrue,
 			mustBeSet:      true,
-		}, {
-			// TODO: deprecated
-			name:           "Progressing should be False",
-			conditionType:  operatorsv1.OperatorStatusTypeProgressing,
-			expectedStatus: operatorsv1.ConditionFalse,
-			mustBeSet:      true,
 		},
 	}
 
@@ -329,6 +323,10 @@ func operatorIsSettled(operatorConfig *operatorsv1.Console) (settled bool, unmet
 		{
 			name:           "Degraded suffix conditions must be false",
 			conditionType:  operatorsv1.OperatorStatusTypeDegraded,
+			expectedStatus: operatorsv1.ConditionFalse,
+		}, {
+			name:           "Progressing suffix conditions should be False",
+			conditionType:  operatorsv1.OperatorStatusTypeProgressing,
 			expectedStatus: operatorsv1.ConditionFalse,
 		},
 	}
