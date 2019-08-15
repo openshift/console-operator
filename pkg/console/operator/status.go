@@ -194,33 +194,6 @@ func (c *consoleOperator) ConditionDeploymentNotAvailable(operatorConfig *operat
 	return operatorConfig
 }
 
-// ConditionResourceSyncProgressing()
-// When a sync loop aborts early:
-// - we dont know if the operand is available, so it is best not to set it.
-// - on install, an incomplete sync will mean the operator is unavailable.
-// - however, on a later sync when a change is encountered, this is not true.
-// - we do know that we encountered a component of the operand in an incorrect state
-// - we do know we are progressing because we are trying to change something about the operand
-func (c *consoleOperator) ConditionResourceSyncProgressing(operatorConfig *operatorsv1.Console, message string) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeProgressing,
-		Status:  operatorsv1.ConditionTrue,
-		Reason:  reasonSyncLoopProgressing,
-		Message: message,
-	})
-
-	return operatorConfig
-}
-
-func (c *consoleOperator) ConditionResourceSyncNotProgressing(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:   operatorsv1.OperatorStatusTypeProgressing,
-		Status: operatorsv1.ConditionFalse,
-	})
-
-	return operatorConfig
-}
-
 // TODO: potentially eliminate the defaulting mechanism
 func (c *consoleOperator) ConditionsDefault(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
@@ -229,12 +202,8 @@ func (c *consoleOperator) ConditionsDefault(operatorConfig *operatorsv1.Console)
 		Reason:  reasonAsExpected,
 		Message: "As expected",
 	})
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeProgressing,
-		Status:  operatorsv1.ConditionFalse,
-		Reason:  reasonAsExpected,
-		Message: "As expected",
-	})
+
+	c.HandleProgressing(operatorConfig, "Default", nil)
 
 	c.HandleDegraded(operatorConfig, "Default", nil)
 
