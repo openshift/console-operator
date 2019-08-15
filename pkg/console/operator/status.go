@@ -3,6 +3,7 @@ package operator
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"k8s.io/klog"
 
@@ -56,6 +57,59 @@ const (
 	reasonSyncLoopError       = "SyncLoopError"
 	reasonCustomLogoInvalid   = "CustomLogoInvalid"
 )
+
+// handleDegraded can be used to set a number of Degraded statuses
+// example:
+//   c.handleDegraded(operatorConfig, "RouteStatus", err)
+//   c.handleDegraded(operatorConfig, "CustomLogoInvalid", err)
+// creates condition:
+//   RouteStatusDegraded
+//   CustomLogoInvalidDegraded
+// and uses the error as its message
+func (c *consoleOperator) HandleDegraded(operatorConfig *operatorsv1.Console, prefix string, err error) {
+	conditionType := prefix + operatorsv1.OperatorStatusTypeDegraded
+	reason := prefix + "Error"
+	handleCondition(operatorConfig, conditionType, reason, err)
+}
+
+func (c *consoleOperator) HandleProgressing(operatorConfig *operatorsv1.Console, prefix string, err error) {
+	conditionType := prefix + operatorsv1.OperatorStatusTypeProgressing
+	handleCondition(operatorConfig, conditionType, prefix, err)
+}
+
+func (c *consoleOperator) HandleAvailable(operatorConfig *operatorsv1.Console, prefix string, err error) {
+	conditionType := prefix + operatorsv1.OperatorStatusTypeAvailable
+	handleCondition(operatorConfig, conditionType, prefix, err)
+}
+
+// internal func for handling conditions
+func handleCondition(operatorConfig *operatorsv1.Console, conditionType string, reason string, err error) {
+	if err != nil {
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions,
+			operatorsv1.OperatorCondition{
+				Type:    conditionType,
+				Status:  operatorsv1.ConditionTrue,
+				Reason:  reason,
+				Message: err.Error(),
+			})
+		return
+	}
+	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions,
+		operatorsv1.OperatorCondition{
+			Type:   conditionType,
+			Status: operatorsv1.ConditionFalse,
+		})
+}
+
+func IsDegraded(operatorConfig *operatorsv1.Authentication) bool {
+	for _, condition := range operatorConfig.Status.Conditions {
+		if strings.HasSuffix(condition.Type, operatorsv1.OperatorStatusTypeDegraded) &&
+			condition.Status == operatorsv1.ConditionTrue {
+			return true
+		}
+	}
+	return false
+}
 
 // TODO:
 // a single builder helper would be sufficiently easy to read and
@@ -119,15 +173,6 @@ func (c *consoleOperator) SetStatusCondition(operatorConfig *operatorsv1.Console
 	return operatorConfig
 }
 
-func (c *consoleOperator) ConditionResourceSyncSuccess(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:   operatorsv1.OperatorStatusTypeDegraded,
-		Status: operatorsv1.ConditionFalse,
-	})
-
-	return operatorConfig
-}
-
 func (c *consoleOperator) ConditionDeploymentAvailable(operatorConfig *operatorsv1.Console, message string) *operatorsv1.Console {
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
 		Type:    operatorsv1.OperatorStatusTypeAvailable,
@@ -176,51 +221,7 @@ func (c *consoleOperator) ConditionResourceSyncNotProgressing(operatorConfig *op
 	return operatorConfig
 }
 
-// examples:
-//   conditionFailing(operatorConfig, "SyncLoopError", "Sync loop failed to complete successfully")
-func (c *consoleOperator) ConditionDegraded(operatorConfig *operatorsv1.Console, conditionReason string, conditionMessage string) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeDegraded,
-		Status:  operatorsv1.ConditionTrue,
-		Reason:  conditionReason,
-		Message: conditionMessage,
-	})
-
-	return operatorConfig
-}
-
-func (c *consoleOperator) ConditionNotDegraded(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:   operatorsv1.OperatorStatusTypeDegraded,
-		Status: operatorsv1.ConditionFalse,
-		Reason: reasonAsExpected,
-	})
-
-	return operatorConfig
-}
-
-// When a sync error happens,
-// - we don't know if the operand is Available, best to leave Available alone
-// - we do know we are Progressing because we are trying to change an operand resource
-// - we do know that we are likely Degraded as some resources may be mismatched until a
-//  successful loop completes.
-func (c *consoleOperator) ConditionResourceSyncDegraded(operatorConfig *operatorsv1.Console, message string) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeProgressing,
-		Status:  operatorsv1.ConditionTrue,
-		Reason:  reasonSyncError,
-		Message: message,
-	})
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeDegraded,
-		Status:  operatorsv1.ConditionTrue,
-		Message: message,
-		Reason:  reasonSyncError,
-	})
-
-	return operatorConfig
-}
-
+// TODO: potentially eliminate the defaulting mechanism
 func (c *consoleOperator) ConditionsDefault(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
 		Type:    operatorsv1.OperatorStatusTypeAvailable,
@@ -234,12 +235,8 @@ func (c *consoleOperator) ConditionsDefault(operatorConfig *operatorsv1.Console)
 		Reason:  reasonAsExpected,
 		Message: "As expected",
 	})
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeDegraded,
-		Status:  operatorsv1.ConditionFalse,
-		Reason:  reasonAsExpected,
-		Message: "As expected",
-	})
+
+	c.HandleDegraded(operatorConfig, "Default", nil)
 
 	return operatorConfig
 }

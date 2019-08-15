@@ -238,16 +238,21 @@ func (c *consoleOperator) handleSync(configs configSet) error {
 	// set default conditions ok first, sync can toggle if conditions are invalid
 	c.ConditionsDefault(updatedStatus)
 	err := c.sync_v400(updatedStatus, configs)
-	if err != nil {
-		if !customerrors.IsSyncError(err) || !customerrors.IsCustomLogoError(err) {
-			c.SyncStatus(c.ConditionResourceSyncDegraded(updatedStatus, err.Error()))
+
+	c.HandleDegraded(updatedStatus, "SyncError", func() error {
+		if !customerrors.IsSyncError(err) {
 			return err
-		} else {
-			// custom errors are internal
-			c.SyncStatus(updatedStatus)
-			return nil
 		}
-	}
+		return nil
+	}())
+
+	c.HandleDegraded(updatedStatus, "CustomLogo", func() error {
+		if !customerrors.IsCustomLogoError(err) {
+			return err
+		}
+		return nil
+	}())
+
 	// finally write out the set of conditions currently set if anything has changed
 	// to avoid a hot loop
 	if !reflect.DeepEqual(updatedStatus, configs.Operator) {
