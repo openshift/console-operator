@@ -271,54 +271,19 @@ func reportDeprecatedConditions(conditions conditionsMap) {
 	}
 }
 
-// TODO: with the derived statuses, does this logic need an update in order for tests to pass?
-// the operator is settled if conditions match:
-// - available: true
-// - progressing: false
-// - degraded: false
+// the operator is settled if all custom conditions with suffixes match:
+// - *Available: true
+// - *Progressing: false
+// - *Degraded: false
 func operatorIsSettled(operatorConfig *operatorsv1.Console) (settled bool, unmetConditions []string) {
 	settled = true
 	conditions := operatorConditionsMap(operatorConfig)
 	unmetConditions = []string{}
-	// Taking the same form as our unit legacyTests as that is basically what we do here.
-	legacyTests := []struct {
+
+	tests := []struct {
 		name           string
 		conditionType  string
 		expectedStatus operatorsv1.ConditionStatus
-		// The operator will get many conditions over time.  We may test more, however
-		// not all conditions MUST bet set.
-		mustBeSet bool
-	}{
-		{
-			// TODO: Deprecated
-			name:           "Available should be True",
-			conditionType:  operatorsv1.OperatorStatusTypeAvailable,
-			expectedStatus: operatorsv1.ConditionTrue,
-			mustBeSet:      true,
-		},
-	}
-
-	for _, tt := range legacyTests {
-		// if the condition is essential, we test mustBeSet. future conditions may be optional
-		// as we are working on transitioning
-		if _, ok := conditions[tt.conditionType]; !ok {
-			if tt.mustBeSet {
-				unmetConditions = append(unmetConditions, tt.conditionType)
-				settled = false
-			}
-		}
-		if conditions[tt.conditionType].Status != tt.expectedStatus {
-			unmetConditions = append(unmetConditions, tt.conditionType)
-			settled = false
-		}
-	}
-
-	// TODO: new tests should be a suffix test as we update to use suffixed statuses
-	suffixTests := []struct {
-		name           string
-		conditionType  string
-		expectedStatus operatorsv1.ConditionStatus
-		// cannot use mustBeSet as legacy conditions test did
 	}{
 		{
 			name:           "Degraded suffix conditions must be false",
@@ -328,25 +293,24 @@ func operatorIsSettled(operatorConfig *operatorsv1.Console) (settled bool, unmet
 			name:           "Progressing suffix conditions should be False",
 			conditionType:  operatorsv1.OperatorStatusTypeProgressing,
 			expectedStatus: operatorsv1.ConditionFalse,
+		}, {
+			name:           "Available suffix conditions should be True",
+			conditionType:  operatorsv1.OperatorStatusTypeAvailable,
+			expectedStatus: operatorsv1.ConditionTrue,
 		},
 	}
-
-	// loop the tests
-	for _, suffixTest := range suffixTests {
-		// loop all conditions
+	for _, test := range tests {
 		for _, condition := range conditions {
-			// check for matching suffixes
-			if strings.HasSuffix(condition.Type, suffixTest.conditionType) {
+			if strings.HasSuffix(condition.Type, test.conditionType) {
 				// any condition with a matching suffix must match status else we are not settled
-				if condition.Status != suffixTest.expectedStatus {
-					// record unmet for logging purposes
+				if condition.Status != test.expectedStatus {
 					unmetConditions = append(unmetConditions, condition.Type)
 					settled = false
 				}
 			}
 		}
 	}
-
+	// returning unmet conditions for logging purposes
 	return settled, unmetConditions
 }
 
