@@ -349,6 +349,11 @@ func IsReady(deployment *appsv1.Deployment) bool {
 	return avail
 }
 
+func IsReadyAndUpdated(deployment *appsv1.Deployment) bool {
+	return deployment.Status.Replicas == deployment.Status.ReadyReplicas &&
+		deployment.Status.Replicas == deployment.Status.UpdatedReplicas
+}
+
 func IsAvailableAndUpdated(deployment *appsv1.Deployment) bool {
 	return deployment.Status.AvailableReplicas > 0 &&
 		deployment.Status.ObservedGeneration >= deployment.Generation &&

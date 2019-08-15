@@ -184,7 +184,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 			"Degraded",
 			// in follow-up PRs, we should stop using the rest directly:
 			"Progressing",
-			// "Available"
+			"Available",
 			// "Faililng"
 		},
 		operatorClient,

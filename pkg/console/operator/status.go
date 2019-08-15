@@ -88,7 +88,7 @@ func handleCondition(operatorConfig *operatorsv1.Console, conditionType string, 
 		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions,
 			operatorsv1.OperatorCondition{
 				Type:    conditionType,
-				Status:  operatorsv1.ConditionTrue,
+				Status:  setConditionValue(conditionType, err),
 				Reason:  reason,
 				Message: err.Error(),
 			})
@@ -97,8 +97,22 @@ func handleCondition(operatorConfig *operatorsv1.Console, conditionType string, 
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions,
 		operatorsv1.OperatorCondition{
 			Type:   conditionType,
-			Status: operatorsv1.ConditionFalse,
+			Status: setConditionValue(conditionType, err),
 		})
+}
+
+// Available is an inversion of the other conditions
+func setConditionValue(conditionType string, err error) operatorsv1.ConditionStatus {
+	if strings.HasSuffix(conditionType, operatorsv1.OperatorStatusTypeAvailable) {
+		if err != nil {
+			return operatorsv1.ConditionFalse
+		}
+		return operatorsv1.ConditionTrue
+	}
+	if err != nil {
+		return operatorsv1.ConditionTrue
+	}
+	return operatorsv1.ConditionFalse
 }
 
 func IsDegraded(operatorConfig *operatorsv1.Authentication) bool {
@@ -157,55 +171,11 @@ func (c *consoleOperator) logConditions(conditions []operatorsv1.OperatorConditi
 	}
 }
 
-// setStatusCondition
-// A generic helper for setting a status condition.
-// To use when another more specific status function is not sufficient.
-// examples:
-//  setStatusCondition(operatorConfig, Failing, True, "SyncLoopError", "Sync loop failed to complete successfully")
-func (c *consoleOperator) SetStatusCondition(operatorConfig *operatorsv1.Console, conditionType string, conditionStatus operatorsv1.ConditionStatus, conditionReason string, conditionMessage string) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    conditionType,
-		Status:  conditionStatus,
-		Reason:  conditionReason,
-		Message: conditionMessage,
-	})
-
-	return operatorConfig
-}
-
-func (c *consoleOperator) ConditionDeploymentAvailable(operatorConfig *operatorsv1.Console, message string) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeAvailable,
-		Status:  operatorsv1.ConditionTrue,
-		Message: message,
-	})
-
-	return operatorConfig
-}
-
-func (c *consoleOperator) ConditionDeploymentNotAvailable(operatorConfig *operatorsv1.Console, message string) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeAvailable,
-		Status:  operatorsv1.ConditionFalse,
-		Reason:  reasonNoPodsAvailable,
-		Message: message,
-	})
-
-	return operatorConfig
-}
-
-// TODO: potentially eliminate the defaulting mechanism
+// TODO: eliminate the defaulting mechanism
+// This no longer has any meaning.
 func (c *consoleOperator) ConditionsDefault(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:    operatorsv1.OperatorStatusTypeAvailable,
-		Status:  operatorsv1.ConditionTrue,
-		Reason:  reasonAsExpected,
-		Message: "As expected",
-	})
-
+	c.HandleAvailable(operatorConfig, "Default", nil)
 	c.HandleProgressing(operatorConfig, "Default", nil)
-
 	c.HandleDegraded(operatorConfig, "Default", nil)
-
 	return operatorConfig
 }
