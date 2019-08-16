@@ -239,15 +239,9 @@ func (c *consoleOperator) handleSync(configs configSet) error {
 	c.ConditionsDefault(updatedStatus)
 	err := c.sync_v400(updatedStatus, configs)
 
-	c.HandleDegraded(updatedStatus, "SyncError", func() error {
-		if !customerrors.IsSyncError(err) {
-			return err
-		}
-		return nil
-	}())
-
+	// anything wrong with custom logo should be reported as degraded
 	c.HandleDegraded(updatedStatus, "CustomLogo", func() error {
-		if !customerrors.IsCustomLogoError(err) {
+		if customerrors.IsCustomLogoError(err) {
 			return err
 		}
 		return nil
