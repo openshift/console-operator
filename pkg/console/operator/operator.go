@@ -235,8 +235,6 @@ func (c *consoleOperator) handleSync(configs configSet) error {
 		return fmt.Errorf("console is in an unknown state: %v", updatedStatus.Spec.ManagementState)
 	}
 
-	// set default conditions ok first, sync can toggle if conditions are invalid
-	c.ConditionsDefault(updatedStatus)
 	err := c.sync_v400(updatedStatus, configs)
 
 	c.HandleDegraded(updatedStatus, "SyncError", func() error {
