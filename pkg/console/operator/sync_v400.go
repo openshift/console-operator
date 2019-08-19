@@ -46,76 +46,65 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	// track changes, may trigger ripples & update operator config or console config status
 	toUpdate := false
 
-	rt, rtChanged, rtErr := co.SyncRoute(set.Operator)
+	rt, rtChanged, rtErrReason, rtErr := co.SyncRoute(set.Operator)
 	toUpdate = toUpdate || rtChanged
-	co.HandleProgressing(updatedOperatorConfig, "ConsoleRouteSync", rtErr)
+	co.HandleProgressingOrDegraded(updatedOperatorConfig, "RouteSync", rtErrReason, rtErr)
 	if rtErr != nil {
-		klog.V(4).Infof("incomplete sync: %v", fmt.Sprintf("%v: %s", "route", rtErr))
 		return rtErr
 	}
 
-	svc, svcChanged, svcErr := co.SyncService(set.Operator)
+	svc, svcChanged, svcErrReason, svcErr := co.SyncService(set.Operator)
 	toUpdate = toUpdate || svcChanged
-	co.HandleProgressing(updatedOperatorConfig, "ConsoleServiceSync", svcErr)
+	co.HandleProgressingOrDegraded(updatedOperatorConfig, "ServiceSync", svcErrReason, svcErr)
 	if svcErr != nil {
-		klog.V(4).Infof("incomplete sync: %v", fmt.Sprintf("%q: %v", "service", svcErr))
 		return svcErr
 	}
 
-	cm, cmChanged, cmErr := co.SyncConfigMap(set.Operator, set.Console, set.Infrastructure, rt)
+	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(set.Operator, set.Console, set.Infrastructure, rt)
 	toUpdate = toUpdate || cmChanged
-	co.HandleProgressing(updatedOperatorConfig, "ConsoleConfigMapSync", cmErr)
+	co.HandleProgressingOrDegraded(updatedOperatorConfig, "ConfigMapSync", cmErrReason, cmErr)
 	if cmErr != nil {
-		klog.V(4).Infof("incomplete sync: %v", fmt.Sprintf("%q: %v", "configmap", cmErr))
 		return cmErr
 	}
 
-	serviceCAConfigMap, serviceCAConfigMapChanged, serviceCAConfigMapErr := co.SyncServiceCAConfigMap(set.Operator)
-	toUpdate = toUpdate || serviceCAConfigMapChanged
-	co.HandleProgressing(updatedOperatorConfig, "ServiceCASync", serviceCAConfigMapErr)
-	if serviceCAConfigMapErr != nil {
-		klog.V(4).Infof("incomplete sync: %v", fmt.Sprintf("%q: %v", "serviceCAconfigmap", serviceCAConfigMapErr))
-		return serviceCAConfigMapErr
+	serviceCAConfigMap, serviceCAChanged, serviceCAErrReason, serviceCAErr := co.SyncServiceCAConfigMap(set.Operator)
+	toUpdate = toUpdate || serviceCAChanged
+	co.HandleProgressingOrDegraded(updatedOperatorConfig, "ServiceCASync", serviceCAErrReason, serviceCAErr)
+	if serviceCAErr != nil {
+		return serviceCAErr
 	}
 
-	trustedCAConfigMap, trustedCAConfigMapChanged, trustedCAConfigMapErr := co.SyncTrustedCAConfigMap(set.Operator)
+	trustedCAConfigMap, trustedCAConfigMapChanged, trustedCAErrReason, trustedCAErr := co.SyncTrustedCAConfigMap(set.Operator)
 	toUpdate = toUpdate || trustedCAConfigMapChanged
-	co.HandleProgressing(updatedOperatorConfig, "TrustedCASync", trustedCAConfigMapErr)
-	if trustedCAConfigMapErr != nil {
-		klog.V(4).Infof("incomplete sync: %v", fmt.Sprintf("%q: %v", "trustedCAconfigmap", trustedCAConfigMapErr))
-		return trustedCAConfigMapErr
+	co.HandleProgressingOrDegraded(updatedOperatorConfig, "TrustedCASync", trustedCAErrReason, trustedCAErr)
+	if trustedCAErr != nil {
+		return trustedCAErr
 	}
 
 	// TODO: why is this missing a toUpdate change?
-	customLogoCanMount, customLogoError := co.SyncCustomLogoConfigMap(updatedOperatorConfig)
+	customLogoCanMount, customLogoErrReason, customLogoError := co.SyncCustomLogoConfigMap(updatedOperatorConfig)
 	// If the custom logo sync fails for any reason, we are degraded, not progressing.
 	// The sync loop may not settle, we are unable to honor it in current state.
-	co.HandleDegraded(updatedOperatorConfig, "CustomLogoConfigMap", customLogoError)
-	if customLogoError != nil {
-		klog.V(4).Infof("incomplete sync: %v", fmt.Sprintf("%q: %v", "customlogoconfigmap", customLogoError))
-	}
+	co.HandleProgressingOrDegraded(updatedOperatorConfig, "CustomLogoSync", customLogoErrReason, customLogoError)
 
 	sec, secChanged, secErr := co.SyncSecret(set.Operator)
 	toUpdate = toUpdate || secChanged
-	co.HandleProgressing(updatedOperatorConfig, "OauthClientSecretSync", secErr)
+	co.HandleProgressingOrDegraded(updatedOperatorConfig, "OAuthClientSecretSync", "FailedApply", secErr)
 	if secErr != nil {
-		klog.V(4).Infof("incomplete sync: %v", fmt.Sprintf("%q: %v", "secret", secErr))
 		return secErr
 	}
 
-	oauthClient, oauthChanged, oauthErr := co.SyncOAuthClient(set.Operator, sec, rt)
+	oauthClient, oauthChanged, oauthErrReason, oauthErr := co.SyncOAuthClient(set.Operator, sec, rt)
 	toUpdate = toUpdate || oauthChanged
-	co.HandleProgressing(updatedOperatorConfig, "OAuthClientSync", oauthErr)
+	co.HandleProgressingOrDegraded(updatedOperatorConfig, "OAuthClientSync", oauthErrReason, oauthErr)
 	if oauthErr != nil {
-		klog.V(4).Infof("incomplete sync: %v", fmt.Sprintf("%q: %v", "oauth", oauthErr))
 		return oauthErr
 	}
 
-	actualDeployment, depChanged, depErr := co.SyncDeployment(set.Operator, cm, serviceCAConfigMap, trustedCAConfigMap, sec, rt, set.Proxy, customLogoCanMount)
+	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(set.Operator, cm, serviceCAConfigMap, trustedCAConfigMap, sec, rt, set.Proxy, customLogoCanMount)
 	toUpdate = toUpdate || depChanged
-	co.HandleProgressing(updatedOperatorConfig, "ConsoleDeploymentSync", depErr)
+	co.HandleProgressingOrDegraded(updatedOperatorConfig, "DeploymentSync", depErrReason, depErr)
 	if depErr != nil {
-		klog.V(4).Infof("incomplete sync: %v", fmt.Sprintf("%q: %v", "deployment", depErr))
 		return depErr
 	}
 
@@ -126,7 +115,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	klog.V(4).Infof("sync loop 4.0.0 resources updated: %v", toUpdate)
 	klog.V(4).Infoln("-----------------------")
 
-	co.HandleProgressing(updatedOperatorConfig, "ResourceSyncUpdatesInProgress", func() error {
+	co.HandleProgressing(updatedOperatorConfig, "SyncLoopRefresh", "InProgress", func() error {
 		if toUpdate {
 			return errors.New("Changes made during sync updates, additional sync expected.")
 		}
@@ -140,27 +129,20 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		return nil
 	}())
 
-	co.HandleAvailable(updatedOperatorConfig, "DeploymentIsReady", func() error {
+	co.HandleAvailable(func() (conf *operatorv1.Console, prefix string, reason string, err error) {
+		prefix = "Deployment"
 		if !deploymentsub.IsReady(actualDeployment) {
-			msg := fmt.Sprintf("%v pods available for console deployment", actualDeployment.Status.ReadyReplicas)
-			klog.V(4).Infoln(msg)
-			return errors.New(msg)
+			return updatedOperatorConfig, prefix, "InsufficientReplicas", errors.New(fmt.Sprintf("%v pods available for console deployment", actualDeployment.Status.ReadyReplicas))
 		}
-		return nil
-	}())
-	co.HandleAvailable(updatedOperatorConfig, "DeploymentIsUpdated", func() error {
 		if !deploymentsub.IsReadyAndUpdated(actualDeployment) {
-			msg := fmt.Sprintf("%v replicas ready at version %s", actualDeployment.Status.ReadyReplicas, os.Getenv("RELEASE_VERSION"))
-			klog.V(4).Infoln(msg)
-			return errors.New(msg)
+			return updatedOperatorConfig, prefix, "FailedUpdate", errors.New(fmt.Sprintf("%v replicas ready at version %s", actualDeployment.Status.ReadyReplicas, os.Getenv("RELEASE_VERSION")))
 		}
-		return nil
+		return updatedOperatorConfig, prefix, "", nil
 	}())
-	co.HandleAvailable(updatedOperatorConfig, "RouteNotAdmitted", func() error {
+
+	co.HandleAvailable(updatedOperatorConfig, "Route", "FailedAdmittedIngress", func() error {
 		if !routesub.IsAdmitted(rt) {
-			msg := "console route is not admitted"
-			klog.V(4).Infoln(msg)
-			return errors.New(msg)
+			return errors.New("console route is not admitted")
 		}
 		return nil
 	}())
@@ -196,7 +178,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		if cmChanged {
 			klog.V(4).Infof("\t configmap changed: %v", cm.GetResourceVersion())
 		}
-		if serviceCAConfigMapChanged {
+		if serviceCAChanged {
 			klog.V(4).Infof("\t service-ca configmap changed: %v", serviceCAConfigMap.GetResourceVersion())
 		}
 		if secChanged {
@@ -227,7 +209,16 @@ func (co *consoleOperator) SyncConsolePublicConfig(consoleURL string) (*corev1.C
 	return resourceapply.ApplyConfigMap(co.configMapClient, co.recorder, requiredConfigMap)
 }
 
-func (co *consoleOperator) SyncDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route, proxyConfig *configv1.Proxy, canMountCustomLogo bool) (*appsv1.Deployment, bool, error) {
+func (co *consoleOperator) SyncDeployment(
+	operatorConfig *operatorv1.Console,
+	cm *corev1.ConfigMap,
+	serviceCAConfigMap *corev1.ConfigMap,
+	trustedCAConfigMap *corev1.ConfigMap,
+	sec *corev1.Secret,
+	rt *routev1.Route,
+	proxyConfig *configv1.Proxy,
+	canMountCustomLogo bool) (consoleDeployment *appsv1.Deployment, changed bool, reason string, err error) {
+
 	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, trustedCAConfigMap, sec, rt, proxyConfig, canMountCustomLogo)
 	expectedGeneration := getDeploymentGeneration(co)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
@@ -247,34 +238,29 @@ func (co *consoleOperator) SyncDeployment(operatorConfig *operatorv1.Console, cm
 	)
 
 	if applyDepErr != nil {
-		klog.Errorf("%q: %v", "deployment", applyDepErr)
-		return nil, false, applyDepErr
+		return nil, false, "FailedApply", applyDepErr
 	}
-	return deployment, deploymentChanged, nil
+	return deployment, deploymentChanged, "", nil
 }
 
 // applies changes to the oauthclient
 // should not be called until route & secret dependencies are verified
-func (co *consoleOperator) SyncOAuthClient(operatorConfig *operatorv1.Console, sec *corev1.Secret, rt *routev1.Route) (*oauthv1.OAuthClient, bool, error) {
+func (co *consoleOperator) SyncOAuthClient(operatorConfig *operatorv1.Console, sec *corev1.Secret, rt *routev1.Route) (consoleoauthclient *oauthv1.OAuthClient, changed bool, reason string, err error) {
 	host := routesub.GetCanonicalHost(rt)
 	if host == "" {
-		customErr := customerrors.NewSyncError("waiting on route host")
-		klog.Errorf("%q: %v", "oauth", customErr)
-		return nil, false, customErr
+		return nil, false, "FailedHost", customerrors.NewSyncError("waiting on route host")
 	}
 	oauthClient, err := co.oauthClient.OAuthClients().Get(oauthsub.Stub().Name, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("%q: %v", "oauth", err)
 		// at this point we must die & wait for someone to fix the lack of an outhclient. there is nothing we can do.
-		return nil, false, errors.New("oauth client for console does not exist and cannot be created")
+		return nil, false, "FailedGet", errors.New(fmt.Sprintf("oauth client for console does not exist and cannot be created (%v)", err))
 	}
 	oauthsub.RegisterConsoleToOAuthClient(oauthClient, host, secretsub.GetSecretString(sec))
 	oauthClient, oauthChanged, oauthErr := oauthsub.CustomApplyOAuth(co.oauthClient, oauthClient)
 	if oauthErr != nil {
-		klog.Errorf("%q: %v", "oauth", oauthErr)
-		return nil, false, oauthErr
+		return nil, false, "FailedRegister", oauthErr
 	}
-	return oauthClient, oauthChanged, nil
+	return oauthClient, oauthChanged, "", nil
 }
 
 func (co *consoleOperator) SyncSecret(operatorConfig *operatorv1.Console) (*corev1.Secret, bool, error) {
@@ -284,7 +270,6 @@ func (co *consoleOperator) SyncSecret(operatorConfig *operatorv1.Console) (*core
 	}
 	// any error should be returned & kill the sync loop
 	if err != nil {
-		klog.Errorf("%q: %v", "secret", err)
 		return nil, false, err
 	}
 	return secret, false, nil
@@ -293,31 +278,34 @@ func (co *consoleOperator) SyncSecret(operatorConfig *operatorv1.Console) (*core
 // apply configmap (needs route)
 // by the time we get to the configmap, we can assume the route exits & is configured properly
 // therefore no additional error handling is needed here.
-func (co *consoleOperator) SyncConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
+func (co *consoleOperator) SyncConfigMap(
+	operatorConfig *operatorv1.Console,
+	consoleConfig *configv1.Console,
+	infrastructureConfig *configv1.Infrastructure,
+	rt *routev1.Route) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
+
 	managedConfig, mcErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 	if mcErr != nil && !apierrors.IsNotFound(mcErr) {
-		klog.Errorf("managed config error: %v", mcErr)
-		return nil, false, mcErr
+		return nil, false, "FailedManagedConfig", mcErr
 	}
 
 	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, rt)
 	if err != nil {
-		return nil, false, err
+		return nil, false, "FailedConsoleConfigBuilder", err
 	}
 	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, co.recorder, defaultConfigmap)
 	if cmErr != nil {
-		klog.Errorf("%q: %v", "configmap", cmErr)
-		return nil, false, cmErr
+		return nil, false, "FailedApply", cmErr
 	}
 	if cmChanged {
 		klog.V(4).Infoln("new console config yaml:")
 		klog.V(4).Infof("%s", cm.Data)
 	}
-	return cm, cmChanged, cmErr
+	return cm, cmChanged, "ConsoleConfigBuilder", cmErr
 }
 
 // apply service-ca configmap
-func (co *consoleOperator) SyncServiceCAConfigMap(operatorConfig *operatorv1.Console) (*corev1.ConfigMap, bool, error) {
+func (co *consoleOperator) SyncServiceCAConfigMap(operatorConfig *operatorv1.Console) (consoleCM *corev1.ConfigMap, changed bool, reason string, err error) {
 	required := configmapsub.DefaultServiceCAConfigMap(operatorConfig)
 	// we can't use `resourceapply.ApplyConfigMap` since it compares data, and the service serving cert operator injects the data
 	existing, err := co.configMapClient.ConfigMaps(required.Namespace).Get(required.Name, metav1.GetOptions{})
@@ -325,74 +313,69 @@ func (co *consoleOperator) SyncServiceCAConfigMap(operatorConfig *operatorv1.Con
 		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(required)
 		if err == nil {
 			klog.V(4).Infoln("service-ca configmap created")
+			return actual, true, "", err
 		} else {
-			klog.Errorf("%q: %v", "service-ca configmap", err)
+			return actual, true, "FailedCreate", err
 		}
-		return actual, true, err
 	}
 	if err != nil {
-		klog.Errorf("%q: %v", "service-ca configmap", err)
-		return nil, false, err
+		return nil, false, "FailedGet", err
 	}
 
 	modified := resourcemerge.BoolPtr(false)
 	resourcemerge.EnsureObjectMeta(modified, &existing.ObjectMeta, required.ObjectMeta)
 	if !*modified {
 		klog.V(4).Infoln("service-ca configmap exists and is in the correct state")
-		return existing, false, nil
+		return existing, false, "", nil
 	}
 
 	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(existing)
 	if err == nil {
 		klog.V(4).Infoln("service-ca configmap updated")
+		return actual, true, "", err
 	} else {
-		klog.Errorf("%q: %v", "service-ca configmap", err)
+		return actual, true, "FailedUpdate", err
 	}
-	return actual, true, err
 }
 
-func (co *consoleOperator) SyncTrustedCAConfigMap(operatorConfig *operatorv1.Console) (*corev1.ConfigMap, bool, error) {
+func (co *consoleOperator) SyncTrustedCAConfigMap(operatorConfig *operatorv1.Console) (trustedCA *corev1.ConfigMap, changed bool, reason string, err error) {
 	required := configmapsub.DefaultTrustedCAConfigMap(operatorConfig)
 	existing, err := co.configMapClient.ConfigMaps(required.Namespace).Get(required.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(required)
 		if err != nil {
-			klog.Errorf("%q: %v", "trusted-ca-bundle configmap", err)
-			return actual, true, err
+			return actual, true, "FailedCreate", err
 		}
 		klog.V(4).Infoln("trusted-ca-bundle configmap created")
-		return actual, true, err
+		return actual, true, "", err
 	}
 	if err != nil {
-		klog.Errorf("%q: %v", "trusted-ca-bundle configmap", err)
-		return nil, false, err
+		return nil, false, "FailedGet", err
 	}
 
 	modified := resourcemerge.BoolPtr(false)
 	resourcemerge.EnsureObjectMeta(modified, &existing.ObjectMeta, required.ObjectMeta)
 	if !*modified {
 		klog.V(4).Infoln("trusted-ca-bundle configmap exists and is in the correct state")
-		return existing, false, nil
+		return existing, false, "", nil
 	}
 
 	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(existing)
 	if err != nil {
-		klog.Errorf("%q: %v", "trusted-ca-bundle configmap", err)
-		return actual, true, err
+		return actual, true, "FailedUpdate", err
 	}
 	klog.V(4).Infoln("trusted-ca-bundle configmap updated")
-	return actual, true, err
+	return actual, true, "", err
 }
 
 // apply service
 // there is nothing special about our service, so no additional error handling is needed here.
-func (co *consoleOperator) SyncService(operatorConfig *operatorv1.Console) (*corev1.Service, bool, error) {
+func (co *consoleOperator) SyncService(operatorConfig *operatorv1.Console) (consoleService *corev1.Service, changed bool, reason string, err error) {
 	svc, svcChanged, svcErr := resourceapply.ApplyService(co.serviceClient, co.recorder, servicesub.DefaultService(operatorConfig))
 	if svcErr != nil {
-		klog.Errorf("%q: %v", "service", svcErr)
-		return nil, false, svcErr
+		return nil, false, "FailedApply", svcErr
 	}
-	return svc, svcChanged, svcErr
+	return svc, svcChanged, "", svcErr
 }
 
 // apply route
@@ -400,50 +383,43 @@ func (co *consoleOperator) SyncService(operatorConfig *operatorv1.Console) (*cor
 //   default host name set by the server, or any other values. The ApplyRoute()
 //   logic will have to be sound.
 // - update to ApplyRoute() once the logic is settled
-func (co *consoleOperator) SyncRoute(operatorConfig *operatorv1.Console) (*routev1.Route, bool, error) {
+func (co *consoleOperator) SyncRoute(operatorConfig *operatorv1.Console) (consoleRoute *routev1.Route, isNew bool, reason string, err error) {
 	// ensure we have a route. any error returned is a non-404 error
 	rt, rtIsNew, rtErr := routesub.GetOrCreate(co.routeClient, routesub.DefaultRoute(operatorConfig))
 	if rtErr != nil {
-		klog.Errorf("%q: %v", "route", rtErr)
-		return nil, false, rtErr
+		return nil, false, "FailedCreate", rtErr
 	}
 
 	// we will not proceed until the route is valid. this eliminates complexity with the
 	// configmap, secret & oauth client as they can be certain they have a host if we pass this point.
 	host := routesub.GetCanonicalHost(rt)
-	if host == "" {
-		customErr := customerrors.NewSyncError("waiting on route host")
-		klog.Errorf("%q: %v", "route", customErr)
-		return nil, false, customErr
+	if len(host) == 0 {
+		return nil, false, "FailedHost", customerrors.NewSyncError(fmt.Sprintf("route is not available at canonical host %s", rt.Status.Ingress))
 	}
 
 	if validatedRoute, changed := routesub.Validate(rt); changed {
 		// if validation changed the route, issue an update
 		if _, err := co.routeClient.Routes(api.TargetNamespace).Update(validatedRoute); err != nil {
 			// error is unexpected, this is a real error
-			klog.Errorf("%q: %v", "route", err)
-			return nil, false, err
+			return nil, false, "InvalidRouteCorrection", err
 		}
 		// abort sync, route changed, let it settle & retry
-		customErr := customerrors.NewSyncError("route is invalid, correcting route state")
-		klog.Error(customErr)
-		return nil, true, customErr
+		return nil, true, "InvalidRoute", customerrors.NewSyncError("route is invalid, correcting route state")
 	}
 	// only return the route if it is valid with a host
-	return rt, rtIsNew, rtErr
+	return rt, rtIsNew, "", rtErr
 }
 
-func (c *consoleOperator) SyncCustomLogoConfigMap(operatorConfig *operatorsv1.Console) (okToMount bool, err error) {
+func (c *consoleOperator) SyncCustomLogoConfigMap(operatorConfig *operatorsv1.Console) (okToMount bool, reason string, err error) {
 	// validate first, to avoid a broken volume mount & a crashlooping console
-	okToMount, err = c.ValidateCustomLogo(operatorConfig)
+	okToMount, reason, err = c.ValidateCustomLogo(operatorConfig)
 
 	if okToMount || configmapsub.IsRemoved(operatorConfig) {
 		if err := c.UpdateCustomLogoSyncSource(operatorConfig); err != nil {
-			klog.V(4).Infoln("custom logo sync source update error")
-			return false, customerrors.NewCustomLogoError("custom logo sync source update error")
+			return false, "FailedSyncSource", customerrors.NewCustomLogoError("custom logo sync source update error")
 		}
 	}
-	return okToMount, err
+	return okToMount, reason, err
 }
 
 // on each pass of the operator sync loop, we need to check the
@@ -468,37 +444,37 @@ func (c *consoleOperator) UpdateCustomLogoSyncSource(operatorConfig *operatorsv1
 	)
 }
 
-func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorsv1.Console) (okToMount bool, err error) {
+func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorsv1.Console) (okToMount bool, reason string, err error) {
 	logoConfigMapName := operatorConfig.Spec.Customization.CustomLogoFile.Name
 	logoImageKey := operatorConfig.Spec.Customization.CustomLogoFile.Key
 
 	if configmapsub.FileNameOrKeyInconsistentlySet(operatorConfig) {
 		klog.V(4).Infoln("custom logo filename or key have not been set")
-		return false, customerrors.NewCustomLogoError("either custom logo filename or key have not been set")
+		return false, "KeyOrFilenameInvalid", customerrors.NewCustomLogoError("either custom logo filename or key have not been set")
 	}
 	// fine if nothing set, but don't mount it
 	if configmapsub.FileNameNotSet(operatorConfig) {
 		klog.V(4).Infoln("no custom logo configured")
-		return false, nil
+		return false, "", nil
 	}
 	logoConfigMap, err := c.configMapClient.ConfigMaps(api.OpenShiftConfigNamespace).Get(logoConfigMapName, metav1.GetOptions{})
 	// If we 404, the logo file may not have been created yet.
 	if err != nil {
 		klog.V(4).Infof("custom logo file %v not found", logoConfigMapName)
-		return false, customerrors.NewCustomLogoError(fmt.Sprintf("custom logo file %v not found", logoConfigMapName))
+		return false, "FailedGet", customerrors.NewCustomLogoError(fmt.Sprintf("custom logo file %v not found", logoConfigMapName))
 	}
 	imageBytes := logoConfigMap.BinaryData[logoImageKey]
 	if configmapsub.LogoImageIsEmpty(imageBytes) {
 		klog.V(4).Infoln("custom logo file exists but no image provided")
-		return false, customerrors.NewCustomLogoError("custom logo file exists but no image provided")
+		return false, "NoImageProvided", customerrors.NewCustomLogoError("custom logo file exists but no image provided")
 	}
 	// we will mount it anyway, but should notify the user if doesn't look right
 	if !configmapsub.IsLikelyCommonImageFormat(imageBytes) {
 		klog.V(4).Infoln("custom logo does not appear to be a common image format")
-		return true, customerrors.NewCustomLogoError("custom logo does not appear to be a common image format")
+		return true, "UncommonImageFormat", customerrors.NewCustomLogoError("custom logo does not appear to be a common image format")
 	}
 	klog.V(4).Infoln("custom logo ok to mount")
-	return true, nil
+	return true, "", nil
 }
 
 func getDeploymentGeneration(co *consoleOperator) int64 {

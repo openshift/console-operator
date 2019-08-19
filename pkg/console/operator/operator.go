@@ -45,7 +45,7 @@ import (
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 
 	// operator
-	customerrors "github.com/openshift/console-operator/pkg/console/errors"
+
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	"github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
@@ -237,26 +237,12 @@ func (c *consoleOperator) handleSync(configs configSet) error {
 
 	err := c.sync_v400(updatedStatus, configs)
 
-	c.HandleDegraded(updatedStatus, "SyncError", func() error {
-		if !customerrors.IsSyncError(err) {
-			return err
-		}
-		return nil
-	}())
-
-	c.HandleDegraded(updatedStatus, "CustomLogo", func() error {
-		if !customerrors.IsCustomLogoError(err) {
-			return err
-		}
-		return nil
-	}())
-
 	// finally write out the set of conditions currently set if anything has changed
 	// to avoid a hot loop
 	if !reflect.DeepEqual(updatedStatus, configs.Operator) {
 		c.SyncStatus(updatedStatus)
 	}
-	return nil
+	return err
 }
 
 // this may need to move to sync_v400 if versions ever have custom delete logic
