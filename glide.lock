@@ -1,5 +1,5 @@
 hash: 04f0a84ca5c855059ac263ec6abe44f9e873b79018933b771194631422d3331e
-updated: 2019-08-12T12:01:15.09921-04:00
+updated: 2019-08-27T11:39:24.790557-04:00
 imports:
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
@@ -113,7 +113,7 @@ imports:
 - name: github.com/go-openapi/swag
   version: 5899d5c5e619fda5fa86e14795a835f473ca284c
 - name: github.com/go-test/deep
-  version: 1888facc153dfaea996367ec0e53d0c42d1b8454
+  version: 597fd8504439ea8b0a72c2557de5c6cab932e8f0
 - name: github.com/gogo/protobuf
   version: 342cbe0a04158f6dcb03ca0079991a51a4248c02
   subpackages:
@@ -172,7 +172,7 @@ imports:
 - name: github.com/NYTimes/gziphandler
   version: 56545f4a5d46df9a6648819d1664c3a03a13ffdb
 - name: github.com/openshift/api
-  version: 27fb16909b15a19136ab22c12aa34e688d0d24bb
+  version: 58aab2885e38fd7f4fd57f2615f5f9fe38039e22
   subpackages:
   - apps
   - apps/v1
@@ -218,7 +218,7 @@ imports:
   - webconsole
   - webconsole/v1
 - name: github.com/openshift/client-go
-  version: e9678e3b850da36470c5554609c6cd110aace47e
+  version: 5a5508328169b8a6992ea4ef711add89ddce3c6d
   subpackages:
   - config/clientset/versioned
   - config/clientset/versioned/scheme
@@ -256,7 +256,7 @@ imports:
   - route/informers/externalversions/route/v1
   - route/listers/route/v1
 - name: github.com/openshift/library-go
-  version: 211d32684d6cd8b9a50db92e213d4b6ea827bb63
+  version: 7591501955d9277b5f5cd27e600a58d977736cd1
   subpackages:
   - pkg/config/client
   - pkg/config/clusteroperator/v1helpers
@@ -274,6 +274,7 @@ imports:
   - pkg/operator/resource/resourceapply
   - pkg/operator/resource/resourcemerge
   - pkg/operator/resourcesynccontroller
+  - pkg/operator/staleconditions
   - pkg/operator/status
   - pkg/operator/unsupportedconfigoverridescontroller
   - pkg/operator/v1helpers
