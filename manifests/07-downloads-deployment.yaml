@@ -98,4 +98,4 @@ spec:
           [Thread(i, socket=sock) for i in range(100)]
           time.sleep(9e9)
           EOF
-          python2 /tmp/serve.py  # the cli image only has Python 2.7
+          exec python2 /tmp/serve.py  # the cli image only has Python 2.7
