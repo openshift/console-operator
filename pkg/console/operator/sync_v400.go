@@ -78,6 +78,14 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		return serviceCAConfigMapErr
 	}
 
+	trustedCAConfigMap, trustedCAConfigMapChanged, trustedCAConfigMapErr := co.SyncTrustedCAConfigMap(set.Operator)
+	toUpdate = toUpdate || trustedCAConfigMapChanged
+	co.HandleProgressing(updatedOperatorConfig, "TrustedCASync", trustedCAConfigMapErr)
+	if trustedCAConfigMapErr != nil {
+		klog.V(4).Infof("incomplete sync: %v", fmt.Sprintf("%q: %v", "trustedCAconfigmap", trustedCAConfigMapErr))
+		return trustedCAConfigMapErr
+	}
+
 	// TODO: why is this missing a toUpdate change?
 	customLogoCanMount, customLogoError := co.SyncCustomLogoConfigMap(updatedOperatorConfig)
 	// If the custom logo sync fails for any reason, we are degraded, not progressing.
@@ -103,7 +111,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		return oauthErr
 	}
 
-	actualDeployment, depChanged, depErr := co.SyncDeployment(set.Operator, cm, serviceCAConfigMap, sec, rt, set.Proxy, customLogoCanMount)
+	actualDeployment, depChanged, depErr := co.SyncDeployment(set.Operator, cm, serviceCAConfigMap, trustedCAConfigMap, sec, rt, set.Proxy, customLogoCanMount)
 	toUpdate = toUpdate || depChanged
 	co.HandleProgressing(updatedOperatorConfig, "ConsoleDeploymentSync", depErr)
 	if depErr != nil {
@@ -219,8 +227,8 @@ func (co *consoleOperator) SyncConsolePublicConfig(consoleURL string) (*corev1.C
 	return resourceapply.ApplyConfigMap(co.configMapClient, co.recorder, requiredConfigMap)
 }
 
-func (co *consoleOperator) SyncDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route, proxyConfig *configv1.Proxy, canMountCustomLogo bool) (*appsv1.Deployment, bool, error) {
-	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, sec, rt, proxyConfig, canMountCustomLogo)
+func (co *consoleOperator) SyncDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route, proxyConfig *configv1.Proxy, canMountCustomLogo bool) (*appsv1.Deployment, bool, error) {
+	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, trustedCAConfigMap, sec, rt, proxyConfig, canMountCustomLogo)
 	expectedGeneration := getDeploymentGeneration(co)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
@@ -340,6 +348,39 @@ func (co *consoleOperator) SyncServiceCAConfigMap(operatorConfig *operatorv1.Con
 	} else {
 		klog.Errorf("%q: %v", "service-ca configmap", err)
 	}
+	return actual, true, err
+}
+
+func (co *consoleOperator) SyncTrustedCAConfigMap(operatorConfig *operatorv1.Console) (*corev1.ConfigMap, bool, error) {
+	required := configmapsub.DefaultTrustedCAConfigMap(operatorConfig)
+	existing, err := co.configMapClient.ConfigMaps(required.Namespace).Get(required.Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(required)
+		if err != nil {
+			klog.Errorf("%q: %v", "trusted-ca-bundle configmap", err)
+			return actual, true, err
+		}
+		klog.V(4).Infoln("trusted-ca-bundle configmap created")
+		return actual, true, err
+	}
+	if err != nil {
+		klog.Errorf("%q: %v", "trusted-ca-bundle configmap", err)
+		return nil, false, err
+	}
+
+	modified := resourcemerge.BoolPtr(false)
+	resourcemerge.EnsureObjectMeta(modified, &existing.ObjectMeta, required.ObjectMeta)
+	if !*modified {
+		klog.V(4).Infoln("trusted-ca-bundle configmap exists and is in the correct state")
+		return existing, false, nil
+	}
+
+	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(existing)
+	if err != nil {
+		klog.Errorf("%q: %v", "trusted-ca-bundle configmap", err)
+		return actual, true, err
+	}
+	klog.V(4).Infoln("trusted-ca-bundle configmap updated")
 	return actual, true, err
 }
 

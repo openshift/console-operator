@@ -33,6 +33,7 @@ const (
 const (
 	configMapResourceVersionAnnotation          = "console.openshift.io/console-config-version"
 	serviceCAConfigMapResourceVersionAnnotation = "console.openshift.io/service-ca-config-version"
+	trustedCAConfigMapResourceVersionAnnotation = "console.openshift.io/trusted-ca-config-version"
 	secretResourceVersionAnnotation             = "console.openshift.io/oauth-secret-version"
 	consoleImageAnnotation                      = "console.openshift.io/image"
 )
@@ -41,6 +42,7 @@ var (
 	resourceAnnotations = []string{
 		configMapResourceVersionAnnotation,
 		serviceCAConfigMapResourceVersionAnnotation,
+		trustedCAConfigMapResourceVersionAnnotation,
 		secretResourceVersionAnnotation,
 		consoleImageAnnotation,
 	}
@@ -54,23 +56,32 @@ type volumeConfig struct {
 	// isSecret or isConfigMap are mutually exclusive
 	isSecret    bool
 	isConfigMap bool
+	mappedKeys  map[string]string
 }
 
-func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route, proxyConfig *configv1.Proxy, canMountCustomLogo bool) *appsv1.Deployment {
+func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route, proxyConfig *configv1.Proxy, canMountCustomLogo bool) *appsv1.Deployment {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
+	annotations := map[string]string{
+		configMapResourceVersionAnnotation:          cm.GetResourceVersion(),
+		serviceCAConfigMapResourceVersionAnnotation: serviceCAConfigMap.GetResourceVersion(),
+		trustedCAConfigMapResourceVersionAnnotation: trustedCAConfigMap.GetResourceVersion(),
+		secretResourceVersionAnnotation:             sec.GetResourceVersion(),
+		consoleImageAnnotation:                      util.GetImageEnv(),
+	}
 	// Set any annotations as needed so that `ApplyDeployment` rolls out a
 	// new version when they change. `ApplyDeployment` doesn't compare that
 	// pod template, but it does check deployment annotations.
-	meta.Annotations[configMapResourceVersionAnnotation] = cm.GetResourceVersion()
-	meta.Annotations[serviceCAConfigMapResourceVersionAnnotation] = serviceCAConfigMap.GetResourceVersion()
-	meta.Annotations[secretResourceVersionAnnotation] = sec.GetResourceVersion()
-	meta.Annotations[consoleImageAnnotation] = util.GetImageEnv()
+	meta.Annotations = annotations
 	replicas := int32(ConsoleReplicas)
 	gracePeriod := int64(30)
 	tolerationSeconds := int64(120)
 	volumeConfig := defaultVolumeConfig()
+	caBundle, caBundleExists := trustedCAConfigMap.Data["ca-bundle.crt"]
+	if caBundleExists && caBundle != "" {
+		volumeConfig = append(volumeConfig, trustedCAVolume())
+	}
 	if canMountCustomLogo {
 		volumeConfig = append(volumeConfig, customLogoVolume())
 	}
@@ -84,14 +95,9 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   api.OpenShiftConsoleName,
-					Labels: labels,
-					Annotations: map[string]string{
-						configMapResourceVersionAnnotation:          cm.GetResourceVersion(),
-						serviceCAConfigMapResourceVersionAnnotation: serviceCAConfigMap.GetResourceVersion(),
-						secretResourceVersionAnnotation:             sec.GetResourceVersion(),
-						consoleImageAnnotation:                      util.GetImageEnv(),
-					},
+					Name:        api.OpenShiftConsoleName,
+					Labels:      labels,
+					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
 					// we want to deploy on master nodes
@@ -192,6 +198,13 @@ func consoleVolumes(vc []volumeConfig) []corev1.Volume {
 			}
 		}
 		if item.isConfigMap {
+			var items []corev1.KeyToPath
+			for key, val := range item.mappedKeys {
+				items = append(items, corev1.KeyToPath{
+					Key:  key,
+					Path: val,
+				})
+			}
 			vols[i] = corev1.Volume{
 				Name: item.name,
 				VolumeSource: corev1.VolumeSource{
@@ -199,6 +212,7 @@ func consoleVolumes(vc []volumeConfig) []corev1.Volume {
 						LocalObjectReference: corev1.LocalObjectReference{
 							Name: item.name,
 						},
+						Items: items,
 					},
 				},
 			}
@@ -385,6 +399,18 @@ func defaultVolumeConfig() []volumeConfig {
 			readOnly:    true,
 			path:        "/var/service-ca",
 			isConfigMap: true,
+		},
+	}
+}
+
+func trustedCAVolume() volumeConfig {
+	return volumeConfig{
+		name:        api.TrustedCAConfigMapName,
+		readOnly:    true,
+		path:        api.TrustedCABundleMountDir,
+		isConfigMap: true,
+		mappedKeys: map[string]string{
+			api.TrustedCABundleKey: api.TrustedCABundleMountFile,
 		},
 	}
 }
