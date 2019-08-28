@@ -27,16 +27,15 @@ const (
 // returns any other error
 func GetOrCreate(client routeclient.RoutesGetter, required *routev1.Route) (*routev1.Route, bool, error) {
 	isNew := false
-	existing, err := client.Routes(required.Namespace).Get(required.Name, metav1.GetOptions{})
+	route, err := client.Routes(required.Namespace).Get(required.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		isNew = true
-		actual, err := client.Routes(required.Namespace).Create(required)
-		return actual, isNew, err
+		route, err = client.Routes(required.Namespace).Create(required)
 	}
 	if err != nil {
 		return nil, isNew, err
 	}
-	return existing, isNew, nil
+	return route, isNew, nil
 }
 
 func DefaultRoute(cr *operatorv1.Console) *routev1.Route {

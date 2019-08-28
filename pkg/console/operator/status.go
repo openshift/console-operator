@@ -8,6 +8,7 @@ import (
 	"k8s.io/klog"
 
 	operatorsv1 "github.com/openshift/api/operator/v1"
+	"github.com/openshift/console-operator/pkg/console/errors"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 )
 
@@ -20,75 +21,58 @@ import (
 //   kind:  ClusterOperator
 //   name:  console
 //
-// Status Condition Types
-// Status conditions should not be set to a "default" state when the operator starts up.
-// Instead, set a status explicitly only when the state is known.  This is because
-// the various status conditions may have been set on previous runs of the sync loop, or
-// possibly even by a previous operator container.
-//
-// Available = the operand (not the operator) is available
-//    example: the console resources are stabilized.
-//    example: the console is not yet in a functional state, one or
-//      more resources may be missing.
-// Progressing = the operator is trying to transition operand state
-//    example: during the initial deployment, the operator needs to create a number
-//      of resources.  the console (operand) is likely in flux.
-//    example: the assigned route .spec.host changes for the console.  the oauthclient
-//      must be updated, as must the configmap, etc.  numerous resources are in flux,
-//      the operator reports progressing until the resources stabilize
-// Degraded = the operator (not the operand) is failing
-//    example: The console operator is unable to update the console config with
-//      a new logoutRedirect URL. The operator is failing to do its job, however the
-//      console (operand) may or may not be functional (see Available above).
-// Failing = deprecated.
-//
-// Status Condition Reason & Message
-// Reason:  OperatorSyncLoopError
-// Message: "The operator sync loop was not completed successfully"
-//
-//
 
-const (
-	reasonAsExpected          = "AsExpected"
-	reasonWorkloadFailing     = "WorkloadFailing"
-	reasonSyncLoopProgressing = "SyncLoopProgressing"
-	reasonSyncError           = "SynchronizationError"
-	reasonNoPodsAvailable     = "NoPodsAvailable"
-	reasonSyncLoopError       = "SyncLoopError"
-	reasonCustomLogoInvalid   = "CustomLogoInvalid"
-)
-
-// handleDegraded can be used to set a number of Degraded statuses
+// handleDegraded(), handleProgressing(), handleAvailable() each take a typePrefix string representing "category"
+// and a reason string, representing the actual problem.
+// the provided err will be used as the detailed message body if it is not nil
+// note that available status is desired to be true, where degraded & progressing are desired to be false
 // example:
-//   c.handleDegraded(operatorConfig, "RouteStatus", err)
-//   c.handleDegraded(operatorConfig, "CustomLogoInvalid", err)
-// creates condition:
-//   RouteStatusDegraded
-//   CustomLogoInvalidDegraded
-// and uses the error as its message
-func (c *consoleOperator) HandleDegraded(operatorConfig *operatorsv1.Console, prefix string, err error) {
-	conditionType := prefix + operatorsv1.OperatorStatusTypeDegraded
-	reason := prefix + "Error"
+//   c.handleDegraded(operatorConfig, "RouteStatus", "FailedHost", error.New("route is not available at canonical host..."))
+// generates:
+//   - Type RouteStatusDegraded
+//     Status: true
+//     Reason: Failedhost
+//     Message: error string value is used as message
+// all degraded suffix conditions will be aggregated into a final "Degraded" status that will be set on the console ClusterOperator
+func (c *consoleOperator) HandleDegraded(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
+	conditionType := typePrefix + operatorsv1.OperatorStatusTypeDegraded
 	handleCondition(operatorConfig, conditionType, reason, err)
 }
 
-func (c *consoleOperator) HandleProgressing(operatorConfig *operatorsv1.Console, prefix string, err error) {
-	conditionType := prefix + operatorsv1.OperatorStatusTypeProgressing
-	handleCondition(operatorConfig, conditionType, prefix, err)
+func (c *consoleOperator) HandleProgressing(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
+	conditionType := typePrefix + operatorsv1.OperatorStatusTypeProgressing
+	handleCondition(operatorConfig, conditionType, reason, err)
 }
 
-func (c *consoleOperator) HandleAvailable(operatorConfig *operatorsv1.Console, prefix string, err error) {
-	conditionType := prefix + operatorsv1.OperatorStatusTypeAvailable
-	handleCondition(operatorConfig, conditionType, prefix, err)
+func (c *consoleOperator) HandleAvailable(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
+	conditionType := typePrefix + operatorsv1.OperatorStatusTypeAvailable
+	handleCondition(operatorConfig, conditionType, reason, err)
 }
 
-// internal func for handling conditions
-func handleCondition(operatorConfig *operatorsv1.Console, conditionType string, reason string, err error) {
+// HandleProgressingOrDegraded exists until we remove type SyncError
+// If isSyncError
+// - Type suffix will be set to Progressing
+// if it is any other kind of error
+// - Type suffix will be set to Degraded
+// TODO: when we eliminate the special case SyncError, this helper can go away.
+// When we do that, however, we must make sure to register deprecated conditions with NewRemoveStaleConditions()
+func (c *consoleOperator) HandleProgressingOrDegraded(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
+	if errors.IsSyncError(err) {
+		c.HandleDegraded(operatorConfig, typePrefix, reason, nil)
+		c.HandleProgressing(operatorConfig, typePrefix, reason, nil)
+	} else {
+		c.HandleDegraded(operatorConfig, typePrefix, reason, nil)
+		c.HandleProgressing(operatorConfig, typePrefix, reason, nil)
+	}
+}
+
+func handleCondition(operatorConfig *operatorsv1.Console, conditionTypeWithSuffix string, reason string, err error) {
 	if err != nil {
+		klog.Errorln(conditionTypeWithSuffix, reason, err.Error())
 		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions,
 			operatorsv1.OperatorCondition{
-				Type:    conditionType,
-				Status:  setConditionValue(conditionType, err),
+				Type:    conditionTypeWithSuffix,
+				Status:  setConditionValue(conditionTypeWithSuffix, err),
 				Reason:  reason,
 				Message: err.Error(),
 			})
@@ -96,8 +80,8 @@ func handleCondition(operatorConfig *operatorsv1.Console, conditionType string, 
 	}
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions,
 		operatorsv1.OperatorCondition{
-			Type:   conditionType,
-			Status: setConditionValue(conditionType, err),
+			Type:   conditionTypeWithSuffix,
+			Status: setConditionValue(conditionTypeWithSuffix, err),
 		})
 }
 
@@ -124,14 +108,6 @@ func IsDegraded(operatorConfig *operatorsv1.Authentication) bool {
 	}
 	return false
 }
-
-// TODO:
-// a single builder helper would be sufficiently easy to read and
-// reason about. Consider migrating to this structure as part of aggregating status
-// AddStatus(ConditionFail)
-//			.To(ConditionTrue)
-//			.Reason("FooBar")
-//			.Message("This truly broke FooBar"))
 
 // Lets transition to using this, and get the repetition out of all of the above.
 func (c *consoleOperator) SyncStatus(operatorConfig *operatorsv1.Console) (*operatorsv1.Console, error) {
@@ -169,13 +145,4 @@ func (c *consoleOperator) logConditions(conditions []operatorsv1.OperatorConditi
 		}
 		klog.V(4).Infoln(buf.String())
 	}
-}
-
-// TODO: eliminate the defaulting mechanism
-// This no longer has any meaning.
-func (c *consoleOperator) ConditionsDefault(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
-	c.HandleAvailable(operatorConfig, "Default", nil)
-	c.HandleProgressing(operatorConfig, "Default", nil)
-	c.HandleDegraded(operatorConfig, "Default", nil)
-	return operatorConfig
 }
