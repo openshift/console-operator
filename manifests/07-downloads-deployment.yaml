@@ -39,6 +39,17 @@ spec:
         - containerPort: 8080
           name: http
           protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
         command: ["/bin/sh"]
         resources:
           requests:
