@@ -126,7 +126,7 @@ func (c *consoleOperator) SetStatusCondition(operatorConfig *operatorsv1.Console
 
 func (c *consoleOperator) ConditionResourceSyncSuccess(operatorConfig *operatorsv1.Console) *operatorsv1.Console {
 	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
-		Type:               operatorsv1.OperatorStatusTypeFailing,
+		Type:               operatorsv1.OperatorStatusTypeDegraded,
 		Status:             operatorsv1.ConditionFalse,
 		LastTransitionTime: metav1.Now(),
 	})
