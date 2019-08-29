@@ -187,7 +187,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 		return err
 	}
 
-	proxyConfig, err := c.proxyCfgLister.Get("cluster")
+	proxyConfig, err := c.proxyCfgLister.Get(api.ConfigResourceName)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return err
