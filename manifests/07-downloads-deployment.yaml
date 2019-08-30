@@ -110,3 +110,4 @@ spec:
           time.sleep(9e9)
           EOF
           exec python2 /tmp/serve.py  # the cli image only has Python 2.7
+      terminationGracePeriodSeconds: 1
