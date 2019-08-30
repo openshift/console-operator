@@ -11,19 +11,6 @@ var commonImageHeaders = []string{
 	"GIF89a",            // "image/gif"
 }
 
-// TODO: implement this
-// tests if bytes provided are likely an image by reading the
-// first set of bytes and checking against some well known
-// image headers.
-func IsLikelyCommonImageFormat(bytes []byte) bool {
-	// we can probably look at how RegisterFormat works:
-	// image.RegisterFormat()
-	// - uses several funcs such as match() and sniff() that give good
-	//   direction for implementing a basic check for image type.
-	// - RegisterFormat() is used to register gif,jpeg,png
-	return true
-}
-
 func FileNameOrKeyInconsistentlySet(operatorConfig *v1.Console) bool {
 	logoConfigMapName := operatorConfig.Spec.Customization.CustomLogoFile.Name
 	logoImageKey := operatorConfig.Spec.Customization.CustomLogoFile.Key
@@ -33,10 +20,6 @@ func FileNameOrKeyInconsistentlySet(operatorConfig *v1.Console) bool {
 func FileNameNotSet(operatorConfig *v1.Console) bool {
 	logoConfigMapName := operatorConfig.Spec.Customization.CustomLogoFile.Name
 	return len(logoConfigMapName) == 0
-}
-
-func LogoImageIsEmpty(image []byte) bool {
-	return len(image) == 0
 }
 
 func IsRemoved(operatorConfig *v1.Console) bool {

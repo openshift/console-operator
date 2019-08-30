@@ -463,16 +463,16 @@ func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorsv1.Console
 		klog.V(4).Infof("custom logo file %v not found", logoConfigMapName)
 		return false, "FailedGet", customerrors.NewCustomLogoError(fmt.Sprintf("custom logo file %v not found", logoConfigMapName))
 	}
-	imageBytes := logoConfigMap.BinaryData[logoImageKey]
-	if configmapsub.LogoImageIsEmpty(imageBytes) {
+
+	_, imageDataFound := logoConfigMap.BinaryData[logoImageKey]
+	if !imageDataFound {
+		_, imageDataFound = logoConfigMap.Data[logoImageKey]
+	}
+	if !imageDataFound {
 		klog.V(4).Infoln("custom logo file exists but no image provided")
 		return false, "NoImageProvided", customerrors.NewCustomLogoError("custom logo file exists but no image provided")
 	}
-	// we will mount it anyway, but should notify the user if doesn't look right
-	if !configmapsub.IsLikelyCommonImageFormat(imageBytes) {
-		klog.V(4).Infoln("custom logo does not appear to be a common image format")
-		return true, "UncommonImageFormat", customerrors.NewCustomLogoError("custom logo does not appear to be a common image format")
-	}
+
 	klog.V(4).Infoln("custom logo ok to mount")
 	return true, "", nil
 }
