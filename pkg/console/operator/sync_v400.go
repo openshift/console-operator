@@ -457,12 +457,30 @@ func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorsv1.Console
 		klog.V(4).Infoln("no custom logo configured")
 		return false, "", nil
 	}
-	logoConfigMap, err := c.configMapClient.ConfigMaps(api.OpenShiftConfigNamespace).Get(logoConfigMapName, metav1.GetOptions{})
+
+	// original user-defined logo in openshift-config
+	_, err = c.configMapClient.ConfigMaps(api.OpenShiftConfigNamespace).Get(logoConfigMapName, metav1.GetOptions{})
 	// If we 404, the logo file may not have been created yet.
-	if err != nil {
-		klog.V(4).Infof("custom logo file %v not found", logoConfigMapName)
-		return false, "FailedGet", customerrors.NewCustomLogoError(fmt.Sprintf("custom logo file %v not found", logoConfigMapName))
+	if apierrors.IsNotFound(err) {
+		msg := fmt.Sprintf("source custom logo file %v in openshift-config not found", logoConfigMapName)
+		klog.V(4).Infof(msg)
+		return false, "FailedGetSource", customerrors.NewCustomLogoError(msg)
 	}
+	if err != nil {
+		return false, "SourceError", customerrors.NewCustomLogoError(fmt.Sprintf("custom logo: %v\n", err))
+	}
+
+	// sync'd logo configmap into openshift-console namespace
+	logoConfigMap, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(api.OpenShiftCustomLogoConfigMapName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		msg := fmt.Sprintf("destination custom logo file %v in openshift-console not found", logoConfigMapName)
+		klog.V(4).Infof(msg)
+		return false, "FailedGetDestination", customerrors.NewCustomLogoError(msg)
+	}
+	if err != nil {
+		return false, "DestinationError", customerrors.NewCustomLogoError(fmt.Sprintf("custom logo: %v\n", err))
+	}
+
 	imageBytes := logoConfigMap.BinaryData[logoImageKey]
 	if configmapsub.LogoImageIsEmpty(imageBytes) {
 		klog.V(4).Infoln("custom logo file exists but no image provided")
@@ -473,6 +491,7 @@ func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorsv1.Console
 		klog.V(4).Infoln("custom logo does not appear to be a common image format")
 		return true, "UncommonImageFormat", customerrors.NewCustomLogoError("custom logo does not appear to be a common image format")
 	}
+
 	klog.V(4).Infoln("custom logo ok to mount")
 	return true, "", nil
 }
