@@ -59,9 +59,9 @@ func (c *consoleOperator) HandleAvailable(operatorConfig *operatorsv1.Console, t
 func (c *consoleOperator) HandleProgressingOrDegraded(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
 	if errors.IsSyncError(err) {
 		c.HandleDegraded(operatorConfig, typePrefix, reason, nil)
-		c.HandleProgressing(operatorConfig, typePrefix, reason, nil)
+		c.HandleProgressing(operatorConfig, typePrefix, reason, err)
 	} else {
-		c.HandleDegraded(operatorConfig, typePrefix, reason, nil)
+		c.HandleDegraded(operatorConfig, typePrefix, reason, err)
 		c.HandleProgressing(operatorConfig, typePrefix, reason, nil)
 	}
 }
