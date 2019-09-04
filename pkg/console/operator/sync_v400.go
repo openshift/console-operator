@@ -448,50 +448,63 @@ func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorsv1.Console
 	logoConfigMapName := operatorConfig.Spec.Customization.CustomLogoFile.Name
 	logoImageKey := operatorConfig.Spec.Customization.CustomLogoFile.Key
 
+	// inconsistency, error, no mount
 	if configmapsub.FileNameOrKeyInconsistentlySet(operatorConfig) {
+		klog.Infoln(">>>>> FileNameOrKeyInconsistentlySet >>>>>")
 		klog.V(4).Infoln("custom logo filename or key have not been set")
 		return false, "KeyOrFilenameInvalid", customerrors.NewCustomLogoError("either custom logo filename or key have not been set")
 	}
-	// fine if nothing set, but don't mount it
+	// if not set, feature is not used. no error, no mount
 	if configmapsub.FileNameNotSet(operatorConfig) {
+		klog.Infoln(">>>>> not configured >>>>>")
 		klog.V(4).Infoln("no custom logo configured")
 		return false, "", nil
 	}
 
 	// original user-defined logo in openshift-config
 	_, err = c.configMapClient.ConfigMaps(api.OpenShiftConfigNamespace).Get(logoConfigMapName, metav1.GetOptions{})
-	// If we 404, the logo file may not have been created yet.
+	// 404, wait for user to create. error, no mount
 	if apierrors.IsNotFound(err) {
+		klog.Infoln(">>>>> source not found >>>>>")
 		msg := fmt.Sprintf("source custom logo file %v in openshift-config not found", logoConfigMapName)
 		klog.V(4).Infof(msg)
 		return false, "FailedGetSource", customerrors.NewCustomLogoError(msg)
 	}
+	// unknown error, no mount
 	if err != nil {
+		klog.Infoln(">>>>> source other error >>>>>")
 		return false, "SourceError", customerrors.NewCustomLogoError(fmt.Sprintf("custom logo: %v\n", err))
 	}
 
 	// sync'd logo configmap into openshift-console namespace
 	logoConfigMap, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(api.OpenShiftCustomLogoConfigMapName, metav1.GetOptions{})
+	// 404, no mount, error
 	if apierrors.IsNotFound(err) {
+		klog.Infoln(">>>>> destination not found >>>>>")
 		msg := fmt.Sprintf("destination custom logo file %v in openshift-console not found", logoConfigMapName)
 		klog.V(4).Infof(msg)
 		return false, "FailedGetDestination", customerrors.NewCustomLogoError(msg)
 	}
+	// unknown error, no mount
 	if err != nil {
+		klog.Infoln(">>>>> destination other error >>>>>")
 		return false, "DestinationError", customerrors.NewCustomLogoError(fmt.Sprintf("custom logo: %v\n", err))
 	}
-
+	// we need to test bytes in the destination, not the source
 	imageBytes := logoConfigMap.BinaryData[logoImageKey]
 	if configmapsub.LogoImageIsEmpty(imageBytes) {
+		klog.Infoln(">>>>> logo image empty >>>>>")
 		klog.V(4).Infoln("custom logo file exists but no image provided")
 		return false, "NoImageProvided", customerrors.NewCustomLogoError("custom logo file exists but no image provided")
 	}
 	// we will mount it anyway, but should notify the user if doesn't look right
 	if !configmapsub.IsLikelyCommonImageFormat(imageBytes) {
+		klog.Infoln(">>>>> not a common format >>>>>")
 		klog.V(4).Infoln("custom logo does not appear to be a common image format")
 		return true, "UncommonImageFormat", customerrors.NewCustomLogoError("custom logo does not appear to be a common image format")
 	}
 
+	klog.Infoln(">>>>> yay made it look at that! >>>>>")
 	klog.V(4).Infoln("custom logo ok to mount")
 	return true, "", nil
 }
