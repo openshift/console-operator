@@ -1,5 +1,5 @@
 hash: 04f0a84ca5c855059ac263ec6abe44f9e873b79018933b771194631422d3331e
-updated: 2019-08-27T11:39:24.790557-04:00
+updated: 2019-09-04T15:00:29.719392+02:00
 imports:
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
@@ -103,7 +103,7 @@ imports:
 - name: github.com/getsentry/raven-go
   version: c977f96e109525a5d8fa10a19165341f601f38b0
 - name: github.com/ghodss/yaml
-  version: c7ce16629ff4cd059ed96ed06419dd3856fd3577
+  version: 25d852aebe32c875e9c044af3eef9c7dc6bc777f
 - name: github.com/go-openapi/jsonpointer
   version: ef5f0afec364d3b9396b7b77b43dbe26bf1f8004
 - name: github.com/go-openapi/jsonreference
@@ -256,7 +256,7 @@ imports:
   - route/informers/externalversions/route/v1
   - route/listers/route/v1
 - name: github.com/openshift/library-go
-  version: 7591501955d9277b5f5cd27e600a58d977736cd1
+  version: 7d4acc018c610623ee1413b1e7aebe2ac675d35f
   subpackages:
   - pkg/config/client
   - pkg/config/clusteroperator/v1helpers
@@ -284,9 +284,10 @@ imports:
 - name: github.com/pkg/profile
   version: f6fe06335df110bcf1ed6d4e852b760bfc15beee
 - name: github.com/prometheus/client_golang
-  version: e7e903064f5e9eb5da98208bae10b475d4db0f8c
+  version: 505eaef017263e299324067d40ca2c48f6a2cf50
   subpackages:
   - prometheus
+  - prometheus/internal
 - name: github.com/prometheus/client_model
   version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
   subpackages:
@@ -308,7 +309,7 @@ imports:
 - name: github.com/sirupsen/logrus
   version: 89742aefa4b206dcf400792f3bd35b542998eb3b
 - name: github.com/spf13/cobra
-  version: b80588d523ec50c7fee20218426cf2ff70920f06
+  version: c439c4fa093711d42e1b01acb1235b52004753c1
 - name: github.com/spf13/pflag
   version: 583c0c0531f06d5278b7d917446061adc344b5cd
 - name: golang.org/x/crypto
@@ -357,11 +358,11 @@ imports:
   subpackages:
   - rate
 - name: golang.org/x/tools
-  version: 2382e3994d48b1d22acc2c86bcad0a2aff028e32
+  version: be0da057c5e3c2df569a2c25cd280149b7d7e7d0
   subpackages:
   - imports
 - name: google.golang.org/appengine
-  version: 267c27e7492265b84fc6719503b14a1e17975d79
+  version: 5f2a59506353b8d5ba8cbbcd9f3c1f41f1eaf079
   subpackages:
   - internal
   - internal/base
