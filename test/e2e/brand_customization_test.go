@@ -62,8 +62,6 @@ func cleanupCustomBrandTest(t *testing.T, client *framework.ClientSet, cmName st
 // console-config in openshift-config-managed, if the managed configmap exists.
 func TestCustomBrand(t *testing.T) {
 
-	t.Skip("Custom Brand Test is flaky, needs a refactor to make it more reliable.")
-
 	// create a configmap with the new logo
 	customProductName := "custom name"
 	customLogoConfigMapName := "custom-logo"
