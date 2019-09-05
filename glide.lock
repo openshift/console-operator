@@ -1,5 +1,5 @@
-hash: f567b9830f081e56a769abb7a719b954157be1a00e8b35824308ba1a704f5330
-updated: 2019-04-18T11:44:52.715519-04:00
+hash: 822aa01113cd0e35b53731519a897210a61eecd1831460cdef57dc23399d4a81
+updated: 2019-08-28T16:32:42.894501-04:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -128,7 +128,7 @@ imports:
 - name: github.com/go-openapi/swag
   version: 5899d5c5e619fda5fa86e14795a835f473ca284c
 - name: github.com/go-test/deep
-  version: 042da051cf3189d80f667339b822c7effac29cd6
+  version: 597fd8504439ea8b0a72c2557de5c6cab932e8f0
 - name: github.com/gogo/protobuf
   version: 342cbe0a04158f6dcb03ca0079991a51a4248c02
   subpackages:
@@ -193,7 +193,7 @@ imports:
 - name: github.com/NYTimes/gziphandler
   version: 56545f4a5d46df9a6648819d1664c3a03a13ffdb
 - name: github.com/openshift/api
-  version: 55a3077b7d6ca97aee00a064de38065fdc280cee
+  version: 9ea19f9dd57858bb3fd8ec7051a99ca5e1ae88d6
   subpackages:
   - apps
   - apps/v1
@@ -274,7 +274,7 @@ imports:
   - route/informers/externalversions/route/v1
   - route/listers/route/v1
 - name: github.com/openshift/library-go
-  version: ea6360154514f20ae0d722d21ced35021a931e6f
+  version: a8b3af87bfde83643053d9d1c1da9b9593ffe20e
   subpackages:
   - pkg/config/client
   - pkg/config/clusteroperator/v1helpers
@@ -305,6 +305,7 @@ imports:
   version: e7e903064f5e9eb5da98208bae10b475d4db0f8c
   subpackages:
   - prometheus
+  - prometheus/promhttp
 - name: github.com/prometheus/client_model
   version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
   subpackages:
@@ -326,7 +327,7 @@ imports:
 - name: github.com/sirupsen/logrus
   version: 89742aefa4b206dcf400792f3bd35b542998eb3b
 - name: github.com/spf13/cobra
-  version: 67fc4837d267bc9bfd6e47f77783fcc3dffc68de
+  version: c439c4fa093711d42e1b01acb1235b52004753c1
 - name: github.com/spf13/pflag
   version: 583c0c0531f06d5278b7d917446061adc344b5cd
 - name: golang.org/x/crypto
@@ -382,11 +383,11 @@ imports:
   subpackages:
   - rate
 - name: golang.org/x/tools
-  version: 2382e3994d48b1d22acc2c86bcad0a2aff028e32
+  version: b29f5f60c37a1dd56e6942c2717b85b976e4a592
   subpackages:
   - imports
 - name: google.golang.org/appengine
-  version: 267c27e7492265b84fc6719503b14a1e17975d79
+  version: 5f2a59506353b8d5ba8cbbcd9f3c1f41f1eaf079
   subpackages:
   - internal
   - internal/base
@@ -472,7 +473,7 @@ imports:
   - storage/v1alpha1
   - storage/v1beta1
 - name: k8s.io/apiextensions-apiserver
-  version: 3c74db8dd172051b029f91536c681a1b43694809
+  version: f221ef6dc2779b4f80d2821997dfacaf927b73ee
   repo: https://github.com/openshift/kubernetes-apiextensions-apiserver
   subpackages:
   - pkg/apis/apiextensions

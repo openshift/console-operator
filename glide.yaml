@@ -17,13 +17,13 @@ import:
 
 # openshift
 - package: github.com/openshift/api
-  version: master
+  version: release-4.1
 - package: github.com/openshift/client-go
-  version: master
+  version: release-4.1
 - package: github.com/openshift/library-go
-  version: master
+  version: release-4.1
 
-# codegen
+  # codegen
 - package: k8s.io/gengo/args
   version: 01a732e01d00cb9a81bb0ca050d3e6d2b947927b
 - package: golang.org/x/tools/imports

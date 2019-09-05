@@ -187,7 +187,11 @@ func TestDeepRecursion(t *testing.T) {
 			},
 		},
 	}
+	// No diffs because MaxDepth=2 prevents seeing the diff at 3rd level down
 	diff := deep.Equal(foo, bar)
+	if diff != nil {
+		t.Errorf("got %d diffs, expected none: %v", len(diff), diff)
+	}
 
 	defaultMaxDepth := deep.MaxDepth
 	deep.MaxDepth = 4
@@ -607,6 +611,77 @@ func TestSlice(t *testing.T) {
 	}
 }
 
+func TestSiblingSlices(t *testing.T) {
+	father := []int{1, 2, 3, 4}
+	a := father[0:3]
+	b := father[0:3]
+
+	diff := deep.Equal(a, b)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
+	}
+	diff = deep.Equal(b, a)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
+	}
+
+	a = father[0:3]
+	b = father[0:2]
+	diff = deep.Equal(a, b)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "slice[2]: 3 != <no value>" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	a = father[0:2]
+	b = father[0:3]
+
+	diff = deep.Equal(a, b)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 1 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "slice[2]: <no value> != 3" {
+		t.Error("wrong diff:", diff[0])
+	}
+
+	a = father[0:2]
+	b = father[2:4]
+
+	diff = deep.Equal(a, b)
+	if diff == nil {
+		t.Fatal("no diff")
+	}
+	if len(diff) != 2 {
+		t.Error("too many diff:", diff)
+	}
+	if diff[0] != "slice[0]: 1 != 3" {
+		t.Error("wrong diff:", diff[0])
+	}
+	if diff[1] != "slice[1]: 2 != 4" {
+		t.Error("wrong diff:", diff[1])
+	}
+
+	a = father[0:0]
+	b = father[1:1]
+
+	diff = deep.Equal(a, b)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
+	}
+	diff = deep.Equal(b, a)
+	if len(diff) > 0 {
+		t.Error("should be equal:", diff)
+	}
+}
+
 func TestNilInterface(t *testing.T) {
 	type T struct{ i int }
 
@@ -888,6 +963,115 @@ func TestError(t *testing.T) {
 	}
 	if diff[0] != "Error: *errors.errorString != <nil pointer>" {
 		t.Errorf("got '%s', expected 'Error: *errors.errorString != <nil pointer>'", diff[0])
+	}
+}
+
+func TestErrorWithOtherFields(t *testing.T) {
+	a := errors.New("it broke")
+	b := errors.New("it broke")
+
+	diff := deep.Equal(a, b)
+	if len(diff) != 0 {
+		t.Fatalf("expected zero diffs, got %d: %s", len(diff), diff)
+	}
+
+	b = errors.New("it fell apart")
+	diff = deep.Equal(a, b)
+	if len(diff) != 1 {
+		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
+	}
+	if diff[0] != "it broke != it fell apart" {
+		t.Errorf("got '%s', expected 'it broke != it fell apart'", diff[0])
+	}
+
+	// Both errors set
+	type tWithError struct {
+		Error error
+		Other string
+	}
+	t1 := tWithError{
+		Error: a,
+		Other: "ok",
+	}
+	t2 := tWithError{
+		Error: b,
+		Other: "ok",
+	}
+	diff = deep.Equal(t1, t2)
+	if len(diff) != 1 {
+		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
+	}
+	if diff[0] != "Error: it broke != it fell apart" {
+		t.Errorf("got '%s', expected 'Error: it broke != it fell apart'", diff[0])
+	}
+
+	// Both errors nil
+	t1 = tWithError{
+		Error: nil,
+		Other: "ok",
+	}
+	t2 = tWithError{
+		Error: nil,
+		Other: "ok",
+	}
+	diff = deep.Equal(t1, t2)
+	if len(diff) != 0 {
+		t.Log(diff)
+		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
+	}
+
+	// Different Other value
+	t1 = tWithError{
+		Error: nil,
+		Other: "ok",
+	}
+	t2 = tWithError{
+		Error: nil,
+		Other: "nope",
+	}
+	diff = deep.Equal(t1, t2)
+	if len(diff) != 1 {
+		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
+	}
+	if diff[0] != "Other: ok != nope" {
+		t.Errorf("got '%s', expected 'Other: ok != nope'", diff[0])
+	}
+
+	// Different Other value, same error
+	t1 = tWithError{
+		Error: a,
+		Other: "ok",
+	}
+	t2 = tWithError{
+		Error: a,
+		Other: "nope",
+	}
+	diff = deep.Equal(t1, t2)
+	if len(diff) != 1 {
+		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
+	}
+	if diff[0] != "Other: ok != nope" {
+		t.Errorf("got '%s', expected 'Other: ok != nope'", diff[0])
+	}
+}
+
+type primKindError string
+
+func (e primKindError) Error() string {
+	return string(e)
+}
+
+func TestErrorPrimitiveKind(t *testing.T) {
+	// The primKindError type above is valid and used by Go, e.g.
+	// url.EscapeError and url.InvalidHostError. Before fixing this bug
+	// (https://github.com/go-test/deep/issues/31), we presumed a and b
+	// were ptr or interface (and not nil), so a.Elem() worked. But when
+	// a/b are primitive kinds, Elem() causes a panic.
+	var err1 primKindError = "abc"
+	var err2 primKindError = "abc"
+	diff := deep.Equal(err1, err2)
+	if len(diff) != 0 {
+		t.Fatalf("expected zero diffs, got %d: %s", len(diff), diff)
 	}
 }
 
