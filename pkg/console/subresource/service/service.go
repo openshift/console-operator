@@ -2,6 +2,7 @@ package service
 
 import (
 	operatorv1 "github.com/openshift/api/operator/v1"
+	"github.com/openshift/console-operator/pkg/api"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -14,18 +15,13 @@ const (
 )
 
 const (
-	ConsoleServingCertName = "console-serving-cert"
-	consolePortName        = "https"
-	consolePort            = 443
-	consoleTargetPort      = 8443
+	consolePortName   = "https"
+	consolePort       = 443
+	consoleTargetPort = 8443
 )
 
 func DefaultService(cr *operatorv1.Console) *corev1.Service {
 	labels := util.LabelsForConsole()
-	meta := util.SharedMeta()
-	meta.Annotations = map[string]string{
-		ServingCertSecretAnnotation: ConsoleServingCertName,
-	}
 	service := Stub()
 	service.Spec = corev1.ServiceSpec{
 		Ports: []corev1.ServicePort{
@@ -48,7 +44,7 @@ func DefaultService(cr *operatorv1.Console) *corev1.Service {
 func Stub() *corev1.Service {
 	meta := util.SharedMeta()
 	meta.Annotations = map[string]string{
-		ServingCertSecretAnnotation: ConsoleServingCertName,
+		ServingCertSecretAnnotation: api.ServingCertSecretName,
 	}
 	service := &corev1.Service{
 		ObjectMeta: meta,

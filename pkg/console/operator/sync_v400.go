@@ -211,15 +211,33 @@ func (co *consoleOperator) SyncConsolePublicConfig(consoleURL string) (*corev1.C
 
 func (co *consoleOperator) SyncDeployment(
 	operatorConfig *operatorv1.Console,
-	cm *corev1.ConfigMap,
+	consoleServerConfigMap *corev1.ConfigMap,
 	serviceCAConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
-	sec *corev1.Secret,
-	rt *routev1.Route,
+	oauthClientSecret *corev1.Secret,
+	consoleRoute *routev1.Route,
 	proxyConfig *configv1.Proxy,
 	canMountCustomLogo bool) (consoleDeployment *appsv1.Deployment, changed bool, reason string, err error) {
 
-	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, trustedCAConfigMap, sec, rt, proxyConfig, canMountCustomLogo)
+	servingCert, err := co.secretsClient.Secrets(api.TargetNamespace).Get(api.ServingCertSecretName, metav1.GetOptions{})
+	if err != nil {
+		return nil, false, "FailedGetServingCert", err
+	}
+
+	requiredDeployment := deploymentsub.DefaultDeployment(
+		// top level configs
+		operatorConfig,
+		proxyConfig,
+		// configmaps
+		consoleServerConfigMap,
+		serviceCAConfigMap,
+		trustedCAConfigMap,
+		// secrets
+		oauthClientSecret,
+		servingCert,
+		// other
+		consoleRoute,
+		canMountCustomLogo)
 	expectedGeneration := getDeploymentGeneration(co)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 

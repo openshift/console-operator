@@ -15,15 +15,21 @@ const (
 	OpenShiftConsoleConfigMapName       = "console-config"
 	OpenShiftConsolePublicConfigMapName = "console-public"
 	ServiceCAConfigMapName              = "service-ca"
-	OpenShiftConsoleDeploymentName      = OpenShiftConsoleName
-	OpenShiftConsoleServiceName         = OpenShiftConsoleName
-	OpenShiftConsoleRouteName           = OpenShiftConsoleName
-	OAuthClientName                     = OpenShiftConsoleName
-	OpenShiftConfigManagedNamespace     = "openshift-config-managed"
-	OpenShiftConfigNamespace            = "openshift-config"
-	OpenShiftCustomLogoConfigMapName    = "custom-logo"
-	TrustedCAConfigMapName              = "trusted-ca-bundle"
-	TrustedCABundleKey                  = "ca-bundle.crt"
-	TrustedCABundleMountDir             = "/etc/pki/ca-trust/extracted/pem"
-	TrustedCABundleMountFile            = "tls-ca-bundle.pem"
+
+	ServingCertSecretName          = "console-serving-cert"
+	OAuthConfigName                = "console-oauth-config"
+	OpenShiftConsoleDeploymentName = OpenShiftConsoleName
+	OpenShiftConsoleServiceName    = OpenShiftConsoleName
+	OpenShiftConsoleRouteName      = OpenShiftConsoleName
+	OAuthClientName                = OpenShiftConsoleName
+
+	OpenShiftConfigManagedNamespace = "openshift-config-managed"
+	OpenShiftConfigNamespace        = "openshift-config"
+
+	OpenShiftCustomLogoConfigMapName = "custom-logo"
+
+	TrustedCAConfigMapName   = "trusted-ca-bundle"
+	TrustedCABundleKey       = "ca-bundle.crt"
+	TrustedCABundleMountDir  = "/etc/pki/ca-trust/extracted/pem"
+	TrustedCABundleMountFile = "tls-ca-bundle.pem"
 )

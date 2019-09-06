@@ -1,7 +1,12 @@
 package deployment
 
 import (
+	"crypto/sha512"
+	"encoding/base64"
 	"fmt"
+	"reflect"
+	"sort"
+	"strings"
 
 	// kube
 	appsv1 "k8s.io/api/apps/v1"
@@ -21,29 +26,21 @@ import (
 )
 
 const (
-	consolePortName        = "https"
-	consolePort            = 443
-	consoleTargetPort      = 8443
-	publicURLName          = "BRIDGE_DEVELOPER_CONSOLE_URL"
-	ConsoleServingCertName = "console-serving-cert"
-	ConsoleOauthConfigName = "console-oauth-config"
-	ConsoleReplicas        = 2
+	consolePortName   = "https"
+	consolePort       = 443
+	consoleTargetPort = 8443
+	publicURLName     = "BRIDGE_DEVELOPER_CONSOLE_URL"
+	ConsoleReplicas   = 2
 )
 
 const (
-	configMapResourceVersionAnnotation          = "console.openshift.io/console-config-version"
-	serviceCAConfigMapResourceVersionAnnotation = "console.openshift.io/service-ca-config-version"
-	trustedCAConfigMapResourceVersionAnnotation = "console.openshift.io/trusted-ca-config-version"
-	secretResourceVersionAnnotation             = "console.openshift.io/oauth-secret-version"
-	consoleImageAnnotation                      = "console.openshift.io/image"
+	consoleImageAnnotation   = "console.openshift.io/image"
+	deploymentVersionHashKey = "console.openshift.io/rsv"
 )
 
 var (
 	resourceAnnotations = []string{
-		configMapResourceVersionAnnotation,
-		serviceCAConfigMapResourceVersionAnnotation,
-		trustedCAConfigMapResourceVersionAnnotation,
-		secretResourceVersionAnnotation,
+		deploymentVersionHashKey,
 		consoleImageAnnotation,
 	}
 	tolerationSeconds = int64(120)
@@ -59,16 +56,30 @@ type volumeConfig struct {
 	mappedKeys  map[string]string
 }
 
-func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route, proxyConfig *configv1.Proxy, canMountCustomLogo bool) *appsv1.Deployment {
+func DefaultDeployment(
+	// top level configs
+	operatorConfig *operatorv1.Console,
+	proxyConfig *configv1.Proxy,
+	// configmaps
+	consoleServerConfig *corev1.ConfigMap,
+	serviceCAConfigMap *corev1.ConfigMap,
+	trustedCAConfigMap *corev1.ConfigMap,
+	// secrets
+	oauthClientSecret *corev1.Secret,
+	servingCert *corev1.Secret,
+	// other
+	consoleRoute *routev1.Route,
+	canMountCustomLogo bool) *appsv1.Deployment {
+
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
+
 	annotations := map[string]string{
-		configMapResourceVersionAnnotation:          cm.GetResourceVersion(),
-		serviceCAConfigMapResourceVersionAnnotation: serviceCAConfigMap.GetResourceVersion(),
-		trustedCAConfigMapResourceVersionAnnotation: trustedCAConfigMap.GetResourceVersion(),
-		secretResourceVersionAnnotation:             sec.GetResourceVersion(),
-		consoleImageAnnotation:                      util.GetImageEnv(),
+		// if the image changes, we should redeploy
+		consoleImageAnnotation: util.GetImageEnv(),
+		// if any of the relevant resources change, we should redeploy
+		deploymentVersionHashKey: redeployRSVHash(rsvTokens(consoleServerConfig, serviceCAConfigMap, trustedCAConfigMap, oauthClientSecret, servingCert, proxyConfig)),
 	}
 	// Set any annotations as needed so that `ApplyDeployment` rolls out a
 	// new version when they change. `ApplyDeployment` doesn't compare that
@@ -377,13 +388,13 @@ func IsAvailableAndUpdated(deployment *appsv1.Deployment) bool {
 func defaultVolumeConfig() []volumeConfig {
 	return []volumeConfig{
 		{
-			name:     ConsoleServingCertName,
+			name:     api.ServingCertSecretName,
 			readOnly: true,
 			path:     "/var/serving-cert",
 			isSecret: true,
 		},
 		{
-			name:     ConsoleOauthConfigName,
+			name:     api.OAuthConfigName,
 			readOnly: true,
 			path:     "/var/oauth-config",
 			isSecret: true,
@@ -420,4 +431,35 @@ func customLogoVolume() volumeConfig {
 		name:        api.OpenShiftCustomLogoConfigMapName,
 		path:        "/var/logo/",
 		isConfigMap: true}
+}
+
+// redeployRSVHash is a hash of the resource versions of important
+// operatorConfig resources. If any of these resources changes, the hash should
+// change, causing a rollout of the deployment.
+// The operator operatorConfig is omitted as it would cause redeploy loops (as the
+// status is updated frequently), but user driven operator operatorConfig changes
+// will already cause redeploy.
+func redeployRSVHash(rsvList []string) string {
+	// sort so we get a stable array
+	sort.Strings(rsvList)
+	rsvJoined := strings.Join(rsvList, ",")
+	klog.V(4).Infof("tracked resource versions: %s", rsvJoined)
+	// hash to prevent it from growing indefinitely
+	rsvHash := sha512.Sum512([]byte(rsvJoined))
+	rsvHashStr := base64.RawURLEncoding.EncodeToString(rsvHash[:])
+	return rsvHashStr
+}
+
+func rsvToken(obj metav1.Object) string {
+	// kind is only relevant if kube is using multiple etcd as backing, else GetResourceVersion is guaranteed to be unique across all objects.
+	return reflect.TypeOf(obj).String() + ":" + obj.GetNamespace() + ":" + obj.GetName() + ":" + obj.GetResourceVersion()
+}
+
+// creates an array of tokens from a list of objects
+func rsvTokens(objs ...metav1.Object) []string {
+	list := []string{}
+	for _, obj := range objs {
+		list = append(list, rsvToken(obj))
+	}
+	return list
 }

@@ -24,13 +24,18 @@ func TestDefaultDeployment(t *testing.T) {
 		gracePeriod  int64 = 30
 	)
 	type args struct {
-		config             *operatorsv1.Console
-		cm                 *corev1.ConfigMap
-		ca                 *corev1.ConfigMap
-		tca                *corev1.ConfigMap
-		sec                *corev1.Secret
-		rt                 *v1.Route
-		proxy              *configv1.Proxy
+		// top level configs
+		operatorConfig *operatorsv1.Console
+		proxyConfig    *configv1.Proxy
+		// configmaps
+		consoleServerConfigMap *corev1.ConfigMap
+		servingCAConfigMap     *corev1.ConfigMap
+		trustedCAConfigMap     *corev1.ConfigMap
+		// secrets
+		oauthClientSecret *corev1.Secret
+		servingCert       *corev1.Secret
+		// other
+		consoleRoute       *v1.Route
 		canMountCustomLogo bool
 	}
 
@@ -46,49 +51,21 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 
 	consoleDeploymentObjectMeta := metav1.ObjectMeta{
-		Name:                       api.OpenShiftConsoleName,
-		Namespace:                  api.OpenShiftConsoleNamespace,
-		GenerateName:               "",
-		SelfLink:                   "",
-		UID:                        "",
-		ResourceVersion:            "",
-		Generation:                 0,
-		CreationTimestamp:          metav1.Time{},
-		DeletionTimestamp:          nil,
-		DeletionGracePeriodSeconds: nil,
-		Labels:                     labels,
+		Name:      api.OpenShiftConsoleName,
+		Namespace: api.OpenShiftConsoleNamespace,
+		Labels:    labels,
 		Annotations: map[string]string{
-			configMapResourceVersionAnnotation:          "",
-			secretResourceVersionAnnotation:             "",
-			serviceCAConfigMapResourceVersionAnnotation: "",
-			trustedCAConfigMapResourceVersionAnnotation: "",
-			consoleImageAnnotation:                      "",
+			deploymentVersionHashKey: "lYUJi33gP6JzQ_0yPUf9jexYOfhNRL5KsYT6To7s-FKMTbc_cSKJA9iTscvI5bMVKzz1etGhLAIkXtdJ1YdIVg",
+			consoleImageAnnotation:   "",
 		},
-		OwnerReferences: nil,
-		Initializers:    nil,
-		Finalizers:      nil,
-		ClusterName:     "",
 	}
 
 	consoleConfig := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:                       "console-config",
-			GenerateName:               "",
-			Namespace:                  api.OpenShiftConsoleNamespace,
-			SelfLink:                   "",
-			UID:                        "",
-			ResourceVersion:            "",
-			Generation:                 0,
-			CreationTimestamp:          metav1.Time{},
-			DeletionTimestamp:          nil,
-			DeletionGracePeriodSeconds: nil,
-			Labels:                     labels,
-			Annotations:                nil,
-			OwnerReferences:            nil,
-			Initializers:               nil,
-			Finalizers:                 nil,
-			ClusterName:                "",
+			Name:      "console-config",
+			Namespace: api.OpenShiftConsoleNamespace,
+			Labels:    labels,
 		},
 		Data:       map[string]string{"console-config.yaml": ""},
 		BinaryData: nil,
@@ -112,14 +89,6 @@ func TestDefaultDeployment(t *testing.T) {
 			Effect:            corev1.TaintEffectNoExecute,
 			TolerationSeconds: &tolerationSeconds,
 		},
-	}
-
-	consoleDeploymentTemplateAnnotations := map[string]string{
-		configMapResourceVersionAnnotation:          "",
-		secretResourceVersionAnnotation:             "",
-		serviceCAConfigMapResourceVersionAnnotation: "",
-		trustedCAConfigMapResourceVersionAnnotation: "",
-		consoleImageAnnotation:                      "",
 	}
 
 	consoleDeploymentAffinity := &corev1.Affinity{
@@ -151,32 +120,30 @@ func TestDefaultDeployment(t *testing.T) {
 			HTTPSProxy: "https://testurl.openshift.com",
 		},
 	}
+
 	tests := []struct {
-		name string
-		args args
-		want *appsv1.Deployment
+		name   string
+		input  args
+		output *appsv1.Deployment
 	}{
 		{
-			name: "Test Default Config Map",
-			args: args{
-				config: consoleOperatorConfig,
-				cm:     consoleConfig,
-				ca:     &corev1.ConfigMap{},
-				tca:    trustedCAConfigMapEmpty,
-				sec: &corev1.Secret{
-					TypeMeta:   metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{},
-					Data:       nil,
-					StringData: nil,
-					Type:       "",
-				},
-				rt: &v1.Route{
-					TypeMeta:   metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{},
-				},
-				proxy: proxyConfig,
+			name: "Create default deployment",
+			input: args{
+				// top level configs
+				operatorConfig: consoleOperatorConfig,
+				proxyConfig:    proxyConfig,
+				// configmaps
+				consoleServerConfigMap: consoleConfig,
+				servingCAConfigMap:     &corev1.ConfigMap{},
+				trustedCAConfigMap:     trustedCAConfigMapEmpty,
+				// secrets
+				oauthClientSecret: &corev1.Secret{},
+				servingCert:       &corev1.Secret{},
+				// other
+				consoleRoute:       &v1.Route{},
+				canMountCustomLogo: false,
 			},
-			want: &appsv1.Deployment{
+			output: &appsv1.Deployment{
 				TypeMeta:   metav1.TypeMeta{},
 				ObjectMeta: consoleDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
@@ -185,9 +152,12 @@ func TestDefaultDeployment(t *testing.T) {
 						MatchLabels: labels,
 					},
 					Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{
-						Name:        api.OpenShiftConsoleName,
-						Labels:      labels,
-						Annotations: consoleDeploymentTemplateAnnotations,
+						Name:   api.OpenShiftConsoleName,
+						Labels: labels,
+						Annotations: map[string]string{
+							deploymentVersionHashKey: "lYUJi33gP6JzQ_0yPUf9jexYOfhNRL5KsYT6To7s-FKMTbc_cSKJA9iTscvI5bMVKzz1etGhLAIkXtdJ1YdIVg",
+							consoleImageAnnotation:   "",
+						},
 					},
 						Spec: corev1.PodSpec{
 							// we want to deploy on master nodes
@@ -209,36 +179,39 @@ func TestDefaultDeployment(t *testing.T) {
 							Volumes: consoleVolumes(defaultVolumeConfig()),
 						},
 					},
-					Strategy:                appsv1.DeploymentStrategy{},
-					MinReadySeconds:         0,
-					RevisionHistoryLimit:    nil,
-					Paused:                  false,
-					ProgressDeadlineSeconds: nil,
 				},
-				Status: appsv1.DeploymentStatus{},
 			},
 		},
 		{
-			name: "Test Trusted CA Config Map",
-			args: args{
-				config: consoleOperatorConfig,
-				cm:     consoleConfig,
-				ca:     &corev1.ConfigMap{},
-				tca:    trustedCAConfigMapSet,
-				sec: &corev1.Secret{
+			// TODO: improve this test by calling the DefaultDeployment() func, but isolating the check against only
+			// the output involving the volume & volumeMount portions that are relevant to the trusted CA.  It will
+			// make finding and fixing an error much easier.
+			name: "Create deployment with trusted CA volume mount",
+			input: args{
+				// top level configs
+				operatorConfig: consoleOperatorConfig,
+				proxyConfig:    proxyConfig,
+				// configmaps
+				consoleServerConfigMap: consoleConfig,
+				servingCAConfigMap:     &corev1.ConfigMap{},
+				trustedCAConfigMap:     trustedCAConfigMapSet,
+				// secrets
+				oauthClientSecret: &corev1.Secret{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
 					Data:       nil,
 					StringData: nil,
 					Type:       "",
 				},
-				rt: &v1.Route{
+				servingCert: &corev1.Secret{},
+				// other
+				consoleRoute: &v1.Route{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
 				},
-				proxy: proxyConfig,
+				canMountCustomLogo: false,
 			},
-			want: &appsv1.Deployment{
+			output: &appsv1.Deployment{
 				TypeMeta:   metav1.TypeMeta{},
 				ObjectMeta: consoleDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
@@ -247,12 +220,15 @@ func TestDefaultDeployment(t *testing.T) {
 						MatchLabels: labels,
 					},
 					Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{
-						Name:        api.OpenShiftConsoleName,
-						Labels:      labels,
-						Annotations: consoleDeploymentTemplateAnnotations,
+						Name:   api.OpenShiftConsoleName,
+						Labels: labels,
+						Annotations: map[string]string{
+							deploymentVersionHashKey: "lYUJi33gP6JzQ_0yPUf9jexYOfhNRL5KsYT6To7s-FKMTbc_cSKJA9iTscvI5bMVKzz1etGhLAIkXtdJ1YdIVg",
+							consoleImageAnnotation:   "",
+						},
 					},
 						Spec: corev1.PodSpec{
-							// we want to deploy on master nodes
+							// we output to deploy on master nodes
 							NodeSelector: map[string]string{
 								// empty string is correct
 								"node-role.kubernetes.io/master": "",
@@ -283,7 +259,21 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.cm, tt.args.tca, tt.args.sec, tt.args.rt, tt.args.proxy, tt.args.canMountCustomLogo), tt.want); diff != nil {
+			depInput := DefaultDeployment(
+				// top level configs
+				tt.input.operatorConfig,
+				tt.input.proxyConfig,
+				// configmaps
+				tt.input.consoleServerConfigMap,
+				tt.input.servingCAConfigMap,
+				tt.input.trustedCAConfigMap,
+				// secrets
+				tt.input.oauthClientSecret,
+				tt.input.servingCert,
+				// other
+				tt.input.consoleRoute,
+				tt.input.canMountCustomLogo)
+			if diff := deep.Equal(depInput, tt.output); diff != nil {
 				t.Error(diff)
 			}
 		})
@@ -568,7 +558,7 @@ func TestIsReady(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsReady(tt.args.deployment); got != tt.want {
-				t.Errorf("IsReady() = \n%v\n want \n%v", got, tt.want)
+				t.Errorf("IsReady() = \n%v\n output \n%v", got, tt.want)
 			}
 		})
 	}
@@ -669,9 +659,132 @@ func TestIsAvailableAndUpdated(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsAvailableAndUpdated(tt.args.deployment); got != tt.want {
-				t.Errorf("IsAvailableAndUpdated() = \n%v\n want \n%v", got, tt.want)
+				t.Errorf("IsAvailableAndUpdated() = \n%v\n output \n%v", got, tt.want)
 			}
 		})
 	}
 
+}
+
+func TestRSVToken(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  metav1.Object
+		output string
+	}{
+		{
+			name: "A configmap",
+			input: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "Foo",
+					Namespace:       "foo",
+					ResourceVersion: "12345",
+				},
+			},
+			output: "*v1.ConfigMap:foo:Foo:12345",
+		}, {
+			name: "A partial configmap",
+			input: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "Foo",
+				},
+			},
+			// Note that this func is really for objects that
+			// have been created on the server and assigned a
+			// ResourceVersion already.
+			output: "*v1.ConfigMap::Foo:",
+		}, {
+			name: "A secret",
+			input: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "Bar",
+					Namespace:       "bar",
+					ResourceVersion: "12345",
+				},
+			},
+			output: "*v1.Secret:bar:Bar:12345",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if output := rsvToken(tt.input); output != tt.output {
+				t.Errorf("output: %v \n", output)
+			}
+		})
+	}
+}
+
+func TestRSVTokens(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  []metav1.Object
+		output []string
+	}{
+		{
+			name: "A configmap",
+			input: []metav1.Object{
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "Foo",
+						Namespace:       "foo",
+						ResourceVersion: "12345",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "Bar",
+						Namespace:       "bar",
+						ResourceVersion: "12345",
+					},
+				},
+			},
+			output: []string{
+				"*v1.ConfigMap:foo:Foo:12345",
+				"*v1.Secret:bar:Bar:12345",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if diff := deep.Equal(rsvTokens(tt.input...), tt.output); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+func TestRedeployRSVHash(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  []string
+		output string
+	}{
+		{
+			name: "A configmap",
+			input: rsvTokens(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "Foo",
+					Namespace:       "foo",
+					ResourceVersion: "12345",
+				},
+			},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "Bar",
+						Namespace:       "bar",
+						ResourceVersion: "12345",
+					},
+				}),
+			output: "GfmhjN6n9D4a_LVBTXKkBbzdNb8F33EBGasRXgiLugNOv5tjC5_5DQtRU7ukjwFpU4_XuRB7xd-ThvfXF6eadA",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if output := redeployRSVHash(tt.input); output != tt.output {
+				t.Errorf("\ninput:%v \noutput %v \n", tt.input, output)
+			}
+		})
+	}
 }
