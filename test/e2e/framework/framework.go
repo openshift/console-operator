@@ -76,7 +76,7 @@ func GetOperatorConfig(client *ClientSet) (*operatorv1.Console, error) {
 
 // custom-logo in openshift-console should exist when custom branding is used
 func GetCustomLogoConfigMap(client *ClientSet) (*corev1.ConfigMap, error) {
-	return client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
+	return client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftCustomLogoConfigMapName, metav1.GetOptions{})
 }
 
 func GetConsoleConfigMap(client *ClientSet) (*corev1.ConfigMap, error) {
