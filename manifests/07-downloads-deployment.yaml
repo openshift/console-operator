@@ -33,7 +33,7 @@ spec:
       containers:
       - name: download-server
         terminationMessagePolicy: FallbackToLogsOnError
-        image: registry.svc.ci.openshift.org/openshift:cli
+        image: registry.svc.ci.openshift.org/openshift:cli-artifacts
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
@@ -85,18 +85,22 @@ spec:
           os.chdir(temp_dir)
           for arch in ['amd64']:
               os.mkdir(arch)
-              for operating_system in ['linux']:
+              for operating_system in ['linux', 'mac', 'windows']:
                   os.mkdir(os.path.join(arch, operating_system))
 
-          for path in [ # TODO: get binaries for other platforms
-                  '/usr/bin/oc',
+          for arch, operating_system, path in [
+                  ('amd64', 'linux', '/usr/bin/oc'),
+                  ('amd64', 'mac', '/usr/share/openshift/mac/oc'),
+                  ('amd64', 'windows', '/usr/share/openshift/windows/oc.exe'),
                   ]:
               basename = os.path.basename(path)
-              target_path = os.path.join('amd64', 'linux', basename)
+              target_path = os.path.join(arch, operating_system, basename)
               os.symlink(path, target_path)
-              with tarfile.open('{}.tar'.format(target_path), 'w') as tar:
+              base_root, _ = os.path.splitext(basename)
+              archive_path_root = os.path.join(arch, operating_system, base_root)
+              with tarfile.open('{}.tar'.format(archive_path_root), 'w') as tar:
                   tar.add(path, basename)
-              with zipfile.ZipFile('{}.zip'.format(target_path), 'w') as zip:
+              with zipfile.ZipFile('{}.zip'.format(archive_path_root), 'w') as zip:
                   zip.write(path, basename)
 
           # Create socket

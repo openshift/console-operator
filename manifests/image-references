@@ -10,7 +10,7 @@ spec:
     from:
       kind: DockerImage
       name: registry.svc.ci.openshift.org/openshift:console
-  - name: cli
+  - name: cli-artifacts
     from:
       kind: DockerImage
-      name: registry.svc.ci.openshift.org/openshift:cli
+      name: registry.svc.ci.openshift.org/openshift:cli-artifacts
