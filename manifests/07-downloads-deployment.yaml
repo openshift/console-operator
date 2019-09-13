@@ -33,7 +33,7 @@ spec:
       containers:
       - name: download-server
         terminationMessagePolicy: FallbackToLogsOnError
-        image: docker.io/openshift/origin-cli:latest
+        image: registry.svc.ci.openshift.org/openshift:cli
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080

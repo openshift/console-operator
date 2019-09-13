@@ -32,7 +32,7 @@ spec:
       containers:
       - name: console-operator
         terminationMessagePolicy: FallbackToLogsOnError
-        image: docker.io/openshift/origin-console-operator:latest
+        image: registry.svc.ci.openshift.org/openshift:console-operator
         ports:
         - containerPort: 60000
           name: metrics
@@ -48,7 +48,7 @@ spec:
           name: config
         env:
         - name: IMAGE
-          value: docker.io/openshift/origin-console:latest
+          value: registry.svc.ci.openshift.org/openshift:console
         - name: RELEASE_VERSION
           value: "0.0.1-snapshot"
         - name: OPERATOR_NAME

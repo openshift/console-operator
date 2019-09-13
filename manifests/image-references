@@ -5,12 +5,12 @@ spec:
   - name: console-operator
     from:
       kind: DockerImage
-      name: docker.io/openshift/origin-console-operator:latest
+      name: registry.svc.ci.openshift.org/openshift:console-operator
   - name: console
     from:
       kind: DockerImage
-      name: docker.io/openshift/origin-console:latest
+      name: registry.svc.ci.openshift.org/openshift:console
   - name: cli
     from:
       kind: DockerImage
-      name: docker.io/openshift/origin-cli:latest
+      name: registry.svc.ci.openshift.org/openshift:cli
