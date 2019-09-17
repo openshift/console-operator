@@ -22,6 +22,7 @@ type ClientSet struct {
 	Operator        operatorclientv1.ConsolesGetter
 	Console         configv1.ConsolesGetter
 	ClusterOperator configv1.ClusterOperatorsGetter
+	Proxy           configv1.ProxiesGetter
 }
 
 // NewClientset creates a set of Kubernetes clients. The default kubeconfig is
@@ -59,6 +60,7 @@ func NewClientset(kubeconfig *restclient.Config) (*ClientSet, error) {
 		return nil, err
 	}
 	clientset.Console = configClient
+	clientset.Proxy = configClient
 	clientset.ClusterOperator = configClient
 
 	return clientset, nil
