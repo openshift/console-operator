@@ -32,6 +32,7 @@ const (
 
 const (
 	configMapResourceVersionAnnotation          = "console.openshift.io/console-config-version"
+	proxyConfigResourceVersionAnnotation        = "console.openshift.io/proxy-config-version"
 	serviceCAConfigMapResourceVersionAnnotation = "console.openshift.io/service-ca-config-version"
 	trustedCAConfigMapResourceVersionAnnotation = "console.openshift.io/trusted-ca-config-version"
 	secretResourceVersionAnnotation             = "console.openshift.io/oauth-secret-version"
@@ -41,6 +42,7 @@ const (
 var (
 	resourceAnnotations = []string{
 		configMapResourceVersionAnnotation,
+		proxyConfigResourceVersionAnnotation,
 		serviceCAConfigMapResourceVersionAnnotation,
 		trustedCAConfigMapResourceVersionAnnotation,
 		secretResourceVersionAnnotation,
@@ -67,6 +69,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 		configMapResourceVersionAnnotation:          cm.GetResourceVersion(),
 		serviceCAConfigMapResourceVersionAnnotation: serviceCAConfigMap.GetResourceVersion(),
 		trustedCAConfigMapResourceVersionAnnotation: trustedCAConfigMap.GetResourceVersion(),
+		proxyConfigResourceVersionAnnotation:        proxyConfig.GetResourceVersion(),
 		secretResourceVersionAnnotation:             sec.GetResourceVersion(),
 		consoleImageAnnotation:                      util.GetImageEnv(),
 	}

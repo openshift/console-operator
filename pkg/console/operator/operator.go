@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/client-go/informers/core/v1"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 
 	// openshift
@@ -33,7 +32,6 @@ import (
 
 	// informers
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
-	configinformerv1 "github.com/openshift/client-go/config/informers/externalversions/config/v1"
 	operatorinformerv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
@@ -41,7 +39,6 @@ import (
 
 	// clients
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
-	configlisterv1 "github.com/openshift/client-go/config/listers/config/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 
 	// operator
@@ -59,24 +56,23 @@ const (
 )
 
 type consoleOperator struct {
-	operatorConfigClient operatorclientv1.ConsoleInterface
-	consoleConfigClient  configclientv1.ConsoleInterface
+	// configs
+	operatorConfigClient       operatorclientv1.ConsoleInterface
+	consoleConfigClient        configclientv1.ConsoleInterface
+	infrastructureConfigClient configclientv1.InfrastructureInterface
+	proxyConfigClient          configclientv1.ProxyInterface
 	// core kube
 	secretsClient    coreclientv1.SecretsGetter
 	configMapClient  coreclientv1.ConfigMapsGetter
 	serviceClient    coreclientv1.ServicesGetter
 	deploymentClient appsv1.DeploymentsGetter
 	// openshift
-	routeClient                routeclientv1.RoutesGetter
-	oauthClient                oauthclientv1.OAuthClientsGetter
-	infrastructureConfigClient configclientv1.InfrastructureInterface
-	versionGetter              status.VersionGetter
+	routeClient   routeclientv1.RoutesGetter
+	oauthClient   oauthclientv1.OAuthClientsGetter
+	versionGetter status.VersionGetter
 	// recorder
 	recorder       events.Recorder
 	resourceSyncer resourcesynccontroller.ResourceSyncer
-	//proxy
-	proxyCfgLister   configlisterv1.ProxyLister
-	proxyCfgInformer cache.SharedIndexInformer
 }
 
 func NewConsoleOperator(
@@ -89,7 +85,6 @@ func NewConsoleOperator(
 	deployments appsinformersv1.DeploymentInformer,
 	routes routesinformersv1.RouteInformer,
 	oauthClients oauthinformersv1.OAuthClientInformer,
-	proxyCfgInformer configinformerv1.ProxyInformer,
 
 	// clients
 	operatorConfigClient operatorclientv1.OperatorV1Interface,
@@ -108,6 +103,7 @@ func NewConsoleOperator(
 		operatorConfigClient:       operatorConfigClient.Consoles(),
 		consoleConfigClient:        configClient.Consoles(),
 		infrastructureConfigClient: configClient.Infrastructures(),
+		proxyConfigClient:          configClient.Proxies(),
 		// console resources
 		// core kube
 		secretsClient:    corev1Client,
@@ -121,9 +117,6 @@ func NewConsoleOperator(
 		// recorder
 		recorder:       recorder,
 		resourceSyncer: resourceSyncer,
-		// proxy
-		proxyCfgLister:   proxyCfgInformer.Lister(),
-		proxyCfgInformer: proxyCfgInformer.Informer(),
 	}
 
 	secretsInformer := coreV1.Secrets()
@@ -140,7 +133,7 @@ func NewConsoleOperator(
 		operator.WithInformer(configV1Informers.Consoles(), configNameFilter),
 		operator.WithInformer(operatorConfigInformer, configNameFilter),
 		operator.WithInformer(configV1Informers.Infrastructures(), configNameFilter),
-		operator.WithInformer(proxyCfgInformer, configNameFilter),
+		operator.WithInformer(configV1Informers.Proxies(), configNameFilter),
 		// console resources
 		operator.WithInformer(deployments, targetNameFilter),
 		operator.WithInformer(routes, targetNameFilter),
@@ -187,7 +180,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 		return err
 	}
 
-	proxyConfig, err := c.proxyCfgLister.Get(api.ConfigResourceName)
+	proxyConfig, err := c.proxyConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return err
