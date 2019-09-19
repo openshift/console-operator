@@ -1,3 +1,16 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: console-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: console-operator
+subjects:
+  - kind: ServiceAccount
+    name: console-operator
+    namespace: openshift-console-operator
+---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -10,3 +23,19 @@ subjects:
 - kind: Group
   name: system:authenticated
   apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: console-operator-auth-delegator
+roleRef:
+  # for protected endpoints like /metrics, the operator must perform
+  # authentication (tokenreview) & authorization (subjectaccessreview)
+  # which are granted by this ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: console-operator
+    namespace: openshift-console-operator
