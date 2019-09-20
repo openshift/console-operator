@@ -62,6 +62,7 @@ func TestDefaultDeployment(t *testing.T) {
 			secretResourceVersionAnnotation:             "",
 			serviceCAConfigMapResourceVersionAnnotation: "",
 			trustedCAConfigMapResourceVersionAnnotation: "",
+			proxyConfigResourceVersionAnnotation:        "",
 			consoleImageAnnotation:                      "",
 		},
 		OwnerReferences: nil,
@@ -119,6 +120,7 @@ func TestDefaultDeployment(t *testing.T) {
 		secretResourceVersionAnnotation:             "",
 		serviceCAConfigMapResourceVersionAnnotation: "",
 		trustedCAConfigMapResourceVersionAnnotation: "",
+		proxyConfigResourceVersionAnnotation:        "",
 		consoleImageAnnotation:                      "",
 	}
 
