@@ -18,4 +18,25 @@ spec:
   selector:
     matchLabels:
       name: console-operator
-
+---
+# Configure cluster-monitoring for cluster console resources
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: console
+  namespace: openshift-console
+spec:
+  endpoints:
+    - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      interval: 30s
+      path: /metrics
+      port: https
+      scheme: https
+      tlsConfig:
+        caFile: /etc/prometheus/configmaps/serving-certs-ca-bundle/service-ca.crt
+        serverName: console.openshift-console.svc
+  jobLabel: component
+  selector:
+    matchLabels:
+      app: console
+      component: ui
