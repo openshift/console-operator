@@ -77,6 +77,7 @@ func DeleteAll(t *testing.T, client *ClientSet) {
 func GetResource(client *ClientSet, resource TestingResource) (runtime.Object, error) {
 	var res runtime.Object
 	var err error
+
 	switch resource.kind {
 	case "ConfigMap":
 		res, err = client.Core.ConfigMaps(resource.namespace).Get(resource.name, metav1.GetOptions{})
@@ -234,6 +235,7 @@ func IsResourceUnavailable(errChan chan error, client *ClientSet, resource Testi
 	counter := 0
 	maxCount := 15
 	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
+
 		obtainedResource, err := GetResource(client, resource)
 		if err == nil {
 			return true, fmt.Errorf("deleted console %s %s was recreated: %#v", resource.kind, resource.name, obtainedResource)
