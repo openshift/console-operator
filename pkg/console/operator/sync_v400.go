@@ -316,7 +316,12 @@ func (co *consoleOperator) SyncConfigMap(
 		return nil, false, "FailedManagedConfig", mcErr
 	}
 
-	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, rt)
+	downloadsRoute, err := co.routeClient.Routes(api.TargetNamespace).Get("downloads", metav1.GetOptions{})
+	if err != nil {
+		return nil, false, "FailedGetDownloadsRoute", err
+	}
+
+	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, rt, downloadsRoute)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
 	}

@@ -27,6 +27,13 @@ func getApiUrl(infrastructureConfig *configv1.Infrastructure) string {
 	return ""
 }
 
+func getCliDownloadUrl(downloadsRoute *routev1.Route) string {
+	if downloadsRoute != nil {
+		return downloadsRoute.Spec.Host
+	}
+	return ""
+}
+
 func statusPageId(operatorConfig *operatorv1.Console) string {
 	if operatorConfig.Spec.Providers.Statuspage != nil {
 		return operatorConfig.Spec.Providers.Statuspage.PageID
@@ -39,7 +46,8 @@ func DefaultConfigMap(
 	consoleConfig *configv1.Console,
 	managedConfig *corev1.ConfigMap,
 	infrastructureConfig *configv1.Infrastructure,
-	rt *routev1.Route) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
+	rt *routev1.Route,
+	downloadsRoute *routev1.Route) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
 	defaultConfig, err := defaultBuilder.Host(rt.Spec.Host).
@@ -47,6 +55,7 @@ func DefaultConfigMap(
 		Brand(DEFAULT_BRAND).
 		DocURL(DEFAULT_DOC_URL).
 		APIServerURL(getApiUrl(infrastructureConfig)).
+		CLIDownloadURL(getCliDownloadUrl(downloadsRoute)).
 		ConfigYAML()
 
 	extractedManagedConfig := extractYAML(managedConfig)
@@ -56,6 +65,7 @@ func DefaultConfigMap(
 		Brand(operatorConfig.Spec.Customization.Brand).
 		DocURL(operatorConfig.Spec.Customization.DocumentationBaseURL).
 		APIServerURL(getApiUrl(infrastructureConfig)).
+		CLIDownloadURL(getCliDownloadUrl(downloadsRoute)).
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
 		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).
 		StatusPageID(statusPageId(operatorConfig)).

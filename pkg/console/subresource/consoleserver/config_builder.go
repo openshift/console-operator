@@ -36,6 +36,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	statusPageID      string
 	customProductName string
 	customLogoFile    string
+	cliDownloadURLs   *CLIDownloadURLs
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -56,6 +57,18 @@ func (b *ConsoleServerCLIConfigBuilder) DocURL(docURL string) *ConsoleServerCLIC
 }
 func (b *ConsoleServerCLIConfigBuilder) APIServerURL(apiServerURL string) *ConsoleServerCLIConfigBuilder {
 	b.apiServerURL = apiServerURL
+	return b
+}
+func (b *ConsoleServerCLIConfigBuilder) CLIDownloadURL(cliDownloadURL string) *ConsoleServerCLIConfigBuilder {
+	if cliDownloadURL != "" {
+		b.cliDownloadURLs = &CLIDownloadURLs{
+			LinuxDownloadURL:   util.GetDownloadURL(cliDownloadURL, api.LinuxPlatformKey, "oc.tar"),
+			MacDownloadURL:     util.GetDownloadURL(cliDownloadURL, api.MacPlatformKey, "oc.zip"),
+			WindowsDownloadURL: util.GetDownloadURL(cliDownloadURL, api.WindowsPlatformKey, "oc.zip"),
+		}
+		return b
+	}
+	b.cliDownloadURLs = nil
 	return b
 }
 func (b *ConsoleServerCLIConfigBuilder) CustomProductName(customProductName string) *ConsoleServerCLIConfigBuilder {
@@ -114,6 +127,9 @@ func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {
 	}
 	if len(b.host) > 0 {
 		conf.ConsoleBaseAddress = util.HTTPS(b.host)
+	}
+	if b.cliDownloadURLs != nil {
+		conf.CLIDownloadURLs = b.cliDownloadURLs
 	}
 	return conf
 }

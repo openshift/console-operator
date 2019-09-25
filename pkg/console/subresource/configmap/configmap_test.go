@@ -19,6 +19,10 @@ import (
 
 const (
 	host               = "localhost"
+	downloadHost       = "https://downloads-openshift-console.apps.some.cluster.openshift.com"
+	downloadLinuxURL   = "https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/linux/oc.tar"
+	downloadMacURL     = "https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/mac/oc.zip"
+	downloadWindowsURL = "https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/windows/oc.zip"
 	mockAPIServer      = "https://api.some.cluster.openshift.com:6443"
 	mockConsoleURL     = "https://console-openshift-console.apps.some.cluster.openshift.com"
 	configKey          = "console-config.yaml"
@@ -33,6 +37,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		managedConfig        *corev1.ConfigMap
 		infrastructureConfig *configv1.Infrastructure
 		rt                   *routev1.Route
+		downloadsRoute       *routev1.Route
 	}
 	tests := []struct {
 		name string
@@ -55,6 +60,11 @@ func TestDefaultConfigMap(t *testing.T) {
 						Host: host,
 					},
 				},
+				downloadsRoute: &routev1.Route{
+					Spec: routev1.RouteSpec{
+						Host: downloadHost,
+					},
+				},
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -72,6 +82,10 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+  cliDownloadURLs:
+    linuxDownloadURL: ` + downloadLinuxURL + `
+    macDownloadURL: ` + downloadMacURL + `
+    windowsDownloadURL: ` + downloadWindowsURL + `
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -108,6 +122,11 @@ customization:
 						Host: host,
 					},
 				},
+				downloadsRoute: &routev1.Route{
+					Spec: routev1.RouteSpec{
+						Host: downloadHost,
+					},
+				},
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -123,13 +142,17 @@ auth:
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
 clusterInfo:
-  consoleBaseAddress: https://` + host + `
-  masterPublicURL: ` + mockAPIServer + `
+  consoleBaseAddress: 'https://` + host + `'
+  masterPublicURL: '` + mockAPIServer + `'
+  cliDownloadURLs:
+    linuxDownloadURL: '` + downloadLinuxURL + `'
+    macDownloadURL: '` + downloadMacURL + `'
+    windowsDownloadURL: '` + downloadWindowsURL + `'
 customization:
-  branding: online 
-  documentationBaseURL: https://docs.okd.io/4.2/
+  branding: online
+  documentationBaseURL: 'https://docs.okd.io/4.2/'
 servingInfo:
-  bindAddress: https://0.0.0.0:8443
+  bindAddress: 'https://0.0.0.0:8443'
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
 providers: {}
@@ -170,6 +193,11 @@ customization:
 						Host: host,
 					},
 				},
+				downloadsRoute: &routev1.Route{
+					Spec: routev1.RouteSpec{
+						Host: downloadHost,
+					},
+				},
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -187,6 +215,10 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+  cliDownloadURLs:
+    linuxDownloadURL: ` + downloadLinuxURL + `
+    macDownloadURL: ` + downloadMacURL + `
+    windowsDownloadURL: ` + downloadWindowsURL + `
 customization:
   branding: ` + string(operatorv1.BrandDedicated) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -237,6 +269,11 @@ customization:
 						Host: host,
 					},
 				},
+				downloadsRoute: &routev1.Route{
+					Spec: routev1.RouteSpec{
+						Host: downloadHost,
+					},
+				},
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -254,6 +291,10 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+  cliDownloadURLs:
+    linuxDownloadURL: ` + downloadLinuxURL + `
+    macDownloadURL: ` + downloadMacURL + `
+    windowsDownloadURL: ` + downloadWindowsURL + `
 customization:
   branding: ` + string(operatorv1.BrandDedicated) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -306,6 +347,139 @@ customization:
 						Host: host,
 					},
 				},
+				downloadsRoute: &routev1.Route{
+					Spec: routev1.RouteSpec{
+						Host: downloadHost,
+					},
+				},
+			},
+			want: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+  cliDownloadURLs:
+    linuxDownloadURL: ` + downloadLinuxURL + `
+    macDownloadURL: ` + downloadMacURL + `
+    windowsDownloadURL: ` + downloadWindowsURL + `
+customization:
+  branding: ` + string(operatorv1.BrandDedicated) + `
+  documentationBaseURL: ` + mockOperatorDocURL + `
+servingInfo:
+  bindAddress: https://0.0.0.0:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: 
+  statuspageID: id-1234
+`,
+				},
+			},
+		},
+		{
+			name: "Test operator config with Statuspage pageID",
+			args: args{
+				operatorConfig: &operatorv1.Console{
+					Spec: operatorv1.ConsoleSpec{
+						OperatorSpec: operatorv1.OperatorSpec{},
+						Customization: operatorv1.ConsoleCustomization{
+							Brand:                operatorv1.BrandDedicated,
+							DocumentationBaseURL: mockOperatorDocURL,
+						},
+						Providers: operatorv1.ConsoleProviders{
+							Statuspage: &operatorv1.StatuspageProvider{
+								PageID: "id-1234",
+							},
+						},
+					},
+					Status: operatorv1.ConsoleStatus{},
+				},
+				consoleConfig: &configv1.Console{},
+				managedConfig: &corev1.ConfigMap{
+					Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+customization:
+  branding: online
+  documentationBaseURL: https://docs.okd.io/4.2/
+`,
+					},
+				},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL: mockAPIServer,
+					},
+				},
+				rt: &routev1.Route{
+					Spec: routev1.RouteSpec{
+						Host: host,
+					},
+				},
+				downloadsRoute: &routev1.Route{
+					Spec: routev1.RouteSpec{
+						Host: downloadHost,
+					},
+				},
+			},
+			want: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+  cliDownloadURLs:
+    linuxDownloadURL: ` + downloadLinuxURL + `
+    macDownloadURL: ` + downloadMacURL + `
+    windowsDownloadURL: ` + downloadWindowsURL + `
+customization:
+  branding: ` + string(operatorv1.BrandDedicated) + `
+  documentationBaseURL: ` + mockOperatorDocURL + `
+servingInfo:
+  bindAddress: https://0.0.0.0:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: 
+  statuspageID: id-1234
+`,
+				},
+			},
+		},
+		{
+			name: "Test openshift-console namespace without downloads route",
+			args: args{
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL: mockAPIServer,
+					},
+				},
+				rt: &routev1.Route{
+					Spec: routev1.RouteSpec{
+						Host: host,
+					},
+				},
+				downloadsRoute: nil,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -324,14 +498,13 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
 customization:
-  branding: ` + string(operatorv1.BrandDedicated) + `
-  documentationBaseURL: ` + mockOperatorDocURL + `
+  branding: ` + DEFAULT_BRAND + `
+  documentationBaseURL: ` + DEFAULT_DOC_URL + `
 servingInfo:
   bindAddress: https://0.0.0.0:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
-providers: 
-  statuspageID: id-1234
+providers: {}
 `,
 				},
 			},
@@ -339,7 +512,7 @@ providers:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cm, _, _ := DefaultConfigMap(tt.args.operatorConfig, tt.args.consoleConfig, tt.args.managedConfig, tt.args.infrastructureConfig, tt.args.rt)
+			cm, _, _ := DefaultConfigMap(tt.args.operatorConfig, tt.args.consoleConfig, tt.args.managedConfig, tt.args.infrastructureConfig, tt.args.rt, tt.args.downloadsRoute)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below
 			var exampleConfig map[string]interface{}

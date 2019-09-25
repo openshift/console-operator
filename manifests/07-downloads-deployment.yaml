@@ -83,6 +83,8 @@ spec:
           temp_dir = tempfile.mkdtemp()
           print('serving from {}'.format(temp_dir))
           os.chdir(temp_dir)
+          # If the arch is going to get changed in the future
+          # we need to update the the const in the pkg/api/api.go
           for arch in ['amd64']:
               os.mkdir(arch)
               for operating_system in ['linux', 'mac', 'windows']:
