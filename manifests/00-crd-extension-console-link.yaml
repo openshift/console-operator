@@ -52,13 +52,13 @@ spec:
               pattern: '^https://([\w-]+.)+[\w-]+(/[\w- ./?%&=])?$'
             location:
               type: string
-              description: Determines which dropdown menu the link is added to (ApplicationMenu, HelpMenu, UserMenu)
-              pattern: ^(ApplicationMenu|HelpMenu|UserMenu)$
+              description: Determines which dropdown menu the link is added to (ApplicationMenu, HelpMenu, UserMenu, NamespaceDashboard)
+              pattern: ^(ApplicationMenu|HelpMenu|UserMenu|NamespaceDashboard)$
             applicationMenu:
               type: object
               description: Object that holds application menu properties if the location is set to ApplicationMenu
               required:
-                - section
+              - section
               properties:
                 section:
                   type: string
@@ -66,3 +66,14 @@ spec:
                 imageURL:
                   type: string
                   description: The URL for the icon used in front of the link in the application menu.  The URL must be an HTTPS URL or a Data URI. The image should be square and will be shown at 24x24 pixels.
+            namespaceDashboard:
+              type: object
+              description: Object that holds information about namespaces in which the dashboard link should appear, and it is applicable only when location is set to NamespaceDashboard. If not specified, the link will appear in all namespaces.
+              required:
+              - namespaces
+              properties:
+                namespaces:
+                  type: array
+                  description: Namespaces is an array of namespace names in which the dashboard link should appear.
+                  items:
+                    type: string
