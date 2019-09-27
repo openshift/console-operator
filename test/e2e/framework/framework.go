@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	consoleapi "github.com/openshift/console-operator/pkg/api"
@@ -27,6 +28,16 @@ var (
 
 	AsyncOperationTimeout = 5 * time.Minute
 )
+
+func SetClusterProxyConfig(proxyConfig configv1.ProxySpec, client *ClientSet) error {
+	_, err := client.Proxy.Proxies().Patch(consoleapi.ConfigResourceName, types.MergePatchType, []byte(fmt.Sprintf(`{"spec": {"httpProxy": "%s", "httpsProxy": "%s", "noProxy": "%s"}}`, proxyConfig.HTTPProxy, proxyConfig.HTTPSProxy, proxyConfig.NoProxy)))
+	return err
+}
+
+func ResetClusterProxyConfig(client *ClientSet) error {
+	_, err := client.Proxy.Proxies().Patch(consoleapi.ConfigResourceName, types.MergePatchType, []byte(`{"spec": {"httpProxy": "", "httpsProxy": "", "noProxy": ""}}`))
+	return err
+}
 
 func DeleteAll(t *testing.T, client *ClientSet) {
 	resources := []string{"Deployment", "Service", "Route", "ConfigMap"}
