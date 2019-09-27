@@ -106,9 +106,3 @@ func HTTPS(host string) string {
 	secured := fmt.Sprintf("%s%s", protocol, host)
 	return secured
 }
-
-func GetDownloadURL(host, platform, binaryArchive string) string {
-	baseURL := fmt.Sprintf("%s/%s", HTTPS(host), api.CliArch)
-	downloadURL := fmt.Sprintf("%s/%s/%s", baseURL, platform, binaryArchive)
-	return downloadURL
-}

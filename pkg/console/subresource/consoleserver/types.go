@@ -45,11 +45,16 @@ type ClusterInfo struct {
 	CLIDownloadURLs    *CLIDownloadURLs `yaml:"cliDownloadURLs,omitempty"`
 }
 
-// CLIDownloadURLs contains download URLs for each of the platforms we provide CLI binary.
+// CLIDownloadURLs contains all the architertures that we are building CLI binaries for.
 type CLIDownloadURLs struct {
-	LinuxDownloadURL   string `yaml:"linuxDownloadURL"`
-	MacDownloadURL     string `yaml:"macDownloadURL"`
-	WindowsDownloadURL string `yaml:"windowsDownloadURL"`
+	AMD64 ArchPlatformsURLs `yaml:"amd64,omitempty"`
+}
+
+// ArchPlatformsURL contains URLs for each of the platforms we provide CLI binary.
+type ArchPlatformsURLs struct {
+	Linux   string `yaml:"linux"`
+	Mac     string `yaml:"mac"`
+	Windows string `yaml:"windows"`
 }
 
 // Auth holds configuration for authenticating with OpenShift. The auth method is assumed to be "openshift".

@@ -1,13 +1,6 @@
 package api
 
 const (
-	CliArch            = "amd64"
-	LinuxPlatformKey   = "linux"
-	MacPlatformKey     = "mac"
-	WindowsPlatformKey = "windows"
-)
-
-const (
 	TargetNamespace    = "openshift-console"
 	ConfigResourceName = "cluster"
 )

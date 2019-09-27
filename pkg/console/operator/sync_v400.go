@@ -309,7 +309,7 @@ func (co *consoleOperator) SyncConfigMap(
 	operatorConfig *operatorv1.Console,
 	consoleConfig *configv1.Console,
 	infrastructureConfig *configv1.Infrastructure,
-	rt *routev1.Route) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
+	consoleRoute *routev1.Route) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
 
 	managedConfig, mcErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 	if mcErr != nil && !apierrors.IsNotFound(mcErr) {
@@ -321,7 +321,7 @@ func (co *consoleOperator) SyncConfigMap(
 		return nil, false, "FailedGetDownloadsRoute", err
 	}
 
-	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, rt, downloadsRoute)
+	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, consoleRoute, downloadsRoute)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
 	}

@@ -1,11 +1,19 @@
 package consoleserver
 
 import (
+	"fmt"
+
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	yaml "gopkg.in/yaml.v2"
 	"k8s.io/klog"
+)
+
+const (
+	LinuxPlatformKey   = "linux"
+	MacPlatformKey     = "mac"
+	WindowsPlatformKey = "windows"
 )
 
 const (
@@ -62,9 +70,7 @@ func (b *ConsoleServerCLIConfigBuilder) APIServerURL(apiServerURL string) *Conso
 func (b *ConsoleServerCLIConfigBuilder) CLIDownloadURL(cliDownloadURL string) *ConsoleServerCLIConfigBuilder {
 	if cliDownloadURL != "" {
 		b.cliDownloadURLs = &CLIDownloadURLs{
-			LinuxDownloadURL:   util.GetDownloadURL(cliDownloadURL, api.LinuxPlatformKey, "oc.tar"),
-			MacDownloadURL:     util.GetDownloadURL(cliDownloadURL, api.MacPlatformKey, "oc.zip"),
-			WindowsDownloadURL: util.GetDownloadURL(cliDownloadURL, api.WindowsPlatformKey, "oc.zip"),
+			AMD64: GetArchURLs(cliDownloadURL, "amd64"),
 		}
 		return b
 	}
@@ -171,4 +177,16 @@ func (b *ConsoleServerCLIConfigBuilder) providers() Providers {
 		}
 	}
 	return Providers{}
+}
+
+func GetArchURLs(host, arch string) ArchPlatformsURLs {
+	baseURL := fmt.Sprintf("%s/%s", util.HTTPS(host), arch)
+	getPlatformURL := func(platform, archiveType string) string {
+		return fmt.Sprintf("%s/%s/%s", baseURL, platform, archiveType)
+	}
+	return ArchPlatformsURLs{
+		Linux:   getPlatformURL(LinuxPlatformKey, "oc.tar"),
+		Mac:     getPlatformURL(MacPlatformKey, "oc.zip"),
+		Windows: getPlatformURL(WindowsPlatformKey, "oc.zip"),
+	}
 }

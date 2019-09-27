@@ -20,9 +20,6 @@ import (
 const (
 	host               = "localhost"
 	downloadHost       = "https://downloads-openshift-console.apps.some.cluster.openshift.com"
-	downloadLinuxURL   = "https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/linux/oc.tar"
-	downloadMacURL     = "https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/mac/oc.zip"
-	downloadWindowsURL = "https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/windows/oc.zip"
 	mockAPIServer      = "https://api.some.cluster.openshift.com:6443"
 	mockConsoleURL     = "https://console-openshift-console.apps.some.cluster.openshift.com"
 	configKey          = "console-config.yaml"
@@ -83,9 +80,10 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   cliDownloadURLs:
-    linuxDownloadURL: ` + downloadLinuxURL + `
-    macDownloadURL: ` + downloadMacURL + `
-    windowsDownloadURL: ` + downloadWindowsURL + `
+    amd64:
+      linux: https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/linux/oc.tar
+      mac: https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/mac/oc.zip
+      windows: https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/windows/oc.zip
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -145,9 +143,10 @@ clusterInfo:
   consoleBaseAddress: 'https://` + host + `'
   masterPublicURL: '` + mockAPIServer + `'
   cliDownloadURLs:
-    linuxDownloadURL: '` + downloadLinuxURL + `'
-    macDownloadURL: '` + downloadMacURL + `'
-    windowsDownloadURL: '` + downloadWindowsURL + `'
+    amd64:
+      linux: https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/linux/oc.tar
+      mac: https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/mac/oc.zip
+      windows: https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/windows/oc.zip
 customization:
   branding: online
   documentationBaseURL: 'https://docs.okd.io/4.2/'
@@ -216,9 +215,10 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   cliDownloadURLs:
-    linuxDownloadURL: ` + downloadLinuxURL + `
-    macDownloadURL: ` + downloadMacURL + `
-    windowsDownloadURL: ` + downloadWindowsURL + `
+    amd64:
+      linux: https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/linux/oc.tar
+      mac: https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/mac/oc.zip
+      windows: https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/windows/oc.zip
 customization:
   branding: ` + string(operatorv1.BrandDedicated) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -292,9 +292,10 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   cliDownloadURLs:
-    linuxDownloadURL: ` + downloadLinuxURL + `
-    macDownloadURL: ` + downloadMacURL + `
-    windowsDownloadURL: ` + downloadWindowsURL + `
+    amd64:
+      linux: https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/linux/oc.tar
+      mac: https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/mac/oc.zip
+      windows: https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/windows/oc.zip
 customization:
   branding: ` + string(operatorv1.BrandDedicated) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -370,9 +371,10 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   cliDownloadURLs:
-    linuxDownloadURL: ` + downloadLinuxURL + `
-    macDownloadURL: ` + downloadMacURL + `
-    windowsDownloadURL: ` + downloadWindowsURL + `
+    amd64:
+      linux: https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/linux/oc.tar
+      mac: https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/mac/oc.zip
+      windows: https://downloads-openshift-console.apps.some.cluster.openshift.com/amd64/windows/oc.zip
 customization:
   branding: ` + string(operatorv1.BrandDedicated) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -387,84 +389,7 @@ providers:
 			},
 		},
 		{
-			name: "Test operator config with Statuspage pageID",
-			args: args{
-				operatorConfig: &operatorv1.Console{
-					Spec: operatorv1.ConsoleSpec{
-						OperatorSpec: operatorv1.OperatorSpec{},
-						Customization: operatorv1.ConsoleCustomization{
-							Brand:                operatorv1.BrandDedicated,
-							DocumentationBaseURL: mockOperatorDocURL,
-						},
-						Providers: operatorv1.ConsoleProviders{
-							Statuspage: &operatorv1.StatuspageProvider{
-								PageID: "id-1234",
-							},
-						},
-					},
-					Status: operatorv1.ConsoleStatus{},
-				},
-				consoleConfig: &configv1.Console{},
-				managedConfig: &corev1.ConfigMap{
-					Data: map[string]string{configKey: `kind: ConsoleConfig
-apiVersion: console.openshift.io/v1
-customization:
-  branding: online
-  documentationBaseURL: https://docs.okd.io/4.2/
-`,
-					},
-				},
-				infrastructureConfig: &configv1.Infrastructure{
-					Status: configv1.InfrastructureStatus{
-						APIServerURL: mockAPIServer,
-					},
-				},
-				rt: &routev1.Route{
-					Spec: routev1.RouteSpec{
-						Host: host,
-					},
-				},
-				downloadsRoute: &routev1.Route{
-					Spec: routev1.RouteSpec{
-						Host: downloadHost,
-					},
-				},
-			},
-			want: &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        api.OpenShiftConsoleConfigMapName,
-					Namespace:   api.OpenShiftConsoleNamespace,
-					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
-					Annotations: map[string]string{},
-				},
-				Data: map[string]string{configKey: `kind: ConsoleConfig
-apiVersion: console.openshift.io/v1
-auth:
-  clientID: console
-  clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-clusterInfo:
-  consoleBaseAddress: https://` + host + `
-  masterPublicURL: ` + mockAPIServer + `
-  cliDownloadURLs:
-    linuxDownloadURL: ` + downloadLinuxURL + `
-    macDownloadURL: ` + downloadMacURL + `
-    windowsDownloadURL: ` + downloadWindowsURL + `
-customization:
-  branding: ` + string(operatorv1.BrandDedicated) + `
-  documentationBaseURL: ` + mockOperatorDocURL + `
-servingInfo:
-  bindAddress: https://0.0.0.0:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-providers: 
-  statuspageID: id-1234
-`,
-				},
-			},
-		},
-		{
-			name: "Test openshift-console namespace without downloads route",
+			name: "Test that there is no download CLI links when download route is nil",
 			args: args{
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
