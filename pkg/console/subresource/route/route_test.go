@@ -96,7 +96,6 @@ func TestStub(t *testing.T) {
 					Labels:                     map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations:                map[string]string{},
 					OwnerReferences:            nil,
-					Initializers:               nil,
 					Finalizers:                 nil,
 					ClusterName:                "",
 				},
