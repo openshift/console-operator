@@ -31,7 +31,20 @@ func SignatureHelp(ctx context.Context, view View, f GoFile, pos protocol.Positi
 	ctx, done := trace.StartSpan(ctx, "source.SignatureHelp")
 	defer done()
 
-	file, pkg, m, err := fileToMapper(ctx, view, f.URI())
+	cphs, err := f.CheckPackageHandles(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cph := NarrowestCheckPackageHandle(cphs)
+	pkg, err := cph.Check(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ph, err := pkg.File(f.URI())
+	if err != nil {
+		return nil, err
+	}
+	file, m, _, err := ph.Cached(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -105,11 +118,11 @@ FindCall:
 		comment *ast.CommentGroup
 	)
 	if obj != nil {
-		rng, err := objToRange(ctx, view, obj)
+		node, err := objToNode(ctx, f.View(), pkg, obj)
 		if err != nil {
 			return nil, err
 		}
-		node, err := objToNode(ctx, f.View(), pkg.GetTypes(), obj, rng.spanRange)
+		rng, err := objToMappedRange(ctx, view, pkg, obj)
 		if err != nil {
 			return nil, err
 		}
@@ -131,7 +144,11 @@ FindCall:
 }
 
 func builtinSignature(ctx context.Context, v View, callExpr *ast.CallExpr, name string, pos token.Pos) (*SignatureInformation, error) {
-	decl, ok := lookupBuiltinDecl(v, name).(*ast.FuncDecl)
+	obj := v.BuiltinPackage().Lookup(name)
+	if obj == nil {
+		return nil, errors.Errorf("no object for %s", name)
+	}
+	decl, ok := obj.Decl.(*ast.FuncDecl)
 	if !ok {
 		return nil, errors.Errorf("no function declaration for builtin: %s", name)
 	}

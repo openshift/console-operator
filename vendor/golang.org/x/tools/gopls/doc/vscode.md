@@ -8,12 +8,16 @@ Use the [VSCode-Go] plugin, with the following configuration:
     "editor.snippetSuggestions": "none",
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
-        "source.organizeImports": true
+        "source.organizeImports": true,
     }
 },
 "gopls": {
     "usePlaceholders": true, // add parameter placeholders when completing a function
-    "wantCompletionDocumentation": true // for documentation in completion items
+
+    // Experimental settings
+    "completeUnimported": true, // autocomplete unimported packages
+    "watchChangedFiles": true,  // watch file changes outside of the editor
+    "deepCompletion": true,     // enable deep completion
 },
 "files.eol": "\n", // formatting only supports LF line endings
 ```
@@ -38,9 +42,17 @@ To enable more detailed debug information, add the following to your VSCode sett
 ],
 ```
 
-See the [section on command line](user.md#command-line) arguments for more information about what these do, along with other things like `--logfile=auto` that you might want to use.
+See the section on [command line](command-line.md) arguments for more information about what these do, along with other things like `--logfile=auto` that you might want to use.
 
-You can disable features through the `"go.languageServerExperimentalFeatures"` section of the config. An example of a feature you may want to disable is `"documentLink"`, which opens Godoc links when you click on import statements in your file.
+You can disable features through the `"go.languageServerExperimentalFeatures"` section of the config. An example of a feature you may want to disable is `"documentLink"`, which opens [`godoc.org`](https://godoc.org) links when you click on import statements in your file.
 
 
 [VSCode-Go]: https://github.com/microsoft/vscode-go
+
+# VSCode Remote Development with gopls
+
+You can also make use of `gopls` with the [VSCode Remote Development](https://code.visualstudio.com/docs/remote/remote-overview) extensions to enable full-featured Go development on a lightweight client machine, while connected to a more powerful server machine.
+
+First, install the Remote Development extension of your choice, such as the [Remote - SSH](https://code.visualstudio.com/docs/remote/ssh) extension. Once you open a remote session in a new window, open the Extensions pane (Ctrl+Shift+X) and you will see several different sections listed. In the "Local - Installed" section, navigate to the Go extension and click "Install in SSH: hostname".
+
+Once you have reloaded VSCode, you will be prompted to install `gopls` and other Go-related tools. After one more reload, you should be ready to develop remotely with VSCode and the Go extension.

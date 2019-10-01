@@ -3,19 +3,19 @@ import:
 
 # kube
 - package: k8s.io/apimachinery
-  version: kubernetes-1.14.0
+  version: kubernetes-1.16.0
 - package: k8s.io/api
-  version: kubernetes-1.14.0
+  version: kubernetes-1.16.0
 - package: k8s.io/apiserver
-  version: kubernetes-1.14.0
+  version: kubernetes-1.16.0
 - package: k8s.io/client-go
-  version: kubernetes-1.14.0
+  version: kubernetes-1.16.0
 - package: k8s.io/kube-aggregator
-  version: kubernetes-1.14.0
+  version: kubernetes-1.16.0
 - package: k8s.io/code-generator
-  version: kubernetes-1.14.0
+  version: kubernetes-1.16.0
 - package: k8s.io/component-base
-  version: kubernetes-1.14.0
+  version: kubernetes-1.16.0
 
 # openshift
 - package: github.com/openshift/api
@@ -29,10 +29,12 @@ import:
 
 # codegen
 - package: k8s.io/gengo/args
-  version: 01a732e01d00cb9a81bb0ca050d3e6d2b947927b
+  version: 26a664648505d962332bda642b27306bc10d1082
 - package: golang.org/x/tools/imports
 
 # third party
+- package: sigs.k8s.io/structured-merge-diff
+  version: 0c1d754dd6485aa156ff3c8c599079adac6ec82f
 - package: github.com/go-test/deep
   version: master
 

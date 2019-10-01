@@ -19,17 +19,13 @@ import (
 func (s *Server) completion(ctx context.Context, params *protocol.CompletionParams) (*protocol.CompletionList, error) {
 	uri := span.NewURI(params.TextDocument.URI)
 	view := s.session.ViewOf(uri)
+	options := view.Options()
 	f, err := getGoFile(ctx, view, uri)
 	if err != nil {
 		return nil, err
 	}
-	candidates, surrounding, err := source.Completion(ctx, view, f, params.Position, source.CompletionOptions{
-		WantDeepCompletion:    !s.disableDeepCompletion,
-		WantFuzzyMatching:     !s.disableFuzzyMatching,
-		WantDocumentaton:      s.wantCompletionDocumentation,
-		WantFullDocumentation: s.hoverKind == fullDocumentation,
-		WantUnimported:        s.wantUnimportedCompletions,
-	})
+	options.Completion.FullDocumentation = options.HoverKind == source.FullDocumentation
+	candidates, surrounding, err := source.Completion(ctx, view, f, params.Position, options.Completion)
 	if err != nil {
 		log.Print(ctx, "no completions found", tag.Of("At", params.Position), tag.Of("Failure", err))
 	}
@@ -50,12 +46,12 @@ func (s *Server) completion(ctx context.Context, params *protocol.CompletionPara
 	return &protocol.CompletionList{
 		// When using deep completions/fuzzy matching, report results as incomplete so
 		// client fetches updated completions after every key stroke.
-		IsIncomplete: !s.disableDeepCompletion,
-		Items:        s.toProtocolCompletionItems(candidates, rng),
+		IsIncomplete: options.Completion.Deep,
+		Items:        toProtocolCompletionItems(candidates, rng, options),
 	}, nil
 }
 
-func (s *Server) toProtocolCompletionItems(candidates []source.CompletionItem, rng protocol.Range) []protocol.CompletionItem {
+func toProtocolCompletionItems(candidates []source.CompletionItem, rng protocol.Range, options source.Options) []protocol.CompletionItem {
 	var (
 		items                  = make([]protocol.CompletionItem, 0, len(candidates))
 		numDeepCompletionsSeen int
@@ -64,7 +60,7 @@ func (s *Server) toProtocolCompletionItems(candidates []source.CompletionItem, r
 		// Limit the number of deep completions to not overwhelm the user in cases
 		// with dozens of deep completion matches.
 		if candidate.Depth > 0 {
-			if s.disableDeepCompletion {
+			if !options.Completion.Deep {
 				continue
 			}
 			if numDeepCompletionsSeen >= source.MaxDeepCompletions {
@@ -73,18 +69,25 @@ func (s *Server) toProtocolCompletionItems(candidates []source.CompletionItem, r
 			numDeepCompletionsSeen++
 		}
 		insertText := candidate.InsertText
-		if s.insertTextFormat == protocol.SnippetTextFormat {
-			insertText = candidate.Snippet(s.usePlaceholders)
+		if options.InsertTextFormat == protocol.SnippetTextFormat {
+			insertText = candidate.Snippet()
 		}
+
+		// This can happen if the client has snippets disabled but the
+		// candidate only supports snippet insertion.
+		if insertText == "" {
+			continue
+		}
+
 		item := protocol.CompletionItem{
 			Label:  candidate.Label,
 			Detail: candidate.Detail,
-			Kind:   toProtocolCompletionItemKind(candidate.Kind),
+			Kind:   candidate.Kind,
 			TextEdit: &protocol.TextEdit{
 				NewText: insertText,
 				Range:   rng,
 			},
-			InsertTextFormat:    s.insertTextFormat,
+			InsertTextFormat:    options.InsertTextFormat,
 			AdditionalTextEdits: candidate.AdditionalTextEdits,
 			// This is a hack so that the client sorts completion results in the order
 			// according to their score. This can be removed upon the resolution of
@@ -106,29 +109,4 @@ func (s *Server) toProtocolCompletionItems(candidates []source.CompletionItem, r
 		items = append(items, item)
 	}
 	return items
-}
-
-func toProtocolCompletionItemKind(kind source.CompletionItemKind) protocol.CompletionItemKind {
-	switch kind {
-	case source.InterfaceCompletionItem:
-		return protocol.InterfaceCompletion
-	case source.StructCompletionItem:
-		return protocol.StructCompletion
-	case source.TypeCompletionItem:
-		return protocol.TypeParameterCompletion // ??
-	case source.ConstantCompletionItem:
-		return protocol.ConstantCompletion
-	case source.FieldCompletionItem:
-		return protocol.FieldCompletion
-	case source.ParameterCompletionItem, source.VariableCompletionItem:
-		return protocol.VariableCompletion
-	case source.FunctionCompletionItem:
-		return protocol.FunctionCompletion
-	case source.MethodCompletionItem:
-		return protocol.MethodCompletion
-	case source.PackageCompletionItem:
-		return protocol.ModuleCompletion // ??
-	default:
-		return protocol.TextCompletion
-	}
 }

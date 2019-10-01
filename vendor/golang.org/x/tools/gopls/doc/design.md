@@ -2,10 +2,10 @@
 
 ## Goals
 
-* gopls should **become the default editor backend** for the major editors used by Go programmers, fully supported by the Go team.
-* gopls will be a **full implementation of LSP**, as described in the [LSP specification], to standardize as many of its features as possible.
-* gopls will be **clean and extensible** so that it can encompass additional features in the future, allowing Go tooling to become best in class once more.
-* gopls will **support alternate build systems** and file layouts, allowing Go development to be simpler and more powerful in any environment.
+* `gopls` should **become the default editor backend** for the major editors used by Go programmers, fully supported by the Go team.
+* `gopls` will be a **full implementation of LSP**, as described in the [LSP specification], to standardize as many of its features as possible.
+* `gopls` will be **clean and extensible** so that it can encompass additional features in the future, allowing Go tooling to become best in class once more.
+* `gopls` will **support alternate build systems and file layouts**, allowing Go development to be simpler and more powerful in any environment.
 
 
 ## Context
@@ -189,7 +189,7 @@ It could run as a daemon on the user's machine, but there are a lot of issues wi
 Persistent disk caches are very expensive to maintain, and require solving a lot of extra problems.
 Although building the information required is expensive compared to the latencies required of the requests, it is fairly minor compared to the startup times of an editor, so it is expected that rebuilding the information when gopls is restarted will be acceptable.
 
-The advantage gained from this is that gopls becomes stateless across restarts which means if it has issues or gets its state confused, a simle restart will often fix the problem.
+The advantage gained from this is that gopls becomes stateless across restarts which means if it has issues or gets its state confused, a simple restart will often fix the problem.
 It also means that when users report problems, the entire state of the on disk cache is not needed to diagnose and reproduce the issue.
 
 ### Communication: *stdin/stdout JSON*
@@ -220,7 +220,7 @@ Diagnostics | Static analysis results of the code, including compilation and lin
 ----------- | ---
 Requires    | Full go/analysis run, which needs full AST, type and SSA information
 LSP         | [`textDocument/publishDiagnostics`]
-Previous    | go build, go vet, golint, [errcheck], [staticcheck] <!-- TODO: and all the rest -->
+Previous    | `go build`, `go vet`, `golint`, [errcheck], [staticcheck] <!-- TODO: and all the rest -->
 |           | This is one of the most important IDE features, allowing fast turn around without having to run compilers and checkers in the shell. Often used to power problem lists, gutter markers and squiggle underlines in the IDE. <br/> There is some complicated design work to do in order to let users customize the set of checks being run, preferably without having to recompile the main LSP binary.
 
 ---
