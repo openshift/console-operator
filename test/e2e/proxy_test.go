@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	apps1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -61,9 +60,8 @@ func TestProxy(t *testing.T) {
 	}
 
 	t.Logf("waiting for the new console deployment with proxy environment variables...")
-	var newConsoleDeployment *apps1.Deployment
 	err = wait.Poll(1*time.Second, framework.AsyncOperationTimeout, func() (stop bool, err error) {
-		newConsoleDeployment, err = framework.GetConsoleDeployment(client)
+		newConsoleDeployment, err := framework.GetConsoleDeployment(client)
 		if err != nil {
 			return false, err
 		}
@@ -75,12 +73,32 @@ func TestProxy(t *testing.T) {
 		}
 		return false, nil
 	})
-
-	for _, err = range framework.CheckEnvVars(proxyEnvVars["clusterVars"], newConsoleDeployment.Spec.Template.Spec.Containers[0].Env, true) {
-		t.Fatal(err)
-	}
+	err = pollDeploymentForEnv(client, proxyEnvVars["clusterVars"])
 
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func pollDeploymentForEnv(client *framework.ClientSet, clusterVars []corev1.EnvVar) error {
+	counter := 0
+	maxCount := 60
+	err := wait.PollImmediate(1*time.Second, 1*time.Minute, func() (bool, error) {
+		newConsoleDeployment, err := framework.GetConsoleDeployment(client)
+		if err != nil {
+			return false, err
+		}
+		for _, err = range framework.CheckEnvVars(clusterVars, newConsoleDeployment.Spec.Template.Spec.Containers[0].Env, true) {
+			if counter == maxCount {
+				if err != nil {
+					return false, err
+				}
+			}
+			counter++
+			return false, nil
+		}
+		return true, nil
+	})
+
+	return err
 }
