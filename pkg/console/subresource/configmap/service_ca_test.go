@@ -1,8 +1,9 @@
 package configmap
 
 import (
-	"github.com/go-test/deep"
 	"testing"
+
+	"github.com/go-test/deep"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,7 +42,6 @@ func TestDefaultServiceCAConfigMap(t *testing.T) {
 					Labels:                     map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations:                map[string]string{injectCABundleAnnotation: "true"},
 					OwnerReferences:            nil,
-					Initializers:               nil,
 					Finalizers:                 nil,
 				},
 			},
@@ -75,7 +75,6 @@ func TestServiceCAStub(t *testing.T) {
 					Labels:                     map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations:                map[string]string{injectCABundleAnnotation: "true"},
 					OwnerReferences:            nil,
-					Initializers:               nil,
 					Finalizers:                 nil,
 				},
 				Data:       nil,

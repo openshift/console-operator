@@ -66,7 +66,6 @@ func TestDefaultDeployment(t *testing.T) {
 			consoleImageAnnotation:                      "",
 		},
 		OwnerReferences: nil,
-		Initializers:    nil,
 		Finalizers:      nil,
 		ClusterName:     "",
 	}
@@ -87,7 +86,6 @@ func TestDefaultDeployment(t *testing.T) {
 			Labels:                     labels,
 			Annotations:                nil,
 			OwnerReferences:            nil,
-			Initializers:               nil,
 			Finalizers:                 nil,
 			ClusterName:                "",
 		},
@@ -320,7 +318,6 @@ func TestStub(t *testing.T) {
 					DeletionGracePeriodSeconds: nil,
 					Annotations:                map[string]string{},
 					OwnerReferences:            nil,
-					Initializers:               nil,
 					Finalizers:                 nil,
 					ClusterName:                "",
 				},
