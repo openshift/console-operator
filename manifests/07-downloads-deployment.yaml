@@ -59,29 +59,15 @@ spec:
         - '-c'
         - |
           cat <<EOF >>/tmp/serve.py
-          import BaseHTTPServer, os, re, signal, SimpleHTTPServer, socket, sys, tarfile, tempfile, threading, time, zipfile
+          from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
+          from SocketServer import ThreadingMixIn
+          import SimpleHTTPServer, os, re, signal, sys, tarfile, tempfile, zipfile
+          
+          class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+              pass
 
           signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
-
-          # Launch multiple listeners as threads
-          class Thread(threading.Thread):
-              def __init__(self, i, socket):
-                  threading.Thread.__init__(self)
-                  self.i = i
-                  self.socket = socket
-                  self.daemon = True
-                  self.start()
-
-              def run(self):
-                  httpd = BaseHTTPServer.HTTPServer(addr, SimpleHTTPServer.SimpleHTTPRequestHandler, False)
-
-                  # Prevent the HTTP server from re-binding every handler.
-                  # https://stackoverflow.com/questions/46210672/
-                  httpd.socket = self.socket
-                  httpd.server_bind = self.server_close = lambda self: None
-
-                  httpd.serve_forever()
-
+          
           temp_dir = tempfile.mkdtemp()
           print('serving from {}'.format(temp_dir))
           os.chdir(temp_dir)
@@ -89,7 +75,6 @@ spec:
               os.mkdir(arch)
               for operating_system in ['linux', 'mac', 'windows']:
                   os.mkdir(os.path.join(arch, operating_system))
-
           for arch, operating_system, path in [
                   ('amd64', 'linux', '/usr/bin/oc'),
                   ('amd64', 'mac', '/usr/share/openshift/mac/oc'),
@@ -104,16 +89,10 @@ spec:
                   tar.add(path, basename)
               with zipfile.ZipFile('{}.zip'.format(archive_path_root), 'w') as zip:
                   zip.write(path, basename)
-
-          # Create socket
+          
           addr = ('', 8080)
-          sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-          sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-          sock.bind(addr)
-          sock.listen(5)
-
-          [Thread(i, socket=sock) for i in range(100)]
-          time.sleep(9e9)
+          server = ThreadedHTTPServer(addr, SimpleHTTPServer.SimpleHTTPRequestHandler)
+          server.serve_forever()
           EOF
           exec python2 /tmp/serve.py  # the cli image only has Python 2.7
       terminationGracePeriodSeconds: 1
