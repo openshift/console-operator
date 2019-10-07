@@ -1,9 +1,11 @@
-package operator
+package status
 
 import (
 	"bytes"
 	"fmt"
 	"strings"
+
+	v1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 
 	"k8s.io/klog"
 
@@ -34,17 +36,17 @@ import (
 //     Reason: Failedhost
 //     Message: error string value is used as message
 // all degraded suffix conditions will be aggregated into a final "Degraded" status that will be set on the console ClusterOperator
-func (c *consoleOperator) HandleDegraded(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
+func HandleDegraded(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
 	conditionType := typePrefix + operatorsv1.OperatorStatusTypeDegraded
 	handleCondition(operatorConfig, conditionType, reason, err)
 }
 
-func (c *consoleOperator) HandleProgressing(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
+func HandleProgressing(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
 	conditionType := typePrefix + operatorsv1.OperatorStatusTypeProgressing
 	handleCondition(operatorConfig, conditionType, reason, err)
 }
 
-func (c *consoleOperator) HandleAvailable(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
+func HandleAvailable(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
 	conditionType := typePrefix + operatorsv1.OperatorStatusTypeAvailable
 	handleCondition(operatorConfig, conditionType, reason, err)
 }
@@ -56,13 +58,13 @@ func (c *consoleOperator) HandleAvailable(operatorConfig *operatorsv1.Console, t
 // - Type suffix will be set to Degraded
 // TODO: when we eliminate the special case SyncError, this helper can go away.
 // When we do that, however, we must make sure to register deprecated conditions with NewRemoveStaleConditions()
-func (c *consoleOperator) HandleProgressingOrDegraded(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
+func HandleProgressingOrDegraded(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
 	if errors.IsSyncError(err) {
-		c.HandleDegraded(operatorConfig, typePrefix, reason, nil)
-		c.HandleProgressing(operatorConfig, typePrefix, reason, err)
+		HandleDegraded(operatorConfig, typePrefix, reason, nil)
+		HandleProgressing(operatorConfig, typePrefix, reason, err)
 	} else {
-		c.HandleDegraded(operatorConfig, typePrefix, reason, err)
-		c.HandleProgressing(operatorConfig, typePrefix, reason, nil)
+		HandleDegraded(operatorConfig, typePrefix, reason, err)
+		HandleProgressing(operatorConfig, typePrefix, reason, nil)
 	}
 }
 
@@ -110,9 +112,9 @@ func IsDegraded(operatorConfig *operatorsv1.Authentication) bool {
 }
 
 // Lets transition to using this, and get the repetition out of all of the above.
-func (c *consoleOperator) SyncStatus(operatorConfig *operatorsv1.Console) (*operatorsv1.Console, error) {
-	c.logConditions(operatorConfig.Status.Conditions)
-	updatedConfig, err := c.operatorConfigClient.UpdateStatus(operatorConfig)
+func SyncStatus(operatorConfigClient v1.ConsoleInterface, operatorConfig *operatorsv1.Console) (*operatorsv1.Console, error) {
+	logConditions(operatorConfig.Status.Conditions)
+	updatedConfig, err := operatorConfigClient.UpdateStatus(operatorConfig)
 	if err != nil {
 		errMsg := fmt.Errorf("status update error: %v", err)
 		klog.Error(errMsg)
@@ -126,7 +128,7 @@ func (c *consoleOperator) SyncStatus(operatorConfig *operatorsv1.Console) (*oper
 //   Status.Condition.<Condition>: <Bool> (<Reason>)
 //   Status.Condition.<Condition>: <Bool> (<Reason>) <Message>
 //   Status.Condition.<Condition>: <Bool> <Message>
-func (c *consoleOperator) logConditions(conditions []operatorsv1.OperatorCondition) {
+func logConditions(conditions []operatorsv1.OperatorCondition) {
 	klog.V(4).Infoln("Operator.Status.Conditions")
 
 	for _, condition := range conditions {
