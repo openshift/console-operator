@@ -131,22 +131,28 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 
 	// TODO: rearrange these into informer,client pairs, NOT separated.
 	consoleOperator := operator.NewConsoleOperator(
-		// informers
-		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
-		configInformers,                                   // ConsoleConfig
-		kubeInformersNamespaced.Core().V1(),               // Secrets, ConfigMaps, Service
-		kubeInformersManagedNamespaced.Core().V1(),        // Managed ConfigMaps
-		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
-		routesInformersNamespaced.Route().V1().Routes(),   // Route
-		oauthInformers.Oauth().V1().OAuthClients(),        // OAuth clients
-		// clients
-		operatorConfigClient.OperatorV1(),
+		// top level config
 		configClient.ConfigV1(),
+		configInformers,
+		// operator
+		operatorConfigClient.OperatorV1(),
+		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
 
-		kubeClient.CoreV1(), // Secrets, ConfigMaps, Service
+		// core resources
+		kubeClient.CoreV1(),                 // Secrets, ConfigMaps, Service
+		kubeInformersNamespaced.Core().V1(), // Secrets, ConfigMaps, Service
+		// deployments
 		kubeClient.AppsV1(),
+		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
+		// routes
 		routesClient.RouteV1(),
+		routesInformersNamespaced.Route().V1().Routes(), // Route
+		// oauth
 		oauthClient.OauthV1(),
+		oauthInformers.Oauth().V1().OAuthClients(), // OAuth clients
+		// openshift managed
+		kubeInformersManagedNamespaced.Core().V1(), // Managed ConfigMaps
+		// event handling
 		versionGetter,
 		recorder,
 		resourceSyncer,
