@@ -42,7 +42,7 @@ import (
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 
 	// operator
-
+	statushelpers "github.com/openshift/console-operator/pkg/console/status"
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	"github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
@@ -212,18 +212,18 @@ func (c *consoleOperator) handleSync(configs configSet) error {
 	case operatorsv1.Unmanaged:
 		klog.V(4).Infoln("console is in an unmanaged state.")
 		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
-			c.SyncStatus(updatedStatus)
+			statushelpers.SyncStatus(c.operatorConfigClient, updatedStatus)
 		}
 		return nil
 	case operatorsv1.Removed:
 		klog.V(4).Infoln("console has been removed.")
 		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
-			c.SyncStatus(updatedStatus)
+			statushelpers.SyncStatus(c.operatorConfigClient, updatedStatus)
 		}
 		return c.removeConsole(updatedStatus)
 	default:
 		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
-			c.SyncStatus(updatedStatus)
+			statushelpers.SyncStatus(c.operatorConfigClient, updatedStatus)
 		}
 		return fmt.Errorf("console is in an unknown state: %v", updatedStatus.Spec.ManagementState)
 	}
@@ -233,7 +233,7 @@ func (c *consoleOperator) handleSync(configs configSet) error {
 	// finally write out the set of conditions currently set if anything has changed
 	// to avoid a hot loop
 	if !reflect.DeepEqual(updatedStatus, configs.Operator) {
-		c.SyncStatus(updatedStatus)
+		statushelpers.SyncStatus(c.operatorConfigClient, updatedStatus)
 	}
 	return err
 }

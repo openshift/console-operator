@@ -1,4 +1,4 @@
-package operator
+package status
 
 import (
 	"errors"
@@ -58,8 +58,7 @@ func TestHandleDegraded(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			operator := consoleOperator{}
-			operator.HandleDegraded(tt.args.operatorConfig, tt.args.typePrefix, tt.args.errorReason, tt.args.err)
+			HandleDegraded(tt.args.operatorConfig, tt.args.typePrefix, tt.args.errorReason, tt.args.err)
 
 			condition := tt.args.operatorConfig.Status.Conditions[0]
 			// nil the time for easier matching
@@ -117,8 +116,7 @@ func TestHandleProgressing(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			operator := consoleOperator{}
-			operator.HandleProgressing(tt.args.operatorConfig, tt.args.typePrefix, tt.args.errorReason, tt.args.err)
+			HandleProgressing(tt.args.operatorConfig, tt.args.typePrefix, tt.args.errorReason, tt.args.err)
 
 			condition := tt.args.operatorConfig.Status.Conditions[0]
 			// nil the time for easier matching
@@ -216,8 +214,7 @@ func TestHandleProgressingOrDegraded(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			operator := consoleOperator{}
-			operator.HandleProgressingOrDegraded(tt.input.operatorConfig, tt.input.typePrefix, tt.input.errorReason, tt.input.err)
+			HandleProgressingOrDegraded(tt.input.operatorConfig, tt.input.typePrefix, tt.input.errorReason, tt.input.err)
 
 			progressingCondition := operatorv1.OperatorCondition{}
 			degradedCondition := operatorv1.OperatorCondition{}
