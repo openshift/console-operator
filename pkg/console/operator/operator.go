@@ -76,25 +76,28 @@ type consoleOperator struct {
 }
 
 func NewConsoleOperator(
-	// informers
-	operatorConfigInformer operatorinformerv1.ConsoleInformer,
-	configInformer configinformer.SharedInformerFactory,
-
-	coreV1 corev1.Interface,
-	managedCoreV1 corev1.Interface,
-	deployments appsinformersv1.DeploymentInformer,
-	routes routesinformersv1.RouteInformer,
-	oauthClients oauthinformersv1.OAuthClientInformer,
-
-	// clients
-	operatorConfigClient operatorclientv1.OperatorV1Interface,
+	// top level config
 	configClient configclientv1.ConfigV1Interface,
+	configInformer configinformer.SharedInformerFactory,
+	// operator
+	operatorConfigClient operatorclientv1.OperatorV1Interface,
+	operatorConfigInformer operatorinformerv1.ConsoleInformer,
+	// core resources
 	corev1Client coreclientv1.CoreV1Interface,
+	coreV1 corev1.Interface,
+	// deployments
 	deploymentClient appsv1.DeploymentsGetter,
+	deployments appsinformersv1.DeploymentInformer,
+	// routes
 	routev1Client routeclientv1.RoutesGetter,
+	routes routesinformersv1.RouteInformer,
+	// oauth
 	oauthv1Client oauthclientv1.OAuthClientsGetter,
+	oauthClients oauthinformersv1.OAuthClientInformer,
+	// openshift managed
+	managedCoreV1 corev1.Interface,
+	// event handling
 	versionGetter status.VersionGetter,
-	// recorder
 	recorder events.Recorder,
 	resourceSyncer resourcesynccontroller.ResourceSyncer,
 ) operator.Runner {
