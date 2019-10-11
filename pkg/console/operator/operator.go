@@ -223,7 +223,7 @@ func (c *consoleOperator) handleSync(configs configSet) error {
 		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
 			statushelpers.SyncStatus(c.operatorConfigClient, updatedStatus)
 		}
-		return c.removeConsole(updatedStatus)
+		return c.removeConsole()
 	default:
 		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
 			statushelpers.SyncStatus(c.operatorConfigClient, updatedStatus)
@@ -242,7 +242,7 @@ func (c *consoleOperator) handleSync(configs configSet) error {
 }
 
 // this may need to move to sync_v400 if versions ever have custom delete logic
-func (c *consoleOperator) removeConsole(cr *operatorsv1.Console) error {
+func (c *consoleOperator) removeConsole() error {
 	klog.V(2).Info("deleting console resources")
 	defer klog.V(2).Info("finished deleting console resources")
 	var errs []error
