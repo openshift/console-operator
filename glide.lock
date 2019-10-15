@@ -1,5 +1,5 @@
-hash: 66bf33dd9847c2a9505b6ed4718d2382a5eb0ffbd8bcf887bef4839b2add9485
-updated: 2019-10-01T13:09:11.533715+02:00
+hash: 7e5fe32d8ca78dbbd33415822edec2f0360b46143e14fc119dfacdc4d4a398b0
+updated: 2019-10-11T16:19:53.051843-04:00
 imports:
 - name: github.com/beorn7/perks
   version: 3a771d992973f24aa725d07868b467d1ddfceafb
@@ -39,7 +39,7 @@ imports:
   subpackages:
   - capnslog
 - name: github.com/davecgh/go-spew
-  version: 8991bc29aa16c548c550c7ff78260e27b9ab7c73
+  version: 782f4967f2dc4564575ca782fe2d04090b5faca8
   subpackages:
   - spew
 - name: github.com/emicklei/go-restful
@@ -112,8 +112,6 @@ imports:
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/json-iterator/go
   version: 27518f6661eba504be5a7a9a9f6d9460d892ade3
-- name: github.com/konsorten/go-windows-terminal-sequences
-  version: 5c8c8bd35d3832f5d134ae1e1e375b69a4d25242
 - name: github.com/mailru/easyjson
   version: d5b7844b561a7bc640052f1b935f7b800330d7e0
   subpackages:
@@ -133,7 +131,7 @@ imports:
 - name: github.com/NYTimes/gziphandler
   version: 56545f4a5d46df9a6648819d1664c3a03a13ffdb
 - name: github.com/openshift/api
-  version: d35a8e0fef2b28744b7034f0945a847f880f83ac
+  version: 58aab2885e38fd7f4fd57f2615f5f9fe38039e22
   subpackages:
   - apps
   - apps/v1
@@ -179,7 +177,7 @@ imports:
   - webconsole
   - webconsole/v1
 - name: github.com/openshift/client-go
-  version: 3b0e988f8cb09a07f375dfc304b86c1a81cbc82b
+  version: 5a5508328169b8a6992ea4ef711add89ddce3c6d
   subpackages:
   - config/clientset/versioned
   - config/clientset/versioned/scheme
@@ -217,7 +215,7 @@ imports:
   - route/informers/externalversions/route/v1
   - route/listers/route/v1
 - name: github.com/openshift/library-go
-  version: c355e2019bb35b1ae2b060208fdad8b488c28838
+  version: 561033d0c33228687e7d942a7e03e0da3456c7af
   subpackages:
   - pkg/config/client
   - pkg/config/clusteroperator/v1helpers
@@ -240,6 +238,8 @@ imports:
   - pkg/operator/unsupportedconfigoverridescontroller
   - pkg/operator/v1helpers
   - pkg/serviceability
+- name: github.com/openshift/operator-boilerplate
+  version: 6c1da56b7d1a962faf8172183a1945f90dfd5f9c
 - name: github.com/pborman/uuid
   version: 8b1b92947f46224e3b97bb1a3a5b0382be00d31e
 - name: github.com/pkg/profile
@@ -248,7 +248,6 @@ imports:
   version: 505eaef017263e299324067d40ca2c48f6a2cf50
   subpackages:
   - prometheus
-  - prometheus/internal
   - prometheus/promhttp
 - name: github.com/prometheus/client_model
   version: 5c3871d89910bfb32f5fcab2aa4b9ec68e65a99f
@@ -271,11 +270,11 @@ imports:
 - name: github.com/PuerkitoBio/urlesc
   version: 5bd2802263f21d8788851d5305584c82a5c75d7e
 - name: github.com/sirupsen/logrus
-  version: 839c75faf7f98a33d445d181f3018b5c3409a45e
+  version: 89742aefa4b206dcf400792f3bd35b542998eb3b
 - name: github.com/spf13/cobra
-  version: 19cf35ea77e5981f8e8b90a897af621f2be864f6
+  version: c439c4fa093711d42e1b01acb1235b52004753c1
 - name: github.com/spf13/pflag
-  version: 2e9d26c8c37aae03e3f9d4e90b7116f5accb7cab
+  version: 583c0c0531f06d5278b7d917446061adc344b5cd
 - name: go.uber.org/atomic
   version: 8dc6146f7569370a472715e178d8ae31172ee6da
 - name: go.uber.org/multierr
@@ -340,7 +339,7 @@ imports:
   subpackages:
   - rate
 - name: golang.org/x/tools
-  version: 7c411dea38b0106295d041581abb0a958e571b7d
+  version: 59731289e9179b93dc7b5392c6a0fdb9774f5ec0
   subpackages:
   - imports
 - name: google.golang.org/appengine
@@ -442,10 +441,9 @@ imports:
   - storage/v1alpha1
   - storage/v1beta1
 - name: k8s.io/apiextensions-apiserver
-  version: 8f644eb6e783291c4b8cb8cb25a9983be1a74f5c
+  version: 53c4693659ed354d76121458fb819202dd1635fa
   subpackages:
   - pkg/apis/apiextensions
-  - pkg/apis/apiextensions/v1
   - pkg/apis/apiextensions/v1beta1
   - pkg/client/clientset/clientset/scheme
   - pkg/client/clientset/clientset/typed/apiextensions/v1beta1
