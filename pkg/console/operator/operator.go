@@ -22,13 +22,15 @@ import (
 	oauthinformersv1 "github.com/openshift/client-go/oauth/informers/externalversions/oauth/v1"
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/vendor.bak/github.com/openshift/operator-boilerplate/openshift/operator"
 
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/status"
 
-	"monis.app/go/openshift/operator"
+
+	"github.com/openshift/operator-boilerplate/openshift/operator"
 
 	// informers
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
