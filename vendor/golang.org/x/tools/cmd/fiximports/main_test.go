@@ -16,8 +16,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-
-	"golang.org/x/tools/internal/testenv"
 )
 
 // TODO(adonovan):
@@ -54,8 +52,6 @@ func init() {
 }
 
 func TestFixImports(t *testing.T) {
-	testenv.NeedsTool(t, "go")
-
 	defer func() {
 		stderr = os.Stderr
 		*badDomains = "code.google.com"
@@ -243,8 +239,6 @@ import (
 
 // TestDryRun tests that the -n flag suppresses calls to writeFile.
 func TestDryRun(t *testing.T) {
-	testenv.NeedsTool(t, "go")
-
 	*dryrun = true
 	defer func() { *dryrun = false }() // restore
 	stderr = new(bytes.Buffer)

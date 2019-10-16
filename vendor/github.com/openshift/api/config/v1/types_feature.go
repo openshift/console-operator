@@ -103,9 +103,12 @@ var FeatureSets = map[FeatureSet]*FeatureGateEnabledDisabled{
 			"ExperimentalCriticalPodAnnotation", // sig-pod, sjenning
 			"RotateKubeletServerCertificate",    // sig-pod, sjenning
 			"SupportPodPidsLimit",               // sig-pod, sjenning
+			"TLSSecurityProfile",                // sig-network, danehans
+			"NodeDisruptionExclusion",           // sig-scheduling, ccoleman
+			"ServiceNodeExclusion",              // sig-scheduling, ccoleman
 		},
 		Disabled: []string{
-			"LocalStorageCapacityIsolation", // sig-pod, sjenning
+			"LegacyNodeRoleBehavior", // sig-scheduling, ccoleman
 		},
 	},
 	CustomNoUpgrade: {
@@ -117,9 +120,12 @@ var FeatureSets = map[FeatureSet]*FeatureGateEnabledDisabled{
 			"ExperimentalCriticalPodAnnotation", // sig-pod, sjenning
 			"RotateKubeletServerCertificate",    // sig-pod, sjenning
 			"SupportPodPidsLimit",               // sig-pod, sjenning
+			"TLSSecurityProfile",                // sig-network, danehans
+			"NodeDisruptionExclusion",           // sig-scheduling, ccoleman
+			"ServiceNodeExclusion",              // sig-scheduling, ccoleman
 		},
 		Disabled: []string{
-			"LocalStorageCapacityIsolation", // sig-pod, sjenning
+			"LegacyNodeRoleBehavior", // sig-scheduling, ccoleman
 		},
 	},
 	LatencySensitive: {
@@ -128,9 +134,11 @@ var FeatureSets = map[FeatureSet]*FeatureGateEnabledDisabled{
 			"RotateKubeletServerCertificate",    // sig-pod, sjenning
 			"SupportPodPidsLimit",               // sig-pod, sjenning
 			"TopologyManager",                   // sig-pod, sjenning
+			"NodeDisruptionExclusion",           // sig-scheduling, ccoleman
+			"ServiceNodeExclusion",              // sig-scheduling, ccoleman
 		},
 		Disabled: []string{
-			"LocalStorageCapacityIsolation", // sig-pod, sjenning
+			"LegacyNodeRoleBehavior", // sig-scheduling, ccoleman
 		},
 	},
 }

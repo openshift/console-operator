@@ -14,8 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"golang.org/x/tools/internal/testenv"
 )
 
 var haveCGO bool
@@ -34,7 +32,6 @@ func TestGeneratedFiles(t *testing.T) {
 	if !haveCGO {
 		t.Skipf("skipping test: no cgo")
 	}
-	testenv.NeedsTool(t, "go")
 
 	tmp, bin, cleanup := buildGorename(t)
 	defer cleanup()
