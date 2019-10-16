@@ -13,9 +13,9 @@ spec:
   subresources:
     status: {}
   versions:
-    - name: v1
-      served: true
-      storage: true
+  - name: v1
+    served: true
+    storage: true
   validation:
     openAPIV3Schema:
       properties:
@@ -31,15 +31,18 @@ spec:
                 documentationBaseURL:
                   pattern: ^$|^((https):\/\/?)[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|\/?))\/$
                   type: string
-                  description: Documentation base url can optionally be set but must end in a trailing slash
+                  description: Documentation base url can optionally be set but must
+                    end in a trailing slash
                 brand:
                   pattern: ^$|^(ocp|origin|okd|dedicated|online|azure)$
                   type: string
-                  description: Brand may be optionally set to one of six values - azure|dedicated|ocp|okd|online|origin
+                  description: Brand may be optionally set to one of six values -
+                    azure|dedicated|ocp|okd|online|origin
             providers:
               properties:
                 statuspage:
                   properties:
                     pageID:
                       type: string
-                      description: Contains ID for statuspage.io page that provides status info about.
+                      description: Contains ID for statuspage.io page that provides
+                        status info about.

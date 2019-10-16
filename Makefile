@@ -8,6 +8,19 @@
 #   run: Run all-in-one server
 #   clean: Clean up.
 
+# Include the library makefile
+include $(addprefix ./vendor/github.com/openshift/library-go/alpha-build-machinery/make/, \
+	golang.mk \
+	targets/openshift/deps.mk \
+	targets/openshift/images.mk \
+	targets/openshift/crd-schema-gen.mk \
+)
+
+CRD_SCHEMA_GEN_APIS := ./vendor/github.com/openshift/api/console/v1
+CRD_SCHEMA_GEN_VERSION :=v0.2.1
+
+$(call add-crd-gen,manifests,$(CRD_SCHEMA_GEN_APIS),./manifests,./manifests)
+
 OUT_DIR = _output
 OS_OUTPUT_GOPATH ?= 1
 
@@ -112,3 +125,11 @@ clean:
 update-deps:
 	hack/update-deps.sh
 .PHONY: update-deps
+
+# Some commands are inherited, run:
+#  make help
+# For example:
+#  make update-codgen
+#  make update-codegen-crds
+#  make verify-codegen-crds
+#  etc
