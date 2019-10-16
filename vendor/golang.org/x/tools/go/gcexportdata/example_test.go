@@ -51,12 +51,7 @@ func ExampleRead() {
 	}
 
 	// Print package information.
-	members := pkg.Scope().Names()
-	if members[0] == ".inittask" {
-		// An improvement to init handling in 1.13 added ".inittask". Remove so go >= 1.13 and go < 1.13 both pass.
-		members = members[1:]
-	}
-	fmt.Printf("Package members:    %s...\n", members[:5])
+	fmt.Printf("Package members:    %s...\n", pkg.Scope().Names()[:5])
 	println := pkg.Scope().Lookup("Println")
 	posn := fset.Position(println.Pos())
 	posn.Line = 123 // make example deterministic
@@ -80,7 +75,7 @@ func ExampleNewImporter() {
 // choosing a package that doesn't change across releases
 import "net/rpc"
 
-const serverError rpc.ServerError = ""
+const defaultRPCPath = rpc.DefaultRPCPath
 `
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "myrpc.go", src, 0)
@@ -97,16 +92,17 @@ const serverError rpc.ServerError = ""
 	}
 
 	// object from imported package
-	pi := packages["net/rpc"].Scope().Lookup("ServerError")
-	fmt.Printf("type %s.%s %s // %s\n",
+	pi := packages["net/rpc"].Scope().Lookup("DefaultRPCPath")
+	fmt.Printf("const %s.%s %s = %s // %s\n",
 		pi.Pkg().Path(),
 		pi.Name(),
-		pi.Type().Underlying(),
+		pi.Type(),
+		pi.(*types.Const).Val(),
 		slashify(fset.Position(pi.Pos())),
 	)
 
 	// object in source package
-	twopi := pkg.Scope().Lookup("serverError")
+	twopi := pkg.Scope().Lookup("defaultRPCPath")
 	fmt.Printf("const %s %s = %s // %s\n",
 		twopi.Name(),
 		twopi.Type(),
@@ -116,8 +112,8 @@ const serverError rpc.ServerError = ""
 
 	// Output:
 	//
-	// type net/rpc.ServerError string // $GOROOT/src/net/rpc/client.go:20:1
-	// const serverError net/rpc.ServerError = "" // myrpc.go:6:7
+	// const net/rpc.DefaultRPCPath untyped string = "/_goRPC_" // $GOROOT/src/net/rpc/server.go:146:1
+	// const defaultRPCPath untyped string = "/_goRPC_" // myrpc.go:6:7
 }
 
 func slashify(posn token.Position) token.Position {

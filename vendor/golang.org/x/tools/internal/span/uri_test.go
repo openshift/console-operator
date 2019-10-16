@@ -17,33 +17,32 @@ import (
 // functions filepath.ToSlash and filepath.FromSlash do not need testing.
 func TestURI(t *testing.T) {
 	for _, test := range []string{
-		``,
 		`C:/Windows/System32`,
 		`C:/Go/src/bob.go`,
 		`c:/Go/src/bob.go`,
 		`/path/to/dir`,
 		`/a/b/c/src/bob.go`,
-		`c:/Go/src/bob george/george/george.go`,
 	} {
 		testPath := filepath.FromSlash(test)
 		expectPath := testPath
-		if len(test) > 0 && test[0] == '/' {
+		if test[0] == '/' {
 			if abs, err := filepath.Abs(expectPath); err == nil {
 				expectPath = abs
 			}
 		}
 		expectURI := filepath.ToSlash(expectPath)
-		if len(expectURI) > 0 {
-			if expectURI[0] != '/' {
-				expectURI = "/" + expectURI
-			}
-			expectURI = "file://" + expectURI
+		if expectURI[0] != '/' {
+			expectURI = "/" + expectURI
 		}
+		expectURI = "file://" + expectURI
 		uri := span.FileURI(testPath)
 		if expectURI != string(uri) {
 			t.Errorf("ToURI: expected %s, got %s", expectURI, uri)
 		}
-		filename := uri.Filename()
+		filename, err := uri.Filename()
+		if err != nil {
+			t.Fatal(err)
+		}
 		if expectPath != filename {
 			t.Errorf("Filename: expected %s, got %s", expectPath, filename)
 		}
