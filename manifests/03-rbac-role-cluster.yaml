@@ -56,3 +56,14 @@ rules:
   - create
   - update
   - delete
+- apiGroups:
+  - console.openshift.io
+  resources:
+  - consoleclidownloads
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete

@@ -18,6 +18,7 @@ const (
 	OpenShiftConsoleDeploymentName      = OpenShiftConsoleName
 	OpenShiftConsoleServiceName         = OpenShiftConsoleName
 	OpenShiftConsoleRouteName           = OpenShiftConsoleName
+	OpenShiftConsoleDownloadsRouteName  = "downloads"
 	OAuthClientName                     = OpenShiftConsoleName
 	OpenShiftConfigManagedNamespace     = "openshift-config-managed"
 	OpenShiftConfigNamespace            = "openshift-config"

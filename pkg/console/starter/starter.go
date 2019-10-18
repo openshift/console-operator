@@ -17,6 +17,7 @@ import (
 	"github.com/openshift/api/oauth"
 	operatorv1 "github.com/openshift/api/operator"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/management"
@@ -39,6 +40,10 @@ import (
 	routesclient "github.com/openshift/client-go/route/clientset/versioned"
 	routesinformers "github.com/openshift/client-go/route/informers/externalversions"
 
+	consolev1client "github.com/openshift/client-go/console/clientset/versioned"
+	// consolev1client "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
+	consoleinformers "github.com/openshift/client-go/console/informers/externalversions"
+
 	"github.com/openshift/console-operator/pkg/console/clientwrapper"
 	"github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/library-go/pkg/operator/loglevel"
@@ -57,6 +62,11 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	}
 
 	operatorConfigClient, err := operatorversionedclient.NewForConfig(ctx.KubeConfig)
+	if err != nil {
+		return err
+	}
+
+	consoleClient, err := consolev1client.NewForConfig(ctx.KubeConfig)
 	if err != nil {
 		return err
 	}
@@ -118,6 +128,11 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		oauthinformers.WithTweakListOptions(tweakListOptionsForOAuth),
 	)
 
+	consoleInformers := consoleinformers.NewSharedInformerFactory(
+		consoleClient,
+		resync,
+	)
+
 	operatorClient := &operatorclient.OperatorClient{
 		Informers: operatorConfigInformers,
 		Client:    operatorConfigClient.OperatorV1(),
@@ -156,6 +171,21 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		versionGetter,
 		recorder,
 		resourceSyncer,
+	)
+
+	cliDownloadsController := clidownloads.NewCLIDownloadsSyncController(
+		// clients
+		operatorClient,
+		operatorConfigClient.OperatorV1(),
+		consoleClient.ConsoleV1().ConsoleCLIDownloads(),
+		routesClient.RouteV1(),
+
+		// informers
+		operatorConfigInformers.Operator().V1().Consoles(),    // OperatorConfig
+		consoleInformers.Console().V1().ConsoleCLIDownloads(), // ConsoleCliDownloads
+		routesInformersNamespaced.Route().V1().Routes(),       // Routes
+		// recorder
+		recorder,
 	)
 
 	versionRecorder := status.NewVersionGetter()
@@ -208,6 +238,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		kubeInformersManagedNamespaced,
 		resourceSyncerInformers,
 		operatorConfigInformers,
+		consoleInformers,
 		configInformers,
 		routesInformersNamespaced,
 		oauthInformers,
@@ -221,6 +252,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	go configUpgradeableController.Run(1, ctx.Done())
 	go logLevelController.Run(1, ctx.Done())
 	go managementStateController.Run(1, ctx.Done())
+	go cliDownloadsController.Run(1, ctx.Done())
 	go staleConditionsController.Run(1, ctx.Done())
 
 	<-ctx.Done()

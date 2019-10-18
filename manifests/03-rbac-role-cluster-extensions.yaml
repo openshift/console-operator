@@ -9,9 +9,9 @@ rules:
   - console.openshift.io
   resources:
   - consolelinks
-  - consoleclidownloads
   - consolenotifications
   - consoleexternalloglinks
+  - consoleclidownloads
   verbs:
   - get
   - list
