@@ -5,6 +5,7 @@ import (
 
 	operatorsv1 "github.com/openshift/api/operator/v1"
 
+	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/test/e2e/framework"
 )
 
@@ -55,6 +56,21 @@ func TestEditManagedRoute(t *testing.T) {
 	defer cleanupManagedTestCase(t, client)
 
 	err := patchAndCheckRoute(t, client, true)
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
+}
+
+func TestEditManagedConsoleCLIDownloads(t *testing.T) {
+	client, _ := setupManagedTestCase(t)
+	defer cleanupManagedTestCase(t, client)
+
+	err := patchAndCheckConsoleCLIDownloads(t, client, true, api.OCCLIDownloadsCustomResourceName)
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
+
+	err = patchAndCheckConsoleCLIDownloads(t, client, true, api.ODOCLIDownloadsCustomResourceName)
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}

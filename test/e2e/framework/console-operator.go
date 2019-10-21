@@ -164,6 +164,7 @@ func removeConsole(t *testing.T, client *ClientSet) error {
 
 	return nil
 }
+
 func MustManageConsole(t *testing.T, client *ClientSet) error {
 	t.Helper()
 	if err := manageConsole(t, client); err != nil {

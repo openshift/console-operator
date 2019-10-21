@@ -6,6 +6,7 @@ import (
 	"time"
 
 	configv1 "github.com/openshift/api/config/v1"
+	consolev1 "github.com/openshift/api/console/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	appv1 "k8s.io/api/apps/v1"
@@ -40,7 +41,7 @@ func ResetClusterProxyConfig(client *ClientSet) error {
 }
 
 func DeleteAll(t *testing.T, client *ClientSet) {
-	resources := []string{"Deployment", "Service", "Route", "ConfigMap"}
+	resources := []string{"Deployment", "Service", "Route", "ConfigMap", "OCCLIDownloads", "ODOCLIDownloads"}
 
 	for _, resource := range resources {
 		t.Logf("deleting console %s...", resource)
@@ -69,6 +70,10 @@ func GetResource(client *ClientSet, resource string) (runtime.Object, error) {
 		res, err = GetConsoleService(client)
 	case "Route":
 		res, err = GetConsoleRoute(client)
+	case "OCCLIDownloads":
+		res, err = GetConsoleCLIDownloads(client, consoleapi.OCCLIDownloadsCustomResourceName)
+	case "ODOCLIDownloads":
+		res, err = GetConsoleCLIDownloads(client, consoleapi.ODOCLIDownloadsCustomResourceName)
 	case "Deployment":
 		fallthrough
 	default:
@@ -107,8 +112,11 @@ func GetConsoleRoute(client *ClientSet) (*routev1.Route, error) {
 }
 
 func GetConsoleDeployment(client *ClientSet) (*appv1.Deployment, error) {
-	deployment, err := client.Apps.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleDeploymentName, metav1.GetOptions{})
-	return deployment, err
+	return client.Apps.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleDeploymentName, metav1.GetOptions{})
+}
+
+func GetConsoleCLIDownloads(client *ClientSet, consoleCLIDownloadName string) (*consolev1.ConsoleCLIDownload, error) {
+	return client.ConsoleCliDownloads.Get(consoleCLIDownloadName, metav1.GetOptions{})
 }
 
 func deleteResource(client *ClientSet, resource string) error {
@@ -120,6 +128,10 @@ func deleteResource(client *ClientSet, resource string) error {
 		err = client.Core.Services(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleServiceName, &metav1.DeleteOptions{})
 	case "Route":
 		err = client.Routes.Routes(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleRouteName, &metav1.DeleteOptions{})
+	case "OCCLIDownloads":
+		err = client.ConsoleCliDownloads.Delete(consoleapi.OCCLIDownloadsCustomResourceName, &metav1.DeleteOptions{})
+	case "ODOCLIDownloads":
+		err = client.ConsoleCliDownloads.Delete(consoleapi.ODOCLIDownloadsCustomResourceName, &metav1.DeleteOptions{})
 	case "Deployment":
 		fallthrough
 	default:
@@ -177,6 +189,8 @@ func ConsoleResourcesAvailable(client *ClientSet) error {
 	go IsResourceAvailable(errChan, client, "Route")
 	go IsResourceAvailable(errChan, client, "Service")
 	go IsResourceAvailable(errChan, client, "Deployment")
+	go IsResourceAvailable(errChan, client, "OCCLIDownloads")
+	go IsResourceAvailable(errChan, client, "ODOCLIDownloads")
 	checkErr := <-errChan
 
 	return checkErr
@@ -210,6 +224,8 @@ func ConsoleResourcesUnavailable(client *ClientSet) error {
 	go IsResourceUnavailable(errChan, client, "Route")
 	go IsResourceUnavailable(errChan, client, "Service")
 	go IsResourceUnavailable(errChan, client, "Deployment")
+	go IsResourceUnavailable(errChan, client, "OCCLIDownloads")
+	go IsResourceUnavailable(errChan, client, "ODOCLIDownloads")
 	checkErr := <-errChan
 
 	return checkErr

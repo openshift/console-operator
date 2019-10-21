@@ -90,3 +90,26 @@ func patchAndCheckRoute(t *testing.T, client *framework.ClientSet, isOperatorMan
 	})
 	return err
 }
+
+func patchAndCheckConsoleCLIDownloads(t *testing.T, client *framework.ClientSet, isOperatorManaged bool, consoleCLIDownloadName string) error {
+	t.Logf("patching DisplayName on the %s ConsoleCLIDownloads custom resource", consoleCLIDownloadName)
+	consoleCLIDownload, err := client.ConsoleCliDownloads.Patch(consoleCLIDownloadName, types.MergePatchType, []byte(`{"spec": {"displayName": "test"}}`))
+	if err != nil {
+		return err
+	}
+	patchedData := consoleCLIDownload.Spec.DisplayName
+
+	t.Logf("polling for patched DisplayName on the %s ConsoleCLIDownloads custom resource", consoleCLIDownloadName)
+	err = wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
+		consoleCLIDownload, err = framework.GetConsoleCLIDownloads(client, consoleCLIDownloadName)
+		if err != nil {
+			return true, err
+		}
+		newData := consoleCLIDownload.Spec.DisplayName
+		if isOperatorManaged {
+			return !reflect.DeepEqual(patchedData, newData), nil
+		}
+		return reflect.DeepEqual(patchedData, newData), nil
+	})
+	return err
+}

@@ -3,6 +3,7 @@ package e2e
 import (
 	"testing"
 
+	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/test/e2e/framework"
 )
 
@@ -55,6 +56,21 @@ func TestEditUnmanagedRoute(t *testing.T) {
 	defer cleanUpUnmanagedTestCase(t, client)
 
 	err := patchAndCheckRoute(t, client, false)
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
+}
+
+func TestEditUnmanagedConsoleCLIDownloads(t *testing.T) {
+	client, _ := setupManagedTestCase(t)
+	defer cleanupManagedTestCase(t, client)
+
+	err := patchAndCheckConsoleCLIDownloads(t, client, false, api.OCCLIDownloadsCustomResourceName)
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
+
+	err = patchAndCheckConsoleCLIDownloads(t, client, false, api.ODOCLIDownloadsCustomResourceName)
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}
