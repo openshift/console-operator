@@ -84,7 +84,7 @@ func TestPlatformBasedOCConsoleCLIDownloads(t *testing.T) {
 The oc binary offers the same capabilities as the kubectl binary, but it is further extended to natively support OpenShift Container Platform features.
 `,
 					DisplayName: "oc - OpenShift Command Line Interface (CLI)",
-					Links: []v1.Link{
+					Links: []v1.CLIDownloadLink{
 						{
 							Href: "https://www.example.com/amd64/linux/oc.tar",
 							Text: "Download oc for Linux",
