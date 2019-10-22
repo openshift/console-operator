@@ -35,7 +35,6 @@ import (
 	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
 	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
-	servicesub "github.com/openshift/console-operator/pkg/console/subresource/service"
 )
 
 var (
@@ -67,13 +66,6 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	status.HandleProgressingOrDegraded(updatedOperatorConfig, "RouteSync", rtErrReason, rtErr)
 	if rtErr != nil {
 		return rtErr
-	}
-
-	svc, svcChanged, svcErrReason, svcErr := co.SyncService(set.Operator)
-	toUpdate = toUpdate || svcChanged
-	status.HandleProgressingOrDegraded(updatedOperatorConfig, "ServiceSync", svcErrReason, svcErr)
-	if svcErr != nil {
-		return svcErr
 	}
 
 	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(set.Operator, set.Console, set.Infrastructure, rt)
@@ -186,9 +178,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 
 	defer func() {
 		klog.V(4).Infof("sync loop 4.0.0 complete")
-		if svcChanged {
-			klog.V(4).Infof("\t service changed: %v", svc.GetResourceVersion())
-		}
+
 		if rtChanged {
 			klog.V(4).Infof("\t route changed: %v", rt.GetResourceVersion())
 		}
@@ -394,16 +384,6 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(operatorConfig *operatorv1.Con
 	}
 	klog.V(4).Infoln("trusted-ca-bundle configmap updated")
 	return actual, true, "", err
-}
-
-// apply service
-// there is nothing special about our service, so no additional error handling is needed here.
-func (co *consoleOperator) SyncService(operatorConfig *operatorv1.Console) (consoleService *corev1.Service, changed bool, reason string, err error) {
-	svc, svcChanged, svcErr := resourceapply.ApplyService(co.serviceClient, co.recorder, servicesub.DefaultService(operatorConfig))
-	if svcErr != nil {
-		return nil, false, "FailedApply", svcErr
-	}
-	return svc, svcChanged, "", svcErr
 }
 
 // apply route

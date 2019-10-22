@@ -45,6 +45,7 @@ import (
 	consoleinformers "github.com/openshift/client-go/console/informers/externalversions"
 
 	"github.com/openshift/console-operator/pkg/console/clientwrapper"
+	"github.com/openshift/console-operator/pkg/console/controllers/service"
 	"github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/library-go/pkg/operator/loglevel"
 )
@@ -172,7 +173,6 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		recorder,
 		resourceSyncer,
 	)
-
 	cliDownloadsController := clidownloads.NewCLIDownloadsSyncController(
 		// clients
 		operatorClient,
@@ -185,6 +185,19 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		consoleInformers.Console().V1().ConsoleCLIDownloads(), // ConsoleCliDownloads
 		routesInformersNamespaced.Route().V1().Routes(),       // Routes
 		// recorder
+		recorder,
+	)
+
+	consoleServiceController := service.NewServiceSyncController(
+		// operator config so we can update status
+		operatorConfigClient.OperatorV1().Consoles(),
+		// only needs to interact with the service resource
+		kubeClient.CoreV1(),
+		kubeInformersNamespaced.Core().V1().Services(),
+		// names
+		api.OpenShiftConsoleNamespace,
+		api.OpenShiftConsoleName,
+		// events
 		recorder,
 	)
 
@@ -246,6 +259,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		informer.Start(ctx.Done())
 	}
 
+	go consoleServiceController.Run(1, ctx.Done())
 	go consoleOperator.Run(ctx.Done())
 	go resourceSyncer.Run(1, ctx.Done())
 	go clusterOperatorStatus.Run(1, ctx.Done())
