@@ -8,35 +8,36 @@ metadata:
       (CLI) downloads.
 spec:
   scope: Cluster
+  preserveUnknownField: false
   group: console.openshift.io
   versions:
-    - name: v1
-      served: true
-      storage: true
+  - name: v1
+    served: true
+    storage: true
   names:
     plural: consoleclidownloads
     singular: consoleclidownload
     kind: ConsoleCLIDownload
     listKind: ConsoleCLIDownloadList
   additionalPrinterColumns:
-    - name: Display name
-      type: string
-      JSONPath: .spec.displayName
-    - name: Age
-      type: string
-      JSONPath: .metadata.creationTimestamp
-    - name: Description
-      type: string
-      JSONPath: .spec.description
+  - name: Display name
+    type: string
+    JSONPath: .spec.displayName
+  - name: Age
+    type: string
+    JSONPath: .metadata.creationTimestamp
+  - name: Description
+    type: string
+    JSONPath: .spec.description
   subresources:
     status: {}
-  validation:
-    openAPIV3Schema:
+  "validation":
+    "openAPIV3Schema":
       description: ConsoleCLIDownload is an extension for configuring openshift web
         console command line interface (CLI) downloads.
       type: object
       required:
-        - spec
+      - spec
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -49,15 +50,14 @@ spec:
             submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
           type: string
         metadata:
-          description: Standard object's metadata.
           type: object
         spec:
           description: ConsoleCLIDownloadSpec is the desired cli download configuration.
           type: object
           required:
-            - description
-            - displayName
-            - links
+          - description
+          - displayName
+          - links
           properties:
             description:
               description: description is the description of the CLI download (can
@@ -73,13 +73,13 @@ spec:
               items:
                 type: object
                 required:
-                  - href
+                - href
                 properties:
                   href:
                     description: href is the absolute secure URL for the link (must
                       use https)
                     type: string
-                    pattern: ^https://([\w-]+.)+[\w-]+(/[\w- ./?%&=])?$
+                    pattern: ^https://
                   text:
                     description: text is the display text for the link
                     type: string

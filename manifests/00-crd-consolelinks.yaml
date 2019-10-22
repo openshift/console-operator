@@ -7,38 +7,39 @@ metadata:
     description: Extension for customizing OpenShift web console links
 spec:
   scope: Cluster
+  preserveUnknownField: false
   group: console.openshift.io
   versions:
-    - name: v1
-      served: true
-      storage: true
+  - name: v1
+    served: true
+    storage: true
   names:
     plural: consolelinks
     singular: consolelink
     kind: ConsoleLink
     listKind: ConsoleLinkList
   additionalPrinterColumns:
-    - name: Text
-      type: string
-      JSONPath: .spec.text
-    - name: URL
-      type: string
-      JSONPath: .spec.href
-    - name: Menu
-      type: string
-      JSONPath: .spec.menu
-    - name: Age
-      type: date
-      JSONPath: .metadata.creationTimestamp
+  - name: Text
+    type: string
+    JSONPath: .spec.text
+  - name: URL
+    type: string
+    JSONPath: .spec.href
+  - name: Menu
+    type: string
+    JSONPath: .spec.menu
+  - name: Age
+    type: date
+    JSONPath: .metadata.creationTimestamp
   subresources:
     status: {}
-  validation:
-    openAPIV3Schema:
+  "validation":
+    "openAPIV3Schema":
       description: ConsoleLink is an extension for customizing OpenShift web console
         links.
       type: object
       required:
-        - spec
+      - spec
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -51,15 +52,14 @@ spec:
             submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
           type: string
         metadata:
-          description: Standard object's metadata.
           type: object
         spec:
           description: ConsoleLinkSpec is the desired console link configuration.
           type: object
           required:
-            - href
-            - location
-            - text
+          - href
+          - location
+          - text
           properties:
             applicationMenu:
               description: applicationMenu holds information about section and icon
@@ -67,7 +67,7 @@ spec:
                 when location is set to ApplicationMenu.
               type: object
               required:
-                - section
+              - section
               properties:
                 imageURL:
                   description: imageUrl is the URL for the icon used in front of the
@@ -86,7 +86,7 @@ spec:
               description: href is the absolute secure URL for the link (must use
                 https)
               type: string
-              pattern: ^https://([\w-]+.)+[\w-]+(/[\w- ./?%&=])?$
+              pattern: ^https://
             location:
               description: location determines which location in the console the link
                 will be appended to (ApplicationMenu, HelpMenu, UserMenu, NamespaceDashboard).
@@ -99,7 +99,7 @@ spec:
                 link will appear in all namespaces.
               type: object
               required:
-                - namespaces
+              - namespaces
               properties:
                 namespaces:
                   description: namespaces is an array of namespace names in which

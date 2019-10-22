@@ -7,35 +7,36 @@ metadata:
     description: Extension for configuring openshift web console notifications.
 spec:
   scope: Cluster
+  preserveUnknownField: false
   group: console.openshift.io
   versions:
-    - name: v1
-      served: true
-      storage: true
+  - name: v1
+    served: true
+    storage: true
   names:
     plural: consolenotifications
     singular: consolenotification
     kind: ConsoleNotification
     listKind: ConsoleNotificationList
   additionalPrinterColumns:
-    - name: Text
-      type: string
-      JSONPath: .spec.text
-    - name: Location
-      type: string
-      JSONPath: .spec.location
-    - name: Age
-      type: date
-      JSONPath: .metadata.creationTimestamp
+  - name: Text
+    type: string
+    JSONPath: .spec.text
+  - name: Location
+    type: string
+    JSONPath: .spec.location
+  - name: Age
+    type: date
+    JSONPath: .metadata.creationTimestamp
   subresources:
     status: {}
-  validation:
-    openAPIV3Schema:
+  "validation":
+    "openAPIV3Schema":
       description: ConsoleNotification is the extension for configuring openshift
         web console notifications.
       type: object
       required:
-        - spec
+      - spec
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -48,14 +49,13 @@ spec:
             submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
           type: string
         metadata:
-          description: Standard object's metadata.
           type: object
         spec:
           description: ConsoleNotificationSpec is the desired console notification
             configuration.
           type: object
           required:
-            - text
+          - text
           properties:
             backgroundColor:
               description: backgroundColor is the color of the background for the
@@ -69,14 +69,14 @@ spec:
               description: link is an object that holds notification link details.
               type: object
               required:
-                - href
-                - text
+              - href
+              - text
               properties:
                 href:
                   description: href is the absolute secure URL for the link (must
                     use https)
                   type: string
-                  pattern: ^https://([\w-]+.)+[\w-]+(/[\w- ./?%&=])?$
+                  pattern: ^https://
                 text:
                   description: text is the display text for the link
                   type: string
