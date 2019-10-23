@@ -165,9 +165,9 @@ func PlatformBasedOCConsoleCLIDownloads(host, arch, cliDownloadsName string) *v1
 		{"Windows", "windows", "oc.zip"},
 	}
 
-	links := []v1.Link{}
+	links := []v1.CLIDownloadLink{}
 	for _, platform := range platforms {
-		links = append(links, v1.Link{
+		links = append(links, v1.CLIDownloadLink{
 			Href: GetPlatformURL(baseURL, platform.key, platform.archType),
 			Text: fmt.Sprintf("Download oc for %s", platform.label),
 		})
@@ -199,7 +199,7 @@ func ODOConsoleCLIDownloads() *v1.ConsoleCLIDownload {
 odo abstracts away complex Kubernetes and OpenShift concepts, thus allowing developers to focus on what is most important to them: code.
 `,
 			DisplayName: "odo - Developer-focused CLI for OpenShift",
-			Links: []v1.Link{
+			Links: []v1.CLIDownloadLink{
 				{
 					Href: "https://mirror.openshift.com/pub/openshift-v4/clients/odo/latest/",
 					Text: "Download odo",
