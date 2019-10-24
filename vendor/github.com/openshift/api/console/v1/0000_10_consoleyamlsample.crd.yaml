@@ -8,6 +8,7 @@ metadata:
 spec:
   scope: Cluster
   group: console.openshift.io
+  preserveUnknownFields: false
   versions:
   - name: v1
     served: true
