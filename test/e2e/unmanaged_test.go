@@ -62,8 +62,8 @@ func TestEditUnmanagedRoute(t *testing.T) {
 }
 
 func TestEditUnmanagedConsoleCLIDownloads(t *testing.T) {
-	client, _ := setupManagedTestCase(t)
-	defer cleanupManagedTestCase(t, client)
+	client := setupUnmanagedTestCase(t)
+	defer cleanUpUnmanagedTestCase(t, client)
 
 	err := patchAndCheckConsoleCLIDownloads(t, client, false, api.OCCLIDownloadsCustomResourceName)
 	if err != nil {
