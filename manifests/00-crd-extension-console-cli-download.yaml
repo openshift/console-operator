@@ -61,5 +61,5 @@ spec:
                   href:
                     type: string
                     description: Absolute secure URL for the link (must use https)
-                    pattern: '^https://([\w-]+.)+[\w-]+(/[\w- ./?%&=])?$'
+                    pattern: ^https://
 

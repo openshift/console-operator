@@ -59,7 +59,7 @@ spec:
                 href:
                   type: string
                   description: Absolute secure URL for the link (must use https)
-                  pattern: '^https://([\w-]+.)+[\w-]+(/[\w- ./?%&=])?$'
+                  pattern: ^https://
             backgroundColor:
               type: string
               description:  The background color for the notification as CSS data type color
