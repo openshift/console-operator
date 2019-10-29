@@ -14,7 +14,9 @@ COPY --from=builder /tmp/build/console /usr/bin/console
 COPY manifests /manifests/
 
 # extensions manifests generated from openshift/api types
-COPY vendor/github.com/openshift/api/console/v1/*.yaml /manifests
+COPY vendor/github.com/openshift/api/console/v1/*.yaml /manifests/
+COPY vendor/github.com/openshift/api/operator/v1/0000_70_console-operator.crd.yaml /manifests/
+
 
 LABEL io.k8s.display-name="OpenShift console-operator" \
       io.k8s.description="This is a component of OpenShift Container Platform and manages the lifecycle of the web console." \
