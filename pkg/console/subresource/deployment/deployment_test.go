@@ -27,6 +27,7 @@ func TestDefaultDeployment(t *testing.T) {
 		config             *operatorsv1.Console
 		cm                 *corev1.ConfigMap
 		ca                 *corev1.ConfigMap
+		dica               *corev1.ConfigMap
 		tca                *corev1.ConfigMap
 		sec                *corev1.Secret
 		rt                 *v1.Route
@@ -58,12 +59,13 @@ func TestDefaultDeployment(t *testing.T) {
 		DeletionGracePeriodSeconds: nil,
 		Labels:                     labels,
 		Annotations: map[string]string{
-			configMapResourceVersionAnnotation:          "",
-			secretResourceVersionAnnotation:             "",
-			serviceCAConfigMapResourceVersionAnnotation: "",
-			trustedCAConfigMapResourceVersionAnnotation: "",
-			proxyConfigResourceVersionAnnotation:        "",
-			consoleImageAnnotation:                      "",
+			configMapResourceVersionAnnotation:                   "",
+			secretResourceVersionAnnotation:                      "",
+			defaultIngressCertConfigMapResourceVersionAnnotation: "",
+			serviceCAConfigMapResourceVersionAnnotation:          "",
+			trustedCAConfigMapResourceVersionAnnotation:          "",
+			proxyConfigResourceVersionAnnotation:                 "",
+			consoleImageAnnotation:                               "",
 		},
 		OwnerReferences: nil,
 		Finalizers:      nil,
@@ -114,12 +116,13 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 
 	consoleDeploymentTemplateAnnotations := map[string]string{
-		configMapResourceVersionAnnotation:          "",
-		secretResourceVersionAnnotation:             "",
-		serviceCAConfigMapResourceVersionAnnotation: "",
-		trustedCAConfigMapResourceVersionAnnotation: "",
-		proxyConfigResourceVersionAnnotation:        "",
-		consoleImageAnnotation:                      "",
+		configMapResourceVersionAnnotation:                   "",
+		secretResourceVersionAnnotation:                      "",
+		defaultIngressCertConfigMapResourceVersionAnnotation: "",
+		serviceCAConfigMapResourceVersionAnnotation:          "",
+		trustedCAConfigMapResourceVersionAnnotation:          "",
+		proxyConfigResourceVersionAnnotation:                 "",
+		consoleImageAnnotation:                               "",
 	}
 
 	consoleDeploymentAffinity := &corev1.Affinity{
@@ -162,7 +165,10 @@ func TestDefaultDeployment(t *testing.T) {
 				config: consoleOperatorConfig,
 				cm:     consoleConfig,
 				ca:     &corev1.ConfigMap{},
-				tca:    trustedCAConfigMapEmpty,
+				dica: &corev1.ConfigMap{
+					Data: map[string]string{"ca-bundle.crt": "test"},
+				},
+				tca: trustedCAConfigMapEmpty,
 				sec: &corev1.Secret{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
@@ -224,7 +230,10 @@ func TestDefaultDeployment(t *testing.T) {
 				config: consoleOperatorConfig,
 				cm:     consoleConfig,
 				ca:     &corev1.ConfigMap{},
-				tca:    trustedCAConfigMapSet,
+				dica: &corev1.ConfigMap{
+					Data: map[string]string{"ca-bundle.crt": "test"},
+				},
+				tca: trustedCAConfigMapSet,
 				sec: &corev1.Secret{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
@@ -283,7 +292,7 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.cm, tt.args.tca, tt.args.sec, tt.args.rt, tt.args.proxy, tt.args.canMountCustomLogo), tt.want); diff != nil {
+			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.dica, tt.args.cm, tt.args.tca, tt.args.sec, tt.args.rt, tt.args.proxy, tt.args.canMountCustomLogo), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
@@ -387,6 +396,19 @@ func Test_consoleVolumes(t *testing.T) {
 			},
 		},
 	}
+	defaultIngressCert := corev1.Volume{
+		Name: api.DefaultIngressCertConfigMapName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: api.DefaultIngressCertConfigMapName,
+				},
+				Items:       nil,
+				DefaultMode: nil,
+				Optional:    nil,
+			},
+		},
+	}
 	tests := []struct {
 		name string
 		args args
@@ -402,6 +424,7 @@ func Test_consoleVolumes(t *testing.T) {
 				consoleOauthConfig,
 				consoleConfig,
 				serviceCA,
+				defaultIngressCert,
 			},
 		},
 		{
@@ -414,6 +437,7 @@ func Test_consoleVolumes(t *testing.T) {
 				consoleOauthConfig,
 				consoleConfig,
 				serviceCA,
+				defaultIngressCert,
 				{
 					Name: api.TrustedCAConfigMapName,
 					VolumeSource: corev1.VolumeSource{
@@ -479,6 +503,11 @@ func Test_consoleVolumeMounts(t *testing.T) {
 					ReadOnly:  true,
 					MountPath: "/var/service-ca",
 				},
+				{
+					Name:      api.DefaultIngressCertConfigMapName,
+					ReadOnly:  true,
+					MountPath: "/var/default-ingress-cert",
+				},
 			},
 		},
 		{name: "Test console volumes Mounts with TrustedCA",
@@ -505,6 +534,11 @@ func Test_consoleVolumeMounts(t *testing.T) {
 					Name:      api.ServiceCAConfigMapName,
 					ReadOnly:  true,
 					MountPath: "/var/service-ca",
+				},
+				{
+					Name:      api.DefaultIngressCertConfigMapName,
+					ReadOnly:  true,
+					MountPath: "/var/default-ingress-cert",
 				},
 				{
 					Name:      api.TrustedCAConfigMapName,

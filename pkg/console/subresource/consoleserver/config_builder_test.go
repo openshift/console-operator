@@ -51,6 +51,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
+					DefaultIngressCert(false).
 					Config()
 			},
 			output: Config{
@@ -69,7 +70,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: defaultIngressCertFilePath,
 					LogoutRedirect:      "https://foobar.com/logout",
 				},
 				Customization: Customization{},
@@ -192,6 +193,7 @@ providers: {}
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
+					DefaultIngressCert(false).
 					ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
@@ -206,7 +208,7 @@ clusterInfo:
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/default-ingress-cert/ca-bundle.crt
   logoutRedirect: https://foobar.com/logout
 customization: {}
 providers: {}
@@ -243,7 +245,8 @@ providers:
 					Brand(v1.BrandOKD).
 					DocURL("https://foobar.com/docs").
 					APIServerURL("https://foobar.com/api").
-					StatusPageID("status-12345")
+					StatusPageID("status-12345").
+					DefaultIngressCert(true)
 				return b.ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1

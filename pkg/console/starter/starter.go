@@ -18,6 +18,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
+	"github.com/openshift/console-operator/pkg/console/controllers/resourcesyncdestination"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/management"
@@ -145,6 +146,11 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 
 	resourceSyncerInformers, resourceSyncer := getResourceSyncer(ctx, clientwrapper.WithoutSecret(kubeClient), operatorClient)
 
+	err = startResourceSyncing(resourceSyncer)
+	if err != nil {
+		return err
+	}
+
 	consoleMetrics := metrics.Register()
 
 	// TODO: rearrange these into informer,client pairs, NOT separated.
@@ -178,18 +184,31 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		recorder,
 		resourceSyncer,
 	)
+
 	cliDownloadsController := clidownloads.NewCLIDownloadsSyncController(
 		// clients
 		operatorClient,
 		operatorConfigClient.OperatorV1(),
 		consoleClient.ConsoleV1().ConsoleCLIDownloads(),
 		routesClient.RouteV1(),
-
 		// informers
 		operatorConfigInformers.Operator().V1().Consoles(),    // OperatorConfig
 		consoleInformers.Console().V1().ConsoleCLIDownloads(), // ConsoleCliDownloads
 		routesInformersNamespaced.Route().V1().Routes(),       // Routes
 		// recorder
+		recorder,
+	)
+
+	// ResourceSyncDestinationController contains additional logic for all the
+	// secrets and configmaps that we resourceSyncer is taking care of
+	resourceSyncDestinationController := resourcesyncdestination.NewResourceSyncDestinationController(
+		// operatorconfig
+		operatorConfigClient.OperatorV1().Consoles(),
+		operatorConfigInformers.Operator().V1().Consoles(),
+		// configmap
+		kubeClient.CoreV1(),
+		kubeInformersNamespaced.Core().V1().ConfigMaps(),
+		// events
 		recorder,
 	)
 
@@ -267,6 +286,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	}
 
 	go consoleServiceController.Run(1, ctx.Done())
+	go resourceSyncDestinationController.Run(1, ctx.Done())
 	go consoleOperator.Run(ctx.Done())
 	go resourceSyncer.Run(1, ctx.Done())
 	go clusterOperatorStatus.Run(1, ctx.Done())
@@ -280,11 +300,25 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	return fmt.Errorf("stopped")
 }
 
+// startResourceSyncing should start syncing process of all secrets and configmaps that need to be synced.
+func startResourceSyncing(resourceSyncer *resourcesynccontroller.ResourceSyncController) error {
+	// sync: 'default-ingress-cert' configmap
+	// from: 'openshift-config-managed' namespace
+	// to:   'openshift-console' namespace
+	err := resourceSyncer.SyncConfigMap(
+		resourcesynccontroller.ResourceLocation{Name: api.DefaultIngressCertConfigMapName, Namespace: api.OpenShiftConsoleNamespace},
+		resourcesynccontroller.ResourceLocation{Name: api.DefaultIngressCertConfigMapName, Namespace: api.OpenShiftConfigManagedNamespace},
+	)
+
+	return err
+}
+
 func getResourceSyncer(ctx *controllercmd.ControllerContext, kubeClient kubernetes.Interface, operatorClient v1helpers.OperatorClient) (v1helpers.KubeInformersForNamespaces, *resourcesynccontroller.ResourceSyncController) {
 	resourceSyncerInformers := v1helpers.NewKubeInformersForNamespaces(
 		kubeClient,
 		api.OpenShiftConfigNamespace,
 		api.OpenShiftConsoleNamespace,
+		api.OpenShiftConfigManagedNamespace,
 	)
 	resourceSyncer := resourcesynccontroller.NewResourceSyncController(
 		operatorClient,
