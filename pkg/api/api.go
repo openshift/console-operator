@@ -15,6 +15,7 @@ const (
 	OpenShiftConsoleConfigMapName       = "console-config"
 	OpenShiftConsolePublicConfigMapName = "console-public"
 	ServiceCAConfigMapName              = "service-ca"
+	RouterCAConfigMapName               = "router-ca"
 	OpenShiftConsoleDeploymentName      = OpenShiftConsoleName
 	OpenShiftConsoleServiceName         = OpenShiftConsoleName
 	OpenShiftConsoleRouteName           = OpenShiftConsoleName

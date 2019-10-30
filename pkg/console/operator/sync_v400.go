@@ -95,6 +95,9 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	// The sync loop may not settle, we are unable to honor it in current state.
 	status.HandleProgressingOrDegraded(updatedOperatorConfig, "CustomLogoSync", customLogoErrReason, customLogoError)
 
+	routerCAConfigMap, routerCAErrReason, routerCAError := co.ValidateRouterCAConfigMap()
+	status.HandleProgressingOrDegraded(updatedOperatorConfig, "RouterCAValidation", routerCAErrReason, routerCAError)
+
 	sec, secChanged, secErr := co.SyncSecret(set.Operator)
 	toUpdate = toUpdate || secChanged
 	status.HandleProgressingOrDegraded(updatedOperatorConfig, "OAuthClientSecretSync", "FailedApply", secErr)
@@ -109,7 +112,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		return oauthErr
 	}
 
-	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(set.Operator, cm, serviceCAConfigMap, trustedCAConfigMap, sec, rt, set.Proxy, customLogoCanMount)
+	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(set.Operator, cm, serviceCAConfigMap, routerCAConfigMap, trustedCAConfigMap, sec, rt, set.Proxy, customLogoCanMount)
 	toUpdate = toUpdate || depChanged
 	status.HandleProgressingOrDegraded(updatedOperatorConfig, "DeploymentSync", depErrReason, depErr)
 	if depErr != nil {
@@ -231,13 +234,14 @@ func (co *consoleOperator) SyncDeployment(
 	operatorConfig *operatorv1.Console,
 	cm *corev1.ConfigMap,
 	serviceCAConfigMap *corev1.ConfigMap,
+	routerCAConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
 	sec *corev1.Secret,
 	rt *routev1.Route,
 	proxyConfig *configv1.Proxy,
 	canMountCustomLogo bool) (consoleDeployment *appsv1.Deployment, changed bool, reason string, err error) {
 
-	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, trustedCAConfigMap, sec, rt, proxyConfig, canMountCustomLogo)
+	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, routerCAConfigMap, trustedCAConfigMap, sec, rt, proxyConfig, canMountCustomLogo)
 	expectedGeneration := getDeploymentGeneration(co)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
@@ -307,7 +311,18 @@ func (co *consoleOperator) SyncConfigMap(
 		return nil, false, "FailedManagedConfig", mcErr
 	}
 
-	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, consoleRoute)
+	useDefaultCAFile := true
+	// We are syncing the `router-ca` configmap from `openshift-config-managed` to `openshift-console`.
+	// `router-ca` is only published in `openshift-config-managed` if an operator-generated default certificate is used.
+	// It will not exist if all ingresscontrollers user admin-provided default certificates.
+	// If the `router-ca` configmap in `openshift-console` exist we should mount that to the console container,
+	// otherwise default to `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt`
+	_, rcaErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(api.RouterCAConfigMapName, metav1.GetOptions{})
+	if rcaErr != nil && apierrors.IsNotFound(rcaErr) {
+		useDefaultCAFile = false
+	}
+
+	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, consoleRoute, useDefaultCAFile)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
 	}
@@ -428,6 +443,20 @@ func (c *consoleOperator) SyncCustomLogoConfigMap(operatorConfig *operatorsv1.Co
 		}
 	}
 	return okToMount, reason, err
+}
+
+func (c *consoleOperator) ValidateRouterCAConfigMap() (routerCA *corev1.ConfigMap, reason string, err error) {
+	routerCAConfigMap, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(api.RouterCAConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		klog.V(4).Infoln("router-ca configmap not found")
+		return nil, "FailedGet", fmt.Errorf("router-ca configmap not found")
+	}
+
+	_, caBundle := routerCAConfigMap.Data["ca-bundle.crt"]
+	if !caBundle {
+		return nil, "MissingRouterCABundle", fmt.Errorf("router-ca configmap is missing ca-bundle.crt data")
+	}
+	return routerCAConfigMap, "", nil
 }
 
 // on each pass of the operator sync loop, we need to check the
