@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/openshift/console-operator/pkg/console/metrics"
+
 	// kube
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -150,6 +152,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	if err != nil {
 		return err
 	}
+	consoleMetrics := metrics.Register()
 
 	// TODO: rearrange these into informer,client pairs, NOT separated.
 	consoleOperator := operator.NewConsoleOperator(
@@ -174,6 +177,9 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		oauthInformers.Oauth().V1().OAuthClients(), // OAuth clients
 		// openshift managed
 		kubeInformersManagedNamespaced.Core().V1(), // Managed ConfigMaps
+		// metrics
+		// TODO: when we get to testing, we may want an interface for this
+		consoleMetrics,
 		// event handling
 		versionGetter,
 		recorder,

@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/openshift/console-operator/pkg/console/metrics"
+
 	// kube
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,6 +72,8 @@ type consoleOperator struct {
 	routeClient   routeclientv1.RoutesGetter
 	oauthClient   oauthclientv1.OAuthClientsGetter
 	versionGetter status.VersionGetter
+	// metrics
+	consoleMetrics *metrics.ConsolePrometheusMetrics
 	// recorder
 	recorder       events.Recorder
 	resourceSyncer resourcesynccontroller.ResourceSyncer
@@ -96,6 +100,8 @@ func NewConsoleOperator(
 	oauthClients oauthinformersv1.OAuthClientInformer,
 	// openshift managed
 	managedCoreV1 corev1.Interface,
+	// metrics
+	consoleMetrics *metrics.ConsolePrometheusMetrics,
 	// event handling
 	versionGetter status.VersionGetter,
 	recorder events.Recorder,
@@ -117,6 +123,8 @@ func NewConsoleOperator(
 		routeClient:   routev1Client,
 		oauthClient:   oauthv1Client,
 		versionGetter: versionGetter,
+		// metrics
+		consoleMetrics: consoleMetrics,
 		// recorder
 		recorder:       recorder,
 		resourceSyncer: resourceSyncer,
