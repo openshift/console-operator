@@ -304,7 +304,7 @@ func operatorIsSettled(operatorConfig *operatorsv1.Console) (settled bool, unmet
 			if strings.HasSuffix(condition.Type, test.conditionType) {
 				// any condition with a matching suffix must match status else we are not settled
 				if condition.Status != test.expectedStatus {
-					fmt.Printf("Not settled, condition: %v:%v is %v, expected: %v ", condition.Type, condition.Reason, condition.Status, test.expectedStatus)
+					fmt.Printf("Not settled, condition: %v:%v is %v, expected: %v \n", condition.Type, condition.Reason, condition.Status, test.expectedStatus)
 					unmetConditions = append(unmetConditions, condition.Type)
 					settled = false
 				}
