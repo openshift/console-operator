@@ -3,14 +3,15 @@ package e2e
 import (
 	"testing"
 
+	operatorsv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/test/e2e/framework"
 )
 
-func setupUnmanagedTestCase(t *testing.T) *framework.ClientSet {
-	client := framework.MustNewClientset(t, nil)
+func setupUnmanagedTestCase(t *testing.T) (*framework.ClientSet, *operatorsv1.Console) {
+	client, operatorConfig := framework.StandardSetup(t)
 	framework.MustUnmanageConsole(t, client)
-	return client
+	return client, operatorConfig
 }
 
 func cleanUpUnmanagedTestCase(t *testing.T, client *framework.ClientSet) {
@@ -21,7 +22,7 @@ func cleanUpUnmanagedTestCase(t *testing.T, client *framework.ClientSet) {
 // resources and verifies that the operator does not recreate them.
 func TestUnmanaged(t *testing.T) {
 	t.Skip()
-	client := setupUnmanagedTestCase(t)
+	client, _ := setupUnmanagedTestCase(t)
 	defer cleanUpUnmanagedTestCase(t, client)
 
 	framework.DeleteAll(t, client)
@@ -34,7 +35,7 @@ func TestUnmanaged(t *testing.T) {
 
 func TestEditUnmanagedConfigMap(t *testing.T) {
 	t.Skip()
-	client := setupUnmanagedTestCase(t)
+	client, _ := setupUnmanagedTestCase(t)
 	defer cleanUpUnmanagedTestCase(t, client)
 
 	err := patchAndCheckConfigMap(t, client, false)
@@ -45,7 +46,7 @@ func TestEditUnmanagedConfigMap(t *testing.T) {
 
 func TestEditUnmanagedService(t *testing.T) {
 	t.Skip()
-	client := setupUnmanagedTestCase(t)
+	client, _ := setupUnmanagedTestCase(t)
 	defer cleanUpUnmanagedTestCase(t, client)
 
 	err := patchAndCheckService(t, client, false)
@@ -56,7 +57,7 @@ func TestEditUnmanagedService(t *testing.T) {
 
 func TestEditUnmanagedRoute(t *testing.T) {
 	t.Skip()
-	client := setupUnmanagedTestCase(t)
+	client, _ := setupUnmanagedTestCase(t)
 	defer cleanUpUnmanagedTestCase(t, client)
 
 	err := patchAndCheckRoute(t, client, false)
@@ -66,7 +67,7 @@ func TestEditUnmanagedRoute(t *testing.T) {
 }
 
 func TestEditUnmanagedConsoleCLIDownloads(t *testing.T) {
-	client := setupUnmanagedTestCase(t)
+	client, _ := setupUnmanagedTestCase(t)
 	defer cleanUpUnmanagedTestCase(t, client)
 
 	err := patchAndCheckConsoleCLIDownloads(t, client, false, api.OCCLIDownloadsCustomResourceName)

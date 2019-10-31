@@ -325,9 +325,9 @@ func operatorIsObservingCurrentGeneration(operatorConfig *operatorsv1.Console) b
 
 // A helper to ensure our operator config reaches a settled state before we
 // begin the next test.
-func WaitForSettledState(t *testing.T, client *ClientSet) (settled bool, err error) {
+func WaitForSettledState(t *testing.T, client *ClientSet, phase string) (settled bool, err error) {
 	t.Helper()
-	fmt.Printf("waiting to reach settled state...\n")
+	t.Logf("waiting for %s to reach settled state...\n", phase)
 	// don't rush it
 	interval := 2 * time.Second
 	// it should never take this long for a test to pass
