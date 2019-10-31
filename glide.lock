@@ -1,5 +1,5 @@
 hash: 66bf33dd9847c2a9505b6ed4718d2382a5eb0ffbd8bcf887bef4839b2add9485
-updated: 2019-10-22T12:19:24.12769-04:00
+updated: 2019-10-30T10:15:23.668703-04:00
 imports:
 - name: github.com/beorn7/perks
   version: 3a771d992973f24aa725d07868b467d1ddfceafb
@@ -133,7 +133,7 @@ imports:
 - name: github.com/NYTimes/gziphandler
   version: 56545f4a5d46df9a6648819d1664c3a03a13ffdb
 - name: github.com/openshift/api
-  version: 82b963da83b3bfff4c4e9e4bb441c492f41d8da9
+  version: ec2999d7156453caae475e6bbe87231a7c4aabc7
   subpackages:
   - apps
   - apps/v1
@@ -143,6 +143,7 @@ imports:
   - build/v1
   - config
   - config/v1
+  - console/v1
   - image
   - image/docker10
   - image/dockerpre012
@@ -187,6 +188,14 @@ imports:
   - config/informers/externalversions/config/v1
   - config/informers/externalversions/internalinterfaces
   - config/listers/config/v1
+  - console/clientset/versioned
+  - console/clientset/versioned/scheme
+  - console/clientset/versioned/typed/console/v1
+  - console/informers/externalversions
+  - console/informers/externalversions/console
+  - console/informers/externalversions/console/v1
+  - console/informers/externalversions/internalinterfaces
+  - console/listers/console/v1
   - oauth/clientset/versioned
   - oauth/clientset/versioned/scheme
   - oauth/clientset/versioned/typed/oauth/v1
@@ -215,7 +224,7 @@ imports:
   - route/informers/externalversions/route/v1
   - route/listers/route/v1
 - name: github.com/openshift/library-go
-  version: a308f2050b153a206b2f98782cd152d924067026
+  version: d6f3b526f0331fec5d792acc73258d6685492c38
   subpackages:
   - pkg/config/client
   - pkg/config/clusteroperator/v1helpers
