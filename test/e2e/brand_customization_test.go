@@ -77,6 +77,9 @@ func cleanupCustomLogoConfigMap(t *testing.T, clientSet *framework.ClientSet, cu
 //  - image with string representation (.svg) is set as a custom-logo
 //  - custom-logo gets unset
 func TestCustomBrand(t *testing.T) {
+
+	t.Skip("Skipping TestCustomBrand() for flakes.")
+
 	// create a configmaps with binary and string image type representation
 	client, operatorConfig := setupCustomBrandTest(t)
 	// cleanup, defer deletion of the configmaps to ensure it happens even if another part of the test fails
