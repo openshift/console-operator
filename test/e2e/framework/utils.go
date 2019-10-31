@@ -27,7 +27,7 @@ func StandardSetup(t *testing.T) (*ClientSet, *v1.Console) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	WaitForSettledState(t, client)
+	WaitForSettledState(t, client, "setup")
 
 	return client, operatorConfig
 }
@@ -43,7 +43,7 @@ func StandardCleanup(t *testing.T, client *ClientSet) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	WaitForSettledState(t, client)
+	WaitForSettledState(t, client, "cleanup")
 }
 
 func CheckEnvVars(want []corev1.EnvVar, have []corev1.EnvVar, includes bool) []error {
