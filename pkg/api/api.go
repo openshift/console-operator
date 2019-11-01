@@ -31,3 +31,8 @@ const (
 	OCCLIDownloadsCustomResourceName    = "oc-cli-downloads"
 	ODOCLIDownloadsCustomResourceName   = "odo-cli-downloads"
 )
+
+const (
+	RouterCAFilePath        = "/var/router-ca/ca-bundle.crt"
+	OAuthEndpointCAFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+)

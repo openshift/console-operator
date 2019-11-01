@@ -3,7 +3,6 @@ package operator
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	// kube
 	appsv1 "k8s.io/api/apps/v1"
@@ -49,6 +48,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	rt, rtChanged, rtErrReason, rtErr := co.SyncRoute(set.Operator)
 	toUpdate = toUpdate || rtChanged
 	status.HandleProgressingOrDegraded(updatedOperatorConfig, "RouteSync", rtErrReason, rtErr)
+	co.CheckRouteHealth(updatedOperatorConfig, rt)
 	if rtErr != nil {
 		return rtErr
 	}
@@ -100,6 +100,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(set.Operator, cm, serviceCAConfigMap, routerCAConfigMap, trustedCAConfigMap, sec, rt, set.Proxy, customLogoCanMount)
 	toUpdate = toUpdate || depChanged
 	status.HandleProgressingOrDegraded(updatedOperatorConfig, "DeploymentSync", depErrReason, depErr)
+	co.CheckDeploymentHealth(updatedOperatorConfig, actualDeployment, toUpdate)
 	if depErr != nil {
 		return depErr
 	}
@@ -110,38 +111,6 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	klog.V(4).Infoln("-----------------------")
 	klog.V(4).Infof("sync loop 4.0.0 resources updated: %v", toUpdate)
 	klog.V(4).Infoln("-----------------------")
-
-	status.HandleProgressing(updatedOperatorConfig, "SyncLoopRefresh", "InProgress", func() error {
-		if toUpdate {
-			return errors.New("Changes made during sync updates, additional sync expected.")
-		}
-		version := os.Getenv("RELEASE_VERSION")
-		if !deploymentsub.IsAvailableAndUpdated(actualDeployment) {
-			return errors.New(fmt.Sprintf("Working toward version %s", version))
-		}
-		if co.versionGetter.GetVersions()["operator"] != version {
-			co.versionGetter.SetVersion("operator", version)
-		}
-		return nil
-	}())
-
-	status.HandleAvailable(func() (conf *operatorv1.Console, prefix string, reason string, err error) {
-		prefix = "Deployment"
-		if !deploymentsub.IsReady(actualDeployment) {
-			return updatedOperatorConfig, prefix, "InsufficientReplicas", errors.New(fmt.Sprintf("%v pods available for console deployment", actualDeployment.Status.ReadyReplicas))
-		}
-		if !deploymentsub.IsReadyAndUpdated(actualDeployment) {
-			return updatedOperatorConfig, prefix, "FailedUpdate", errors.New(fmt.Sprintf("%v replicas ready at version %s", actualDeployment.Status.ReadyReplicas, os.Getenv("RELEASE_VERSION")))
-		}
-		return updatedOperatorConfig, prefix, "", nil
-	}())
-
-	status.HandleAvailable(updatedOperatorConfig, "Route", "FailedAdmittedIngress", func() error {
-		if !routesub.IsAdmitted(rt) {
-			return errors.New("console route is not admitted")
-		}
-		return nil
-	}())
 
 	// if we survive the gauntlet, we need to update the console config with the
 	// public hostname so that the world can know the console is ready to roll

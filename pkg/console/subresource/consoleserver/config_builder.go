@@ -9,9 +9,7 @@ import (
 )
 
 const (
-	clientSecretFilePath    = "/var/oauth-config/clientSecret"
-	routerCAFilePath        = "/var/router-ca/ca-bundle.crt"
-	oauthEndpointCAFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	clientSecretFilePath = "/var/oauth-config/clientSecret"
 	// serving info
 	certFilePath = "/var/serving-cert/tls.crt"
 	keyFilePath  = "/var/serving-cert/tls.key"
@@ -78,10 +76,10 @@ func (b *ConsoleServerCLIConfigBuilder) StatusPageID(id string) *ConsoleServerCL
 
 func (b *ConsoleServerCLIConfigBuilder) RouterCA(useDefaultRouterCA bool) *ConsoleServerCLIConfigBuilder {
 	if useDefaultRouterCA {
-		b.CAFile = oauthEndpointCAFilePath
+		b.CAFile = api.OAuthEndpointCAFilePath
 		return b
 	}
-	b.CAFile = routerCAFilePath
+	b.CAFile = api.RouterCAFilePath
 	return b
 }
 
@@ -133,7 +131,7 @@ func (b *ConsoleServerCLIConfigBuilder) authServer() Auth {
 	// we need this fallback due to the way our unit test are structured,
 	// where the ConsoleServerCLIConfigBuilder object is being instantiated empty
 	if b.CAFile == "" {
-		b.CAFile = oauthEndpointCAFilePath
+		b.CAFile = api.OAuthEndpointCAFilePath
 	}
 	conf := Auth{
 		ClientID:            api.OpenShiftConsoleName,

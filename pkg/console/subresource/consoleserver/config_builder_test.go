@@ -38,7 +38,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: OAuthEndpointCAFilePath,
 				},
 				Customization: Customization{},
 				Providers:     Providers{},
@@ -96,7 +96,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: OAuthEndpointCAFilePath,
 				},
 				Customization: Customization{},
 				Providers: Providers{
@@ -130,7 +130,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: OAuthEndpointCAFilePath,
 					LogoutRedirect:      "https://foobar.com/logout",
 				},
 				Customization: Customization{
