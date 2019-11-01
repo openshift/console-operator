@@ -276,7 +276,7 @@ func reportDeprecatedConditions(conditions conditionsMap) {
 // - *Available: true
 // - *Progressing: false
 // - *Degraded: false
-func operatorIsSettled(operatorConfig *operatorsv1.Console) (settled bool, unmetConditions []string) {
+func operatorIsSettled(t *testing.T, operatorConfig *operatorsv1.Console) (settled bool, unmetConditions []string) {
 	settled = true
 	conditions := operatorConditionsMap(operatorConfig)
 	unmetConditions = []string{}
@@ -305,6 +305,7 @@ func operatorIsSettled(operatorConfig *operatorsv1.Console) (settled bool, unmet
 			if strings.HasSuffix(condition.Type, test.conditionType) {
 				// any condition with a matching suffix must match status else we are not settled
 				if condition.Status != test.expectedStatus {
+					t.Logf("Not settled, condition: %v:%v is %v, expected: %v \n", condition.Type, condition.Reason, condition.Status, test.expectedStatus)
 					unmetConditions = append(unmetConditions, condition.Type)
 					settled = false
 				}
@@ -315,9 +316,9 @@ func operatorIsSettled(operatorConfig *operatorsv1.Console) (settled bool, unmet
 	return settled, unmetConditions
 }
 
-func operatorIsObservingCurrentGeneration(operatorConfig *operatorsv1.Console) bool {
+func operatorIsObservingCurrentGeneration(t *testing.T, operatorConfig *operatorsv1.Console) bool {
 	if operatorConfig.Status.ObservedGeneration != operatorConfig.ObjectMeta.Generation {
-		fmt.Printf("waiting for observed generation %d to match generation %d... \n", operatorConfig.Status.ObservedGeneration, operatorConfig.ObjectMeta.Generation)
+		t.Logf("waiting for observed generation %d to match generation %d... \n", operatorConfig.Status.ObservedGeneration, operatorConfig.ObjectMeta.Generation)
 		return false
 	}
 	return true
@@ -327,7 +328,7 @@ func operatorIsObservingCurrentGeneration(operatorConfig *operatorsv1.Console) b
 // begin the next test.
 func WaitForSettledState(t *testing.T, client *ClientSet, phase string) (settled bool, err error) {
 	t.Helper()
-	fmt.Printf("waiting for %s to reach settled state...\n", phase)
+	t.Logf("waiting for %s to reach settled state...\n", phase)
 	// don't rush it
 	interval := 2 * time.Second
 	// it should never take this long for a test to pass
@@ -337,19 +338,19 @@ func WaitForSettledState(t *testing.T, client *ClientSet, phase string) (settled
 	pollErr := wait.Poll(interval, max, func() (stop bool, err error) {
 		// lets be informed about tests that take a long time to settle
 		count++
-		logUnsettledAtInterval(count)
+		logUnsettledAtInterval(t, count, phase)
 		operatorConfig, err := client.Operator.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
 		// first, wait until we are observing the correct generation. if we are still looking at a previous
 		// generation, pass on this iteration of the loop
-		isCurrentGen := operatorIsObservingCurrentGeneration(operatorConfig)
+		isCurrentGen := operatorIsObservingCurrentGeneration(t, operatorConfig)
 		if !isCurrentGen {
 			return false, nil
 		}
 		// then wait until the operator status settle
-		settled, unmet := operatorIsSettled(operatorConfig)
+		settled, unmet := operatorIsSettled(t, operatorConfig)
 		unmetConditions = unmet // avoid shadow
 		return settled, nil
 	})
@@ -357,16 +358,15 @@ func WaitForSettledState(t *testing.T, client *ClientSet, phase string) (settled
 		t.Errorf("operator has not reached settled state in %v attempts due to %v - %v", max, unmetConditions, pollErr)
 	}
 	return true, nil
-
 }
 
 // short term helper to simply print how long it takes to reach a settled state at certain intervals
-func logUnsettledAtInterval(count int) {
+func logUnsettledAtInterval(t *testing.T, count int, phase string) {
 	// arbitrary steps at which to print a notification
 	steps := []int{10, 30, 60, 90, 120, 180, 200}
 	for _, step := range steps {
 		if count == step {
-			fmt.Printf("waited %d seconds to reach settled state...\n", count)
+			t.Logf("waited %d seconds for %s to reach settled state...\n", count, phase)
 		}
 	}
 }
