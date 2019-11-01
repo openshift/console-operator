@@ -44,9 +44,6 @@ import (
 const (
 	controllerWorkQueueKey = "clidownloads-sync-work-queue-key"
 	controllerName         = "ConsoleCLIDownloadsSyncController"
-
-	ocCLIDownloadsCustomResourceName  = "oc-cli-downloads"
-	odoCLIDownloadsCustomResourceName = "odo-cli-downloads"
 )
 
 type CLIDownloadsSyncController struct {
@@ -125,7 +122,7 @@ func (c *CLIDownloadsSyncController) sync() error {
 	}
 
 	host := routesub.GetCanonicalHost(consoleRoute)
-	ocConsoleCLIDownloads := PlatformBasedOCConsoleCLIDownloads(host, "amd64", ocCLIDownloadsCustomResourceName)
+	ocConsoleCLIDownloads := PlatformBasedOCConsoleCLIDownloads(host, "amd64", api.OCCLIDownloadsCustomResourceName)
 	_, ocCLIDownloadsErrReason, ocCLIDownloadsErr := ApplyCLIDownloads(c.consoleCliDownloadsClient, ocConsoleCLIDownloads)
 	status.HandleDegraded(updatedOperatorConfig, "OCDownloadsSync", ocCLIDownloadsErrReason, ocCLIDownloadsErr)
 	if ocCLIDownloadsErr != nil {
@@ -144,8 +141,8 @@ func (c *CLIDownloadsSyncController) sync() error {
 func (c *CLIDownloadsSyncController) removeCLIDownloads() error {
 	defer klog.V(4).Info("finished deleting ConsoleCliDownloads custom resources")
 	var errs []error
-	errs = append(errs, c.consoleCliDownloadsClient.Delete(ocCLIDownloadsCustomResourceName, &metav1.DeleteOptions{}))
-	errs = append(errs, c.consoleCliDownloadsClient.Delete(odoCLIDownloadsCustomResourceName, &metav1.DeleteOptions{}))
+	errs = append(errs, c.consoleCliDownloadsClient.Delete(api.OCCLIDownloadsCustomResourceName, &metav1.DeleteOptions{}))
+	errs = append(errs, c.consoleCliDownloadsClient.Delete(api.ODOCLIDownloadsCustomResourceName, &metav1.DeleteOptions{}))
 	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
 }
 
@@ -191,7 +188,7 @@ The oc binary offers the same capabilities as the kubectl binary, but it is furt
 func ODOConsoleCLIDownloads() *v1.ConsoleCLIDownload {
 	return &v1.ConsoleCLIDownload{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: odoCLIDownloadsCustomResourceName,
+			Name: api.ODOCLIDownloadsCustomResourceName,
 		},
 		Spec: v1.ConsoleCLIDownloadSpec{
 			Description: `OpenShift Do (odo) is a fast, iterative, and straightforward CLI tool for developers who write, build, and deploy applications on OpenShift.

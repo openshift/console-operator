@@ -27,4 +27,6 @@ const (
 	TrustedCABundleKey                  = "ca-bundle.crt"
 	TrustedCABundleMountDir             = "/etc/pki/ca-trust/extracted/pem"
 	TrustedCABundleMountFile            = "tls-ca-bundle.pem"
+	OCCLIDownloadsCustomResourceName    = "oc-cli-downloads"
+	ODOCLIDownloadsCustomResourceName   = "odo-cli-downloads"
 )
