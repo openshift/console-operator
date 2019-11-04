@@ -18,7 +18,6 @@ func cleanupRemovedTestCase(t *testing.T, client *framework.ClientSet) {
 // TestRemoved() sets ManagementState:Removed and verifies that all
 // console resources are deleted.
 func TestRemoved(t *testing.T) {
-	t.Skip()
 	client, _ := setupRemovedTestCase(t)
 	defer cleanupRemovedTestCase(t, client)
 
