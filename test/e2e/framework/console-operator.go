@@ -264,10 +264,10 @@ var (
 )
 
 // we may want our tests to also tell us if deprecated conditions are still being set
-func reportDeprecatedConditions(conditions conditionsMap) {
+func reportDeprecatedConditions(t *testing.T, conditions conditionsMap) {
 	for _, dep := range deprecatedConditions {
 		if _, ok := conditions[dep]; ok {
-			fmt.Printf("Deprecated condition %s still exists \n", dep)
+			t.Logf("Deprecated condition %s still exists \n", dep)
 		}
 	}
 }
@@ -315,9 +315,9 @@ func operatorIsSettled(operatorConfig *operatorsv1.Console) (settled bool, unmet
 	return settled, unmetConditions
 }
 
-func operatorIsObservingCurrentGeneration(operatorConfig *operatorsv1.Console) bool {
+func operatorIsObservingCurrentGeneration(t *testing.T, operatorConfig *operatorsv1.Console) bool {
 	if operatorConfig.Status.ObservedGeneration != operatorConfig.ObjectMeta.Generation {
-		fmt.Printf("waiting for observed generation %d to match generation %d... \n", operatorConfig.Status.ObservedGeneration, operatorConfig.ObjectMeta.Generation)
+		t.Logf("waiting for observed generation %d to match generation %d... \n", operatorConfig.Status.ObservedGeneration, operatorConfig.ObjectMeta.Generation)
 		return false
 	}
 	return true
@@ -337,14 +337,14 @@ func WaitForSettledState(t *testing.T, client *ClientSet) (settled bool, err err
 	pollErr := wait.Poll(interval, max, func() (stop bool, err error) {
 		// lets be informed about tests that take a long time to settle
 		count++
-		logUnsettledAtInterval(count)
+		logUnsettledAtInterval(t, count)
 		operatorConfig, err := client.Operator.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
 		// first, wait until we are observing the correct generation. if we are still looking at a previous
 		// generation, pass on this iteration of the loop
-		isCurrentGen := operatorIsObservingCurrentGeneration(operatorConfig)
+		isCurrentGen := operatorIsObservingCurrentGeneration(t, operatorConfig)
 		if !isCurrentGen {
 			return false, nil
 		}
@@ -361,12 +361,12 @@ func WaitForSettledState(t *testing.T, client *ClientSet) (settled bool, err err
 }
 
 // short term helper to simply print how long it takes to reach a settled state at certain intervals
-func logUnsettledAtInterval(count int) {
+func logUnsettledAtInterval(t *testing.T, count int) {
 	// arbitrary steps at which to print a notification
 	steps := []int{10, 30, 60, 90, 120, 180, 200}
 	for _, step := range steps {
 		if count == step {
-			fmt.Printf("waited %d seconds to reach settled state...\n", count)
+			t.Logf("waited %d seconds to reach settled state...\n", count)
 		}
 	}
 }

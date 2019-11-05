@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -168,12 +167,12 @@ func getConsoleBrand(t *testing.T, client *framework.ClientSet) operatorsv1.Bran
 			brandingValue = strings.Split(strings.TrimSpace(item), ":")[1]
 		}
 	}
-	brand, _ := stringToBrand(strings.TrimSpace(brandingValue))
+	brand, _ := stringToBrand(t, strings.TrimSpace(brandingValue))
 	return brand
 }
 
 // Helper function to convert string version of valid brands to their corresponding constant name
-func stringToBrand(brandstr string) (b operatorsv1.Brand, ok bool) {
+func stringToBrand(t *testing.T, brandstr string) (b operatorsv1.Brand, ok bool) {
 	switch found := operatorsv1.Brand(brandstr); found {
 	case
 		operatorsv1.BrandDedicated,
@@ -184,7 +183,7 @@ func stringToBrand(brandstr string) (b operatorsv1.Brand, ok bool) {
 		operatorsv1.BrandAzure:
 		return found, true
 	default:
-		fmt.Printf("invalid brand (%s), defaulting to %s \n", brandstr, operatorsv1.BrandOKD)
+		t.Logf("invalid brand (%s), defaulting to %s \n", brandstr, operatorsv1.BrandOKD)
 		return operatorsv1.BrandOKD, false
 	}
 }
