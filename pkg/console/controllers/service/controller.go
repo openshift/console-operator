@@ -15,6 +15,7 @@ import (
 
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
+	operatorinformersv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/status"
 	"github.com/openshift/console-operator/pkg/console/subresource/service"
@@ -49,6 +50,8 @@ type ServiceSyncController struct {
 func NewServiceSyncController(
 	operatorConfigClient operatorclientv1.ConsoleInterface,
 	corev1Client coreclientv1.CoreV1Interface,
+	// informers
+	operatorConfigInformer operatorinformersv1.ConsoleInformer,
 	serviceInformer coreinformersv1.ServiceInformer,
 	// names
 	targetNamespace string,
@@ -71,8 +74,11 @@ func NewServiceSyncController(
 		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerName),
 	}
 
+	operatorConfigInformer.Informer().AddEventHandler(ctrl.newEventHandler())
 	serviceInformer.Informer().AddEventHandler(ctrl.newEventHandler())
+
 	ctrl.cachesToSync = append(ctrl.cachesToSync,
+		operatorConfigInformer.Informer().HasSynced,
 		serviceInformer.Informer().HasSynced,
 	)
 
@@ -83,7 +89,6 @@ func (c *ServiceSyncController) sync() error {
 	startTime := time.Now()
 	klog.V(4).Infof("started syncing service %q (%v)", c.serviceName, startTime)
 	defer klog.V(4).Infof("finished syncing service %q (%v)", c.serviceName, time.Since(startTime))
-
 	operatorConfig, err := c.operatorConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
