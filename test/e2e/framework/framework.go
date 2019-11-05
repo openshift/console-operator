@@ -35,6 +35,17 @@ type TestingResource struct {
 	namespace string
 }
 
+func getTestingResources() []TestingResource {
+	return []TestingResource{
+		{"ConfigMap", consoleapi.OpenShiftConsoleConfigMapName, consoleapi.OpenShiftConsoleNamespace},
+		{"ConsoleCLIDownloads", consoleapi.OCCLIDownloadsCustomResourceName, ""},
+		{"ConsoleCLIDownloads", consoleapi.ODOCLIDownloadsCustomResourceName, ""},
+		{"Deployment", consoleapi.OpenShiftConsoleDeploymentName, consoleapi.OpenShiftConsoleNamespace},
+		{"Route", consoleapi.OpenShiftConsoleRouteName, consoleapi.OpenShiftConsoleNamespace},
+		{"Service", consoleapi.OpenShiftConsoleServiceName, consoleapi.OpenShiftConsoleNamespace},
+	}
+}
+
 func SetClusterProxyConfig(proxyConfig configv1.ProxySpec, client *ClientSet) error {
 	_, err := client.Proxy.Proxies().Patch(consoleapi.ConfigResourceName, types.MergePatchType, []byte(fmt.Sprintf(`{"spec": {"httpProxy": "%s", "httpsProxy": "%s", "noProxy": "%s"}}`, proxyConfig.HTTPProxy, proxyConfig.HTTPSProxy, proxyConfig.NoProxy)))
 	return err
@@ -46,14 +57,7 @@ func ResetClusterProxyConfig(client *ClientSet) error {
 }
 
 func DeleteAll(t *testing.T, client *ClientSet) {
-	resources := []TestingResource{
-		{"Deployment", consoleapi.OpenShiftConsoleDeploymentName, consoleapi.OpenShiftConsoleNamespace},
-		{"Service", consoleapi.OpenShiftConsoleServiceName, consoleapi.OpenShiftConsoleNamespace},
-		{"Route", consoleapi.OpenShiftConsoleRouteName, consoleapi.OpenShiftConsoleNamespace},
-		{"ConfigMap", consoleapi.OpenShiftConsoleConfigMapName, consoleapi.OpenShiftConsoleNamespace},
-		{"ConsoleCLIDownloads", consoleapi.OCCLIDownloadsCustomResourceName, ""},
-		{"ConsoleCLIDownloads", consoleapi.ODOCLIDownloadsCustomResourceName, ""},
-	}
+	resources := getTestingResources()
 
 	for _, resource := range resources {
 		t.Logf("deleting console's %s %s...", resource.name, resource.kind)
@@ -177,15 +181,9 @@ func DeleteCompletely(getObject func() (runtime.Object, error), deleteObject fun
 }
 
 func ConsoleResourcesAvailable(client *ClientSet) error {
-	resources := []TestingResource{
-		{"Deployment", consoleapi.OpenShiftConsoleDeploymentName, consoleapi.OpenShiftConsoleNamespace},
-		{"Service", consoleapi.OpenShiftConsoleServiceName, consoleapi.OpenShiftConsoleNamespace},
-		{"Route", consoleapi.OpenShiftConsoleRouteName, consoleapi.OpenShiftConsoleNamespace},
-		{"ConfigMap", consoleapi.OpenShiftConsoleConfigMapName, consoleapi.OpenShiftConsoleNamespace},
-		{"ConfigMap", consoleapi.OpenShiftConsolePublicConfigMapName, consoleapi.OpenShiftConfigManagedNamespace},
-		{"ConsoleCLIDownloads", consoleapi.OCCLIDownloadsCustomResourceName, ""},
-		{"ConsoleCLIDownloads", consoleapi.ODOCLIDownloadsCustomResourceName, ""},
-	}
+	resources := getTestingResources()
+	// We have to test the `console-public` configmap in the TestManaged as well.
+	resources = append(resources, TestingResource{"ConfigMap", consoleapi.OpenShiftConsolePublicConfigMapName, consoleapi.OpenShiftConfigManagedNamespace})
 
 	errChan := make(chan error)
 	for _, resource := range resources {
@@ -219,14 +217,7 @@ func IsResourceAvailable(errChan chan error, client *ClientSet, resource Testing
 }
 
 func ConsoleResourcesUnavailable(client *ClientSet) error {
-	resources := []TestingResource{
-		{"Deployment", consoleapi.OpenShiftConsoleDeploymentName, consoleapi.OpenShiftConsoleNamespace},
-		{"Service", consoleapi.OpenShiftConsoleServiceName, consoleapi.OpenShiftConsoleNamespace},
-		{"Route", consoleapi.OpenShiftConsoleRouteName, consoleapi.OpenShiftConsoleNamespace},
-		{"ConfigMap", consoleapi.OpenShiftConsoleConfigMapName, consoleapi.OpenShiftConsoleNamespace},
-		{"ConsoleCLIDownloads", consoleapi.OCCLIDownloadsCustomResourceName, ""},
-		{"ConsoleCLIDownloads", consoleapi.ODOCLIDownloadsCustomResourceName, ""},
-	}
+	resources := getTestingResources()
 
 	errChan := make(chan error)
 	for _, resource := range resources {
