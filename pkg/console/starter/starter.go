@@ -189,11 +189,12 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	)
 
 	consoleServiceController := service.NewServiceSyncController(
-		// operator config so we can update status
-		operatorConfigClient.OperatorV1().Consoles(),
-		// only needs to interact with the service resource
-		kubeClient.CoreV1(),
-		kubeInformersNamespaced.Core().V1().Services(),
+		// clients
+		operatorConfigClient.OperatorV1().Consoles(), // operator config so we can update status
+		kubeClient.CoreV1(),                          // only needs to interact with the service resource
+		// informers
+		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
+		kubeInformersNamespaced.Core().V1().Services(),     // Services
 		// names
 		api.OpenShiftConsoleNamespace,
 		api.OpenShiftConsoleName,
