@@ -21,7 +21,6 @@ func cleanUpUnmanagedTestCase(t *testing.T, client *framework.ClientSet) {
 // TestUnmanaged() sets ManagementState:Unmanaged then deletes a set of console
 // resources and verifies that the operator does not recreate them.
 func TestUnmanaged(t *testing.T) {
-	t.Skip()
 	client, _ := setupUnmanagedTestCase(t)
 	defer cleanUpUnmanagedTestCase(t, client)
 
@@ -34,7 +33,6 @@ func TestUnmanaged(t *testing.T) {
 }
 
 func TestEditUnmanagedConfigMap(t *testing.T) {
-	t.Skip()
 	client, _ := setupUnmanagedTestCase(t)
 	defer cleanUpUnmanagedTestCase(t, client)
 
@@ -45,7 +43,6 @@ func TestEditUnmanagedConfigMap(t *testing.T) {
 }
 
 func TestEditUnmanagedService(t *testing.T) {
-	t.Skip()
 	client, _ := setupUnmanagedTestCase(t)
 	defer cleanUpUnmanagedTestCase(t, client)
 
@@ -56,7 +53,6 @@ func TestEditUnmanagedService(t *testing.T) {
 }
 
 func TestEditUnmanagedRoute(t *testing.T) {
-	t.Skip()
 	client, _ := setupUnmanagedTestCase(t)
 	defer cleanUpUnmanagedTestCase(t, client)
 
