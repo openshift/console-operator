@@ -185,10 +185,8 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 
 	proxyConfig, err := c.proxyConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		proxyConfig = nil
+		klog.Errorf("proxy config error: %v", err)
+		return err
 	}
 
 	configs := configSet{
