@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/openshift/console-operator/pkg/console/metrics"
-
 	// kube
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,6 +42,7 @@ import (
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 
 	// operator
+	"github.com/openshift/console-operator/pkg/console/metrics"
 	statushelpers "github.com/openshift/console-operator/pkg/console/status"
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
@@ -73,7 +72,7 @@ type consoleOperator struct {
 	oauthClient   oauthclientv1.OAuthClientsGetter
 	versionGetter status.VersionGetter
 	// metrics
-	consoleMetrics *metrics.ConsolePrometheusMetrics
+	consoleMetrics *metrics.ConsoleMetrics
 	// recorder
 	recorder       events.Recorder
 	resourceSyncer resourcesynccontroller.ResourceSyncer
@@ -101,7 +100,7 @@ func NewConsoleOperator(
 	// openshift managed
 	managedCoreV1 corev1.Interface,
 	// metrics
-	consoleMetrics *metrics.ConsolePrometheusMetrics,
+	consoleMetrics *metrics.ConsoleMetrics,
 	// event handling
 	versionGetter status.VersionGetter,
 	recorder events.Recorder,

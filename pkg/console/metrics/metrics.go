@@ -3,31 +3,30 @@ package metrics
 import (
 	"sync"
 
-	"github.com/prometheus/client_golang/prometheus"
+	k8smetrics "k8s.io/component-base/metrics"
+	"k8s.io/component-base/metrics/legacyregistry"
 )
 
-type ConsolePrometheusMetrics struct {
-	ConsoleURL *prometheus.GaugeVec
+type ConsoleMetrics struct {
+	ConsoleURL *k8smetrics.GaugeVec
 }
 
-var singleton *ConsolePrometheusMetrics
+var singleton *ConsoleMetrics
 var once sync.Once
 
-// using an init() func for registering metrics is error
-// prone because the prometheus client registry may not be ready.
-func Register() *ConsolePrometheusMetrics {
+func Register() *ConsoleMetrics {
 	// thread safe
 	once.Do(func() {
-		singleton = &ConsolePrometheusMetrics{}
+		singleton = &ConsoleMetrics{}
 
 		// metric: console_url{url="https://<url>"} 1
-		singleton.ConsoleURL = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		singleton.ConsoleURL = k8smetrics.NewGaugeVec(&k8smetrics.GaugeOpts{
 			Name: "console_url",
 			Help: "URL of the console exposed on the cluster",
 			// one label
 		}, []string{"url"})
 
-		prometheus.MustRegister(singleton.ConsoleURL)
+		legacyregistry.MustRegister(singleton.ConsoleURL)
 	})
 	return singleton
 }
