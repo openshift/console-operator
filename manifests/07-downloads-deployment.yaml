@@ -87,11 +87,18 @@ spec:
               os.mkdir(arch)
               for operating_system in ['linux', 'mac', 'windows']:
                   os.mkdir(os.path.join(arch, operating_system))
+          for arch in ['arm64', 'ppc64le', 's390x']:
+              os.mkdir(arch)
+              for operating_system in ['linux']:
+                  os.mkdir(os.path.join(arch, operating_system))
 
           for arch, operating_system, path in [
-                  ('amd64', 'linux', '/usr/bin/oc'),
+                  ('amd64', 'linux', '/usr/share/openshift/linux_amd64/oc'),
                   ('amd64', 'mac', '/usr/share/openshift/mac/oc'),
                   ('amd64', 'windows', '/usr/share/openshift/windows/oc.exe'),
+                  ('arm64', 'linux', '/usr/share/openshift/linux_arm64/oc'),
+                  ('ppc64le', 'linux', '/usr/share/openshift/linux_ppc64le/oc'),
+                  ('s390x', 'linux', '/usr/share/openshift/linux_s390x/oc'),
                   ]:
               basename = os.path.basename(path)
               target_path = os.path.join(arch, operating_system, basename)
