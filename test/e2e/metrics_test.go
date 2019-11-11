@@ -107,21 +107,6 @@ func metricsRequest(t *testing.T, routeForMetrics string) string {
 	return string(bytes)
 }
 
-func httpOK(resp *http.Response) bool {
-	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
-		return true
-	}
-	return false
-}
-
-func getRequest(t *testing.T, metricsURL string) *http.Request {
-	req, err := http.NewRequest("GET", metricsURL, nil)
-	if err != nil {
-		fmt.Printf("%s\n", err)
-	}
-	return req
-}
-
 // kubeadmin is an oauth account. it will not work. to run tests instead do:
 // oc login -u system:admin
 // so that the config read gives correct data back.
