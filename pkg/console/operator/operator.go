@@ -42,6 +42,7 @@ import (
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 
 	// operator
+	"github.com/openshift/console-operator/pkg/console/metrics"
 	statushelpers "github.com/openshift/console-operator/pkg/console/status"
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
@@ -70,6 +71,8 @@ type consoleOperator struct {
 	routeClient   routeclientv1.RoutesGetter
 	oauthClient   oauthclientv1.OAuthClientsGetter
 	versionGetter status.VersionGetter
+	// metrics
+	consoleMetrics *metrics.ConsoleMetrics
 	// recorder
 	recorder       events.Recorder
 	resourceSyncer resourcesynccontroller.ResourceSyncer
@@ -96,6 +99,8 @@ func NewConsoleOperator(
 	oauthClients oauthinformersv1.OAuthClientInformer,
 	// openshift managed
 	managedCoreV1 corev1.Interface,
+	// metrics
+	consoleMetrics *metrics.ConsoleMetrics,
 	// event handling
 	versionGetter status.VersionGetter,
 	recorder events.Recorder,
@@ -117,6 +122,8 @@ func NewConsoleOperator(
 		routeClient:   routev1Client,
 		oauthClient:   oauthv1Client,
 		versionGetter: versionGetter,
+		// metrics
+		consoleMetrics: consoleMetrics,
 		// recorder
 		recorder:       recorder,
 		resourceSyncer: resourceSyncer,
