@@ -46,12 +46,16 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	// track changes, may trigger ripples & update operator config or console config status
 	toUpdate := false
 
-	// TODO: we are no longer syncing, but other resources need the route.
-	//    - if the route does not exist, what happens?
-	//    - we should abort and wait... and still observe a status?
 	rt, rtErr := co.routeClient.Routes(api.TargetNamespace).Get(api.OpenShiftConsoleName, metav1.GetOptions{})
-	// TODO: do we need to handle differently?
-	//   status.HandleSomething("Route-isnt-ready-but-do-we-want-yet-another-status")
+	// TODO: this controller is no longer responsible for syncing the route.
+	//   however, the route is essential for several of the components below.
+	//   - is it appropraite for SyncLoopRefresh InProgress to be used here?
+	//     the loop should exit early and wait until the RouteSyncController creates the route.
+	//     there is nothing new in this flow, other than 2 controllers now look
+	//     at the same resource.
+	//     - RouteSyncController is responsible for updates
+	//     - ConsoleOperatorController (future ConsoleDeploymentController) is responsible for reads only.
+	status.HandleProgressingOrDegraded(updatedOperatorConfig, "SyncLoopRefresh", "InProgress", rtErr)
 	if rtErr != nil {
 		return rtErr
 	}
