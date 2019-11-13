@@ -20,6 +20,7 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/resourcesyncdestination"
+	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/management"
@@ -221,6 +222,20 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		recorder,
 	)
 
+	consoleRouteController := route.NewRouteSyncController(
+		// operator config
+		operatorConfigClient.OperatorV1().Consoles(),
+		routesClient.RouteV1(),
+		// route
+		operatorConfigInformers.Operator().V1().Consoles(),
+		routesInformersNamespaced.Route().V1().Routes(),
+		// names
+		api.OpenShiftConsoleNamespace,
+		api.OpenShiftConsoleName,
+		// events
+		recorder,
+	)
+
 	versionRecorder := status.NewVersionGetter()
 	versionRecorder.SetVersion("operator", os.Getenv("RELEASE_VERSION"))
 
@@ -293,6 +308,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	}
 
 	go consoleServiceController.Run(1, ctx.Done())
+	go consoleRouteController.Run(1, ctx.Done())
 	go resourceSyncDestinationController.Run(1, ctx.Done())
 	go consoleOperator.Run(ctx.Done())
 	go cliDownloadsController.Run(1, ctx.Done())

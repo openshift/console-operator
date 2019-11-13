@@ -46,9 +46,7 @@ import (
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	"github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
-	"github.com/openshift/console-operator/pkg/console/subresource/route"
 	"github.com/openshift/console-operator/pkg/console/subresource/secret"
-	"github.com/openshift/console-operator/pkg/console/subresource/service"
 )
 
 const (
@@ -244,10 +242,6 @@ func (c *consoleOperator) removeConsole() error {
 	klog.V(2).Info("deleting console resources")
 	defer klog.V(2).Info("finished deleting console resources")
 	var errs []error
-	// route
-	errs = append(errs, c.routeClient.Routes(api.TargetNamespace).Delete(route.Stub().Name, &metav1.DeleteOptions{}))
-	// service
-	errs = append(errs, c.serviceClient.Services(api.TargetNamespace).Delete(service.Stub().Name, &metav1.DeleteOptions{}))
 	// configmaps
 	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(configmap.Stub().Name, &metav1.DeleteOptions{}))
 	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(configmap.ServiceCAStub().Name, &metav1.DeleteOptions{}))
