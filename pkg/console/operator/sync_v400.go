@@ -26,7 +26,9 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 
 	// operator
+
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
+	"github.com/openshift/console-operator/pkg/console/metrics"
 	"github.com/openshift/console-operator/pkg/console/status"
 	configmapsub "github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
@@ -191,21 +193,13 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 }
 
 func (co *consoleOperator) SyncConsoleConfig(consoleConfig *configv1.Console, consoleURL string) (*configv1.Console, error) {
+	oldURL := consoleConfig.Status.ConsoleURL
 	updated := consoleConfig.DeepCopy()
-	// track the URL state in prometheus before we update it
-	if consoleConfig.Status.ConsoleURL != consoleURL {
-		// not using this URL anymore
-		co.consoleMetrics.ConsoleURL.WithLabelValues(consoleConfig.Status.ConsoleURL).Set(0)
-	}
-	if len(consoleURL) != 0 {
-		// only update to new if we have a url
-		co.consoleMetrics.ConsoleURL.WithLabelValues(consoleURL).Set(1)
-	}
-
 	if updated.Status.ConsoleURL != consoleURL {
 		klog.V(4).Infof("updating console.config.openshift.io with url: %v", consoleURL)
 		updated.Status.ConsoleURL = consoleURL
 	}
+	metrics.HandleConsoleURL(oldURL, consoleURL)
 	return co.consoleConfigClient.UpdateStatus(updated)
 }
 
