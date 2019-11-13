@@ -63,6 +63,16 @@ spec:
           requests:
             memory: "100Mi"
             cpu: "10m"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8443
+            scheme: HTTPS
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8443
+            scheme: HTTPS
       volumes:
       - name: config
         configMap:
