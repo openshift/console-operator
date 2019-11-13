@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/openshift/console-operator/pkg/console/controllers/route"
+
 	// kube
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -225,6 +227,19 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		recorder,
 	)
 
+	consoleRouteController := route.NewRouteSyncController(
+		// operator config
+		operatorConfigClient.OperatorV1().Consoles(),
+		operatorConfigInformers.Operator().V1().Consoles(),
+		// route
+		routesClient.RouteV1(),
+		// names
+		api.OpenShiftConsoleNamespace,
+		api.OpenShiftConsoleName,
+		// events
+		recorder,
+	)
+
 	versionRecorder := status.NewVersionGetter()
 	versionRecorder.SetVersion("operator", os.Getenv("RELEASE_VERSION"))
 
@@ -284,6 +299,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	}
 
 	go consoleServiceController.Run(1, ctx.Done())
+	go consoleRouteController.Run(ctx.Done())
 	go resourceSyncDestinationController.Run(1, ctx.Done())
 	go consoleOperator.Run(ctx.Done())
 	go resourceSyncer.Run(1, ctx.Done())

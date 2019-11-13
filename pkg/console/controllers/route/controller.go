@@ -28,9 +28,7 @@ import (
 )
 
 const (
-	// key is basically irrelevant
-	controllerWorkQueueKey = "route-sync-work-queue-key"
-	controllerName         = "ConsoleRouteSyncController"
+	controllerName = "ConsoleRouteSyncController"
 )
 
 type RouteSyncController struct {
@@ -47,7 +45,7 @@ type RouteSyncController struct {
 func NewRouteSyncController(
 	operatorConfigClient operatorclientv1.ConsoleInterface,
 	operatorConfigInformer v1.ConsoleInformer,
-	// TODO: route client...
+	routev1Client routeclientv1.RoutesGetter,
 	// names
 	targetNamespace string,
 	routeName string,
@@ -56,7 +54,7 @@ func NewRouteSyncController(
 ) operator.Runner {
 	c := &RouteSyncController{
 		operatorConfigClient: operatorConfigClient,
-		routeClient:          nil, // TODO
+		routeClient:          routev1Client,
 		targetNamespace:      targetNamespace,
 		routeName:            routeName,
 		recorder:             recorder,
@@ -82,7 +80,6 @@ func (c *RouteSyncController) Sync(obj metav1.Object) error {
 
 	// we need to cast the operator config
 	operatorConfig := obj.(*operatorsv1.Console)
-	// TODO!
 	if err := c.handleSync(operatorConfig); err != nil {
 		return err
 	}
@@ -105,13 +102,15 @@ func (c *RouteSyncController) handleSync(config *operatorsv1.Console) error {
 		return fmt.Errorf("unknown state: %v", config.Spec.ManagementState)
 	}
 
-	// TODO: now sync the route!
 	updatedOperatorConfig := config.DeepCopy()
 
+	// TODO: is this all we need when syncing the route?
+	//  - anything out of place now?
+	//  - test and see if all things still work?
+	//    - yay e2e!
 	_, _, rtErrReason, rtErr := c.SyncRoute(updatedOperatorConfig)
 
 	// TODO: do we need the "toUpdate" bool?
-
 	status.HandleProgressingOrDegraded(updatedOperatorConfig, "RouteSync", rtErrReason, rtErr)
 	status.SyncStatus(c.operatorConfigClient, updatedOperatorConfig)
 
