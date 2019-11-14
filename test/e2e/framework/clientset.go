@@ -17,14 +17,18 @@ import (
 // ClientSet is a set of Kubernetes clients.
 type ClientSet struct {
 	// embedded
-	Core                clientcorev1.CoreV1Interface
-	Apps                clientappsv1.AppsV1Interface
-	Routes              clientroutev1.RouteV1Interface
-	ConsoleCliDownloads consoleclientv1.ConsoleCLIDownloadInterface
-	Operator            operatorclientv1.ConsolesGetter
-	Console             configv1.ConsolesGetter
-	ClusterOperator     configv1.ClusterOperatorsGetter
-	Proxy               configv1.ProxiesGetter
+	Core                   clientcorev1.CoreV1Interface
+	Apps                   clientappsv1.AppsV1Interface
+	Routes                 clientroutev1.RouteV1Interface
+	ConsoleCliDownloads    consoleclientv1.ConsoleCLIDownloadInterface
+	ConsoleExternalLogLink consoleclientv1.ConsoleExternalLogLinkInterface
+	ConsoleLink            consoleclientv1.ConsoleLinkInterface
+	ConsoleNotification    consoleclientv1.ConsoleNotificationInterface
+	ConsoleYAMLSample      consoleclientv1.ConsoleYAMLSampleInterface
+	Operator               operatorclientv1.ConsolesGetter
+	Console                configv1.ConsolesGetter
+	ClusterOperator        configv1.ClusterOperatorsGetter
+	Proxy                  configv1.ProxiesGetter
 }
 
 // NewClientset creates a set of Kubernetes clients. The default kubeconfig is
@@ -70,6 +74,10 @@ func NewClientset(kubeconfig *restclient.Config) (*ClientSet, error) {
 		return nil, err
 	}
 	clientset.ConsoleCliDownloads = consoleClient.ConsoleCLIDownloads()
+	clientset.ConsoleExternalLogLink = consoleClient.ConsoleExternalLogLinks()
+	clientset.ConsoleLink = consoleClient.ConsoleLinks()
+	clientset.ConsoleNotification = consoleClient.ConsoleNotifications()
+	clientset.ConsoleYAMLSample = consoleClient.ConsoleYAMLSamples()
 
 	return clientset, nil
 }
