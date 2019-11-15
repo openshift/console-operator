@@ -17,6 +17,8 @@ func cleanupRemovedTestCase(t *testing.T, client *framework.ClientSet) {
 
 // TestRemoved() sets ManagementState:Removed and verifies that all
 // console resources are deleted.
+// NOTE: this does not apply to the Downloads resources.  The Downloads
+// resources are managed by CVO and thus always exist.
 func TestRemoved(t *testing.T) {
 	client, _ := setupRemovedTestCase(t)
 	defer cleanupRemovedTestCase(t, client)
