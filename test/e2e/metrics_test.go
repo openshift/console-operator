@@ -155,6 +155,10 @@ func getClientWithCertAuth(t *testing.T) *http.Client {
 	// that are missing from the system trust roots
 	rootCAs.AppendCertsFromPEM(config.CAData)
 
+	// TODO: could get router-ca ConfigMap we sync'd from openshift-config-managed
+	// and append the cert from there.  Perhaps would eliminate need for
+	// InsecureSkipVerify: true
+
 	return &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{

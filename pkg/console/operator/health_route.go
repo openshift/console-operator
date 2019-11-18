@@ -63,6 +63,11 @@ func (co *consoleOperator) CheckRouteHealth(opConfig *operatorv1.Console, rt *ro
 }
 
 func (co *consoleOperator) getCA() (*x509.CertPool, error) {
+	// TODO: should I update to this? start with the SystemCertPool?
+	//rootCAs, _ := x509.SystemCertPool()
+	//if rootCAs == nil {
+	//	rootCAs = x509.NewCertPool()
+	//}
 	caCertPool := x509.NewCertPool()
 
 	routerCA, rcaErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(api.RouterCAConfigMapName, metav1.GetOptions{})
@@ -93,6 +98,7 @@ func (co *consoleOperator) getCA() (*x509.CertPool, error) {
 func clientWithCA(caPool *x509.CertPool) *http.Client {
 	return &http.Client{
 		Timeout: 5 * time.Second,
+		// TODO: do I need http.DefaultTransport.(*http.Transport)?
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				RootCAs: caPool,
