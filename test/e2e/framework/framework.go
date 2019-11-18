@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	yaml "gopkg.in/yaml.v2"
+
 	configv1 "github.com/openshift/api/config/v1"
 	consolev1 "github.com/openshift/api/console/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -217,12 +219,28 @@ func IsResourceAvailable(errChan chan error, client *ClientSet, resource Testing
 	errChan <- err
 }
 
+// checks 3 times if the resources are unavailable
+// - is fine if fails or 1st or 2nd run, resources could be in the process of being removed
+// - is not fine if resources disappear, then reappear
+// - it seems to take a bit longer to remove resources, so this wrapper should account for that.
 func ConsoleResourcesUnavailable(client *ClientSet) error {
+	var failed error = nil
+	// give it 3 tries, then fail
+	for i := 0; i < 3; i++ {
+		// testing resources are hard-coded in this func.
+		err := LoopResources(client, IsResourceUnavailable)
+		fmt.Printf("validating console resources have been removed... %v\n", err == nil)
+		failed = err
+	}
+	return failed
+}
+
+func LoopResources(client *ClientSet, inner func(errChan chan error, client *ClientSet, resource TestingResource)) error {
 	resources := getTestingResources()
 
 	errChan := make(chan error)
 	for _, resource := range resources {
-		go IsResourceUnavailable(errChan, client, resource)
+		go inner(errChan, client, resource)
 	}
 	checkErr := <-errChan
 
@@ -238,7 +256,13 @@ func IsResourceUnavailable(errChan chan error, client *ClientSet, resource Testi
 
 		obtainedResource, err := GetResource(client, resource)
 		if err == nil {
-			return true, fmt.Errorf("deleted console %s %s was recreated: %#v", resource.kind, resource.name, obtainedResource)
+
+			yamlBytes, err := yaml.Marshal(obtainedResource)
+			if err != nil {
+				fmt.Printf("error marshalling yaml for %s %s %v", resource.kind, resource.name, err)
+			}
+
+			return true, fmt.Errorf("deleted console %s %s was recreated: %#v", resource.kind, resource.name, string(yamlBytes))
 		}
 		if !errors.IsNotFound(err) {
 			return true, err
