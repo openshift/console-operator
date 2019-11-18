@@ -70,6 +70,8 @@ func (co *consoleOperator) getCA() (*x509.CertPool, error) {
 	//}
 	caCertPool := x509.NewCertPool()
 
+	appendProxyCA(caCertPool, co.systemCABundle)
+
 	routerCA, rcaErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(api.RouterCAConfigMapName, metav1.GetOptions{})
 
 	if rcaErr != nil && apierrors.IsNotFound(rcaErr) {
@@ -84,6 +86,7 @@ func (co *consoleOperator) getCA() (*x509.CertPool, error) {
 	if rcaErr != nil {
 		klog.Infof("failed to GET configmap %s in %s (synced from %s)", api.RouterCAConfigMapName, api.OpenShiftConsoleNamespace, api.OpenShiftConfigManagedNamespace)
 	}
+
 	// fallback to our local ca in from our serviceaccount
 	// if we hit this path, are we likely to get self signed certs errors?
 	serviceAccountCAbytes, err := ioutil.ReadFile(api.OAuthEndpointCAFilePath)
@@ -105,4 +108,13 @@ func clientWithCA(caPool *x509.CertPool) *http.Client {
 			},
 		},
 	}
+}
+
+func appendProxyCA(caCertPool *x509.CertPool, systemCABundle []byte) *x509.CertPool {
+	// load the proxy CA from disk, if we have it
+	if len(systemCABundle) > 0 {
+		// caData = append(bytes.TrimSpace(caData), []byte("\n")...)
+		caCertPool.AppendCertsFromPEM(systemCABundle)
+	}
+	return caCertPool
 }
