@@ -40,9 +40,7 @@ spec:
         ports:
         - containerPort: 60000
           name: metrics
-        command:
-        - console
-        - operator
+        command: ["/bin/bash", "-ec"]
         args:
         - |
           if [ -s /var/run/configmaps/trusted-ca-bundle/ca-bundle.crt ]; then

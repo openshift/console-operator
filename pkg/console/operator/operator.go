@@ -3,6 +3,7 @@ package operator
 import (
 	// standard lib
 	"fmt"
+	"io/ioutil"
 	"reflect"
 	"time"
 
@@ -75,6 +76,8 @@ type consoleOperator struct {
 	// recorder
 	recorder       events.Recorder
 	resourceSyncer resourcesynccontroller.ResourceSyncer
+
+	systemCABundle []byte
 }
 
 func NewConsoleOperator(
@@ -127,6 +130,13 @@ func NewConsoleOperator(
 		recorder:       recorder,
 		resourceSyncer: resourceSyncer,
 	}
+
+	// mounted via operator.yaml manifest
+	systemCABytes, err := ioutil.ReadFile("/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem")
+	if err != nil {
+		klog.Warningf("Unable to read system CA from /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem: %v", err)
+	}
+	c.systemCABundle = systemCABytes
 
 	secretsInformer := coreV1.Secrets()
 	configMapInformer := coreV1.ConfigMaps()
