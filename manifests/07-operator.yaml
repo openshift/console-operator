@@ -3,6 +3,10 @@ kind: Deployment
 metadata:
   name: console-operator
   namespace: openshift-console-operator
+  labels:
+    name: console-operator
+  annotations:
+    config.openshift.io/inject-proxy: operator
 spec:
   replicas: 1
   selector:
@@ -40,14 +44,24 @@ spec:
         - console
         - operator
         args:
-        - "-v=2"
-        - "--config=/var/run/configmaps/config/controller-config.yaml"
+        - |
+          if [ -s /var/run/configmaps/trusted-ca-bundle/ca-bundle.crt ]; then
+              echo "Copying system trust bundle"
+              cp -f /var/run/configmaps/trusted-ca-bundle/ca-bundle.crt /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+          fi
+          exec console-operator operator --config=/var/run/configmaps/config/controller-config.yaml --v=2 --terminate-on-files=/var/run/configmaps/trusted-ca-bundle/ca-bundle.crt
+        # args:
+        # - "-v=2"
+        # - "--config=/var/run/configmaps/config/controller-config.yaml"
         imagePullPolicy: IfNotPresent
         volumeMounts:
         - mountPath: /var/run/configmaps/config
           name: config
         - mountPath: /var/run/secrets/serving-cert
           name: serving-cert
+        - mountPath: /var/run/configmaps/trusted-ca-bundle
+          name: trusted-ca-bundle
+          readOnly: true
         env:
         - name: IMAGE
           value: registry.svc.ci.openshift.org/openshift:console
@@ -70,4 +84,8 @@ spec:
       - name: serving-cert
         secret:
           secretName: serving-cert
+          optional: true
+      - name: trusted-ca-bundle
+        configMap:
+          name: trusted-ca-bundle
           optional: true
