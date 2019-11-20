@@ -122,7 +122,7 @@ func (c *CLIDownloadsSyncController) sync() error {
 	}
 
 	host := routesub.GetCanonicalHost(consoleRoute)
-	ocConsoleCLIDownloads := PlatformBasedOCConsoleCLIDownloads(host, "amd64", api.OCCLIDownloadsCustomResourceName)
+	ocConsoleCLIDownloads := PlatformBasedOCConsoleCLIDownloads(host, api.OCCLIDownloadsCustomResourceName)
 	_, ocCLIDownloadsErrReason, ocCLIDownloadsErr := ApplyCLIDownloads(c.consoleCliDownloadsClient, ocConsoleCLIDownloads)
 	status.HandleDegraded(updatedOperatorConfig, "OCDownloadsSync", ocCLIDownloadsErrReason, ocCLIDownloadsErr)
 	if ocCLIDownloadsErr != nil {
@@ -150,16 +150,19 @@ func GetPlatformURL(baseURL, platform, archiveType string) string {
 	return fmt.Sprintf("%s/%s/%s", baseURL, platform, archiveType)
 }
 
-func PlatformBasedOCConsoleCLIDownloads(host, arch, cliDownloadsName string) *v1.ConsoleCLIDownload {
-	baseURL := fmt.Sprintf("%s/%s", util.HTTPS(host), arch)
+func PlatformBasedOCConsoleCLIDownloads(host, cliDownloadsName string) *v1.ConsoleCLIDownload {
+	baseURL := fmt.Sprintf("%s", util.HTTPS(host))
 	platforms := []struct {
 		label    string
 		key      string
 		archType string
 	}{
-		{"Linux", "linux", "oc.tar"},
-		{"Mac", "mac", "oc.zip"},
-		{"Windows", "windows", "oc.zip"},
+		{"Linux for x86_64", "amd64/linux", "oc.tar"},
+		{"Linux for ARM 64", "arm64/linux", "oc.tar"},
+		{"Linux for IBM Power, little endian", "ppc64le/linux", "oc.tar"},
+		{"Linux for IBM Z", "s390x/linux", "oc.tar"},
+		{"Mac", "amd64/mac", "oc.zip"},
+		{"Windows 64-bit", "amd64/windows", "oc.zip"},
 	}
 
 	links := []v1.CLIDownloadLink{}

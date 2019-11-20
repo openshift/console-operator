@@ -31,7 +31,7 @@ func TestDownloadsEndpoint(t *testing.T) {
 	}
 	host := routesub.GetCanonicalHost(route)
 
-	ocDownloads := clidownloads.PlatformBasedOCConsoleCLIDownloads(host, "amd64", api.OCCLIDownloadsCustomResourceName)
+	ocDownloads := clidownloads.PlatformBasedOCConsoleCLIDownloads(host, api.OCCLIDownloadsCustomResourceName)
 
 	for _, link := range ocDownloads.Spec.Links {
 		req := getRequest(t, link.Href)

@@ -20,13 +20,40 @@ func TestGetPlatformURL(t *testing.T) {
 		want string
 	}{
 		{
-			name: "Test assembling linux specific URL",
+			name: "Test assembling linux amd64 specific URL",
 			args: args{
 				baseURL:     "https://www.example.com/amd64",
 				platform:    "linux",
 				archiveType: "oc.tar",
 			},
 			want: "https://www.example.com/amd64/linux/oc.tar",
+		},
+		{
+			name: "Test assembling linux arm64 specific URL",
+			args: args{
+				baseURL:     "https://www.example.com/arm64",
+				platform:    "linux",
+				archiveType: "oc.tar",
+			},
+			want: "https://www.example.com/arm64/linux/oc.tar",
+		},
+		{
+			name: "Test assembling linux ppc64le specific URL",
+			args: args{
+				baseURL:     "https://www.example.com/ppc64le",
+				platform:    "linux",
+				archiveType: "oc.tar",
+			},
+			want: "https://www.example.com/ppc64le/linux/oc.tar",
+		},
+		{
+			name: "Test assembling linux s390x specific URL",
+			args: args{
+				baseURL:     "https://www.example.com/s390x",
+				platform:    "linux",
+				archiveType: "oc.tar",
+			},
+			want: "https://www.example.com/s390x/linux/oc.tar",
 		},
 		{
 			name: "Test assembling mac specific URL",
@@ -38,7 +65,7 @@ func TestGetPlatformURL(t *testing.T) {
 			want: "https://www.example.com/amd64/mac/oc.zip",
 		},
 		{
-			name: "Test assembling windows specific URL",
+			name: "Test assembling windows 64-bit specific URL",
 			args: args{
 				baseURL:     "https://www.example.com/amd64",
 				platform:    "windows",
@@ -71,12 +98,11 @@ func TestPlatformBasedOCConsoleCLIDownloads(t *testing.T) {
 			name: "Test assembling platform specific URL",
 			args: args{
 				host:             "www.example.com",
-				arch:             "amd64",
-				cliDownloadsName: "oc-cli-downloads",
+				cliDownloadsName: "amd64/oc-cli-downloads",
 			},
 			want: &v1.ConsoleCLIDownload{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "oc-cli-downloads",
+					Name: "amd64/oc-cli-downloads",
 				},
 				Spec: v1.ConsoleCLIDownloadSpec{
 					Description: `With the OpenShift command line interface, you can create applications and manage OpenShift projects from a terminal.
@@ -87,7 +113,19 @@ The oc binary offers the same capabilities as the kubectl binary, but it is furt
 					Links: []v1.CLIDownloadLink{
 						{
 							Href: "https://www.example.com/amd64/linux/oc.tar",
-							Text: "Download oc for Linux",
+							Text: "Download oc for Linux for x86_64",
+						},
+						{
+							Href: "https://www.example.com/arm64/linux/oc.tar",
+							Text: "Download oc for Linux for ARM 64",
+						},
+						{
+							Href: "https://www.example.com/ppc64le/linux/oc.tar",
+							Text: "Download oc for Linux for IBM Power, little endian",
+						},
+						{
+							Href: "https://www.example.com/s390x/linux/oc.tar",
+							Text: "Download oc for Linux for IBM Z",
 						},
 						{
 							Href: "https://www.example.com/amd64/mac/oc.zip",
@@ -95,7 +133,7 @@ The oc binary offers the same capabilities as the kubectl binary, but it is furt
 						},
 						{
 							Href: "https://www.example.com/amd64/windows/oc.zip",
-							Text: "Download oc for Windows",
+							Text: "Download oc for Windows 64-bit",
 						},
 					},
 				},
@@ -104,7 +142,7 @@ The oc binary offers the same capabilities as the kubectl binary, but it is furt
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(PlatformBasedOCConsoleCLIDownloads(tt.args.host, tt.args.arch, tt.args.cliDownloadsName), tt.want); diff != nil {
+			if diff := deep.Equal(PlatformBasedOCConsoleCLIDownloads(tt.args.host, tt.args.cliDownloadsName), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
