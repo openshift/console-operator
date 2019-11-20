@@ -59,7 +59,7 @@ spec:
         - '-c'
         - |
           cat <<EOF >>/tmp/serve.py
-          import BaseHTTPServer, os, re, signal, SimpleHTTPServer, socket, sys, tarfile, tempfile, threading, time, zipfile
+          import BaseHTTPServer, errno, os, re, signal, SimpleHTTPServer, socket, sys, tarfile, tempfile, threading, time, zipfile
 
           signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
 
@@ -85,32 +85,36 @@ spec:
           temp_dir = tempfile.mkdtemp()
           print('serving from {}'.format(temp_dir))
           os.chdir(temp_dir)
-          for arch in ['amd64']:
+          for arch in ['amd64', 'arm64', 'ppc64le', 's390x']:
               os.mkdir(arch)
-              for operating_system in ['linux', 'mac', 'windows']:
-                  os.mkdir(os.path.join(arch, operating_system))
-          for arch in ['arm64', 'ppc64le', 's390x']:
-              os.mkdir(arch)
-              for operating_system in ['linux']:
-                  os.mkdir(os.path.join(arch, operating_system))
+              for operating_system in ['linux', 'darwin', 'windows']:
+                  os_path = os.path.join(arch, operating_system)
+                  try:
+                      os.mkdir(os_path)
+                  except OSError as error:
+                      if error.errno != errno.EEXIST:
+                          raise
+                  basename = 'oc'
+                  if operating_system == 'windows':
+                      basename += '.exe'
+                  target_path = os.path.join(os_path, basename)
+                  source_path = os.path.join('/usr', 'share', 'openshift', '{}_{}'.format(operating_system, arch), executable)
+                  try:
+                      os.stat(source_path)
+                  except OSError as error:
+                      print('skipping {}/{}: {}'.format(arch, operating_system, error))
+                      continue
+                  os.symlink(source_path, target_path)
+                  source_path = os.path.realpath(source_path)
+                  base_root, _ = os.path.splitext(basename)
+                  archive_path_root = os.path.join(arch, operating_system, base_root)
+                  with tarfile.open('{}.tar'.format(archive_path_root), 'w') as tar:
+                      tar.add(source_path, basename)
+                  with zipfile.ZipFile('{}.zip'.format(archive_path_root), 'w') as zip:
+                      zip.write(source_path, basename)
 
-          for arch, operating_system, path in [
-                  ('amd64', 'linux', '/usr/share/openshift/linux_amd64/oc'),
-                  ('amd64', 'mac', '/usr/share/openshift/mac/oc'),
-                  ('amd64', 'windows', '/usr/share/openshift/windows/oc.exe'),
-                  ('arm64', 'linux', '/usr/share/openshift/linux_arm64/oc'),
-                  ('ppc64le', 'linux', '/usr/share/openshift/linux_ppc64le/oc'),
-                  ('s390x', 'linux', '/usr/share/openshift/linux_s390x/oc'),
-                  ]:
-              basename = os.path.basename(path)
-              target_path = os.path.join(arch, operating_system, basename)
-              os.symlink(path, target_path)
-              base_root, _ = os.path.splitext(basename)
-              archive_path_root = os.path.join(arch, operating_system, base_root)
-              with tarfile.open('{}.tar'.format(archive_path_root), 'w') as tar:
-                  tar.add(path, basename)
-              with zipfile.ZipFile('{}.zip'.format(archive_path_root), 'w') as zip:
-                  zip.write(path, basename)
+             # backwards compat for old clients.  Too bad we can't 301 them...
+             os.symlink(os.path.join(arch, 'darwin'), os.path.join(arch, 'mac'))
 
           # Create socket
           addr = ('', 8080)
