@@ -129,11 +129,11 @@ The oc binary offers the same capabilities as the kubectl binary, but it is furt
 						},
 						{
 							Href: "https://www.example.com/amd64/mac/oc.zip",
-							Text: "Download oc for Mac",
+							Text: "Download oc for Mac for x86_64",
 						},
 						{
 							Href: "https://www.example.com/amd64/windows/oc.zip",
-							Text: "Download oc for Windows 64-bit",
+							Text: "Download oc for Windows for x86_64",
 						},
 					},
 				},
