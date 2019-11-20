@@ -162,7 +162,7 @@ func PlatformBasedOCConsoleCLIDownloads(host, cliDownloadsName string) *v1.Conso
 		{"Linux for IBM Power, little endian", "ppc64le/linux", "oc.tar"},
 		{"Linux for IBM Z", "s390x/linux", "oc.tar"},
 		{"Mac", "amd64/mac", "oc.zip"},
-		{"Windows", "amd64/windows", "oc.zip"},
+		{"Windows 64-bit", "amd64/windows", "oc.zip"},
 	}
 
 	links := []v1.CLIDownloadLink{}
