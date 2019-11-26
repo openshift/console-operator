@@ -34,7 +34,6 @@ const (
 	configMapResourceVersionAnnotation          = "console.openshift.io/console-config-version"
 	proxyConfigResourceVersionAnnotation        = "console.openshift.io/proxy-config-version"
 	serviceCAConfigMapResourceVersionAnnotation = "console.openshift.io/service-ca-config-version"
-	routerCAConfigMapResourceVersionAnnotation  = "console.openshift.io/router-ca-config-version"
 	trustedCAConfigMapResourceVersionAnnotation = "console.openshift.io/trusted-ca-config-version"
 	secretResourceVersionAnnotation             = "console.openshift.io/oauth-secret-version"
 	consoleImageAnnotation                      = "console.openshift.io/image"
@@ -45,7 +44,6 @@ var (
 		configMapResourceVersionAnnotation,
 		proxyConfigResourceVersionAnnotation,
 		serviceCAConfigMapResourceVersionAnnotation,
-		routerCAConfigMapResourceVersionAnnotation,
 		trustedCAConfigMapResourceVersionAnnotation,
 		secretResourceVersionAnnotation,
 		consoleImageAnnotation,
@@ -63,14 +61,13 @@ type volumeConfig struct {
 	mappedKeys  map[string]string
 }
 
-func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, routerCAConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route, proxyConfig *configv1.Proxy, canMountCustomLogo bool) *appsv1.Deployment {
+func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route, proxyConfig *configv1.Proxy, canMountCustomLogo bool) *appsv1.Deployment {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
 	annotations := map[string]string{
 		configMapResourceVersionAnnotation:          cm.GetResourceVersion(),
 		serviceCAConfigMapResourceVersionAnnotation: serviceCAConfigMap.GetResourceVersion(),
-		routerCAConfigMapResourceVersionAnnotation:  routerCAConfigMap.GetResourceVersion(),
 		trustedCAConfigMapResourceVersionAnnotation: trustedCAConfigMap.GetResourceVersion(),
 		proxyConfigResourceVersionAnnotation:        proxyConfig.GetResourceVersion(),
 		secretResourceVersionAnnotation:             sec.GetResourceVersion(),
@@ -420,12 +417,6 @@ func defaultVolumeConfig() []volumeConfig {
 			name:        api.ServiceCAConfigMapName,
 			readOnly:    true,
 			path:        "/var/service-ca",
-			isConfigMap: true,
-		},
-		{
-			name:        api.RouterCAConfigMapName,
-			readOnly:    true,
-			path:        "/var/router-ca",
 			isConfigMap: true,
 		},
 	}

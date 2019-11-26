@@ -39,15 +39,13 @@ func DefaultConfigMap(
 	consoleConfig *configv1.Console,
 	managedConfig *corev1.ConfigMap,
 	infrastructureConfig *configv1.Infrastructure,
-	rt *routev1.Route,
-	useDefaultCAFile bool) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
+	rt *routev1.Route) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
 	defaultConfig, err := defaultBuilder.Host(rt.Spec.Host).
 		LogoutURL(defaultLogoutURL).
 		Brand(DEFAULT_BRAND).
 		DocURL(DEFAULT_DOC_URL).
-		RouterCA(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
 		ConfigYAML()
 
@@ -57,7 +55,6 @@ func DefaultConfigMap(
 		LogoutURL(consoleConfig.Spec.Authentication.LogoutRedirect).
 		Brand(operatorConfig.Spec.Customization.Brand).
 		DocURL(operatorConfig.Spec.Customization.DocumentationBaseURL).
-		RouterCA(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
 		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).
