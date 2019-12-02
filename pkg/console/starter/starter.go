@@ -23,7 +23,6 @@ import (
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/management"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
-	"github.com/openshift/library-go/pkg/operator/staleconditions"
 	"github.com/openshift/library-go/pkg/operator/status"
 	"github.com/openshift/library-go/pkg/operator/unsupportedconfigoverridescontroller"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
@@ -250,19 +249,20 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		ctx.EventRecorder,
 	)
 
-	staleConditionsController := staleconditions.NewRemoveStaleConditions(
-		[]string{
-			// in 4.1.0 we directly set this set of conditions. We should no longer do this.
-			// in 4.3.0+ we can remove this
-			"Degraded",
-			// in follow-up PRs, we should stop using the rest directly:
-			"Progressing",
-			"Available",
-			// "Faililng"
-		},
-		operatorClient,
-		ctx.EventRecorder,
-	)
+	// NOTE: be sure to uncomment the .Run() below if using this
+	//staleConditionsController := staleconditions.NewRemoveStaleConditions(
+	//	[]string{
+	//		// If a condition is removed, we need to add it here for at least
+	//		// one release to ensure the operator does not permanently wedge.
+	//		// Please do something like the following:
+	//		//
+	//		// example: in 4.x.x we removed FooDegraded condition and can remove
+	//		// this in 4.x+1:
+	//		// "FooDegraded",
+	//	},
+	//	operatorClient,
+	//	ctx.EventRecorder,
+	//)
 
 	configUpgradeableController := unsupportedconfigoverridescontroller.NewUnsupportedConfigOverridesController(operatorClient, ctx.EventRecorder)
 	logLevelController := loglevel.NewClusterOperatorLoggingController(operatorClient, ctx.EventRecorder)
@@ -292,7 +292,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	go logLevelController.Run(1, ctx.Done())
 	go managementStateController.Run(1, ctx.Done())
 	go cliDownloadsController.Run(1, ctx.Done())
-	go staleConditionsController.Run(1, ctx.Done())
+	// go staleConditionsController.Run(1, ctx.Done())
 
 	<-ctx.Done()
 	return fmt.Errorf("stopped")
