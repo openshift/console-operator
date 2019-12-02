@@ -36,6 +36,8 @@ func TestDebugLogLevel(t *testing.T) {
 		t.Fatalf("error: flag (%s) not found in command %v \n", flagToTest, deployment.Spec.Template.Spec.Containers[0].Command)
 	}
 
+	t.Log("made it this far, should be ok?")
+	framework.ConsolePodsMustSettle(t, client)
 }
 
 // TestTraceLogLevel sets 'Trace' LogLevel on the console operator and tests

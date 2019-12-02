@@ -396,6 +396,32 @@ func IsAvailableAndUpdated(deployment *appsv1.Deployment) bool {
 	return available && currentGen && updated
 }
 
+// 3 pods, 1 crashlooping looks like:
+//status:
+//	availableReplicas: 2
+//	conditions:
+//	- 	lastTransitionTime: "2019-12-02T17:20:47Z"
+//		lastUpdateTime: "2019-12-02T17:20:47Z"
+//		message: Deployment has minimum availability.
+//		reason: MinimumReplicasAvailable
+//		status: "True"
+//		type: Available
+//	- 	lastTransitionTime: "2019-12-02T18:01:09Z"
+//		lastUpdateTime: "2019-12-02T18:01:09Z"
+//		message: ReplicaSet "console-7b84d8bc46" has timed out progressing.
+//		reason: ProgressDeadlineExceeded
+//		status: "False"
+//		type: Progressing
+//	observedGeneration: 7
+//	readyReplicas: 2
+//	replicas: 3
+//	unavailableReplicas: 1
+//	updatedReplicas: 1
+func AllPodsHealthy(deployment *appsv1.Deployment) bool {
+	return deployment.Status.Replicas == *deployment.Spec.Replicas &&
+		deployment.Status.Replicas == deployment.Status.ReadyReplicas
+}
+
 func defaultVolumeConfig() []volumeConfig {
 	return []volumeConfig{
 		{
