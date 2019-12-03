@@ -27,7 +27,6 @@ func TestDefaultDeployment(t *testing.T) {
 		config             *operatorsv1.Console
 		cm                 *corev1.ConfigMap
 		ca                 *corev1.ConfigMap
-		rca                *corev1.ConfigMap
 		tca                *corev1.ConfigMap
 		sec                *corev1.Secret
 		rt                 *v1.Route
@@ -61,7 +60,6 @@ func TestDefaultDeployment(t *testing.T) {
 		Annotations: map[string]string{
 			configMapResourceVersionAnnotation:          "",
 			secretResourceVersionAnnotation:             "",
-			routerCAConfigMapResourceVersionAnnotation:  "",
 			serviceCAConfigMapResourceVersionAnnotation: "",
 			trustedCAConfigMapResourceVersionAnnotation: "",
 			proxyConfigResourceVersionAnnotation:        "",
@@ -118,7 +116,6 @@ func TestDefaultDeployment(t *testing.T) {
 	consoleDeploymentTemplateAnnotations := map[string]string{
 		configMapResourceVersionAnnotation:          "",
 		secretResourceVersionAnnotation:             "",
-		routerCAConfigMapResourceVersionAnnotation:  "",
 		serviceCAConfigMapResourceVersionAnnotation: "",
 		trustedCAConfigMapResourceVersionAnnotation: "",
 		proxyConfigResourceVersionAnnotation:        "",
@@ -165,10 +162,7 @@ func TestDefaultDeployment(t *testing.T) {
 				config: consoleOperatorConfig,
 				cm:     consoleConfig,
 				ca:     &corev1.ConfigMap{},
-				rca: &corev1.ConfigMap{
-					Data: map[string]string{"ca-bundle.crt": "test"},
-				},
-				tca: trustedCAConfigMapEmpty,
+				tca:    trustedCAConfigMapEmpty,
 				sec: &corev1.Secret{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
@@ -230,10 +224,7 @@ func TestDefaultDeployment(t *testing.T) {
 				config: consoleOperatorConfig,
 				cm:     consoleConfig,
 				ca:     &corev1.ConfigMap{},
-				rca: &corev1.ConfigMap{
-					Data: map[string]string{"ca-bundle.crt": "test"},
-				},
-				tca: trustedCAConfigMapSet,
+				tca:    trustedCAConfigMapSet,
 				sec: &corev1.Secret{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
@@ -292,7 +283,7 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.rca, tt.args.cm, tt.args.tca, tt.args.sec, tt.args.rt, tt.args.proxy, tt.args.canMountCustomLogo), tt.want); diff != nil {
+			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.cm, tt.args.tca, tt.args.sec, tt.args.rt, tt.args.proxy, tt.args.canMountCustomLogo), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
@@ -396,19 +387,6 @@ func Test_consoleVolumes(t *testing.T) {
 			},
 		},
 	}
-	routerCA := corev1.Volume{
-		Name: api.RouterCAConfigMapName,
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: api.RouterCAConfigMapName,
-				},
-				Items:       nil,
-				DefaultMode: nil,
-				Optional:    nil,
-			},
-		},
-	}
 	tests := []struct {
 		name string
 		args args
@@ -424,7 +402,6 @@ func Test_consoleVolumes(t *testing.T) {
 				consoleOauthConfig,
 				consoleConfig,
 				serviceCA,
-				routerCA,
 			},
 		},
 		{
@@ -437,7 +414,6 @@ func Test_consoleVolumes(t *testing.T) {
 				consoleOauthConfig,
 				consoleConfig,
 				serviceCA,
-				routerCA,
 				{
 					Name: api.TrustedCAConfigMapName,
 					VolumeSource: corev1.VolumeSource{
@@ -503,11 +479,6 @@ func Test_consoleVolumeMounts(t *testing.T) {
 					ReadOnly:  true,
 					MountPath: "/var/service-ca",
 				},
-				{
-					Name:      api.RouterCAConfigMapName,
-					ReadOnly:  true,
-					MountPath: "/var/router-ca",
-				},
 			},
 		},
 		{name: "Test console volumes Mounts with TrustedCA",
@@ -534,11 +505,6 @@ func Test_consoleVolumeMounts(t *testing.T) {
 					Name:      api.ServiceCAConfigMapName,
 					ReadOnly:  true,
 					MountPath: "/var/service-ca",
-				},
-				{
-					Name:      api.RouterCAConfigMapName,
-					ReadOnly:  true,
-					MountPath: "/var/router-ca",
 				},
 				{
 					Name:      api.TrustedCAConfigMapName,

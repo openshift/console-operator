@@ -10,7 +10,6 @@ import (
 
 const (
 	clientSecretFilePath    = "/var/oauth-config/clientSecret"
-	routerCAFilePath        = "/var/router-ca/ca-bundle.crt"
 	oauthEndpointCAFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 	// serving info
 	certFilePath = "/var/serving-cert/tls.crt"
@@ -37,7 +36,6 @@ type ConsoleServerCLIConfigBuilder struct {
 	statusPageID      string
 	customProductName string
 	customLogoFile    string
-	CAFile            string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -73,15 +71,6 @@ func (b *ConsoleServerCLIConfigBuilder) CustomLogoFile(customLogoFile string) *C
 
 func (b *ConsoleServerCLIConfigBuilder) StatusPageID(id string) *ConsoleServerCLIConfigBuilder {
 	b.statusPageID = id
-	return b
-}
-
-func (b *ConsoleServerCLIConfigBuilder) RouterCA(useDefaultRouterCA bool) *ConsoleServerCLIConfigBuilder {
-	if useDefaultRouterCA {
-		b.CAFile = oauthEndpointCAFilePath
-		return b
-	}
-	b.CAFile = routerCAFilePath
 	return b
 }
 
@@ -130,15 +119,10 @@ func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {
 }
 
 func (b *ConsoleServerCLIConfigBuilder) authServer() Auth {
-	// we need this fallback due to the way our unit test are structured,
-	// where the ConsoleServerCLIConfigBuilder object is being instantiated empty
-	if b.CAFile == "" {
-		b.CAFile = oauthEndpointCAFilePath
-	}
 	conf := Auth{
 		ClientID:            api.OpenShiftConsoleName,
 		ClientSecretFile:    clientSecretFilePath,
-		OAuthEndpointCAFile: b.CAFile,
+		OAuthEndpointCAFile: oauthEndpointCAFilePath,
 	}
 	if len(b.logoutRedirectURL) > 0 {
 		conf.LogoutRedirect = b.logoutRedirectURL
