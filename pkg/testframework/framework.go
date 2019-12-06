@@ -65,23 +65,22 @@ func GetResource(client *Clientset, resource string) (runtime.Object, error) {
 }
 
 func GetConsoleConfigMap(client *Clientset) (*corev1.ConfigMap, error) {
-	return client.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
+	return client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 }
-
 func GetPublicConsoleConfigMap(client *Clientset) (*corev1.ConfigMap, error) {
-	return client.ConfigMaps(consoleapi.OpenShiftConfigManagedNamespace).Get(consoleapi.OpenShiftConsolePublicConfigMapName, metav1.GetOptions{})
+	return client.Core.ConfigMaps(consoleapi.OpenShiftConfigManagedNamespace).Get(consoleapi.OpenShiftConsolePublicConfigMapName, metav1.GetOptions{})
 }
 
 func GetConsoleService(client *Clientset) (*corev1.Service, error) {
-	return client.Services(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleServiceName, metav1.GetOptions{})
+	return client.Core.Services(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleServiceName, metav1.GetOptions{})
 }
 
 func GetConsoleRoute(client *Clientset) (*routev1.Route, error) {
-	return client.Routes(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleRouteName, metav1.GetOptions{})
+	return client.Routes.Routes(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleRouteName, metav1.GetOptions{})
 }
 
 func GetConsoleDeployment(client *Clientset) (*appv1.Deployment, error) {
-	deployment, err := client.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleDeploymentName, metav1.GetOptions{})
+	deployment, err := client.Apps.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleDeploymentName, metav1.GetOptions{})
 	return deployment, err
 }
 
@@ -89,15 +88,15 @@ func deleteResource(client *Clientset, resource string) error {
 	var err error
 	switch resource {
 	case "ConfigMap":
-		err = client.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleConfigMapName, &metav1.DeleteOptions{})
+		err = client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleConfigMapName, &metav1.DeleteOptions{})
 	case "Service":
-		err = client.Services(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleServiceName, &metav1.DeleteOptions{})
+		err = client.Core.Services(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleServiceName, &metav1.DeleteOptions{})
 	case "Route":
-		err = client.Routes(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleRouteName, &metav1.DeleteOptions{})
+		err = client.Routes.Routes(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleRouteName, &metav1.DeleteOptions{})
 	case "Deployment":
 		fallthrough
 	default:
-		err = client.Deployments(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleDeploymentName, &metav1.DeleteOptions{})
+		err = client.Apps.Deployments(consoleapi.OpenShiftConsoleNamespace).Delete(consoleapi.OpenShiftConsoleDeploymentName, &metav1.DeleteOptions{})
 	}
 	return err
 }

@@ -232,18 +232,21 @@ func getConsoleURL(route *routev1.Route) string {
 }
 func (co *consoleOperator) SyncConsoleConfig(consoleConfig *configv1.Console, consoleURL string) (*configv1.Console, error) {
 	updated := consoleConfig.DeepCopy()
-
+	logrus.Println("SyncConsoleConfig()")
 	// track the URL state in prometheus before we update it
 	if consoleConfig.Status.ConsoleURL != consoleURL {
 		// not using this URL anymore
+		logrus.Println("1) console_url orig different: <%v:%v>\n", consoleURL, consoleConfig.Status.ConsoleURL)
 		consoleURLMetric.WithLabelValues(consoleConfig.Status.ConsoleURL).Set(0)
 	}
 	if len(consoleURL) != 0 {
+		logrus.Println("2) console_url update: <%v:%v>\n", consoleURL, consoleConfig.Status.ConsoleURL)
 		// only update to new if we have a url
 		consoleURLMetric.WithLabelValues(consoleURL).Set(1)
 	}
 
 	if updated.Status.ConsoleURL != consoleURL {
+		logrus.Println("3) console_url to update different: <%v:%v>\n", consoleURL, consoleConfig.Status.ConsoleURL)
 		logrus.Infof("updating console.config.openshift.io with url: %v", consoleURL)
 		updated.Status.ConsoleURL = consoleURL
 	}

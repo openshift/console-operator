@@ -24,7 +24,7 @@ var pollTimeout = 10 * time.Second
 
 func patchAndCheckConfigMap(t *testing.T, client *testframework.Clientset, isOperatorManaged bool) error {
 	t.Logf("patching Data on the console ConfigMap")
-	configMap, err := client.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.OpenShiftConsoleConfigMapName, types.MergePatchType, []byte(`{"data": {"console-config.yaml": "test"}}`))
+	configMap, err := client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.OpenShiftConsoleConfigMapName, types.MergePatchType, []byte(`{"data": {"console-config.yaml": "test"}}`))
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func patchAndCheckConfigMap(t *testing.T, client *testframework.Clientset, isOpe
 
 func patchAndCheckService(t *testing.T, client *testframework.Clientset, isOperatorManaged bool) error {
 	t.Logf("patching Annotation on the console Service")
-	service, err := client.Services(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.OpenShiftConsoleServiceName, types.MergePatchType, []byte(`{"metadata": {"annotations": {"service.alpha.openshift.io/serving-cert-secret-name": "test"}}}`))
+	service, err := client.Core.Services(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.OpenShiftConsoleServiceName, types.MergePatchType, []byte(`{"metadata": {"annotations": {"service.alpha.openshift.io/serving-cert-secret-name": "test"}}}`))
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func patchAndCheckService(t *testing.T, client *testframework.Clientset, isOpera
 
 func patchAndCheckRoute(t *testing.T, client *testframework.Clientset, isOperatorManaged bool) error {
 	t.Logf("patching TargetPort on the console Route")
-	route, err := client.Routes(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.OpenShiftConsoleRouteName, types.MergePatchType, []byte(`{"spec": {"port": {"targetPort": "http"}}}`))
+	route, err := client.Routes.Routes(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.OpenShiftConsoleRouteName, types.MergePatchType, []byte(`{"spec": {"port": {"targetPort": "http"}}}`))
 	if err != nil {
 		return err
 	}

@@ -18,14 +18,14 @@ import (
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/test/e2e/framework"
+	framework "github.com/openshift/console-operator/pkg/testframework"
 )
 
 const (
 	consoleURLMetric = "console_url"
 )
 
-func setupMetricsEndpointTestCase(t *testing.T) (*framework.ClientSet, *operatorsv1.Console) {
+func setupMetricsEndpointTestCase(t *testing.T) (*framework.Clientset, *operatorsv1.Console) {
 	client, _ := framework.StandardSetup(t)
 	routeForTest := tempRouteForTesting()
 	_, err := client.Routes.Routes(api.OpenShiftConsoleOperatorNamespace).Create(routeForTest)
@@ -35,7 +35,7 @@ func setupMetricsEndpointTestCase(t *testing.T) (*framework.ClientSet, *operator
 	return client, nil
 }
 
-func cleanUpMetricsEndpointTestCase(t *testing.T, client *framework.ClientSet) {
+func cleanUpMetricsEndpointTestCase(t *testing.T, client *framework.Clientset) {
 	routeForTest := tempRouteForTesting()
 	err := client.Routes.Routes(api.OpenShiftConsoleOperatorNamespace).Delete(routeForTest.Name, &metav1.DeleteOptions{})
 	if err != nil {
@@ -129,7 +129,7 @@ func getBearerToken(t *testing.T) string {
 }
 
 // polls for the metrics route host, and returns just a formatted url for https://<host>/metrics
-func getMetricsURL(t *testing.T, client *framework.ClientSet) string {
+func getMetricsURL(t *testing.T, client *framework.Clientset) string {
 	tempRoute := tempRouteForTesting()
 	routeForMetrics := ""
 	err := wait.Poll(1*time.Second, 30*time.Second, func() (stop bool, err error) {

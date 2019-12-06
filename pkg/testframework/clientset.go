@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	configv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	clientroutev1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	clientappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
@@ -14,15 +15,18 @@ import (
 // Clientset is a set of Kubernetes clients.
 type Clientset struct {
 	// embedded
-	clientcorev1.CoreV1Interface
-	clientappsv1.AppsV1Interface
-	clientroutev1.RouteV1Interface
-	operatorclientv1.ConsolesGetter
+	Core            clientcorev1.CoreV1Interface
+	Apps            clientappsv1.AppsV1Interface
+	Routes          clientroutev1.RouteV1Interface
+	Operator        operatorclientv1.ConsolesGetter
+	Console         configv1.ConsolesGetter
+	ClusterOperator configv1.ClusterOperatorsGetter
 }
 
 // NewClientset creates a set of Kubernetes clients. The default kubeconfig is
 // used if not provided.
 func NewClientset(kubeconfig *restclient.Config) (*Clientset, error) {
+
 	var err error
 	if kubeconfig == nil {
 		kubeconfig, err = GetConfig()
@@ -32,15 +36,15 @@ func NewClientset(kubeconfig *restclient.Config) (*Clientset, error) {
 	}
 
 	clientset := &Clientset{}
-	clientset.CoreV1Interface, err = clientcorev1.NewForConfig(kubeconfig)
+	clientset.Core, err = clientcorev1.NewForConfig(kubeconfig)
 	if err != nil {
 		return nil, err
 	}
-	clientset.AppsV1Interface, err = clientappsv1.NewForConfig(kubeconfig)
+	clientset.Apps, err = clientappsv1.NewForConfig(kubeconfig)
 	if err != nil {
 		return nil, err
 	}
-	clientset.RouteV1Interface, err = clientroutev1.NewForConfig(kubeconfig)
+	clientset.Routes, err = clientroutev1.NewForConfig(kubeconfig)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +52,14 @@ func NewClientset(kubeconfig *restclient.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	clientset.ConsolesGetter = operatorsClient
+	clientset.Operator = operatorsClient
+
+	configClient, err := configv1.NewForConfig(kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+	clientset.Console = configClient
+	clientset.ClusterOperator = configClient
 
 	return clientset, nil
 }
