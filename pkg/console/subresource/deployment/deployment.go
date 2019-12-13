@@ -31,12 +31,13 @@ const (
 )
 
 const (
-	configMapResourceVersionAnnotation          = "console.openshift.io/console-config-version"
-	proxyConfigResourceVersionAnnotation        = "console.openshift.io/proxy-config-version"
-	serviceCAConfigMapResourceVersionAnnotation = "console.openshift.io/service-ca-config-version"
-	trustedCAConfigMapResourceVersionAnnotation = "console.openshift.io/trusted-ca-config-version"
-	secretResourceVersionAnnotation             = "console.openshift.io/oauth-secret-version"
-	consoleImageAnnotation                      = "console.openshift.io/image"
+	configMapResourceVersionAnnotation                   = "console.openshift.io/console-config-version"
+	proxyConfigResourceVersionAnnotation                 = "console.openshift.io/proxy-config-version"
+	serviceCAConfigMapResourceVersionAnnotation          = "console.openshift.io/service-ca-config-version"
+	defaultIngressCertConfigMapResourceVersionAnnotation = "console.openshift.io/default-ingress-cert-config-version"
+	trustedCAConfigMapResourceVersionAnnotation          = "console.openshift.io/trusted-ca-config-version"
+	secretResourceVersionAnnotation                      = "console.openshift.io/oauth-secret-version"
+	consoleImageAnnotation                               = "console.openshift.io/image"
 )
 
 var (
@@ -44,6 +45,7 @@ var (
 		configMapResourceVersionAnnotation,
 		proxyConfigResourceVersionAnnotation,
 		serviceCAConfigMapResourceVersionAnnotation,
+		defaultIngressCertConfigMapResourceVersionAnnotation,
 		trustedCAConfigMapResourceVersionAnnotation,
 		secretResourceVersionAnnotation,
 		consoleImageAnnotation,
@@ -61,17 +63,18 @@ type volumeConfig struct {
 	mappedKeys  map[string]string
 }
 
-func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route, proxyConfig *configv1.Proxy, canMountCustomLogo bool) *appsv1.Deployment {
+func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, defaultIngressCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route, proxyConfig *configv1.Proxy, canMountCustomLogo bool) *appsv1.Deployment {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
 	annotations := map[string]string{
-		configMapResourceVersionAnnotation:          cm.GetResourceVersion(),
-		serviceCAConfigMapResourceVersionAnnotation: serviceCAConfigMap.GetResourceVersion(),
-		trustedCAConfigMapResourceVersionAnnotation: trustedCAConfigMap.GetResourceVersion(),
-		proxyConfigResourceVersionAnnotation:        proxyConfig.GetResourceVersion(),
-		secretResourceVersionAnnotation:             sec.GetResourceVersion(),
-		consoleImageAnnotation:                      util.GetImageEnv(),
+		configMapResourceVersionAnnotation:                   cm.GetResourceVersion(),
+		serviceCAConfigMapResourceVersionAnnotation:          serviceCAConfigMap.GetResourceVersion(),
+		defaultIngressCertConfigMapResourceVersionAnnotation: defaultIngressCertConfigMap.GetResourceVersion(),
+		trustedCAConfigMapResourceVersionAnnotation:          trustedCAConfigMap.GetResourceVersion(),
+		proxyConfigResourceVersionAnnotation:                 proxyConfig.GetResourceVersion(),
+		secretResourceVersionAnnotation:                      sec.GetResourceVersion(),
+		consoleImageAnnotation:                               util.GetImageEnv(),
 	}
 	// Set any annotations as needed so that `ApplyDeployment` rolls out a
 	// new version when they change. `ApplyDeployment` doesn't compare that
@@ -417,6 +420,12 @@ func defaultVolumeConfig() []volumeConfig {
 			name:        api.ServiceCAConfigMapName,
 			readOnly:    true,
 			path:        "/var/service-ca",
+			isConfigMap: true,
+		},
+		{
+			name:        api.DefaultIngressCertConfigMapName,
+			readOnly:    true,
+			path:        "/var/default-ingress-cert",
 			isConfigMap: true,
 		},
 	}

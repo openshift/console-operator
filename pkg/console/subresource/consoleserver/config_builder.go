@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	clientSecretFilePath    = "/var/oauth-config/clientSecret"
-	oauthEndpointCAFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	clientSecretFilePath       = "/var/oauth-config/clientSecret"
+	defaultIngressCertFilePath = "/var/default-ingress-cert/ca-bundle.crt"
+	oauthEndpointCAFilePath    = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 	// serving info
 	certFilePath = "/var/serving-cert/tls.crt"
 	keyFilePath  = "/var/serving-cert/tls.key"
@@ -36,6 +37,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	statusPageID      string
 	customProductName string
 	customLogoFile    string
+	CAFile            string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -71,6 +73,15 @@ func (b *ConsoleServerCLIConfigBuilder) CustomLogoFile(customLogoFile string) *C
 
 func (b *ConsoleServerCLIConfigBuilder) StatusPageID(id string) *ConsoleServerCLIConfigBuilder {
 	b.statusPageID = id
+	return b
+}
+
+func (b *ConsoleServerCLIConfigBuilder) DefaultIngressCert(useDefaultDefaultIngressCert bool) *ConsoleServerCLIConfigBuilder {
+	if useDefaultDefaultIngressCert {
+		b.CAFile = oauthEndpointCAFilePath
+		return b
+	}
+	b.CAFile = defaultIngressCertFilePath
 	return b
 }
 
@@ -119,10 +130,15 @@ func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {
 }
 
 func (b *ConsoleServerCLIConfigBuilder) authServer() Auth {
+	// we need this fallback due to the way our unit test are structured,
+	// where the ConsoleServerCLIConfigBuilder object is being instantiated empty
+	if b.CAFile == "" {
+		b.CAFile = oauthEndpointCAFilePath
+	}
 	conf := Auth{
 		ClientID:            api.OpenShiftConsoleName,
 		ClientSecretFile:    clientSecretFilePath,
-		OAuthEndpointCAFile: oauthEndpointCAFilePath,
+		OAuthEndpointCAFile: b.CAFile,
 	}
 	if len(b.logoutRedirectURL) > 0 {
 		conf.LogoutRedirect = b.logoutRedirectURL
