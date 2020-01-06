@@ -2,12 +2,13 @@ package version
 
 import (
 	"fmt"
-	"github.com/blang/semver"
-	"github.com/openshift/console-operator/pkg/console/version"
-	"github.com/spf13/cobra"
 	"strings"
 
-	cm "github.com/openshift/console-operator/pkg/console/subresource/configmap"
+	"github.com/blang/semver"
+	"github.com/spf13/cobra"
+
+	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
+	"github.com/openshift/console-operator/pkg/console/version"
 )
 
 var (
@@ -16,7 +17,7 @@ var (
 	GitCommit  = VerInfo.GitCommit
 	BuildDate  = VerInfo.BuildDate
 	Version    = semver.MustParse(strings.TrimLeft(Raw, "v"))
-	BrandValue = cm.DEFAULT_BRAND
+	BrandValue = configmap.DEFAULT_BRAND
 	String     = fmt.Sprintf("ConsoleOperator %s\nGit Commit: %s\nBuild Date: %s\nCurrent Brand Setting: %s", Raw, GitCommit, BuildDate, BrandValue)
 )
 
