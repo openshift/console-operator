@@ -291,10 +291,3 @@ oc adm release info
 # coming soon...
 oc adm release extract 
 ```
-
-
-
-
-
-
-
