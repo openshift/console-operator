@@ -196,6 +196,7 @@ func TestDefaultDeployment(t *testing.T) {
 						Annotations: consoleDeploymentTemplateAnnotations,
 					},
 						Spec: corev1.PodSpec{
+							ServiceAccountName: "console",
 							// we want to deploy on master nodes
 							NodeSelector: map[string]string{
 								// empty string is correct
@@ -261,6 +262,7 @@ func TestDefaultDeployment(t *testing.T) {
 						Annotations: consoleDeploymentTemplateAnnotations,
 					},
 						Spec: corev1.PodSpec{
+							ServiceAccountName: "console",
 							// we want to deploy on master nodes
 							NodeSelector: map[string]string{
 								// empty string is correct

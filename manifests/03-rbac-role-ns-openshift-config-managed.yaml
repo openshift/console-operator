@@ -35,3 +35,16 @@ rules:
   - console-public
   verbs:
   - get
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: console-configmap-reader
+  namespace: openshift-config-managed
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get

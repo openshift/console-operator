@@ -3,3 +3,9 @@ kind: ServiceAccount
 metadata:
   name: console-operator
   namespace: openshift-console-operator
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: console
+  namespace: openshift-console

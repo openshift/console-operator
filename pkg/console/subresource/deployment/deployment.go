@@ -106,6 +106,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
+					ServiceAccountName: "console",
 					// we want to deploy on master nodes
 					NodeSelector: map[string]string{
 						// empty string is correct
