@@ -292,9 +292,3 @@ oc adm release info
 oc adm release extract 
 ```
 
-
-
-
-
-
-
