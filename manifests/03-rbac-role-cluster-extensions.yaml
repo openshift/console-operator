@@ -12,6 +12,7 @@ rules:
   - consolenotifications
   - consoleexternalloglinks
   - consoleclidownloads
+  - consoleyamlsamples
   verbs:
   - get
   - list
