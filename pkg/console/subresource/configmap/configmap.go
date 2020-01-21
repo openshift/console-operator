@@ -52,6 +52,7 @@ func DefaultConfigMap(
 		DocURL(DEFAULT_DOC_URL).
 		DefaultIngressCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
+		IPMode(ipVMode).
 		ConfigYAML()
 
 	extractedManagedConfig := extractYAML(managedConfig)
