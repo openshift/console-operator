@@ -27,6 +27,7 @@ import (
 
 	// operator
 
+	"github.com/openshift/console-operator/pkg/console/config"
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
 	"github.com/openshift/console-operator/pkg/console/metrics"
 	"github.com/openshift/console-operator/pkg/console/status"
@@ -45,6 +46,8 @@ import (
 func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, set configSet) error {
 	klog.V(4).Infoln("running sync loop 4.0.0")
 
+	ipVMode, _, _ := config.NetworkSupported(set.Network)
+
 	// track changes, may trigger ripples & update operator config or console config status
 	toUpdate := false
 
@@ -55,7 +58,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		return rtErr
 	}
 
-	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(set.Operator, set.Console, set.Infrastructure, rt)
+	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(set.Operator, set.Console, set.Infrastructure, rt, ipVMode)
 	toUpdate = toUpdate || cmChanged
 	status.HandleProgressingOrDegraded(updatedOperatorConfig, "ConfigMapSync", cmErrReason, cmErr)
 	if cmErr != nil {
@@ -285,7 +288,8 @@ func (co *consoleOperator) SyncConfigMap(
 	operatorConfig *operatorv1.Console,
 	consoleConfig *configv1.Console,
 	infrastructureConfig *configv1.Infrastructure,
-	consoleRoute *routev1.Route) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
+	consoleRoute *routev1.Route,
+	ipVMode config.IPMode) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
 
 	managedConfig, mcErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 	if mcErr != nil && !apierrors.IsNotFound(mcErr) {
@@ -303,7 +307,14 @@ func (co *consoleOperator) SyncConfigMap(
 		useDefaultCAFile = false
 	}
 
-	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, consoleRoute, useDefaultCAFile)
+	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(
+		operatorConfig,
+		consoleConfig,
+		managedConfig,
+		infrastructureConfig,
+		consoleRoute,
+		useDefaultCAFile,
+		ipVMode)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
 	}

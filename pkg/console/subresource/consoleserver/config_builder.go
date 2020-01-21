@@ -1,11 +1,16 @@
 package consoleserver
 
 import (
+	"fmt"
+
+	yaml "gopkg.in/yaml.v2"
+
+	"k8s.io/klog"
+
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/config"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
-	yaml "gopkg.in/yaml.v2"
-	"k8s.io/klog"
 )
 
 const (
@@ -38,6 +43,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	customProductName string
 	customLogoFile    string
 	CAFile            string
+	ipMode            config.IPMode
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -85,6 +91,11 @@ func (b *ConsoleServerCLIConfigBuilder) DefaultIngressCert(useDefaultDefaultIngr
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) IPMode(ipMode config.IPMode) *ConsoleServerCLIConfigBuilder {
+	b.ipMode = ipMode
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
 		Kind:          "ConsoleConfig",
@@ -108,11 +119,23 @@ func (b *ConsoleServerCLIConfigBuilder) ConfigYAML() (consoleConfigYAML []byte, 
 }
 
 func (b *ConsoleServerCLIConfigBuilder) servingInfo() ServingInfo {
-	return ServingInfo{
+	conf := ServingInfo{
+		// defaulting to IPv4
 		BindAddress: "https://0.0.0.0:8443",
 		CertFile:    certFilePath,
 		KeyFile:     keyFilePath,
 	}
+
+	// if we get a IPv4v6 value, we will have to panic as we don't know how to support both yet
+	if b.ipMode == config.IPv4v6Mode {
+		panic(fmt.Sprintf("mode not supported: %v", b.ipMode))
+	}
+
+	if b.ipMode == config.IPv6Mode {
+		conf.BindAddress = "https://[::]:8443"
+	}
+
+	return conf
 }
 
 func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {

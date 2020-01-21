@@ -60,6 +60,7 @@ type consoleOperator struct {
 	operatorConfigClient       operatorclientv1.ConsoleInterface
 	consoleConfigClient        configclientv1.ConsoleInterface
 	infrastructureConfigClient configclientv1.InfrastructureInterface
+	networkConfigClient        configclientv1.NetworkInterface
 	proxyConfigClient          configclientv1.ProxyInterface
 	// core kube
 	secretsClient    coreclientv1.SecretsGetter
@@ -110,6 +111,7 @@ func NewConsoleOperator(
 		operatorConfigClient:       operatorConfigClient.Consoles(),
 		consoleConfigClient:        configClient.Consoles(),
 		infrastructureConfigClient: configClient.Infrastructures(),
+		networkConfigClient:        configClient.Networks(),
 		proxyConfigClient:          configClient.Proxies(),
 		// console resources
 		// core kube
@@ -143,6 +145,7 @@ func NewConsoleOperator(
 		operator.WithInformer(operatorConfigInformer, configNameFilter),
 		operator.WithInformer(configV1Informers.Infrastructures(), configNameFilter),
 		operator.WithInformer(configV1Informers.Proxies(), configNameFilter),
+		operator.WithInformer(configV1Informers.Networks(), configNameFilter),
 		// console resources
 		operator.WithInformer(deployments, targetNameFilter),
 		operator.WithInformer(routes, targetNameFilter),
@@ -165,6 +168,7 @@ type configSet struct {
 	Operator       *operatorsv1.Console
 	Infrastructure *configv1.Infrastructure
 	Proxy          *configv1.Proxy
+	Network        *configv1.Network
 }
 
 func (c *consoleOperator) Sync(obj metav1.Object) error {
@@ -189,6 +193,12 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 		return err
 	}
 
+	networkConfig, err := c.networkConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("network config error: %v", err)
+		return err
+	}
+
 	proxyConfig, err := c.proxyConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("proxy config error: %v", err)
@@ -200,6 +210,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 		Operator:       operatorConfig,
 		Infrastructure: infrastructureConfig,
 		Proxy:          proxyConfig,
+		Network:        networkConfig,
 	}
 
 	if err := c.handleSync(configs); err != nil {

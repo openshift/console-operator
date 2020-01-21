@@ -10,7 +10,9 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
+
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/config"
 	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
@@ -40,7 +42,8 @@ func DefaultConfigMap(
 	managedConfig *corev1.ConfigMap,
 	infrastructureConfig *configv1.Infrastructure,
 	rt *routev1.Route,
-	useDefaultCAFile bool) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
+	useDefaultCAFile bool,
+	ipVMode config.IPMode) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
 	defaultConfig, err := defaultBuilder.Host(rt.Spec.Host).
