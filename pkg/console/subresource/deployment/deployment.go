@@ -127,25 +127,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 						},
 					},
 					// toleration is a taint override. we can and should be scheduled on a master node.
-					Tolerations: []corev1.Toleration{
-						{
-							Key:      "node-role.kubernetes.io/master",
-							Operator: corev1.TolerationOpExists,
-							Effect:   corev1.TaintEffectNoSchedule,
-						},
-						{
-							Key:               "node.kubernetes.io/unreachable",
-							Operator:          corev1.TolerationOpExists,
-							Effect:            corev1.TaintEffectNoExecute,
-							TolerationSeconds: &tolerationSeconds,
-						},
-						{
-							Key:               "node.kubernetes.io/not-reachable",
-							Operator:          corev1.TolerationOpExists,
-							Effect:            corev1.TaintEffectNoExecute,
-							TolerationSeconds: &tolerationSeconds,
-						},
-					},
+					Tolerations:                   tolerations(),
 					PriorityClassName:             "system-cluster-critical",
 					RestartPolicy:                 corev1.RestartPolicyAlways,
 					SchedulerName:                 corev1.DefaultSchedulerName,

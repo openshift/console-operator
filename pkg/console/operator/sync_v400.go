@@ -48,6 +48,12 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 
 	ipVMode, _, _ := config.NetworkSupported(set.Network)
 
+	_, _, downloadsErrReason, downloadsErr := co.SyncCLIDownloadsDeployment(ipVMode)
+	status.HandleProgressingOrDegraded(updatedOperatorConfig, "CLIDownloadsServerSync", downloadsErrReason, downloadsErr)
+	if downloadsErr != nil {
+		return downloadsErr
+	}
+
 	// track changes, may trigger ripples & update operator config or console config status
 	toUpdate := false
 
@@ -214,6 +220,28 @@ func (co *consoleOperator) SyncConsolePublicConfig(consoleURL string) (*corev1.C
 	return resourceapply.ApplyConfigMap(co.configMapClient, co.recorder, requiredConfigMap)
 }
 
+// TODO: this really belongs in its own sync loop,
+//  but due to time sensitivity it will be included in our main loop
+func (co *consoleOperator) SyncCLIDownloadsDeployment(ipVMode config.IPMode) (cliDownloadsDeployment *appsv1.Deployment, changed bool, reason string, err error) {
+	requiredDeployment := deploymentsub.DownloadsDeployment(ipVMode)
+	generation := getDeploymentGeneration(co, requiredDeployment)
+
+	// this deployment never changes, so we don't need to force it
+	forceRollout := false
+
+	deployment, deploymentChanged, applyDepErr := resourceapply.ApplyDeployment(
+		co.deploymentClient,
+		co.recorder,
+		requiredDeployment,
+		generation,
+		forceRollout)
+
+	if applyDepErr != nil {
+		return nil, false, "FailedApply", applyDepErr
+	}
+	return deployment, deploymentChanged, "", nil
+}
+
 func (co *consoleOperator) SyncDeployment(
 	operatorConfig *operatorv1.Console,
 	cm *corev1.ConfigMap,
@@ -226,7 +254,7 @@ func (co *consoleOperator) SyncDeployment(
 	canMountCustomLogo bool) (consoleDeployment *appsv1.Deployment, changed bool, reason string, err error) {
 
 	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, rt, proxyConfig, canMountCustomLogo)
-	expectedGeneration := getDeploymentGeneration(co)
+	expectedGeneration := getDeploymentGeneration(co, requiredDeployment)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
 	if genChanged {
@@ -506,8 +534,9 @@ func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorsv1.Console
 	return true, "", nil
 }
 
-func getDeploymentGeneration(co *consoleOperator) int64 {
-	deployment, err := co.deploymentClient.Deployments(api.TargetNamespace).Get(deploymentsub.Stub().Name, metav1.GetOptions{})
+func getDeploymentGeneration(co *consoleOperator, dep *appsv1.Deployment) int64 {
+
+	deployment, err := co.deploymentClient.Deployments(dep.Namespace).Get(dep.Name, metav1.GetOptions{})
 	if err != nil {
 		return -1
 	}
