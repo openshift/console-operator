@@ -116,7 +116,7 @@ func (c *CLIDownloadsSyncController) sync() error {
 		return fmt.Errorf("console is in an unknown state: %v", updatedOperatorConfig.Spec.ManagementState)
 	}
 
-	consoleRoute, err := c.routeClient.Routes(api.TargetNamespace).Get(api.OpenShiftConsoleDownloadsRouteName, metav1.GetOptions{})
+	consoleRoute, err := c.routeClient.Routes(api.TargetNamespace).Get(api.OpenShiftDownloadsRouteName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

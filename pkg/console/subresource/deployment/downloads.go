@@ -78,7 +78,7 @@ func downloadsContainer(ipVMode config.IPMode) corev1.Container {
 				corev1.ResourceMemory: resource.MustParse("50Mi"),
 			},
 		},
-		Args: downloadsArgs(ipVMode config.IPMode),
+		Args: downloadsArgs(ipVMode),
 	}
 }
 

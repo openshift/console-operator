@@ -82,7 +82,6 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	meta.Annotations = annotations
 	replicas := int32(ConsoleReplicas)
 	gracePeriod := int64(30)
-	tolerationSeconds := int64(120)
 	volumeConfig := defaultVolumeConfig()
 	caBundle, caBundleExists := trustedCAConfigMap.Data["ca-bundle.crt"]
 	if caBundleExists && caBundle != "" {
