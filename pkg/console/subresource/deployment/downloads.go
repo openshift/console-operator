@@ -27,7 +27,7 @@ func DownloadsDeployment(ipVMode config.IPMode) *appsv1.Deployment {
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      api.OpenShiftDownloadsName,
-			Namespace: api.OpenShiftConsoleName,
+			Namespace: api.OpenShiftConsoleNamespace,
 			Labels:    labels,
 		},
 		Spec: appsv1.DeploymentSpec{
