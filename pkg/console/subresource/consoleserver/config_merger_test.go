@@ -55,7 +55,7 @@ kind: ConsoleConfig
 providers:
   statuspageID: status-12345
 servingInfo:
-  bindAddress: https://0.0.0.0:8443
+  bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
 `,

@@ -76,7 +76,7 @@ customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
 servingInfo:
-  bindAddress: https://0.0.0.0:8443
+  bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
 providers: {}
@@ -129,7 +129,7 @@ customization:
   branding: online 
   documentationBaseURL: https://docs.okd.io/4.3/
 servingInfo:
-  bindAddress: https://0.0.0.0:8443
+  bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
 providers: {}
@@ -191,7 +191,7 @@ customization:
   branding: ` + string(operatorv1.BrandDedicated) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
 servingInfo:
-  bindAddress: https://0.0.0.0:8443
+  bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
 providers: {}
@@ -260,7 +260,7 @@ customization:
   customLogoFile: /var/logo/logo.svg
   customProductName: custom-product-name
 servingInfo:
-  bindAddress: https://0.0.0.0:8443
+  bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
 providers: {}
@@ -327,7 +327,7 @@ customization:
   branding: ` + string(operatorv1.BrandDedicated) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
 servingInfo:
-  bindAddress: https://0.0.0.0:8443
+  bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
 providers: 
