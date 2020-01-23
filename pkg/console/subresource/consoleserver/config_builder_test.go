@@ -28,7 +28,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Kind:       "ConsoleConfig",
 				APIVersion: "console.openshift.io/v1",
 				ServingInfo: ServingInfo{
-					BindAddress: "https://0.0.0.0:8443",
+					BindAddress: "https://[::]:8443",
 					CertFile:    certFilePath,
 					KeyFile:     keyFilePath,
 				},
@@ -58,7 +58,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Kind:       "ConsoleConfig",
 				APIVersion: "console.openshift.io/v1",
 				ServingInfo: ServingInfo{
-					BindAddress: "https://0.0.0.0:8443",
+					BindAddress: "https://[::]:8443",
 					CertFile:    certFilePath,
 					KeyFile:     keyFilePath,
 				},
@@ -86,7 +86,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Kind:       "ConsoleConfig",
 				APIVersion: "console.openshift.io/v1",
 				ServingInfo: ServingInfo{
-					BindAddress: "https://0.0.0.0:8443",
+					BindAddress: "https://[::]:8443",
 					CertFile:    certFilePath,
 					KeyFile:     keyFilePath,
 				},
@@ -119,7 +119,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Kind:       "ConsoleConfig",
 				APIVersion: "console.openshift.io/v1",
 				ServingInfo: ServingInfo{
-					BindAddress: "https://0.0.0.0:8443",
+					BindAddress: "https://[::]:8443",
 					CertFile:    certFilePath,
 					KeyFile:     keyFilePath,
 				},
@@ -173,7 +173,7 @@ func TestConsoleServerCLIConfigBuilderYAML(t *testing.T) {
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
 servingInfo:
-  bindAddress: https://0.0.0.0:8443
+  bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
 clusterInfo: {}
@@ -199,7 +199,7 @@ providers: {}
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
 servingInfo:
-  bindAddress: https://0.0.0.0:8443
+  bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
 clusterInfo:
@@ -223,7 +223,7 @@ providers: {}
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
 servingInfo:
-  bindAddress: https://0.0.0.0:8443
+  bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
 clusterInfo: {}
@@ -252,7 +252,7 @@ providers:
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
 servingInfo:
-  bindAddress: https://0.0.0.0:8443
+  bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
 clusterInfo:
