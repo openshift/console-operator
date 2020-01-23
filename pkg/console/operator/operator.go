@@ -139,6 +139,8 @@ func NewConsoleOperator(
 	configNameFilter := operator.FilterByNames(api.ConfigResourceName)
 	targetNameFilter := operator.FilterByNames(api.OpenShiftConsoleName)
 
+	deploymentsFilter := operator.FilterByNames(api.OpenShiftConsoleName, api.OpenShiftDownloadsName)
+
 	return operator.New(controllerName, c,
 		// configs
 		operator.WithInformer(configV1Informers.Consoles(), configNameFilter),
@@ -147,7 +149,7 @@ func NewConsoleOperator(
 		operator.WithInformer(configV1Informers.Proxies(), configNameFilter),
 		operator.WithInformer(configV1Informers.Networks(), configNameFilter),
 		// console resources
-		operator.WithInformer(deployments, targetNameFilter),
+		operator.WithInformer(deployments, deploymentsFilter),
 		operator.WithInformer(routes, targetNameFilter),
 		operator.WithInformer(serviceInformer, targetNameFilter),
 		operator.WithInformer(oauthClients, targetNameFilter),
