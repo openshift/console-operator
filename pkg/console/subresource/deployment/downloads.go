@@ -2,6 +2,7 @@ package deployment
 
 import (
 	"fmt"
+	"os"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -86,7 +87,8 @@ func downloadsContainer(ipVMode config.IPMode) corev1.Container {
 // do we need to do anything here?  read it from command line
 // like console deployment IMAGE=<image>?
 func downloadsImage() string {
-	return "registry.svc.ci.openshift.org/openshift:cli-artifacts"
+	// return "registry.svc.ci.openshift.org/openshift:cli-artifacts"
+	return os.Getenv("DOWNLOADS_IMAGE")
 }
 
 func downloadsPorts() []corev1.ContainerPort {
@@ -117,7 +119,6 @@ func downloadsReadiness() *corev1.Probe {
 
 func downloadsArgs(ipVMode config.IPMode) []string {
 	return []string{
-		"-c",
 		downloadsInlineScript(ipVMode),
 	}
 }
@@ -135,9 +136,11 @@ func downloadsInlineScript(ipVMode config.IPMode) string {
 		addressFamily = "AF_INET6"
 	}
 
-	return `|
+	// Unfortunately formatting here is not maintained when this is deployed
+	// Python depends on formatting.  Not sure that this will run correctly.
+	return `-c |
           cat <<EOF >>/tmp/serve.py
-          import BaseHTTPServer, os, re, signal, SimpleHTTPServer, socket, sys, tarfile, tempfile, threading, time, zipfile
+          import BaseHTTPServer, os, re, signal, SimpleHTTPServer, socket, sys, tarfile, tempfile, threading, time, zipfile	
 
           signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
 
