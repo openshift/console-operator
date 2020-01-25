@@ -9,3 +9,5 @@ data:
     kind: GenericOperatorConfig
     leaderElection:
       namespace: openshift-console-operator
+    servingInfo:
+      bindNetwork: "tcp"
