@@ -1,13 +1,13 @@
 package installer
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/davecgh/go-spew/spew"
 
@@ -16,17 +16,14 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 
 	operatorv1 "github.com/openshift/api/operator/v1"
 
+	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/condition"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/loglevel"
@@ -39,9 +36,8 @@ import (
 )
 
 const (
-	installerControllerWorkQueueKey = "key"
-	manifestDir                     = "pkg/operator/staticpod/controller/installer"
-	manifestInstallerPodPath        = "manifests/installer-pod.yaml"
+	manifestDir              = "pkg/operator/staticpod/controller/installer"
+	manifestInstallerPodPath = "manifests/installer-pod.yaml"
 
 	hostResourceDirDir = "/etc/kubernetes/static-pod-resources"
 	hostPodManifestDir = "/etc/kubernetes/manifests"
@@ -72,10 +68,7 @@ type InstallerController struct {
 	configMapsGetter corev1client.ConfigMapsGetter
 	secretsGetter    corev1client.SecretsGetter
 	podsGetter       corev1client.PodsGetter
-
-	cachesToSync  []cache.InformerSynced
-	queue         workqueue.RateLimitingInterface
-	eventRecorder events.Recorder
+	eventRecorder    events.Recorder
 
 	// installerPodImageFn returns the image name for the installer pod
 	installerPodImageFn func() string
@@ -83,6 +76,8 @@ type InstallerController struct {
 	ownerRefsFn func(revision int32) ([]metav1.OwnerReference, error)
 
 	installerPodMutationFns []InstallerPodMutationFunc
+
+	factory *factory.Factory
 }
 
 // InstallerPodMutationFunc is a function that has a chance at changing the installer pod before it is created
@@ -112,6 +107,8 @@ const (
 	staticPodStateFailed
 )
 
+var _ factory.Controller = &InstallerController{}
+
 // NewInstallerController creates a new installer controller.
 func NewInstallerController(
 	targetNamespace, staticPodName string,
@@ -138,20 +135,17 @@ func NewInstallerController(
 		podsGetter:       podsGetter,
 		eventRecorder:    eventRecorder.WithComponentSuffix("installer-controller"),
 
-		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "InstallerController"),
-
 		installerPodImageFn: getInstallerPodImageFromEnv,
 	}
 
 	c.ownerRefsFn = c.setOwnerRefs
-
-	operatorClient.Informer().AddEventHandler(c.eventHandler())
-	kubeInformersForTargetNamespace.Core().V1().Pods().Informer().AddEventHandler(c.eventHandler())
-
-	c.cachesToSync = append(c.cachesToSync, operatorClient.Informer().HasSynced)
-	c.cachesToSync = append(c.cachesToSync, kubeInformersForTargetNamespace.Core().V1().Pods().Informer().HasSynced)
+	c.factory = factory.New().WithInformers(operatorClient.Informer(), kubeInformersForTargetNamespace.Core().V1().Pods().Informer())
 
 	return c
+}
+
+func (c *InstallerController) Run(ctx context.Context, workers int) {
+	c.factory.WithSync(c.Sync).ToController("InstallerController", c.eventRecorder).Run(ctx, workers)
 }
 
 func (c *InstallerController) getStaticPodState(nodeName string) (state staticPodState, revision, reason string, errors []string, err error) {
@@ -303,11 +297,13 @@ func (c *InstallerController) manageInstallationPods(operatorSpec *operatorv1.St
 			if err := c.ensureInstallerPod(currNodeState.NodeName, operatorSpec, currNodeState.TargetRevision); err != nil {
 				c.eventRecorder.Warningf("InstallerPodFailed", "Failed to create installer pod for revision %d on node %q: %v",
 					currNodeState.TargetRevision, currNodeState.NodeName, err)
-				return true, err
+				// if a newer revision is pending, continue, so we retry later with the latest available revision
+				if !(operatorStatus.LatestAvailableRevision > currNodeState.TargetRevision) {
+					return true, err
+				}
 			}
 
-			pendingNewRevision := operatorStatus.LatestAvailableRevision > currNodeState.TargetRevision
-			newCurrNodeState, installerPodFailed, reason, err := c.newNodeStateForInstallInProgress(currNodeState, pendingNewRevision)
+			newCurrNodeState, installerPodFailed, reason, err := c.newNodeStateForInstallInProgress(currNodeState, operatorStatus.LatestAvailableRevision)
 			if err != nil {
 				return true, err
 			}
@@ -463,13 +459,13 @@ func setAvailableProgressingNodeInstallerFailingConditions(newStatus *operatorv1
 
 	if numAvailable > 0 {
 		v1helpers.SetOperatorCondition(&newStatus.Conditions, operatorv1.OperatorCondition{
-			Type:    operatorv1.OperatorStatusTypeAvailable,
+			Type:    condition.StaticPodsAvailableConditionType,
 			Status:  operatorv1.ConditionTrue,
 			Message: fmt.Sprintf("%d nodes are active; %s", numAvailable, revisionDescription),
 		})
 	} else {
 		v1helpers.SetOperatorCondition(&newStatus.Conditions, operatorv1.OperatorCondition{
-			Type:    operatorv1.OperatorStatusTypeAvailable,
+			Type:    condition.StaticPodsAvailableConditionType,
 			Status:  operatorv1.ConditionFalse,
 			Reason:  "ZeroNodesActive",
 			Message: fmt.Sprintf("%d nodes are active; %s", numAvailable, revisionDescription),
@@ -479,13 +475,13 @@ func setAvailableProgressingNodeInstallerFailingConditions(newStatus *operatorv1
 	// Progressing means that the any node is not at the latest available revision
 	if numProgressing > 0 {
 		v1helpers.SetOperatorCondition(&newStatus.Conditions, operatorv1.OperatorCondition{
-			Type:    operatorv1.OperatorStatusTypeProgressing,
+			Type:    condition.NodeInstallerProgressingConditionType,
 			Status:  operatorv1.ConditionTrue,
 			Message: fmt.Sprintf("%s", revisionDescription),
 		})
 	} else {
 		v1helpers.SetOperatorCondition(&newStatus.Conditions, operatorv1.OperatorCondition{
-			Type:    operatorv1.OperatorStatusTypeProgressing,
+			Type:    condition.NodeInstallerProgressingConditionType,
 			Status:  operatorv1.ConditionFalse,
 			Reason:  "AllNodesAtLatestRevision",
 			Message: fmt.Sprintf("%s", revisionDescription),
@@ -517,7 +513,7 @@ func setAvailableProgressingNodeInstallerFailingConditions(newStatus *operatorv1
 }
 
 // newNodeStateForInstallInProgress returns the new NodeState, whether it was killed by OOM or an error
-func (c *InstallerController) newNodeStateForInstallInProgress(currNodeState *operatorv1.NodeStatus, newRevisionPending bool) (status *operatorv1.NodeStatus, installerPodFailed bool, reason string, err error) {
+func (c *InstallerController) newNodeStateForInstallInProgress(currNodeState *operatorv1.NodeStatus, latestRevisionAvailable int32) (status *operatorv1.NodeStatus, installerPodFailed bool, reason string, err error) {
 	ret := currNodeState.DeepCopy()
 	installerPod, err := c.podsGetter.Pods(c.targetNamespace).Get(getInstallerPodName(currNodeState.TargetRevision, currNodeState.NodeName), metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
@@ -536,11 +532,11 @@ func (c *InstallerController) newNodeStateForInstallInProgress(currNodeState *op
 
 	switch installerPod.Status.Phase {
 	case corev1.PodSucceeded:
-		if newRevisionPending {
+		if pendingNewRevision := latestRevisionAvailable > currNodeState.TargetRevision; pendingNewRevision {
 			// stop early, don't wait for ready static pod because a new revision is waiting
 			ret.LastFailedRevision = currNodeState.TargetRevision
 			ret.TargetRevision = 0
-			ret.LastFailedRevisionErrors = []string{fmt.Sprintf("static pod of revision has been installed, but is not ready while new revision %d is pending", currNodeState.TargetRevision)}
+			ret.LastFailedRevisionErrors = []string{fmt.Sprintf("static pod of revision %d has been installed, but is not ready while new revision %d is pending", currNodeState.TargetRevision, latestRevisionAvailable)}
 			return ret, false, "new revision pending", nil
 		}
 
@@ -800,7 +796,7 @@ func (c InstallerController) ensureRequiredResourcesExist(revisionNumber int32) 
 	return fmt.Errorf("missing required resources: %v", aggregatedErr)
 }
 
-func (c InstallerController) sync() error {
+func (c InstallerController) Sync(ctx context.Context, syncCtx factory.SyncContext) error {
 	operatorSpec, originalOperatorStatus, resourceVersion, err := c.operatorClient.GetStaticPodOperatorState()
 	if err != nil {
 		return err
@@ -840,56 +836,6 @@ func (c InstallerController) sync() error {
 	}
 
 	return err
-}
-
-// Run starts the kube-apiserver and blocks until stopCh is closed.
-func (c *InstallerController) Run(workers int, stopCh <-chan struct{}) {
-	defer utilruntime.HandleCrash()
-	defer c.queue.ShutDown()
-
-	klog.Infof("Starting InstallerController")
-	defer klog.Infof("Shutting down InstallerController")
-	if !cache.WaitForCacheSync(stopCh, c.cachesToSync...) {
-		return
-	}
-
-	// doesn't matter what workers say, only start one.
-	go wait.Until(c.runWorker, time.Second, stopCh)
-
-	<-stopCh
-}
-
-func (c *InstallerController) runWorker() {
-	for c.processNextWorkItem() {
-	}
-}
-
-func (c *InstallerController) processNextWorkItem() bool {
-	dsKey, quit := c.queue.Get()
-	if quit {
-		return false
-	}
-	defer c.queue.Done(dsKey)
-
-	err := c.sync()
-	if err == nil {
-		c.queue.Forget(dsKey)
-		return true
-	}
-
-	utilruntime.HandleError(fmt.Errorf("%v failed with : %v", dsKey, err))
-	c.queue.AddRateLimited(dsKey)
-
-	return true
-}
-
-// eventHandler queues the operator to check spec and status
-func (c *InstallerController) eventHandler() cache.ResourceEventHandler {
-	return cache.ResourceEventHandlerFuncs{
-		AddFunc:    func(obj interface{}) { c.queue.Add(installerControllerWorkQueueKey) },
-		UpdateFunc: func(old, new interface{}) { c.queue.Add(installerControllerWorkQueueKey) },
-		DeleteFunc: func(obj interface{}) { c.queue.Add(installerControllerWorkQueueKey) },
-	}
 }
 
 func mirrorPodNameForNode(staticPodName, nodeName string) string {
