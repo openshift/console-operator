@@ -1,6 +1,7 @@
 package starter
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -51,34 +52,34 @@ import (
 	"github.com/openshift/library-go/pkg/operator/loglevel"
 )
 
-func RunOperator(ctx *controllercmd.ControllerContext) error {
+func RunOperator(ctx context.Context, controllerContext *controllercmd.ControllerContext) error {
 
-	kubeClient, err := kubernetes.NewForConfig(ctx.ProtoKubeConfig)
+	kubeClient, err := kubernetes.NewForConfig(controllerContext.ProtoKubeConfig)
 	if err != nil {
 		return err
 	}
 
-	configClient, err := configclient.NewForConfig(ctx.KubeConfig)
+	configClient, err := configclient.NewForConfig(controllerContext.KubeConfig)
 	if err != nil {
 		return err
 	}
 
-	operatorConfigClient, err := operatorversionedclient.NewForConfig(ctx.KubeConfig)
+	operatorConfigClient, err := operatorversionedclient.NewForConfig(controllerContext.KubeConfig)
 	if err != nil {
 		return err
 	}
 
-	consoleClient, err := consolev1client.NewForConfig(ctx.KubeConfig)
+	consoleClient, err := consolev1client.NewForConfig(controllerContext.KubeConfig)
 	if err != nil {
 		return err
 	}
 
-	routesClient, err := routesclient.NewForConfig(ctx.ProtoKubeConfig)
+	routesClient, err := routesclient.NewForConfig(controllerContext.ProtoKubeConfig)
 	if err != nil {
 		return err
 	}
 
-	oauthClient, err := authclient.NewForConfig(ctx.ProtoKubeConfig)
+	oauthClient, err := authclient.NewForConfig(controllerContext.ProtoKubeConfig)
 	if err != nil {
 		return err
 	}
@@ -140,11 +141,11 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		Client:    operatorConfigClient.OperatorV1(),
 	}
 
-	recorder := ctx.EventRecorder
+	recorder := controllerContext.EventRecorder
 
 	versionGetter := status.NewVersionGetter()
 
-	resourceSyncerInformers, resourceSyncer := getResourceSyncer(ctx, clientwrapper.WithoutSecret(kubeClient), operatorClient)
+	resourceSyncerInformers, resourceSyncer := getResourceSyncer(controllerContext, clientwrapper.WithoutSecret(kubeClient), operatorClient)
 
 	err = startResourceSyncing(resourceSyncer)
 	if err != nil {
@@ -248,7 +249,7 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		// operator client
 		operatorClient,
 		versionRecorder,
-		ctx.EventRecorder,
+		controllerContext.EventRecorder,
 	)
 
 	// NOTE: be sure to uncomment the .Run() below if using this
@@ -263,12 +264,12 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	//		// "FooDegraded",
 	//	},
 	//	operatorClient,
-	//	ctx.EventRecorder,
+	//	controllerContext.EventRecorder,
 	//)
 
-	configUpgradeableController := unsupportedconfigoverridescontroller.NewUnsupportedConfigOverridesController(operatorClient, ctx.EventRecorder)
-	logLevelController := loglevel.NewClusterOperatorLoggingController(operatorClient, ctx.EventRecorder)
-	managementStateController := management.NewOperatorManagementStateController(api.ClusterOperatorName, operatorClient, ctx.EventRecorder)
+	configUpgradeableController := unsupportedconfigoverridescontroller.NewUnsupportedConfigOverridesController(operatorClient, controllerContext.EventRecorder)
+	logLevelController := loglevel.NewClusterOperatorLoggingController(operatorClient, controllerContext.EventRecorder)
+	managementStateController := management.NewOperatorManagementStateController(api.ClusterOperatorName, operatorClient, controllerContext.EventRecorder)
 
 	for _, informer := range []interface {
 		Start(stopCh <-chan struct{})
@@ -285,14 +286,21 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		informer.Start(ctx.Done())
 	}
 
+	for _, controller := range []interface {
+		Run(ctx context.Context, workers int)
+	}{
+		resourceSyncer,
+		clusterOperatorStatus,
+		logLevelController,
+		managementStateController,
+		configUpgradeableController,
+	} {
+		go controller.Run(ctx, 1)
+	}
+
 	go consoleServiceController.Run(1, ctx.Done())
 	go resourceSyncDestinationController.Run(1, ctx.Done())
 	go consoleOperator.Run(ctx.Done())
-	go resourceSyncer.Run(1, ctx.Done())
-	go clusterOperatorStatus.Run(1, ctx.Done())
-	go configUpgradeableController.Run(1, ctx.Done())
-	go logLevelController.Run(1, ctx.Done())
-	go managementStateController.Run(1, ctx.Done())
 	go cliDownloadsController.Run(1, ctx.Done())
 	// go staleConditionsController.Run(1, ctx.Done())
 
@@ -313,7 +321,7 @@ func startResourceSyncing(resourceSyncer *resourcesynccontroller.ResourceSyncCon
 	return err
 }
 
-func getResourceSyncer(ctx *controllercmd.ControllerContext, kubeClient kubernetes.Interface, operatorClient v1helpers.OperatorClient) (v1helpers.KubeInformersForNamespaces, *resourcesynccontroller.ResourceSyncController) {
+func getResourceSyncer(controllerContext *controllercmd.ControllerContext, kubeClient kubernetes.Interface, operatorClient v1helpers.OperatorClient) (v1helpers.KubeInformersForNamespaces, *resourcesynccontroller.ResourceSyncController) {
 	resourceSyncerInformers := v1helpers.NewKubeInformersForNamespaces(
 		kubeClient,
 		api.OpenShiftConfigNamespace,
@@ -325,7 +333,7 @@ func getResourceSyncer(ctx *controllercmd.ControllerContext, kubeClient kubernet
 		resourceSyncerInformers,
 		v1helpers.CachedSecretGetter(kubeClient.CoreV1(), resourceSyncerInformers),
 		v1helpers.CachedConfigMapGetter(kubeClient.CoreV1(), resourceSyncerInformers),
-		ctx.EventRecorder,
+		controllerContext.EventRecorder,
 	)
 	return resourceSyncerInformers, resourceSyncer
 }
