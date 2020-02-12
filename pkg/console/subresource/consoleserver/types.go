@@ -11,13 +11,15 @@ package consoleserver
 
 // Config is the top-level console server cli configuration.
 type Config struct {
-	APIVersion    string `yaml:"apiVersion"`
-	Kind          string `yaml:"kind"`
-	ServingInfo   `yaml:"servingInfo"`
-	ClusterInfo   `yaml:"clusterInfo"`
-	Auth          `yaml:"auth"`
-	Customization `yaml:"customization"`
-	Providers     `yaml:"providers"`
+	APIVersion     string `yaml:"apiVersion"`
+	Kind           string `yaml:"kind"`
+	ServingInfo    `yaml:"servingInfo"`
+	ClusterInfo    `yaml:"clusterInfo"`
+	Auth           `yaml:"auth"`
+	Customization  `yaml:"customization"`
+	Providers      `yaml:"providers"`
+	MonitoringInfo `yaml:"monitoringInfo,omitempty"`
+	LoggingInfo    `yaml:"loggingInfo,omitempty"`
 }
 
 // ServingInfo holds configuration for serving HTTP.
@@ -42,6 +44,20 @@ type ClusterInfo struct {
 	ConsoleBaseAddress string `yaml:"consoleBaseAddress,omitempty"`
 	ConsoleBasePath    string `yaml:"consoleBasePath,omitempty"`
 	MasterPublicURL    string `yaml:"masterPublicURL,omitempty"`
+}
+
+// Monitoring holds URLs for monitoring related services
+type MonitoringInfo struct {
+	AlertmanagerURL string `yaml:"alertmanagerURL,omitempty"`
+	GrafanaURL      string `yaml:"grafanaURL,omitempty"`
+	PrometheusURL   string `yaml:"prometheusURL,omitempty"`
+	ThanosURL       string `yaml:"thanosURL,omitempty"`
+}
+
+// Logging holds URLs for logging related services
+type LoggingInfo struct {
+	KibanaAppURL      string `yaml:"kibanaAppURL,omitempty"`
+	KibanaInfraAppURL string `yaml:"kibanaInfraAppURL,omitempty"`
 }
 
 // Auth holds configuration for authenticating with OpenShift. The auth method is assumed to be "openshift".
