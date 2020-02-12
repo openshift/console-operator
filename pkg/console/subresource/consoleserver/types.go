@@ -39,9 +39,11 @@ type ServingInfo struct {
 
 // ClusterInfo holds information the about the cluster such as master public URL and console public URL.
 type ClusterInfo struct {
-	ConsoleBaseAddress string `yaml:"consoleBaseAddress,omitempty"`
-	ConsoleBasePath    string `yaml:"consoleBasePath,omitempty"`
-	MasterPublicURL    string `yaml:"masterPublicURL,omitempty"`
+	ConsoleBaseAddress string            `yaml:"consoleBaseAddress,omitempty"`
+	ConsoleBasePath    string            `yaml:"consoleBasePath,omitempty"`
+	MasterPublicURL    string            `yaml:"masterPublicURL,omitempty"`
+	MonitoringURLs     map[string]string `yaml:"monitoringURLs,omitempty"`
+	LoggingURLs        map[string]string `yaml:"loggingURLs,omitempty"`
 }
 
 // Auth holds configuration for authenticating with OpenShift. The auth method is assumed to be "openshift".

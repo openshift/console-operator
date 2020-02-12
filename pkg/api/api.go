@@ -23,6 +23,9 @@ const (
 	OAuthClientName                     = OpenShiftConsoleName
 	OpenShiftConfigManagedNamespace     = "openshift-config-managed"
 	OpenShiftConfigNamespace            = "openshift-config"
+	OpenShiftMonitoringNamespace        = "openshift-monitoring"
+	OpenShiftLoggingNamespace           = "openshift-logging"
+	SharingConfigMapName                = "sharing-config"
 	OpenShiftCustomLogoConfigMapName    = "custom-logo"
 	TrustedCAConfigMapName              = "trusted-ca-bundle"
 	TrustedCABundleKey                  = "ca-bundle.crt"

@@ -38,6 +38,8 @@ func DefaultConfigMap(
 	operatorConfig *operatorv1.Console,
 	consoleConfig *configv1.Console,
 	managedConfig *corev1.ConfigMap,
+	monitoringSharingConfig *corev1.ConfigMap,
+	loggingSharingConfig *corev1.ConfigMap,
 	infrastructureConfig *configv1.Infrastructure,
 	rt *routev1.Route,
 	useDefaultCAFile bool) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
@@ -49,6 +51,8 @@ func DefaultConfigMap(
 		DocURL(DEFAULT_DOC_URL).
 		DefaultIngressCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
+		MonitoringURLs(monitoringSharingConfig).
+		LoggingURLs(loggingSharingConfig).
 		ConfigYAML()
 
 	extractedManagedConfig := extractYAML(managedConfig)
@@ -59,6 +63,8 @@ func DefaultConfigMap(
 		DocURL(operatorConfig.Spec.Customization.DocumentationBaseURL).
 		DefaultIngressCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
+		MonitoringURLs(monitoringSharingConfig).
+		LoggingURLs(loggingSharingConfig).
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
 		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).
 		StatusPageID(statusPageId(operatorConfig)).

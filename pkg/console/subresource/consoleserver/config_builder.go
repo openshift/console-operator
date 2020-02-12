@@ -1,6 +1,8 @@
 package consoleserver
 
 import (
+	corev1 "k8s.io/api/core/v1"
+
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
@@ -38,6 +40,8 @@ type ConsoleServerCLIConfigBuilder struct {
 	customProductName string
 	customLogoFile    string
 	CAFile            string
+	monitoringURLs    map[string]string
+	loggingURLs       map[string]string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -84,6 +88,18 @@ func (b *ConsoleServerCLIConfigBuilder) DefaultIngressCert(useDefaultDefaultIngr
 	b.CAFile = defaultIngressCertFilePath
 	return b
 }
+func (b *ConsoleServerCLIConfigBuilder) MonitoringURLs(monitoringConfig *corev1.ConfigMap) *ConsoleServerCLIConfigBuilder {
+	if monitoringConfig != nil {
+		b.monitoringURLs = monitoringConfig.Data
+	}
+	return b
+}
+func (b *ConsoleServerCLIConfigBuilder) LoggingURLs(loggingConfig *corev1.ConfigMap) *ConsoleServerCLIConfigBuilder {
+	if loggingConfig != nil {
+		b.loggingURLs = loggingConfig.Data
+	}
+	return b
+}
 
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
@@ -125,6 +141,12 @@ func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {
 	}
 	if len(b.host) > 0 {
 		conf.ConsoleBaseAddress = util.HTTPS(b.host)
+	}
+	if len(b.monitoringURLs) > 0 {
+		conf.MonitoringURLs = b.monitoringURLs
+	}
+	if len(b.loggingURLs) > 0 {
+		conf.LoggingURLs = b.loggingURLs
 	}
 	return conf
 }

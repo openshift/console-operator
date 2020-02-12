@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	v1 "github.com/openshift/api/operator/v1"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/openshift/console-operator/pkg/api"
 
@@ -51,6 +52,18 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
+					MonitoringURLs(&corev1.ConfigMap{
+						Data: map[string]string{
+							"alertmanagerURL": "https://alertmanager.url.com",
+							"grafanaURL":      "https://grafana.url.com",
+							"prometheusURL":   "https://prometheus.url.com",
+						},
+					}).
+					LoggingURLs(&corev1.ConfigMap{
+						Data: map[string]string{
+							"kibanaAppURL": "https://kibanaApp.url.com",
+						},
+					}).
 					DefaultIngressCert(false).
 					Config()
 			},
@@ -66,6 +79,14 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ConsoleBasePath:    "",
 					ConsoleBaseAddress: "https://foobar.com/host",
 					MasterPublicURL:    "https://foobar.com/api",
+					MonitoringURLs: map[string]string{
+						"alertmanagerURL": "https://alertmanager.url.com",
+						"grafanaURL":      "https://grafana.url.com",
+						"prometheusURL":   "https://prometheus.url.com",
+					},
+					LoggingURLs: map[string]string{
+						"kibanaAppURL": "https://kibanaApp.url.com",
+					},
 				},
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
@@ -193,6 +214,18 @@ providers: {}
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
+					MonitoringURLs(&corev1.ConfigMap{
+						Data: map[string]string{
+							"alertmanagerURL": "https://alertmanager.url.com",
+							"grafanaURL":      "https://grafana.url.com",
+							"prometheusURL":   "https://prometheus.url.com",
+						},
+					}).
+					LoggingURLs(&corev1.ConfigMap{
+						Data: map[string]string{
+							"kibanaAppURL": "https://kibanaApp.url.com",
+						},
+					}).
 					DefaultIngressCert(false).
 					ConfigYAML()
 			},
@@ -205,6 +238,12 @@ servingInfo:
 clusterInfo:
   consoleBaseAddress: https://foobar.com/host
   masterPublicURL: https://foobar.com/api
+  monitoringURLs:
+    alertmanagerURL: https://alertmanager.url.com
+    grafanaURL: https://grafana.url.com
+    prometheusURL: https://prometheus.url.com
+  loggingURLs:
+    kibanaAppURL: https://kibanaApp.url.com
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
@@ -246,6 +285,18 @@ providers:
 					DocURL("https://foobar.com/docs").
 					APIServerURL("https://foobar.com/api").
 					StatusPageID("status-12345").
+					MonitoringURLs(&corev1.ConfigMap{
+						Data: map[string]string{
+							"alertmanagerURL": "https://alertmanager.url.com",
+							"grafanaURL":      "https://grafana.url.com",
+							"prometheusURL":   "https://prometheus.url.com",
+						},
+					}).
+					LoggingURLs(&corev1.ConfigMap{
+						Data: map[string]string{
+							"kibanaAppURL": "https://kibanaApp.url.com",
+						},
+					}).
 					DefaultIngressCert(true)
 				return b.ConfigYAML()
 			},
@@ -257,6 +308,12 @@ servingInfo:
   keyFile: /var/serving-cert/tls.key
 clusterInfo:
   masterPublicURL: https://foobar.com/api
+  monitoringURLs:
+    alertmanagerURL: https://alertmanager.url.com
+    grafanaURL: https://grafana.url.com
+    prometheusURL: https://prometheus.url.com
+  loggingURLs:
+    kibanaAppURL: https://kibanaApp.url.com
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
