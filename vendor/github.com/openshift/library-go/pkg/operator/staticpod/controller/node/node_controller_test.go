@@ -1,16 +1,19 @@
 package node
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 
 	operatorv1 "github.com/openshift/api/operator/v1"
+
+	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/condition"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
@@ -30,6 +33,9 @@ func makeNodeNotReady(node *corev1.Node) *corev1.Node {
 	con := corev1.NodeCondition{}
 	con.Type = corev1.NodeReady
 	con.Status = corev1.ConditionFalse
+	con.Reason = "TestReason"
+	con.Message = "test message"
+	con.LastTransitionTime = metav1.Time{Time: time.Date(2018, 01, 12, 22, 51, 48, 324359102, time.UTC)}
 	node.Status.Conditions = append(node.Status.Conditions, con)
 	return node
 }
@@ -66,7 +72,7 @@ func TestNodeControllerDegradedConditionType(t *testing.T) {
 				if con.Status != operatorv1.ConditionTrue {
 					return fmt.Errorf("incorrect condition.status, expected %v, got %v", operatorv1.ConditionTrue, con.Status)
 				}
-				expectedMsg := "The master node(s) \"test-node-1\" not ready"
+				expectedMsg := `The master nodes not ready: node "test-node-1" not ready since 2018-01-12 22:51:48.324359102 +0000 UTC because TestReason (test message)`
 				if con.Message != expectedMsg {
 					return fmt.Errorf("incorrect condition.message, expected %s, got %s", expectedMsg, con.Message)
 				}
@@ -90,7 +96,7 @@ func TestNodeControllerDegradedConditionType(t *testing.T) {
 				if con.Status != operatorv1.ConditionFalse {
 					return fmt.Errorf("incorrect condition.status, expected %v, got %v", operatorv1.ConditionFalse, con.Status)
 				}
-				expectedMsg := "All master node(s) are ready"
+				expectedMsg := "All master nodes are ready"
 				if con.Message != expectedMsg {
 					return fmt.Errorf("incorrect condition.message, expected %s, got %s", expectedMsg, con.Message)
 				}
@@ -114,7 +120,7 @@ func TestNodeControllerDegradedConditionType(t *testing.T) {
 				if con.Status != operatorv1.ConditionTrue {
 					return fmt.Errorf("incorrect condition.status, expected %v, got %v", operatorv1.ConditionTrue, con.Status)
 				}
-				expectedMsg := "The master node(s) \"test-node-1,test-node-3\" not ready"
+				expectedMsg := `The master nodes not ready: node "test-node-1" not ready since 2018-01-12 22:51:48.324359102 +0000 UTC because TestReason (test message), node "test-node-3" not ready since 2018-01-12 22:51:48.324359102 +0000 UTC because TestReason (test message)`
 				if con.Message != expectedMsg {
 					return fmt.Errorf("incorrect condition.message, expected %s, got %s", expectedMsg, con.Message)
 				}
@@ -126,7 +132,6 @@ func TestNodeControllerDegradedConditionType(t *testing.T) {
 		t.Run(scenario.name, func(t *testing.T) {
 			kubeClient := fake.NewSimpleClientset(scenario.masterNodes...)
 			fakeLister := v1helpers.NewFakeNodeLister(kubeClient)
-			kubeInformers := informers.NewSharedInformerFactory(kubeClient, 1*time.Minute)
 			fakeStaticPodOperatorClient := v1helpers.NewFakeStaticPodOperatorClient(
 				&operatorv1.StaticPodOperatorSpec{
 					OperatorSpec: operatorv1.OperatorSpec{
@@ -142,10 +147,11 @@ func TestNodeControllerDegradedConditionType(t *testing.T) {
 
 			eventRecorder := events.NewRecorder(kubeClient.CoreV1().Events("test"), "test-operator", &corev1.ObjectReference{})
 
-			c := NewNodeController(fakeStaticPodOperatorClient, kubeInformers, eventRecorder)
-			// override the lister so we don't have to run the informer to list nodes
-			c.nodeLister = fakeLister
-			if err := c.sync(); err != nil {
+			c := &NodeController{
+				operatorClient: fakeStaticPodOperatorClient,
+				nodeLister:     fakeLister,
+			}
+			if err := c.sync(context.TODO(), factory.NewSyncContext("NodeController", eventRecorder)); err != nil {
 				t.Fatal(err)
 			}
 
@@ -236,7 +242,6 @@ func TestNewNodeController(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			kubeClient := fake.NewSimpleClientset(test.startNodes...)
 			fakeLister := v1helpers.NewFakeNodeLister(kubeClient)
-			kubeInformers := informers.NewSharedInformerFactory(kubeClient, 1*time.Minute)
 			fakeStaticPodOperatorClient := v1helpers.NewFakeStaticPodOperatorClient(
 				&operatorv1.StaticPodOperatorSpec{
 					OperatorSpec: operatorv1.OperatorSpec{
@@ -253,10 +258,13 @@ func TestNewNodeController(t *testing.T) {
 
 			eventRecorder := events.NewRecorder(kubeClient.CoreV1().Events("test"), "test-operator", &corev1.ObjectReference{})
 
-			c := NewNodeController(fakeStaticPodOperatorClient, kubeInformers, eventRecorder)
+			c := &NodeController{
+				operatorClient: fakeStaticPodOperatorClient,
+				nodeLister:     fakeLister,
+			}
 			// override the lister so we don't have to run the informer to list nodes
 			c.nodeLister = fakeLister
-			if err := c.sync(); err != nil {
+			if err := c.sync(context.TODO(), factory.NewSyncContext("NodeController", eventRecorder)); err != nil {
 				t.Fatal(err)
 			}
 

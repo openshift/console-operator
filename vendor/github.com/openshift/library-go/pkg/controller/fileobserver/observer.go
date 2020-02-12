@@ -10,6 +10,7 @@ import (
 
 type Observer interface {
 	Run(stopChan <-chan struct{})
+	HasSynced() bool
 	AddReactor(reaction ReactorFn, startingFileContent map[string][]byte, files ...string) Observer
 }
 
@@ -26,6 +27,19 @@ const (
 	// FileDeleted means the file was deleted.
 	FileDeleted
 )
+
+func (t ActionType) name() string {
+	switch t {
+	case FileCreated:
+		return "create"
+	case FileDeleted:
+		return "delete"
+	case FileModified:
+		return "modified"
+	default:
+		return "unknown"
+	}
+}
 
 // String returns human readable form of action taken on a file.
 func (t ActionType) String(filename string) string {
@@ -60,6 +74,6 @@ func NewObserver(interval time.Duration) (Observer, error) {
 	return &pollingObserver{
 		interval: interval,
 		reactors: map[string][]ReactorFn{},
-		files:    map[string]string{},
+		files:    map[string]fileHashAndState{},
 	}, nil
 }

@@ -1,6 +1,7 @@
 package installer
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -17,10 +18,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
-	"k8s.io/client-go/util/workqueue"
 
 	operatorv1 "github.com/openshift/api/operator/v1"
 
+	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/condition"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/events/eventstesting"
@@ -90,7 +91,7 @@ func TestNewNodeStateForInstallInProgress(t *testing.T) {
 	c.installerPodImageFn = func() string { return "docker.io/foo/bar" }
 
 	t.Log("setting target revision")
-	if err := c.sync(); err != nil {
+	if err := c.Sync(context.TODO(), factory.NewSyncContext("InstallerController", eventRecorder)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -105,7 +106,7 @@ func TestNewNodeStateForInstallInProgress(t *testing.T) {
 
 	t.Log("starting installer pod")
 
-	if err := c.sync(); err != nil {
+	if err := c.Sync(context.TODO(), factory.NewSyncContext("InstallerController", eventRecorder)); err != nil {
 		t.Fatal(err)
 	}
 	if installerPod == nil {
@@ -136,7 +137,7 @@ func TestNewNodeStateForInstallInProgress(t *testing.T) {
 	})
 
 	t.Log("synching again, nothing happens")
-	if err := c.sync(); err != nil {
+	if err := c.Sync(context.TODO(), factory.NewSyncContext("InstallerController", eventRecorder)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -150,7 +151,7 @@ func TestNewNodeStateForInstallInProgress(t *testing.T) {
 	t.Log("installer succeeded")
 	installerPod.Status.Phase = corev1.PodSucceeded
 
-	if err := c.sync(); err != nil {
+	if err := c.Sync(context.TODO(), factory.NewSyncContext("InstallerController", eventRecorder)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -179,7 +180,7 @@ func TestNewNodeStateForInstallInProgress(t *testing.T) {
 	}
 	kubeClient.PrependReactor("get", "pods", getPodsReactor(staticPod))
 
-	if err := c.sync(); err != nil {
+	if err := c.Sync(context.TODO(), factory.NewSyncContext("InstallerController", eventRecorder)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -191,7 +192,7 @@ func TestNewNodeStateForInstallInProgress(t *testing.T) {
 	t.Log("static pod is ready")
 	staticPod.Status.Conditions[0].Status = corev1.ConditionTrue
 
-	if err := c.sync(); err != nil {
+	if err := c.Sync(context.TODO(), factory.NewSyncContext("InstallerController", eventRecorder)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -216,7 +217,7 @@ func TestNewNodeStateForInstallInProgress(t *testing.T) {
 			},
 		},
 	}
-	if err := c.sync(); err != nil {
+	if err := c.Sync(context.TODO(), factory.NewSyncContext("InstallerController", eventRecorder)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -230,10 +231,10 @@ func TestNewNodeStateForInstallInProgress(t *testing.T) {
 		t.Error(errors)
 	}
 
-	if v1helpers.FindOperatorCondition(currStatus.Conditions, operatorv1.OperatorStatusTypeProgressing) == nil {
+	if v1helpers.FindOperatorCondition(currStatus.Conditions, condition.NodeInstallerProgressingConditionType) == nil {
 		t.Error("missing Progressing")
 	}
-	if v1helpers.FindOperatorCondition(currStatus.Conditions, operatorv1.OperatorStatusTypeAvailable) == nil {
+	if v1helpers.FindOperatorCondition(currStatus.Conditions, condition.StaticPodsAvailableConditionType) == nil {
 		t.Error("missing Available")
 	}
 }
@@ -302,7 +303,7 @@ func TestCreateInstallerPod(t *testing.T) {
 		return []metav1.OwnerReference{}, nil
 	}
 	c.installerPodImageFn = func() string { return "docker.io/foo/bar" }
-	if err := c.sync(); err != nil {
+	if err := c.Sync(context.TODO(), factory.NewSyncContext("InstallerController", eventRecorder)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -310,7 +311,7 @@ func TestCreateInstallerPod(t *testing.T) {
 		t.Fatalf("expected first sync not to create installer pod")
 	}
 
-	if err := c.sync(); err != nil {
+	if err := c.Sync(context.TODO(), factory.NewSyncContext("InstallerController", eventRecorder)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -531,6 +532,7 @@ func TestCreateInstallerPodMultiNode(t *testing.T) {
 		expectedSyncError       []bool
 		updateStatusErrors      []error
 		numOfInstallersOOM      int
+		ownerRefsFn             func(revision int32) ([]metav1.OwnerReference, error)
 	}{
 		{
 			name:                    "three fresh nodes",
@@ -884,6 +886,37 @@ func TestCreateInstallerPodMultiNode(t *testing.T) {
 			updateStatusErrors:   []error{errors.NewInternalError(fmt.Errorf("unknown"))},
 			expectedSyncError:    []bool{true},
 		},
+		{
+			name:                    "three nodes, 2 not updated, one already transitioning to a revision which is no longer available",
+			latestAvailableRevision: 3,
+			nodeStatuses: []operatorv1.NodeStatus{
+				{
+					NodeName:        "test-node-0",
+					CurrentRevision: 1,
+				},
+				{
+					NodeName:        "test-node-1",
+					CurrentRevision: 1,
+					TargetRevision:  2,
+				},
+				{
+					NodeName:        "test-node-2",
+					CurrentRevision: 1,
+				},
+			},
+			staticPods: []*corev1.Pod{
+				newStaticPod(mirrorPodNameForNode("test-pod", "test-node-0"), 1, corev1.PodRunning, true),
+				newStaticPod(mirrorPodNameForNode("test-pod", "test-node-1"), 1, corev1.PodRunning, true),
+				newStaticPod(mirrorPodNameForNode("test-pod", "test-node-2"), 1, corev1.PodRunning, true),
+			},
+			expectedUpgradeOrder: []int{1, 0, 2},
+			ownerRefsFn: func(revision int32) (references []metav1.OwnerReference, err error) {
+				if revision == 3 {
+					return []metav1.OwnerReference{}, nil
+				}
+				return nil, fmt.Errorf("TEST")
+			},
+		},
 	}
 
 	for i, test := range tests {
@@ -1017,11 +1050,14 @@ func TestCreateInstallerPodMultiNode(t *testing.T) {
 			c.ownerRefsFn = func(revision int32) ([]metav1.OwnerReference, error) {
 				return []metav1.OwnerReference{}, nil
 			}
+			if test.ownerRefsFn != nil {
+				c.ownerRefsFn = test.ownerRefsFn
+			}
 			c.installerPodImageFn = func() string { return "docker.io/foo/bar" }
 
 			// Each node needs at least 2 syncs to first create the pod and then acknowledge its existence.
 			for i := 1; i <= len(test.nodeStatuses)*2+1; i++ {
-				err := c.sync()
+				err := c.Sync(context.TODO(), factory.NewSyncContext("InstallerController", eventRecorder))
 				expectedErr := false
 				if i-1 < len(test.expectedSyncError) && test.expectedSyncError[i-1] {
 					expectedErr = true
@@ -1061,7 +1097,6 @@ func TestInstallerController_manageInstallationPods(t *testing.T) {
 		operatorConfigClient v1helpers.StaticPodOperatorClient
 		kubeClient           kubernetes.Interface
 		eventRecorder        events.Recorder
-		queue                workqueue.RateLimitingInterface
 		installerPodImageFn  func() string
 	}
 	type args struct {
@@ -1090,7 +1125,6 @@ func TestInstallerController_manageInstallationPods(t *testing.T) {
 				configMapsGetter:    tt.fields.kubeClient.CoreV1(),
 				podsGetter:          tt.fields.kubeClient.CoreV1(),
 				eventRecorder:       tt.fields.eventRecorder,
-				queue:               tt.fields.queue,
 				installerPodImageFn: tt.fields.installerPodImageFn,
 			}
 			got, err := c.manageInstallationPods(tt.args.operatorSpec, tt.args.originalOperatorStatus, tt.args.resourceVersion)
@@ -1319,14 +1353,14 @@ func TestSetConditions(t *testing.T) {
 			}
 			setAvailableProgressingNodeInstallerFailingConditions(status)
 
-			availableCondition := v1helpers.FindOperatorCondition(status.Conditions, operatorv1.OperatorStatusTypeAvailable)
+			availableCondition := v1helpers.FindOperatorCondition(status.Conditions, condition.StaticPodsAvailableConditionType)
 			if availableCondition == nil {
 				t.Error("Available condition: not found")
 			} else if availableCondition.Status != tc.expectedAvailableStatus {
 				t.Errorf("Available condition: expected status %v, actual status %v", tc.expectedAvailableStatus, availableCondition.Status)
 			}
 
-			pendingCondition := v1helpers.FindOperatorCondition(status.Conditions, operatorv1.OperatorStatusTypeProgressing)
+			pendingCondition := v1helpers.FindOperatorCondition(status.Conditions, condition.NodeInstallerProgressingConditionType)
 			if pendingCondition == nil {
 				t.Error("Progressing condition: not found")
 			} else if pendingCondition.Status != tc.expectedProgressingStatus {
