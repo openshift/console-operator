@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	v1 "github.com/openshift/api/operator/v1"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/openshift/console-operator/pkg/api"
 
@@ -66,6 +67,63 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ConsoleBasePath:    "",
 					ConsoleBaseAddress: "https://foobar.com/host",
 					MasterPublicURL:    "https://foobar.com/api",
+				},
+				Auth: Auth{
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: defaultIngressCertFilePath,
+					LogoutRedirect:      "https://foobar.com/logout",
+				},
+				Customization: Customization{},
+				Providers:     Providers{},
+			},
+		}, {
+			name: "Config builder should handle monitoring and logging info",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				return b.
+					APIServerURL("https://foobar.com/api").
+					Host("https://foobar.com/host").
+					LogoutURL("https://foobar.com/logout").
+					Monitoring(&corev1.ConfigMap{
+						Data: map[string]string{
+							"alertmanagerURL": "https://alertmanager.url.com",
+							"grafanaURL":      "https://grafana.url.com",
+							"prometheusURL":   "https://prometheus.url.com",
+							"thanosURL":       "https://thanos.url.com",
+						},
+					}).
+					Logging(&corev1.ConfigMap{
+						Data: map[string]string{
+							"kibanaAppURL":      "https://kibanaApp.url.com",
+							"kibanaInfraAppURL": "https://kibanaInfraApp.url.com",
+						},
+					}).
+					DefaultIngressCert(false).
+					Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath:    "",
+					ConsoleBaseAddress: "https://foobar.com/host",
+					MasterPublicURL:    "https://foobar.com/api",
+				},
+				MonitoringInfo: MonitoringInfo{
+					AlertmanagerURL: "https://alertmanager.url.com",
+					GrafanaURL:      "https://grafana.url.com",
+					PrometheusURL:   "https://prometheus.url.com",
+					ThanosURL:       "https://thanos.url.com",
+				},
+				LoggingInfo: LoggingInfo{
+					KibanaAppURL:      "https://kibanaApp.url.com",
+					KibanaInfraAppURL: "https://kibanaInfraApp.url.com",
 				},
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
@@ -215,6 +273,57 @@ providers: {}
 `,
 		},
 		{
+			name: "Config builder should handle monitoring and logging info",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				return b.
+					APIServerURL("https://foobar.com/api").
+					Host("https://foobar.com/host").
+					LogoutURL("https://foobar.com/logout").
+					Monitoring(&corev1.ConfigMap{
+						Data: map[string]string{
+							"alertmanagerURL": "https://alertmanager.url.com",
+							"grafanaURL":      "https://grafana.url.com",
+							"prometheusURL":   "https://prometheus.url.com",
+							"thanosURL":       "https://thanos.url.com",
+						},
+					}).
+					Logging(&corev1.ConfigMap{
+						Data: map[string]string{
+							"kibanaAppURL":      "https://kibanaApp.url.com",
+							"kibanaInfraAppURL": "https://kibanaInfraApp.url.com",
+						},
+					}).
+					DefaultIngressCert(false).
+					ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo:
+  consoleBaseAddress: https://foobar.com/host
+  masterPublicURL: https://foobar.com/api
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/default-ingress-cert/ca-bundle.crt
+  logoutRedirect: https://foobar.com/logout
+customization: {}
+providers: {}
+monitoringInfo:
+  alertmanagerURL: https://alertmanager.url.com
+  grafanaURL: https://grafana.url.com
+  prometheusURL: https://prometheus.url.com
+  thanosURL: https://thanos.url.com
+loggingInfo:
+  kibanaAppURL: https://kibanaApp.url.com
+  kibanaInfraAppURL: https://kibanaInfraApp.url.com
+`,
+		},
+		{
 			name: "Config builder should handle StatuspageID",
 			input: func() ([]byte, error) {
 				b := &ConsoleServerCLIConfigBuilder{}
@@ -246,6 +355,20 @@ providers:
 					DocURL("https://foobar.com/docs").
 					APIServerURL("https://foobar.com/api").
 					StatusPageID("status-12345").
+					Monitoring(&corev1.ConfigMap{
+						Data: map[string]string{
+							"alertmanagerURL": "https://alertmanager.url.com",
+							"grafanaURL":      "https://grafana.url.com",
+							"prometheusURL":   "https://prometheus.url.com",
+							"thanosURL":       "https://thanos.url.com",
+						},
+					}).
+					Logging(&corev1.ConfigMap{
+						Data: map[string]string{
+							"kibanaAppURL":      "https://kibanaApp.url.com",
+							"kibanaInfraAppURL": "https://kibanaInfraApp.url.com",
+						},
+					}).
 					DefaultIngressCert(true)
 				return b.ConfigYAML()
 			},
@@ -267,6 +390,14 @@ customization:
   documentationBaseURL: https://foobar.com/docs
 providers:
   statuspageID: status-12345
+monitoringInfo:
+  alertmanagerURL: https://alertmanager.url.com
+  grafanaURL: https://grafana.url.com
+  prometheusURL: https://prometheus.url.com
+  thanosURL: https://thanos.url.com
+loggingInfo:
+  kibanaAppURL: https://kibanaApp.url.com
+  kibanaInfraAppURL: https://kibanaInfraApp.url.com
 `,
 		},
 	}

@@ -1,6 +1,8 @@
 package consoleserver
 
 import (
+	corev1 "k8s.io/api/core/v1"
+
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
@@ -38,6 +40,8 @@ type ConsoleServerCLIConfigBuilder struct {
 	customProductName string
 	customLogoFile    string
 	CAFile            string
+	monitoring        map[string]string
+	logging           map[string]string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -84,16 +88,30 @@ func (b *ConsoleServerCLIConfigBuilder) DefaultIngressCert(useDefaultDefaultIngr
 	b.CAFile = defaultIngressCertFilePath
 	return b
 }
+func (b *ConsoleServerCLIConfigBuilder) Monitoring(monitoringConfig *corev1.ConfigMap) *ConsoleServerCLIConfigBuilder {
+	if monitoringConfig != nil {
+		b.monitoring = monitoringConfig.Data
+	}
+	return b
+}
+func (b *ConsoleServerCLIConfigBuilder) Logging(loggingConfig *corev1.ConfigMap) *ConsoleServerCLIConfigBuilder {
+	if loggingConfig != nil {
+		b.logging = loggingConfig.Data
+	}
+	return b
+}
 
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
-		Kind:          "ConsoleConfig",
-		APIVersion:    "console.openshift.io/v1",
-		Auth:          b.authServer(),
-		ClusterInfo:   b.clusterInfo(),
-		Customization: b.customization(),
-		ServingInfo:   b.servingInfo(),
-		Providers:     b.providers(),
+		Kind:           "ConsoleConfig",
+		APIVersion:     "console.openshift.io/v1",
+		Auth:           b.authServer(),
+		ClusterInfo:    b.clusterInfo(),
+		Customization:  b.customization(),
+		ServingInfo:    b.servingInfo(),
+		Providers:      b.providers(),
+		MonitoringInfo: b.monitoringInfo(),
+		LoggingInfo:    b.loggingInfo(),
 	}
 }
 
@@ -125,6 +143,56 @@ func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {
 	}
 	if len(b.host) > 0 {
 		conf.ConsoleBaseAddress = util.HTTPS(b.host)
+	}
+	return conf
+}
+
+func (b *ConsoleServerCLIConfigBuilder) monitoringInfo() MonitoringInfo {
+	conf := MonitoringInfo{}
+	if len(b.monitoring) > 0 {
+		var monitoringURLs MonitoringInfo
+		urls, err := yaml.Marshal(b.monitoring)
+		if err != nil {
+			return conf
+		}
+		err = yaml.Unmarshal(urls, &monitoringURLs)
+		if err != nil {
+			return conf
+		}
+		if len(monitoringURLs.AlertmanagerURL) > 0 {
+			conf.AlertmanagerURL = monitoringURLs.AlertmanagerURL
+		}
+		if len(monitoringURLs.GrafanaURL) > 0 {
+			conf.GrafanaURL = monitoringURLs.GrafanaURL
+		}
+		if len(monitoringURLs.PrometheusURL) > 0 {
+			conf.PrometheusURL = monitoringURLs.PrometheusURL
+		}
+		if len(monitoringURLs.ThanosURL) > 0 {
+			conf.ThanosURL = monitoringURLs.ThanosURL
+		}
+	}
+	return conf
+}
+
+func (b *ConsoleServerCLIConfigBuilder) loggingInfo() LoggingInfo {
+	conf := LoggingInfo{}
+	if len(b.logging) > 0 {
+		var loggingURLs LoggingInfo
+		urls, err := yaml.Marshal(b.logging)
+		if err != nil {
+			return conf
+		}
+		err = yaml.Unmarshal(urls, &loggingURLs)
+		if err != nil {
+			return conf
+		}
+		if len(loggingURLs.KibanaAppURL) > 0 {
+			conf.KibanaAppURL = loggingURLs.KibanaAppURL
+		}
+		if len(loggingURLs.KibanaInfraAppURL) > 0 {
+			conf.KibanaInfraAppURL = loggingURLs.KibanaInfraAppURL
+		}
 	}
 	return conf
 }
