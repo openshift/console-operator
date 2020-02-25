@@ -78,7 +78,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Providers:     Providers{},
 			},
 		}, {
-			name: "Config builder should handle monitoring and logging info",
+			name: "Config builder should handle monitoring and info",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
 				return b.
@@ -87,16 +87,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					LogoutURL("https://foobar.com/logout").
 					Monitoring(&corev1.ConfigMap{
 						Data: map[string]string{
-							"alertmanagerURL": "https://alertmanager.url.com",
-							"grafanaURL":      "https://grafana.url.com",
-							"prometheusURL":   "https://prometheus.url.com",
-							"thanosURL":       "https://thanos.url.com",
-						},
-					}).
-					Logging(&corev1.ConfigMap{
-						Data: map[string]string{
-							"kibanaAppURL":      "https://kibanaApp.url.com",
-							"kibanaInfraAppURL": "https://kibanaInfraApp.url.com",
+							"alertmanagerPublicURL": "https://alertmanager.url.com",
+							"grafanaPublicURL":      "https://grafana.url.com",
+							"prometheusPublicURL":   "https://prometheus.url.com",
+							"thanosPublicURL":       "https://thanos.url.com",
 						},
 					}).
 					DefaultIngressCert(false).
@@ -116,14 +110,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					MasterPublicURL:    "https://foobar.com/api",
 				},
 				MonitoringInfo: MonitoringInfo{
-					AlertmanagerURL: "https://alertmanager.url.com",
-					GrafanaURL:      "https://grafana.url.com",
-					PrometheusURL:   "https://prometheus.url.com",
-					ThanosURL:       "https://thanos.url.com",
-				},
-				LoggingInfo: LoggingInfo{
-					KibanaAppURL:      "https://kibanaApp.url.com",
-					KibanaInfraAppURL: "https://kibanaInfraApp.url.com",
+					AlertmanagerPublicURL: "https://alertmanager.url.com",
+					GrafanaPublicURL:      "https://grafana.url.com",
+					PrometheusPublicURL:   "https://prometheus.url.com",
+					ThanosPublicURL:       "https://thanos.url.com",
 				},
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
@@ -273,7 +263,7 @@ providers: {}
 `,
 		},
 		{
-			name: "Config builder should handle monitoring and logging info",
+			name: "Config builder should handle monitoring and info",
 			input: func() ([]byte, error) {
 				b := &ConsoleServerCLIConfigBuilder{}
 				return b.
@@ -282,16 +272,10 @@ providers: {}
 					LogoutURL("https://foobar.com/logout").
 					Monitoring(&corev1.ConfigMap{
 						Data: map[string]string{
-							"alertmanagerURL": "https://alertmanager.url.com",
-							"grafanaURL":      "https://grafana.url.com",
-							"prometheusURL":   "https://prometheus.url.com",
-							"thanosURL":       "https://thanos.url.com",
-						},
-					}).
-					Logging(&corev1.ConfigMap{
-						Data: map[string]string{
-							"kibanaAppURL":      "https://kibanaApp.url.com",
-							"kibanaInfraAppURL": "https://kibanaInfraApp.url.com",
+							"alertmanagerPublicURL": "https://alertmanager.url.com",
+							"grafanaPublicURL":      "https://grafana.url.com",
+							"prometheusPublicURL":   "https://prometheus.url.com",
+							"thanosPublicURL":       "https://thanos.url.com",
 						},
 					}).
 					DefaultIngressCert(false).
@@ -314,13 +298,10 @@ auth:
 customization: {}
 providers: {}
 monitoringInfo:
-  alertmanagerURL: https://alertmanager.url.com
-  grafanaURL: https://grafana.url.com
-  prometheusURL: https://prometheus.url.com
-  thanosURL: https://thanos.url.com
-loggingInfo:
-  kibanaAppURL: https://kibanaApp.url.com
-  kibanaInfraAppURL: https://kibanaInfraApp.url.com
+  alertmanagerPublicURL: https://alertmanager.url.com
+  grafanaPublicURL: https://grafana.url.com
+  prometheusPublicURL: https://prometheus.url.com
+  thanosPublicURL: https://thanos.url.com
 `,
 		},
 		{
@@ -357,16 +338,10 @@ providers:
 					StatusPageID("status-12345").
 					Monitoring(&corev1.ConfigMap{
 						Data: map[string]string{
-							"alertmanagerURL": "https://alertmanager.url.com",
-							"grafanaURL":      "https://grafana.url.com",
-							"prometheusURL":   "https://prometheus.url.com",
-							"thanosURL":       "https://thanos.url.com",
-						},
-					}).
-					Logging(&corev1.ConfigMap{
-						Data: map[string]string{
-							"kibanaAppURL":      "https://kibanaApp.url.com",
-							"kibanaInfraAppURL": "https://kibanaInfraApp.url.com",
+							"alertmanagerPublicURL": "https://alertmanager.url.com",
+							"grafanaPublicURL":      "https://grafana.url.com",
+							"prometheusPublicURL":   "https://prometheus.url.com",
+							"thanosPublicURL":       "https://thanos.url.com",
 						},
 					}).
 					DefaultIngressCert(true)
@@ -391,13 +366,10 @@ customization:
 providers:
   statuspageID: status-12345
 monitoringInfo:
-  alertmanagerURL: https://alertmanager.url.com
-  grafanaURL: https://grafana.url.com
-  prometheusURL: https://prometheus.url.com
-  thanosURL: https://thanos.url.com
-loggingInfo:
-  kibanaAppURL: https://kibanaApp.url.com
-  kibanaInfraAppURL: https://kibanaInfraApp.url.com
+  alertmanagerPublicURL: https://alertmanager.url.com
+  grafanaPublicURL: https://grafana.url.com
+  prometheusPublicURL: https://prometheus.url.com
+  thanosPublicURL: https://thanos.url.com
 `,
 		},
 	}

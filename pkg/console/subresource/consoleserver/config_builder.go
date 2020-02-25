@@ -41,7 +41,6 @@ type ConsoleServerCLIConfigBuilder struct {
 	customLogoFile    string
 	CAFile            string
 	monitoring        map[string]string
-	logging           map[string]string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -88,15 +87,10 @@ func (b *ConsoleServerCLIConfigBuilder) DefaultIngressCert(useDefaultDefaultIngr
 	b.CAFile = defaultIngressCertFilePath
 	return b
 }
+
 func (b *ConsoleServerCLIConfigBuilder) Monitoring(monitoringConfig *corev1.ConfigMap) *ConsoleServerCLIConfigBuilder {
 	if monitoringConfig != nil {
 		b.monitoring = monitoringConfig.Data
-	}
-	return b
-}
-func (b *ConsoleServerCLIConfigBuilder) Logging(loggingConfig *corev1.ConfigMap) *ConsoleServerCLIConfigBuilder {
-	if loggingConfig != nil {
-		b.logging = loggingConfig.Data
 	}
 	return b
 }
@@ -111,7 +105,6 @@ func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 		ServingInfo:    b.servingInfo(),
 		Providers:      b.providers(),
 		MonitoringInfo: b.monitoringInfo(),
-		LoggingInfo:    b.loggingInfo(),
 	}
 }
 
@@ -159,39 +152,17 @@ func (b *ConsoleServerCLIConfigBuilder) monitoringInfo() MonitoringInfo {
 		if err != nil {
 			return conf
 		}
-		if len(monitoringURLs.AlertmanagerURL) > 0 {
-			conf.AlertmanagerURL = monitoringURLs.AlertmanagerURL
+		if len(monitoringURLs.AlertmanagerPublicURL) > 0 {
+			conf.AlertmanagerPublicURL = monitoringURLs.AlertmanagerPublicURL
 		}
-		if len(monitoringURLs.GrafanaURL) > 0 {
-			conf.GrafanaURL = monitoringURLs.GrafanaURL
+		if len(monitoringURLs.GrafanaPublicURL) > 0 {
+			conf.GrafanaPublicURL = monitoringURLs.GrafanaPublicURL
 		}
-		if len(monitoringURLs.PrometheusURL) > 0 {
-			conf.PrometheusURL = monitoringURLs.PrometheusURL
+		if len(monitoringURLs.PrometheusPublicURL) > 0 {
+			conf.PrometheusPublicURL = monitoringURLs.PrometheusPublicURL
 		}
-		if len(monitoringURLs.ThanosURL) > 0 {
-			conf.ThanosURL = monitoringURLs.ThanosURL
-		}
-	}
-	return conf
-}
-
-func (b *ConsoleServerCLIConfigBuilder) loggingInfo() LoggingInfo {
-	conf := LoggingInfo{}
-	if len(b.logging) > 0 {
-		var loggingURLs LoggingInfo
-		urls, err := yaml.Marshal(b.logging)
-		if err != nil {
-			return conf
-		}
-		err = yaml.Unmarshal(urls, &loggingURLs)
-		if err != nil {
-			return conf
-		}
-		if len(loggingURLs.KibanaAppURL) > 0 {
-			conf.KibanaAppURL = loggingURLs.KibanaAppURL
-		}
-		if len(loggingURLs.KibanaInfraAppURL) > 0 {
-			conf.KibanaInfraAppURL = loggingURLs.KibanaInfraAppURL
+		if len(monitoringURLs.ThanosPublicURL) > 0 {
+			conf.ThanosPublicURL = monitoringURLs.ThanosPublicURL
 		}
 	}
 	return conf
