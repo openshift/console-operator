@@ -32,7 +32,6 @@ func TestDefaultConfigMap(t *testing.T) {
 		consoleConfig          *configv1.Console
 		managedConfig          *corev1.ConfigMap
 		monitoringSharedConfig *corev1.ConfigMap
-		loggingSharedConfig    *corev1.ConfigMap
 		infrastructureConfig   *configv1.Infrastructure
 		rt                     *routev1.Route
 		useDefaultCAFile       bool
@@ -49,7 +48,6 @@ func TestDefaultConfigMap(t *testing.T) {
 				consoleConfig:          &configv1.Console{},
 				managedConfig:          &corev1.ConfigMap{},
 				monitoringSharedConfig: &corev1.ConfigMap{},
-				loggingSharedConfig:    &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -97,7 +95,6 @@ providers: {}
 				consoleConfig:          &configv1.Console{},
 				managedConfig:          &corev1.ConfigMap{},
 				monitoringSharedConfig: &corev1.ConfigMap{},
-				loggingSharedConfig:    &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -153,7 +150,6 @@ customization:
 					},
 				},
 				monitoringSharedConfig: &corev1.ConfigMap{},
-				loggingSharedConfig:    &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -218,7 +214,6 @@ customization:
 					},
 				},
 				monitoringSharedConfig: &corev1.ConfigMap{},
-				loggingSharedConfig:    &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -288,7 +283,6 @@ customization:
 					},
 				},
 				monitoringSharedConfig: &corev1.ConfigMap{},
-				loggingSharedConfig:    &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -360,7 +354,6 @@ customization:
 					},
 				},
 				monitoringSharedConfig: &corev1.ConfigMap{},
-				loggingSharedConfig:    &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -403,23 +396,17 @@ providers:
 			},
 		},
 		{
-			name: "Test operator config with monitoring and logging URLs",
+			name: "Test operator config with monitoring URLs",
 			args: args{
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig:  &corev1.ConfigMap{},
 				monitoringSharedConfig: &corev1.ConfigMap{
 					Data: map[string]string{
-						"alertmanagerURL": "https://alertmanager.url.com",
-						"grafanaURL":      "https://grafana.url.com",
-						"prometheusURL":   "https://prometheus.url.com",
-						"thanosURL":       "https://thanos.url.com",
-					},
-				},
-				loggingSharedConfig: &corev1.ConfigMap{
-					Data: map[string]string{
-						"kibanaAppURL":      "https://kibanaApp.url.com",
-						"kibanaInfraAppURL": "https://kibanaInfraApp.url.com",
+						"alertmanagerPublicURL": "https://alertmanager.url.com",
+						"grafanaPublicURL":      "https://grafana.url.com",
+						"prometheusPublicURL":   "https://prometheus.url.com",
+						"thanosPublicURL":       "https://thanos.url.com",
 					},
 				},
 				infrastructureConfig: &configv1.Infrastructure{
@@ -451,13 +438,10 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
 monitoringInfo:
-  alertmanagerURL: https://alertmanager.url.com
-  grafanaURL: https://grafana.url.com
-  prometheusURL: https://prometheus.url.com
-  thanosURL: https://thanos.url.com
-loggingInfo:
-  kibanaAppURL: https://kibanaApp.url.com
-  kibanaInfraAppURL: https://kibanaInfraApp.url.com
+  alertmanagerPublicURL: https://alertmanager.url.com
+  grafanaPublicURL: https://grafana.url.com
+  prometheusPublicURL: https://prometheus.url.com
+  thanosPublicURL: https://thanos.url.com
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -478,7 +462,6 @@ providers: {}
 				tt.args.consoleConfig,
 				tt.args.managedConfig,
 				tt.args.monitoringSharedConfig,
-				tt.args.loggingSharedConfig,
 				tt.args.infrastructureConfig,
 				tt.args.rt, tt.args.useDefaultCAFile,
 			)
