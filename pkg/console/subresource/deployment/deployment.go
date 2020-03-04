@@ -81,7 +81,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	// pod template, but it does check deployment annotations.
 	meta.Annotations = annotations
 	replicas := int32(ConsoleReplicas)
-	gracePeriod := int64(30)
+	gracePeriod := int64(40)
 	tolerationSeconds := int64(120)
 	volumeConfig := defaultVolumeConfig()
 	caBundle, caBundleExists := trustedCAConfigMap.Data["ca-bundle.crt"]
@@ -297,6 +297,17 @@ func consoleContainer(cr *operatorv1.Console, volConfigList []volumeConfig, prox
 			Protocol:      corev1.ProtocolTCP,
 			ContainerPort: consolePort,
 		}},
+		// Delay shutdown for 25 seconds, which is the estimated time for:
+		// * endpoint propagation on delete to the router: 5s
+		// * router max reload wait: 5s
+		// * time for the longest connection to shut down: 15s
+		Lifecycle: &corev1.Lifecycle{
+			PreStop: &corev1.Handler{
+				Exec: &corev1.ExecAction{
+					Command: []string{"sleep", "25"},
+				},
+			},
+		},
 		VolumeMounts:             volumeMounts,
 		ReadinessProbe:           defaultProbe(),
 		LivenessProbe:            livenessProbe(),

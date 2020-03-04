@@ -21,7 +21,7 @@ func TestDefaultDeployment(t *testing.T) {
 	var (
 		replicaCount int32 = 2
 		labels             = map[string]string{"app": api.OpenShiftConsoleName, "component": "ui"}
-		gracePeriod  int64 = 30
+		gracePeriod  int64 = 40
 	)
 	type args struct {
 		config             *operatorsv1.Console
