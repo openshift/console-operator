@@ -19,7 +19,6 @@ type Config struct {
 	Customization  `yaml:"customization"`
 	Providers      `yaml:"providers"`
 	MonitoringInfo `yaml:"monitoringInfo,omitempty"`
-	LoggingInfo    `yaml:"loggingInfo,omitempty"`
 }
 
 // ServingInfo holds configuration for serving HTTP.
@@ -48,16 +47,10 @@ type ClusterInfo struct {
 
 // Monitoring holds URLs for monitoring related services
 type MonitoringInfo struct {
-	AlertmanagerURL string `yaml:"alertmanagerURL,omitempty"`
-	GrafanaURL      string `yaml:"grafanaURL,omitempty"`
-	PrometheusURL   string `yaml:"prometheusURL,omitempty"`
-	ThanosURL       string `yaml:"thanosURL,omitempty"`
-}
-
-// Logging holds URLs for logging related services
-type LoggingInfo struct {
-	KibanaAppURL      string `yaml:"kibanaAppURL,omitempty"`
-	KibanaInfraAppURL string `yaml:"kibanaInfraAppURL,omitempty"`
+	AlertmanagerPublicURL string `yaml:"alertmanagerPublicURL,omitempty"`
+	GrafanaPublicURL      string `yaml:"grafanaPublicURL,omitempty"`
+	PrometheusPublicURL   string `yaml:"prometheusPublicURL,omitempty"`
+	ThanosPublicURL       string `yaml:"thanosPublicURL,omitempty"`
 }
 
 // Auth holds configuration for authenticating with OpenShift. The auth method is assumed to be "openshift".

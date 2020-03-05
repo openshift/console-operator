@@ -303,17 +303,12 @@ func (co *consoleOperator) SyncConfigMap(
 		useDefaultCAFile = false
 	}
 
-	monitoringSharedConfig, mscErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftMonitoringConfig, metav1.GetOptions{})
+	monitoringSharedConfig, mscErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftMonitoringConfigMapName, metav1.GetOptions{})
 	if mscErr != nil && !apierrors.IsNotFound(mscErr) {
 		return nil, false, "FailedGetMonitoringSharedConfig", mscErr
 	}
 
-	loggingSharedConfig, lscErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftLoggingConfig, metav1.GetOptions{})
-	if lscErr != nil && !apierrors.IsNotFound(lscErr) {
-		return nil, false, "FailedGetLoggingSharedConfig", lscErr
-	}
-
-	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, monitoringSharedConfig, loggingSharedConfig, infrastructureConfig, consoleRoute, useDefaultCAFile)
+	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, monitoringSharedConfig, infrastructureConfig, consoleRoute, useDefaultCAFile)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
 	}
