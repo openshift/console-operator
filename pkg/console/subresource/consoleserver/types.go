@@ -79,3 +79,12 @@ type Customization struct {
 type Providers struct {
 	StatuspageID string `yaml:"statuspageID,omitempty"`
 }
+
+type HelmChartRepo struct {
+	URL    string `yaml:"url,omitempty"`
+	CAFile string `yaml:"caFile,omitempty"`
+}
+
+type Helm struct {
+	ChartRepo HelmChartRepo `yaml:"chartRepository"`
+}
