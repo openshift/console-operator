@@ -47,7 +47,6 @@ import (
 
 	"github.com/openshift/console-operator/pkg/console/clientwrapper"
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
-	"github.com/openshift/console-operator/pkg/console/metrics"
 	"github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/library-go/pkg/operator/loglevel"
 )
@@ -152,8 +151,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		return err
 	}
 
-	consoleMetrics := metrics.Register()
-
 	// TODO: rearrange these into informer,client pairs, NOT separated.
 	consoleOperator := operator.NewConsoleOperator(
 		// top level config
@@ -177,9 +174,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		oauthInformers.Oauth().V1().OAuthClients(), // OAuth clients
 		// openshift managed
 		kubeInformersManagedNamespaced.Core().V1(), // Managed ConfigMaps
-		// metrics
-		// TODO: when we get to testing, we may want an interface for this
-		consoleMetrics,
 		// event handling
 		versionGetter,
 		recorder,
