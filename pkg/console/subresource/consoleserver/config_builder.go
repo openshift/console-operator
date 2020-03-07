@@ -1,6 +1,8 @@
 package consoleserver
 
 import (
+	corev1 "k8s.io/api/core/v1"
+
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
@@ -38,6 +40,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	customProductName string
 	customLogoFile    string
 	CAFile            string
+	monitoring        map[string]string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -85,15 +88,23 @@ func (b *ConsoleServerCLIConfigBuilder) DefaultIngressCert(useDefaultDefaultIngr
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) Monitoring(monitoringConfig *corev1.ConfigMap) *ConsoleServerCLIConfigBuilder {
+	if monitoringConfig != nil {
+		b.monitoring = monitoringConfig.Data
+	}
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
-		Kind:          "ConsoleConfig",
-		APIVersion:    "console.openshift.io/v1",
-		Auth:          b.authServer(),
-		ClusterInfo:   b.clusterInfo(),
-		Customization: b.customization(),
-		ServingInfo:   b.servingInfo(),
-		Providers:     b.providers(),
+		Kind:           "ConsoleConfig",
+		APIVersion:     "console.openshift.io/v1",
+		Auth:           b.authServer(),
+		ClusterInfo:    b.clusterInfo(),
+		Customization:  b.customization(),
+		ServingInfo:    b.servingInfo(),
+		Providers:      b.providers(),
+		MonitoringInfo: b.monitoringInfo(),
 	}
 }
 
@@ -125,6 +136,34 @@ func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {
 	}
 	if len(b.host) > 0 {
 		conf.ConsoleBaseAddress = util.HTTPS(b.host)
+	}
+	return conf
+}
+
+func (b *ConsoleServerCLIConfigBuilder) monitoringInfo() MonitoringInfo {
+	conf := MonitoringInfo{}
+	if len(b.monitoring) > 0 {
+		var monitoringURLs MonitoringInfo
+		urls, err := yaml.Marshal(b.monitoring)
+		if err != nil {
+			return conf
+		}
+		err = yaml.Unmarshal(urls, &monitoringURLs)
+		if err != nil {
+			return conf
+		}
+		if len(monitoringURLs.AlertmanagerPublicURL) > 0 {
+			conf.AlertmanagerPublicURL = monitoringURLs.AlertmanagerPublicURL
+		}
+		if len(monitoringURLs.GrafanaPublicURL) > 0 {
+			conf.GrafanaPublicURL = monitoringURLs.GrafanaPublicURL
+		}
+		if len(monitoringURLs.PrometheusPublicURL) > 0 {
+			conf.PrometheusPublicURL = monitoringURLs.PrometheusPublicURL
+		}
+		if len(monitoringURLs.ThanosPublicURL) > 0 {
+			conf.ThanosPublicURL = monitoringURLs.ThanosPublicURL
+		}
 	}
 	return conf
 }
