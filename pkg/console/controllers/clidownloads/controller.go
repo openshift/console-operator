@@ -135,6 +135,8 @@ func (c *CLIDownloadsSyncController) sync() error {
 		return odoCLIDownloadsErr
 	}
 
+	status.SyncStatus(c.operatorConfigClient, updatedOperatorConfig)
+
 	return nil
 }
 
