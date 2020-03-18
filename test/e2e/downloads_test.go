@@ -48,3 +48,31 @@ func TestDownloadsEndpoint(t *testing.T) {
 		t.Logf("%s %s\n", link.Text, resp.Status)
 	}
 }
+
+func TestDonwloadsLicense(t *testing.T) {
+	client, _ := setupDownloadsTestCase(t)
+	defer cleanupDownloadsTestCase(t, client)
+
+	route, err := client.Routes.Routes(api.OpenShiftConsoleNamespace).Get(api.OpenShiftConsoleName, v1.GetOptions{})
+	if err != nil {
+		t.Fatalf("could not get route: %s", err)
+	}
+	host := routesub.GetCanonicalHost(route)
+
+	licenseDownloads := clidownloads.LicenseDownloads(host, api.OCCLIDownloadsCustomResourceName)
+
+	for _, link := range licenseDownloads.Spec.Links {
+		req := getRequest(t, link.Href)
+		client := getInsecureClient()
+		resp, err := client.Do(req)
+
+		if err != nil {
+			t.Fatalf("http error getting %s at %s: %s", link.Text, link.Href, err)
+		}
+		if !httpOK(resp) {
+			t.Fatalf("http error for %s at %s: %d %s", link.Text, link.Href, resp.StatusCode, http.StatusText(resp.StatusCode))
+		}
+		resp.Body.Close()
+		t.Logf("%s %s\n", link.Text, resp.Status)
+	}
+}

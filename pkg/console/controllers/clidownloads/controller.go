@@ -188,6 +188,41 @@ The oc binary offers the same capabilities as the kubectl binary, but it is furt
 	}
 }
 
+func LicenseDownloads(host, cliDownloadsName string) *v1.ConsoleCLIDownload {
+	baseURL := fmt.Sprintf("%s", util.HTTPS(host))
+	platforms := []struct {
+		label    string
+		key      string
+		archType string
+	}{
+		{"Linux for x86_64", "amd64/linux", "LICENSE"},
+		{"Linux for ARM 64", "arm64/linux", "LICENSE"},
+		{"Linux for IBM Power, little endian", "ppc64le/linux", "LICENSE"},
+		{"Linux for IBM Z", "s390x/linux", "LICENSE"},
+		{"Mac for x86_64", "amd64/mac", "LICENSE"},
+		{"Windows for x86_64", "amd64/windows", "LICENSE"},
+	}
+
+	links := []v1.CLIDownloadLink{}
+	for _, platform := range platforms {
+		links = append(links, v1.CLIDownloadLink{
+			Href: GetPlatformURL(baseURL, platform.key, platform.archType),
+			Text: fmt.Sprintf("Download LICENSE at %s", platform.label),
+		})
+	}
+
+	return &v1.ConsoleCLIDownload{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: cliDownloadsName,
+		},
+		Spec: v1.ConsoleCLIDownloadSpec{
+			Description: `Apache License v2.0 for the OpenShift command line interface.`,
+			DisplayName: "LICENSE - license of OpenShift Command Line Interface",
+			Links:       links,
+		},
+	}
+}
+
 func ODOConsoleCLIDownloads() *v1.ConsoleCLIDownload {
 	return &v1.ConsoleCLIDownload{
 		ObjectMeta: metav1.ObjectMeta{
