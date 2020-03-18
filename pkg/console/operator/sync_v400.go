@@ -48,9 +48,16 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	// track changes, may trigger ripples & update operator config or console config status
 	toUpdate := false
 
-	rt, rtChanged, rtErrReason, rtErr := co.SyncRoute(set.Operator)
-	toUpdate = toUpdate || rtChanged
-	status.HandleProgressingOrDegraded(updatedOperatorConfig, "RouteSync", rtErrReason, rtErr)
+	rt, rtErr := co.routeClient.Routes(api.TargetNamespace).Get(api.OpenShiftConsoleName, metav1.GetOptions{})
+	// TODO: this controller is no longer responsible for syncing the route.
+	//   however, the route is essential for several of the components below.
+	//   - is it appropraite for SyncLoopRefresh InProgress to be used here?
+	//     the loop should exit early and wait until the RouteSyncController creates the route.
+	//     there is nothing new in this flow, other than 2 controllers now look
+	//     at the same resource.
+	//     - RouteSyncController is responsible for updates
+	//     - ConsoleOperatorController (future ConsoleDeploymentController) is responsible for reads only.
+	status.HandleProgressingOrDegraded(updatedOperatorConfig, "SyncLoopRefresh", "InProgress", rtErr)
 	if rtErr != nil {
 		return rtErr
 	}
@@ -172,9 +179,6 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	defer func() {
 		klog.V(4).Infof("sync loop 4.0.0 complete")
 
-		if rtChanged {
-			klog.V(4).Infof("\t route changed: %v", rt.GetResourceVersion())
-		}
 		if cmChanged {
 			klog.V(4).Infof("\t configmap changed: %v", cm.GetResourceVersion())
 		}
@@ -385,38 +389,6 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(operatorConfig *operatorv1.Con
 	}
 	klog.V(4).Infoln("trusted-ca-bundle configmap updated")
 	return actual, true, "", err
-}
-
-// apply route
-// - be sure to test that we don't trigger an infinite loop by stomping on the
-//   default host name set by the server, or any other values. The ApplyRoute()
-//   logic will have to be sound.
-// - update to ApplyRoute() once the logic is settled
-func (co *consoleOperator) SyncRoute(operatorConfig *operatorv1.Console) (consoleRoute *routev1.Route, isNew bool, reason string, err error) {
-	// ensure we have a route. any error returned is a non-404 error
-	rt, rtIsNew, rtErr := routesub.GetOrCreate(co.routeClient, routesub.DefaultRoute(operatorConfig))
-	if rtErr != nil {
-		return nil, false, "FailedCreate", rtErr
-	}
-
-	// we will not proceed until the route is valid. this eliminates complexity with the
-	// configmap, secret & oauth client as they can be certain they have a host if we pass this point.
-	host := routesub.GetCanonicalHost(rt)
-	if len(host) == 0 {
-		return nil, false, "FailedHost", customerrors.NewSyncError(fmt.Sprintf("route is not available at canonical host %s", rt.Status.Ingress))
-	}
-
-	if validatedRoute, changed := routesub.Validate(rt); changed {
-		// if validation changed the route, issue an update
-		if _, err := co.routeClient.Routes(api.TargetNamespace).Update(validatedRoute); err != nil {
-			// error is unexpected, this is a real error
-			return nil, false, "InvalidRouteCorrection", err
-		}
-		// abort sync, route changed, let it settle & retry
-		return nil, true, "InvalidRoute", customerrors.NewSyncError("route is invalid, correcting route state")
-	}
-	// only return the route if it is valid with a host
-	return rt, rtIsNew, "", rtErr
 }
 
 func (c *consoleOperator) SyncCustomLogoConfigMap(operatorConfig *operatorsv1.Console) (okToMount bool, reason string, err error) {
