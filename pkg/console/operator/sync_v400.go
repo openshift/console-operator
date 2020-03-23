@@ -15,7 +15,6 @@ import (
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
-	operatorsv1 "github.com/openshift/api/operator/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
@@ -391,7 +390,7 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(operatorConfig *operatorv1.Con
 	return actual, true, "", err
 }
 
-func (c *consoleOperator) SyncCustomLogoConfigMap(operatorConfig *operatorsv1.Console) (okToMount bool, reason string, err error) {
+func (c *consoleOperator) SyncCustomLogoConfigMap(operatorConfig *operatorv1.Console) (okToMount bool, reason string, err error) {
 	// validate first, to avoid a broken volume mount & a crashlooping console
 	okToMount, reason, err = c.ValidateCustomLogo(operatorConfig)
 
@@ -424,7 +423,7 @@ func (c *consoleOperator) ValidateDefaultIngressCertConfigMap() (defaultIngressC
 // sync loop will run later.  Our operator is waiting to receive
 // the copied configmap into the console namespace for a future
 // sync loop to mount into the console deployment.
-func (c *consoleOperator) UpdateCustomLogoSyncSource(operatorConfig *operatorsv1.Console) error {
+func (c *consoleOperator) UpdateCustomLogoSyncSource(operatorConfig *operatorv1.Console) error {
 	source := resourcesynccontroller.ResourceLocation{}
 	logoConfigMapName := operatorConfig.Spec.Customization.CustomLogoFile.Name
 
@@ -439,7 +438,7 @@ func (c *consoleOperator) UpdateCustomLogoSyncSource(operatorConfig *operatorsv1
 	)
 }
 
-func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorsv1.Console) (okToMount bool, reason string, err error) {
+func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorv1.Console) (okToMount bool, reason string, err error) {
 	logoConfigMapName := operatorConfig.Spec.Customization.CustomLogoFile.Name
 	logoImageKey := operatorConfig.Spec.Customization.CustomLogoFile.Key
 
