@@ -226,6 +226,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// operator config
 		operatorConfigClient.OperatorV1().Consoles(),
 		routesClient.RouteV1(),
+		kubeClient.CoreV1(),
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
 		routesInformersNamespaced.Route().V1().Routes(),

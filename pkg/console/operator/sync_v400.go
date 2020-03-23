@@ -148,13 +148,6 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		return updatedOperatorConfig, prefix, "", nil
 	}())
 
-	status.HandleAvailable(updatedOperatorConfig, "Route", "FailedAdmittedIngress", func() error {
-		if !routesub.IsAdmitted(rt) {
-			return errors.New("console route is not admitted")
-		}
-		return nil
-	}())
-
 	// if we survive the gauntlet, we need to update the console config with the
 	// public hostname so that the world can know the console is ready to roll
 	klog.V(4).Infoln("sync_v400: updating console status")

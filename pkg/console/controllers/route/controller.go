@@ -1,13 +1,18 @@
 package route
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	// k8s
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
@@ -38,6 +43,7 @@ type RouteSyncController struct {
 	// clients
 	operatorConfigClient operatorclientv1.ConsoleInterface
 	routeClient          routeclientv1.RoutesGetter
+	configMapClient      coreclientv1.ConfigMapsGetter
 	// names
 	targetNamespace string
 	routeName       string
@@ -51,6 +57,7 @@ func NewRouteSyncController(
 	// clients
 	operatorConfigClient operatorclientv1.ConsoleInterface,
 	routev1Client routeclientv1.RoutesGetter,
+	configMapClient coreclientv1.ConfigMapsGetter,
 	// informers
 	operatorConfigInformer v1.ConsoleInformer,
 	routeInformer routesinformersv1.RouteInformer,
@@ -63,6 +70,7 @@ func NewRouteSyncController(
 	ctrl := &RouteSyncController{
 		operatorConfigClient: operatorConfigClient,
 		routeClient:          routev1Client,
+		configMapClient:      configMapClient,
 		targetNamespace:      targetNamespace,
 		routeName:            routeName,
 		// events
@@ -128,6 +136,8 @@ func (c *RouteSyncController) SyncRoute(operatorConfig *operatorsv1.Console) (co
 	if rtErr != nil {
 		return nil, false, "FailedCreate", rtErr
 	}
+	// Check if the console is reachable
+	c.CheckRouteHealth(operatorConfig, rt)
 
 	// we will not proceed until the route is valid. this eliminates complexity with the
 	// configmap, secret & oauth client as they can be certain they have a host if we pass this point.
@@ -190,5 +200,69 @@ func (c *RouteSyncController) newEventHandler() cache.ResourceEventHandler {
 		AddFunc:    func(obj interface{}) { c.queue.Add(controllerWorkQueueKey) },
 		UpdateFunc: func(old, new interface{}) { c.queue.Add(controllerWorkQueueKey) },
 		DeleteFunc: func(obj interface{}) { c.queue.Add(controllerWorkQueueKey) },
+	}
+}
+
+func (c *RouteSyncController) CheckRouteHealth(opConfig *operatorsv1.Console, rt *routev1.Route) {
+	status.HandleDegraded(func() (conf *operatorsv1.Console, prefix string, reason string, err error) {
+		prefix = "RouteHealth"
+
+		caPool, err := c.getCA()
+		if err != nil {
+			return opConfig, prefix, "FailedLoadCA", fmt.Errorf("failed to read CA to check route health: %v", err)
+		}
+		client := clientWithCA(caPool)
+
+		url := "https://" + rt.Spec.Host + "/health"
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		if err != nil {
+			return opConfig, prefix, "FailedRequest", fmt.Errorf("failed to build request to route (%s): %v", url, err)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			return opConfig, prefix, "FailedGet", fmt.Errorf("failed to GET route (%s): %v", url, err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return opConfig, prefix, "StatusError", fmt.Errorf("route not yet available, %s returns '%s'", url, resp.Status)
+
+		}
+		return opConfig, prefix, "", nil
+	}())
+
+	status.HandleAvailable(opConfig, "Route", "FailedAdmittedIngress", func() error {
+		if !routesub.IsAdmitted(rt) {
+			return errors.New("console route is not admitted")
+		}
+		return nil
+	}())
+}
+
+func (c *RouteSyncController) getCA() (*x509.CertPool, error) {
+	caCertPool := x509.NewCertPool()
+
+	for _, cmName := range []string{api.TrustedCAConfigMapName, api.DefaultIngressCertConfigMapName} {
+		cm, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(cmName, metav1.GetOptions{})
+		if err != nil {
+			klog.V(4).Infof("failed to GET configmap %s / %s ", api.OpenShiftConsoleNamespace, cmName)
+			return nil, err
+		}
+		if ok := caCertPool.AppendCertsFromPEM([]byte(cm.Data["ca-bundle.crt"])); !ok {
+			klog.V(4).Infof("failed to parse %s ca-bundle.crt", cmName)
+		}
+	}
+
+	return caCertPool, nil
+}
+
+func clientWithCA(caPool *x509.CertPool) *http.Client {
+	return &http.Client{
+		Timeout: 5 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: caPool,
+			},
+		},
 	}
 }
