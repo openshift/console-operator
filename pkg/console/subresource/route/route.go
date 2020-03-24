@@ -1,9 +1,9 @@
 package route
 
 import (
-	// kube
 	"context"
 
+	// kube
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -14,7 +14,10 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	routeclient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
+	"github.com/openshift/library-go/pkg/operator/events"
+	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 
+	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
@@ -23,6 +26,38 @@ const (
 	// this is an implicit stable API
 	defaultIngressController = "default"
 )
+
+// holds information about custom TLS certificate and its key
+type CustomTLSCert struct {
+	Certificate string
+	Key         string
+}
+
+func ApplyRoute(client routeclient.RoutesGetter, recorder events.Recorder, required *routev1.Route) (*routev1.Route, bool, error) {
+	existing, err := client.Routes(required.Namespace).Get(context.TODO(), required.Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		requiredCopy := required.DeepCopy()
+		actual, err := client.Routes(requiredCopy.Namespace).Create(context.TODO(), resourcemerge.WithCleanLabelsAndAnnotations(requiredCopy).(*routev1.Route), metav1.CreateOptions{})
+		return actual, true, err
+	}
+	if err != nil {
+		return nil, false, err
+	}
+
+	existingCopy := existing.DeepCopy()
+	modified := resourcemerge.BoolPtr(false)
+	resourcemerge.EnsureObjectMeta(modified, &existingCopy.ObjectMeta, required.ObjectMeta)
+	specSame := equality.Semantic.DeepEqual(existingCopy.Spec, required.Spec)
+
+	if specSame && !*modified {
+		klog.V(4).Infof("%s route exists and is in the correct state", existingCopy.ObjectMeta.Name)
+		return existingCopy, false, nil
+	}
+
+	existingCopy.Spec = required.Spec
+	actual, err := client.Routes(required.Namespace).Update(context.TODO(), existingCopy, metav1.UpdateOptions{})
+	return actual, true, err
+}
 
 // ensures route exists.
 // handles 404 with a create
@@ -34,6 +69,7 @@ func GetOrCreate(ctx context.Context, client routeclient.RoutesGetter, required 
 		isNew = true
 		route, err = client.Routes(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
 	}
+
 	if err != nil {
 		return nil, isNew, err
 	}
@@ -41,53 +77,36 @@ func GetOrCreate(ctx context.Context, client routeclient.RoutesGetter, required 
 }
 
 func DefaultRoute(cr *operatorv1.Console) *routev1.Route {
-	route := Stub()
+	route := DefaultStub()
 	route.Spec = routev1.RouteSpec{
 		To:             toService(),
 		Port:           port(),
-		TLS:            tls(),
+		TLS:            tls(nil),
 		WildcardPolicy: wildcard(),
 	}
 	util.AddOwnerRef(route, util.OwnerRefFrom(cr))
 	return route
 }
 
-func Stub() *routev1.Route {
+func DefaultStub() *routev1.Route {
 	meta := util.SharedMeta()
 	return &routev1.Route{
 		ObjectMeta: meta,
 	}
 }
 
-// we can't just blindly apply the route, we need the route.Spec.Host
-// and we don't want to trigger a sync loop.
-// TODO: evaluate metadata.annotations to see what will affect our route in
-// an undesirable way:
-// - https://docs.openshift.com/container-platform/3.9/architecture/networking/routes.html#alternateBackends
-func Validate(route *routev1.Route) (*routev1.Route, bool) {
-	changed := false
-
-	if toServiceSame := equality.Semantic.DeepEqual(route.Spec.To, toService()); !toServiceSame {
-		changed = true
-		route.Spec.To = toService()
+func CustomRoute(cr *operatorv1.Console, tlsConfig *CustomTLSCert) *routev1.Route {
+	route := DefaultStub()
+	route.ObjectMeta.Name = api.OpenshiftConsoleCustomRouteName
+	route.Spec = routev1.RouteSpec{
+		Host:           cr.Spec.Route.Hostname,
+		To:             toService(),
+		Port:           port(),
+		TLS:            tls(tlsConfig),
+		WildcardPolicy: wildcard(),
 	}
-
-	if portSame := equality.Semantic.DeepEqual(route.Spec.Port, port()); !portSame {
-		changed = true
-		route.Spec.Port = port()
-	}
-
-	if tlsSame := equality.Semantic.DeepEqual(route.Spec.TLS, tls()); !tlsSame {
-		changed = true
-		route.Spec.TLS = tls()
-	}
-
-	if wildcardSame := equality.Semantic.DeepEqual(route.Spec.WildcardPolicy, wildcard()); !wildcardSame {
-		changed = true
-		route.Spec.WildcardPolicy = wildcard()
-	}
-
-	return route, changed
+	util.AddOwnerRef(route, util.OwnerRefFrom(cr))
+	return route
 }
 
 func routeMeta() metav1.ObjectMeta {
@@ -110,11 +129,16 @@ func port() *routev1.RoutePort {
 	}
 }
 
-func tls() *routev1.TLSConfig {
-	return &routev1.TLSConfig{
+func tls(tlsConfig *CustomTLSCert) *routev1.TLSConfig {
+	tls := &routev1.TLSConfig{
 		Termination:                   routev1.TLSTerminationReencrypt,
 		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 	}
+	if tlsConfig != nil {
+		tls.Certificate = tlsConfig.Certificate
+		tls.Key = tlsConfig.Key
+	}
+	return tls
 }
 
 func wildcard() routev1.WildcardPolicyType {
@@ -159,4 +183,13 @@ func isIngressAdmitted(ingress routev1.RouteIngress) bool {
 		}
 	}
 	return admitted
+}
+
+func IsCustomRouteSet(operatorConfig *operatorv1.Console) bool {
+	return len(operatorConfig.Spec.Route.Hostname) != 0
+}
+
+// Check if reference for secret holding custom TLS certificate and key is set
+func IsCustomRouteSecretSet(operatorConfig *operatorv1.Console) bool {
+	return len(operatorConfig.Spec.Route.Secret.Name) != 0
 }

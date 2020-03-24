@@ -40,11 +40,11 @@ func DefaultConfigMap(
 	managedConfig *corev1.ConfigMap,
 	monitoringSharedConfig *corev1.ConfigMap,
 	infrastructureConfig *configv1.Infrastructure,
-	rt *routev1.Route,
+	activeConsoleRoute *routev1.Route,
 	useDefaultCAFile bool) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
-	defaultConfig, err := defaultBuilder.Host(rt.Spec.Host).
+	defaultConfig, err := defaultBuilder.Host(activeConsoleRoute.Spec.Host).
 		LogoutURL(defaultLogoutURL).
 		Brand(DEFAULT_BRAND).
 		DocURL(DEFAULT_DOC_URL).
@@ -55,7 +55,7 @@ func DefaultConfigMap(
 
 	extractedManagedConfig := extractYAML(managedConfig)
 	userDefinedBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
-	userDefinedConfig, err := userDefinedBuilder.Host(rt.Spec.Host).
+	userDefinedConfig, err := userDefinedBuilder.Host(activeConsoleRoute.Spec.Host).
 		LogoutURL(consoleConfig.Spec.Authentication.LogoutRedirect).
 		Brand(operatorConfig.Spec.Customization.Brand).
 		DocURL(operatorConfig.Spec.Customization.DocumentationBaseURL).

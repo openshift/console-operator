@@ -25,7 +25,6 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 
 	// operator
-
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
 	"github.com/openshift/console-operator/pkg/console/metrics"
 	"github.com/openshift/console-operator/pkg/console/status"
@@ -47,7 +46,12 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	// track changes, may trigger ripples & update operator config or console config status
 	toUpdate := false
 
-	rt, rtErr := co.routeClient.Routes(api.TargetNamespace).Get(co.ctx, api.OpenShiftConsoleName, metav1.GetOptions{})
+	routeName := api.OpenShiftConsoleName
+	if routesub.IsCustomRouteSet(updatedOperatorConfig) {
+		routeName = api.OpenshiftConsoleCustomRouteName
+	}
+
+	route, routeErr := co.routeClient.Routes(api.TargetNamespace).Get(co.ctx, routeName, metav1.GetOptions{})
 	// TODO: this controller is no longer responsible for syncing the route.
 	//   however, the route is essential for several of the components below.
 	//   - is it appropraite for SyncLoopRefresh InProgress to be used here?
@@ -56,12 +60,12 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	//     at the same resource.
 	//     - RouteSyncController is responsible for updates
 	//     - ConsoleOperatorController (future ConsoleDeploymentController) is responsible for reads only.
-	status.HandleProgressingOrDegraded(updatedOperatorConfig, "SyncLoopRefresh", "InProgress", rtErr)
-	if rtErr != nil {
-		return rtErr
+	status.HandleProgressingOrDegraded(updatedOperatorConfig, "SyncLoopRefresh", "InProgress", routeErr)
+	if routeErr != nil {
+		return routeErr
 	}
 
-	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(set.Operator, set.Console, set.Infrastructure, rt)
+	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(set.Operator, set.Console, set.Infrastructure, route)
 	toUpdate = toUpdate || cmChanged
 	status.HandleProgressingOrDegraded(updatedOperatorConfig, "ConfigMapSync", cmErrReason, cmErr)
 	if cmErr != nil {
@@ -101,14 +105,14 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		return secErr
 	}
 
-	oauthClient, oauthChanged, oauthErrReason, oauthErr := co.SyncOAuthClient(set.Operator, sec, rt)
+	oauthClient, oauthChanged, oauthErrReason, oauthErr := co.SyncOAuthClient(set.Operator, sec, route)
 	toUpdate = toUpdate || oauthChanged
 	status.HandleProgressingOrDegraded(updatedOperatorConfig, "OAuthClientSync", oauthErrReason, oauthErr)
 	if oauthErr != nil {
 		return oauthErr
 	}
 
-	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(set.Operator, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, rt, set.Proxy, customLogoCanMount)
+	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(set.Operator, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, set.Proxy, customLogoCanMount)
 	toUpdate = toUpdate || depChanged
 	status.HandleProgressingOrDegraded(updatedOperatorConfig, "DeploymentSync", depErrReason, depErr)
 	if depErr != nil {
@@ -150,7 +154,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	// if we survive the gauntlet, we need to update the console config with the
 	// public hostname so that the world can know the console is ready to roll
 	klog.V(4).Infoln("sync_v400: updating console status")
-	consoleURL := getConsoleURL(rt)
+	consoleURL := getConsoleURL(route)
 
 	if consoleURL == "" {
 		err := customerrors.NewSyncError("waiting on route host")
@@ -214,11 +218,10 @@ func (co *consoleOperator) SyncDeployment(
 	defaultIngressCertConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
 	sec *corev1.Secret,
-	rt *routev1.Route,
 	proxyConfig *configv1.Proxy,
 	canMountCustomLogo bool) (consoleDeployment *appsv1.Deployment, changed bool, reason string, err error) {
 
-	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, rt, proxyConfig, canMountCustomLogo)
+	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, proxyConfig, canMountCustomLogo)
 	expectedGeneration := getDeploymentGeneration(co)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
@@ -281,7 +284,7 @@ func (co *consoleOperator) SyncConfigMap(
 	operatorConfig *operatorv1.Console,
 	consoleConfig *configv1.Console,
 	infrastructureConfig *configv1.Infrastructure,
-	consoleRoute *routev1.Route) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
+	activeConsoleRoute *routev1.Route) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
 
 	managedConfig, mcErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(co.ctx, api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 	if mcErr != nil && !apierrors.IsNotFound(mcErr) {
@@ -303,7 +306,7 @@ func (co *consoleOperator) SyncConfigMap(
 		return nil, false, "FailedGetMonitoringSharedConfig", mscErr
 	}
 
-	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, monitoringSharedConfig, infrastructureConfig, consoleRoute, useDefaultCAFile)
+	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, monitoringSharedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
 	}

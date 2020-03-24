@@ -16,7 +16,6 @@ import (
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
-	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
@@ -64,7 +63,7 @@ type volumeConfig struct {
 	mappedKeys  map[string]string
 }
 
-func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, defaultIngressCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route, proxyConfig *configv1.Proxy, canMountCustomLogo bool) *appsv1.Deployment {
+func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, defaultIngressCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, canMountCustomLogo bool) *appsv1.Deployment {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels

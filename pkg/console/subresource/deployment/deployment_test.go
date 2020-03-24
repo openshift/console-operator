@@ -11,7 +11,6 @@ import (
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
-	v1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
@@ -30,7 +29,6 @@ func TestDefaultDeployment(t *testing.T) {
 		dica               *corev1.ConfigMap
 		tca                *corev1.ConfigMap
 		sec                *corev1.Secret
-		rt                 *v1.Route
 		proxy              *configv1.Proxy
 		canMountCustomLogo bool
 	}
@@ -176,10 +174,6 @@ func TestDefaultDeployment(t *testing.T) {
 					StringData: nil,
 					Type:       "",
 				},
-				rt: &v1.Route{
-					TypeMeta:   metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{},
-				},
 				proxy: proxyConfig,
 			},
 			want: &appsv1.Deployment{
@@ -242,10 +236,6 @@ func TestDefaultDeployment(t *testing.T) {
 					StringData: nil,
 					Type:       "",
 				},
-				rt: &v1.Route{
-					TypeMeta:   metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{},
-				},
 				proxy: proxyConfig,
 			},
 			want: &appsv1.Deployment{
@@ -294,7 +284,7 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.dica, tt.args.cm, tt.args.tca, tt.args.sec, tt.args.rt, tt.args.proxy, tt.args.canMountCustomLogo), tt.want); diff != nil {
+			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.dica, tt.args.cm, tt.args.tca, tt.args.sec, tt.args.proxy, tt.args.canMountCustomLogo), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
