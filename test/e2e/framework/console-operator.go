@@ -272,6 +272,7 @@ func reportDeprecatedConditions(t *testing.T, conditions conditionsMap) {
 	}
 }
 
+// are tests failing?
 // the operator is settled if all custom conditions with suffixes match:
 // - *Available: true
 // - *Progressing: false
