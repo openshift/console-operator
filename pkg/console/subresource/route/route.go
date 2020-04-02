@@ -2,6 +2,8 @@ package route
 
 import (
 	// kube
+	"context"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -25,12 +27,12 @@ const (
 // ensures route exists.
 // handles 404 with a create
 // returns any other error
-func GetOrCreate(client routeclient.RoutesGetter, required *routev1.Route) (*routev1.Route, bool, error) {
+func GetOrCreate(ctx context.Context, client routeclient.RoutesGetter, required *routev1.Route) (*routev1.Route, bool, error) {
 	isNew := false
-	route, err := client.Routes(required.Namespace).Get(required.Name, metav1.GetOptions{})
+	route, err := client.Routes(required.Namespace).Get(ctx, required.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		isNew = true
-		route, err = client.Routes(required.Namespace).Create(required)
+		route, err = client.Routes(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
 	}
 	if err != nil {
 		return nil, isNew, err

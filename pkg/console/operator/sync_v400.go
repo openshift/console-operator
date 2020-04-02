@@ -47,7 +47,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	// track changes, may trigger ripples & update operator config or console config status
 	toUpdate := false
 
-	rt, rtErr := co.routeClient.Routes(api.TargetNamespace).Get(api.OpenShiftConsoleName, metav1.GetOptions{})
+	rt, rtErr := co.routeClient.Routes(api.TargetNamespace).Get(co.ctx, api.OpenShiftConsoleName, metav1.GetOptions{})
 	// TODO: this controller is no longer responsible for syncing the route.
 	//   however, the route is essential for several of the components below.
 	//   - is it appropraite for SyncLoopRefresh InProgress to be used here?
@@ -199,7 +199,7 @@ func (co *consoleOperator) SyncConsoleConfig(consoleConfig *configv1.Console, co
 		updated.Status.ConsoleURL = consoleURL
 	}
 	metrics.HandleConsoleURL(oldURL, consoleURL)
-	return co.consoleConfigClient.UpdateStatus(updated)
+	return co.consoleConfigClient.UpdateStatus(co.ctx, updated, metav1.UpdateOptions{})
 }
 
 func (co *consoleOperator) SyncConsolePublicConfig(consoleURL string) (*corev1.ConfigMap, bool, error) {
@@ -225,7 +225,7 @@ func (co *consoleOperator) SyncDeployment(
 	if genChanged {
 		klog.V(4).Infof("deployment generation changed from %d to %d", operatorConfig.ObjectMeta.Generation, operatorConfig.Status.ObservedGeneration)
 	}
-	deploymentsub.LogDeploymentAnnotationChanges(co.deploymentClient, requiredDeployment)
+	deploymentsub.LogDeploymentAnnotationChanges(co.deploymentClient, requiredDeployment, co.ctx)
 
 	deployment, deploymentChanged, applyDepErr := resourceapply.ApplyDeployment(
 		co.deploymentClient,
@@ -249,13 +249,13 @@ func (co *consoleOperator) SyncOAuthClient(operatorConfig *operatorv1.Console, s
 	if host == "" {
 		return nil, false, "FailedHost", customerrors.NewSyncError("waiting on route host")
 	}
-	oauthClient, err := co.oauthClient.OAuthClients().Get(oauthsub.Stub().Name, metav1.GetOptions{})
+	oauthClient, err := co.oauthClient.OAuthClients().Get(co.ctx, oauthsub.Stub().Name, metav1.GetOptions{})
 	if err != nil {
 		// at this point we must die & wait for someone to fix the lack of an outhclient. there is nothing we can do.
 		return nil, false, "FailedGet", errors.New(fmt.Sprintf("oauth client for console does not exist and cannot be created (%v)", err))
 	}
 	oauthsub.RegisterConsoleToOAuthClient(oauthClient, host, secretsub.GetSecretString(sec))
-	oauthClient, oauthChanged, oauthErr := oauthsub.CustomApplyOAuth(co.oauthClient, oauthClient)
+	oauthClient, oauthChanged, oauthErr := oauthsub.CustomApplyOAuth(co.oauthClient, oauthClient, co.ctx)
 	if oauthErr != nil {
 		return nil, false, "FailedRegister", oauthErr
 	}
@@ -263,7 +263,7 @@ func (co *consoleOperator) SyncOAuthClient(operatorConfig *operatorv1.Console, s
 }
 
 func (co *consoleOperator) SyncSecret(operatorConfig *operatorv1.Console) (*corev1.Secret, bool, error) {
-	secret, err := co.secretsClient.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name, metav1.GetOptions{})
+	secret, err := co.secretsClient.Secrets(api.TargetNamespace).Get(co.ctx, secretsub.Stub().Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) == "" {
 		return resourceapply.ApplySecret(co.secretsClient, co.recorder, secretsub.DefaultSecret(operatorConfig, crypto.Random256BitsString()))
 	}
@@ -283,7 +283,7 @@ func (co *consoleOperator) SyncConfigMap(
 	infrastructureConfig *configv1.Infrastructure,
 	consoleRoute *routev1.Route) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
 
-	managedConfig, mcErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
+	managedConfig, mcErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(co.ctx, api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 	if mcErr != nil && !apierrors.IsNotFound(mcErr) {
 		return nil, false, "FailedGetManagedConfig", mcErr
 	}
@@ -293,12 +293,12 @@ func (co *consoleOperator) SyncConfigMap(
 	// `default-ingress-cert` is only published in `openshift-config-managed` in OpenShift 4.4.0 and newer.
 	// If the `default-ingress-cert` configmap in `openshift-console` exists, we should mount that to the console container,
 	// otherwise default to `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt`
-	_, rcaErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(api.DefaultIngressCertConfigMapName, metav1.GetOptions{})
+	_, rcaErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(co.ctx, api.DefaultIngressCertConfigMapName, metav1.GetOptions{})
 	if rcaErr != nil && apierrors.IsNotFound(rcaErr) {
 		useDefaultCAFile = true
 	}
 
-	monitoringSharedConfig, mscErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftMonitoringConfigMapName, metav1.GetOptions{})
+	monitoringSharedConfig, mscErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(co.ctx, api.OpenShiftMonitoringConfigMapName, metav1.GetOptions{})
 	if mscErr != nil && !apierrors.IsNotFound(mscErr) {
 		return nil, false, "FailedGetMonitoringSharedConfig", mscErr
 	}
@@ -322,9 +322,9 @@ func (co *consoleOperator) SyncConfigMap(
 func (co *consoleOperator) SyncServiceCAConfigMap(operatorConfig *operatorv1.Console) (consoleCM *corev1.ConfigMap, changed bool, reason string, err error) {
 	required := configmapsub.DefaultServiceCAConfigMap(operatorConfig)
 	// we can't use `resourceapply.ApplyConfigMap` since it compares data, and the service serving cert operator injects the data
-	existing, err := co.configMapClient.ConfigMaps(required.Namespace).Get(required.Name, metav1.GetOptions{})
+	existing, err := co.configMapClient.ConfigMaps(required.Namespace).Get(co.ctx, required.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(required)
+		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(co.ctx, required, metav1.CreateOptions{})
 		if err == nil {
 			klog.V(4).Infoln("service-ca configmap created")
 			return actual, true, "", err
@@ -343,7 +343,7 @@ func (co *consoleOperator) SyncServiceCAConfigMap(operatorConfig *operatorv1.Con
 		return existing, false, "", nil
 	}
 
-	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(existing)
+	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(co.ctx, existing, metav1.UpdateOptions{})
 	if err == nil {
 		klog.V(4).Infoln("service-ca configmap updated")
 		return actual, true, "", err
@@ -354,9 +354,9 @@ func (co *consoleOperator) SyncServiceCAConfigMap(operatorConfig *operatorv1.Con
 
 func (co *consoleOperator) SyncTrustedCAConfigMap(operatorConfig *operatorv1.Console) (trustedCA *corev1.ConfigMap, changed bool, reason string, err error) {
 	required := configmapsub.DefaultTrustedCAConfigMap(operatorConfig)
-	existing, err := co.configMapClient.ConfigMaps(required.Namespace).Get(required.Name, metav1.GetOptions{})
+	existing, err := co.configMapClient.ConfigMaps(required.Namespace).Get(co.ctx, required.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(required)
+		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(co.ctx, required, metav1.CreateOptions{})
 		if err != nil {
 			return actual, true, "FailedCreate", err
 		}
@@ -374,7 +374,7 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(operatorConfig *operatorv1.Con
 		return existing, false, "", nil
 	}
 
-	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(existing)
+	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(co.ctx, existing, metav1.UpdateOptions{})
 	if err != nil {
 		return actual, true, "FailedUpdate", err
 	}
@@ -382,20 +382,20 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(operatorConfig *operatorv1.Con
 	return actual, true, "", err
 }
 
-func (c *consoleOperator) SyncCustomLogoConfigMap(operatorConfig *operatorv1.Console) (okToMount bool, reason string, err error) {
+func (co *consoleOperator) SyncCustomLogoConfigMap(operatorConfig *operatorv1.Console) (okToMount bool, reason string, err error) {
 	// validate first, to avoid a broken volume mount & a crashlooping console
-	okToMount, reason, err = c.ValidateCustomLogo(operatorConfig)
+	okToMount, reason, err = co.ValidateCustomLogo(operatorConfig)
 
 	if okToMount || configmapsub.IsRemoved(operatorConfig) {
-		if err := c.UpdateCustomLogoSyncSource(operatorConfig); err != nil {
+		if err := co.UpdateCustomLogoSyncSource(operatorConfig); err != nil {
 			return false, "FailedSyncSource", customerrors.NewCustomLogoError("custom logo sync source update error")
 		}
 	}
 	return okToMount, reason, err
 }
 
-func (c *consoleOperator) ValidateDefaultIngressCertConfigMap() (defaultIngressCert *corev1.ConfigMap, reason string, err error) {
-	defaultIngressCertConfigMap, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(api.DefaultIngressCertConfigMapName, metav1.GetOptions{})
+func (co *consoleOperator) ValidateDefaultIngressCertConfigMap() (defaultIngressCert *corev1.ConfigMap, reason string, err error) {
+	defaultIngressCertConfigMap, err := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(co.ctx, api.DefaultIngressCertConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		klog.V(4).Infoln("default-ingress-cert configmap not found")
 		return nil, "FailedGet", fmt.Errorf("default-ingress-cert configmap not found")
@@ -430,7 +430,7 @@ func (c *consoleOperator) UpdateCustomLogoSyncSource(operatorConfig *operatorv1.
 	)
 }
 
-func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorv1.Console) (okToMount bool, reason string, err error) {
+func (co *consoleOperator) ValidateCustomLogo(operatorConfig *operatorv1.Console) (okToMount bool, reason string, err error) {
 	logoConfigMapName := operatorConfig.Spec.Customization.CustomLogoFile.Name
 	logoImageKey := operatorConfig.Spec.Customization.CustomLogoFile.Key
 
@@ -443,7 +443,7 @@ func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorv1.Console)
 		klog.V(4).Infoln("no custom logo configured")
 		return false, "", nil
 	}
-	logoConfigMap, err := c.configMapClient.ConfigMaps(api.OpenShiftConfigNamespace).Get(logoConfigMapName, metav1.GetOptions{})
+	logoConfigMap, err := co.configMapClient.ConfigMaps(api.OpenShiftConfigNamespace).Get(co.ctx, logoConfigMapName, metav1.GetOptions{})
 	// If we 404, the logo file may not have been created yet.
 	if err != nil {
 		klog.V(4).Infof("custom logo file %v not found", logoConfigMapName)
@@ -464,7 +464,7 @@ func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorv1.Console)
 }
 
 func getDeploymentGeneration(co *consoleOperator) int64 {
-	deployment, err := co.deploymentClient.Deployments(api.TargetNamespace).Get(deploymentsub.Stub().Name, metav1.GetOptions{})
+	deployment, err := co.deploymentClient.Deployments(api.TargetNamespace).Get(co.ctx, deploymentsub.Stub().Name, metav1.GetOptions{})
 	if err != nil {
 		return -1
 	}

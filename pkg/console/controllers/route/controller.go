@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -51,6 +52,8 @@ type RouteSyncController struct {
 	cachesToSync []cache.InformerSynced
 	queue        workqueue.RateLimitingInterface
 	recorder     events.Recorder
+	// context
+	ctx context.Context
 }
 
 func NewRouteSyncController(
@@ -66,6 +69,8 @@ func NewRouteSyncController(
 	routeName string,
 	// events
 	recorder events.Recorder,
+	// context
+	ctx context.Context,
 ) *RouteSyncController {
 	ctrl := &RouteSyncController{
 		operatorConfigClient: operatorConfigClient,
@@ -77,6 +82,7 @@ func NewRouteSyncController(
 		recorder:     recorder,
 		cachesToSync: nil,
 		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerName),
+		ctx:          ctx,
 	}
 
 	operatorConfigInformer.Informer().AddEventHandler(ctrl.newEventHandler())
@@ -91,7 +97,7 @@ func NewRouteSyncController(
 }
 
 func (c *RouteSyncController) sync() error {
-	operatorConfig, err := c.operatorConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := c.operatorConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -113,7 +119,7 @@ func (c *RouteSyncController) sync() error {
 	_, _, errReason, err := c.SyncRoute(updatedOperatorConfig)
 
 	status.HandleProgressingOrDegraded(updatedOperatorConfig, "RouteSync", errReason, err)
-	status.SyncStatus(c.operatorConfigClient, updatedOperatorConfig)
+	status.SyncStatus(c.ctx, c.operatorConfigClient, updatedOperatorConfig)
 
 	return err
 }
@@ -121,7 +127,7 @@ func (c *RouteSyncController) sync() error {
 func (c *RouteSyncController) removeRoute() error {
 	klog.V(2).Info("deleting console route")
 	defer klog.V(2).Info("finished deleting console route")
-	return c.routeClient.Routes(c.targetNamespace).Delete(route.Stub().Name, &metav1.DeleteOptions{})
+	return c.routeClient.Routes(c.targetNamespace).Delete(c.ctx, route.Stub().Name, metav1.DeleteOptions{})
 }
 
 // apply route
@@ -132,7 +138,7 @@ func (c *RouteSyncController) removeRoute() error {
 func (c *RouteSyncController) SyncRoute(operatorConfig *operatorsv1.Console) (consoleRoute *routev1.Route, isNew bool, reason string, err error) {
 	// ensure we have a route. any error returned is a non-404 error
 
-	rt, rtIsNew, rtErr := routesub.GetOrCreate(c.routeClient, routesub.DefaultRoute(operatorConfig))
+	rt, rtIsNew, rtErr := routesub.GetOrCreate(c.ctx, c.routeClient, routesub.DefaultRoute(operatorConfig))
 	if rtErr != nil {
 		return nil, false, "FailedCreate", rtErr
 	}
@@ -148,7 +154,7 @@ func (c *RouteSyncController) SyncRoute(operatorConfig *operatorsv1.Console) (co
 
 	if validatedRoute, changed := routesub.Validate(rt); changed {
 		// if validation changed the route, issue an update
-		if _, err := c.routeClient.Routes(api.TargetNamespace).Update(validatedRoute); err != nil {
+		if _, err := c.routeClient.Routes(api.TargetNamespace).Update(c.ctx, validatedRoute, metav1.UpdateOptions{}); err != nil {
 			// error is unexpected, this is a real error
 			return nil, false, "InvalidRouteCorrection", err
 		}
@@ -243,7 +249,7 @@ func (c *RouteSyncController) getCA() (*x509.CertPool, error) {
 	caCertPool := x509.NewCertPool()
 
 	for _, cmName := range []string{api.TrustedCAConfigMapName, api.DefaultIngressCertConfigMapName} {
-		cm, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(cmName, metav1.GetOptions{})
+		cm, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(c.ctx, cmName, metav1.GetOptions{})
 		if err != nil {
 			klog.V(4).Infof("failed to GET configmap %s / %s ", api.OpenShiftConsoleNamespace, cmName)
 			return nil, err

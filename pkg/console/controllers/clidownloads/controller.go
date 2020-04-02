@@ -2,6 +2,7 @@ package clidownloads
 
 import (
 	// standard lib
+	"context"
 	"fmt"
 	"time"
 
@@ -55,6 +56,8 @@ type CLIDownloadsSyncController struct {
 	cachesToSync []cache.InformerSynced
 	queue        workqueue.RateLimitingInterface
 	recorder     events.Recorder
+	// context
+	ctx context.Context
 }
 
 func NewCLIDownloadsSyncController(
@@ -69,6 +72,8 @@ func NewCLIDownloadsSyncController(
 	routesInformers routesinformersv1.RouteInformer,
 	// recorder
 	recorder events.Recorder,
+	// context
+	ctx context.Context,
 ) *CLIDownloadsSyncController {
 
 	ctrl := &CLIDownloadsSyncController{
@@ -79,6 +84,7 @@ func NewCLIDownloadsSyncController(
 		// events
 		recorder: recorder,
 		queue:    workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ConsoleCliDownloadsSyncer"),
+		ctx:      ctx,
 	}
 
 	operatorClient.Informer().AddEventHandler(ctrl.newEventHandler())
@@ -97,7 +103,7 @@ func NewCLIDownloadsSyncController(
 }
 
 func (c *CLIDownloadsSyncController) sync() error {
-	operatorConfig, err := c.operatorConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := c.operatorConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -116,26 +122,26 @@ func (c *CLIDownloadsSyncController) sync() error {
 		return fmt.Errorf("console is in an unknown state: %v", updatedOperatorConfig.Spec.ManagementState)
 	}
 
-	consoleRoute, err := c.routeClient.Routes(api.TargetNamespace).Get(api.OpenShiftConsoleDownloadsRouteName, metav1.GetOptions{})
+	consoleRoute, err := c.routeClient.Routes(api.TargetNamespace).Get(c.ctx, api.OpenShiftConsoleDownloadsRouteName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
 	host := routesub.GetCanonicalHost(consoleRoute)
 	ocConsoleCLIDownloads := PlatformBasedOCConsoleCLIDownloads(host, api.OCCLIDownloadsCustomResourceName)
-	_, ocCLIDownloadsErrReason, ocCLIDownloadsErr := ApplyCLIDownloads(c.consoleCliDownloadsClient, ocConsoleCLIDownloads)
+	_, ocCLIDownloadsErrReason, ocCLIDownloadsErr := ApplyCLIDownloads(c.consoleCliDownloadsClient, ocConsoleCLIDownloads, c.ctx)
 	status.HandleDegraded(updatedOperatorConfig, "OCDownloadsSync", ocCLIDownloadsErrReason, ocCLIDownloadsErr)
 	if ocCLIDownloadsErr != nil {
 		return ocCLIDownloadsErr
 	}
 
-	_, odoCLIDownloadsErrReason, odoCLIDownloadsErr := ApplyCLIDownloads(c.consoleCliDownloadsClient, ODOConsoleCLIDownloads())
+	_, odoCLIDownloadsErrReason, odoCLIDownloadsErr := ApplyCLIDownloads(c.consoleCliDownloadsClient, ODOConsoleCLIDownloads(), c.ctx)
 	status.HandleDegraded(updatedOperatorConfig, "ODODownloadsSync", odoCLIDownloadsErrReason, odoCLIDownloadsErr)
 	if odoCLIDownloadsErr != nil {
 		return odoCLIDownloadsErr
 	}
 
-	status.SyncStatus(c.operatorConfigClient, updatedOperatorConfig)
+	status.SyncStatus(c.ctx, c.operatorConfigClient, updatedOperatorConfig)
 
 	return nil
 }
@@ -143,8 +149,8 @@ func (c *CLIDownloadsSyncController) sync() error {
 func (c *CLIDownloadsSyncController) removeCLIDownloads() error {
 	defer klog.V(4).Info("finished deleting ConsoleCliDownloads custom resources")
 	var errs []error
-	errs = append(errs, c.consoleCliDownloadsClient.Delete(api.OCCLIDownloadsCustomResourceName, &metav1.DeleteOptions{}))
-	errs = append(errs, c.consoleCliDownloadsClient.Delete(api.ODOCLIDownloadsCustomResourceName, &metav1.DeleteOptions{}))
+	errs = append(errs, c.consoleCliDownloadsClient.Delete(c.ctx, api.OCCLIDownloadsCustomResourceName, metav1.DeleteOptions{}))
+	errs = append(errs, c.consoleCliDownloadsClient.Delete(c.ctx, api.ODOCLIDownloadsCustomResourceName, metav1.DeleteOptions{}))
 	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
 }
 
@@ -213,12 +219,12 @@ odo abstracts away complex Kubernetes and OpenShift concepts, thus allowing deve
 
 // TODO: All the custom `Apply*` functions should be at some point be placed into:
 // openshift/library-go/pkg/console/resource/resourceapply/core.go
-func ApplyCLIDownloads(consoleClient consoleclientv1.ConsoleCLIDownloadInterface, requiredCLIDownloads *v1.ConsoleCLIDownload) (*v1.ConsoleCLIDownload, string, error) {
+func ApplyCLIDownloads(consoleClient consoleclientv1.ConsoleCLIDownloadInterface, requiredCLIDownloads *v1.ConsoleCLIDownload, ctx context.Context) (*v1.ConsoleCLIDownload, string, error) {
 	cliDownloadsName := requiredCLIDownloads.ObjectMeta.Name
-	existingCLIDownloads, err := consoleClient.Get(cliDownloadsName, metav1.GetOptions{})
+	existingCLIDownloads, err := consoleClient.Get(ctx, cliDownloadsName, metav1.GetOptions{})
 	existingCLIDownloadsCopy := existingCLIDownloads.DeepCopy()
 	if apierrors.IsNotFound(err) {
-		actualCLIDownloads, err := consoleClient.Create(requiredCLIDownloads)
+		actualCLIDownloads, err := consoleClient.Create(ctx, requiredCLIDownloads, metav1.CreateOptions{})
 		if err != nil {
 			klog.V(4).Infof("error creating %s consoleclidownloads custom resource: %s", cliDownloadsName, err)
 			return nil, "FailedCreate", err
@@ -239,7 +245,7 @@ func ApplyCLIDownloads(consoleClient consoleclientv1.ConsoleCLIDownloadInterface
 	}
 
 	existingCLIDownloadsCopy.Spec = requiredCLIDownloads.Spec
-	actualCLIDownloads, err := consoleClient.Update(existingCLIDownloadsCopy)
+	actualCLIDownloads, err := consoleClient.Update(ctx, existingCLIDownloadsCopy, metav1.UpdateOptions{})
 	if err != nil {
 		klog.V(4).Infof("error updating %s consoleclidownloads custom resource: %v", cliDownloadsName, err)
 		return nil, "FailedUpdate", err

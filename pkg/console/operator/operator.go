@@ -2,6 +2,7 @@ package operator
 
 import (
 	// standard lib
+	"context"
 	"fmt"
 	"reflect"
 	"time"
@@ -71,6 +72,8 @@ type consoleOperator struct {
 	// recorder
 	recorder       events.Recorder
 	resourceSyncer resourcesynccontroller.ResourceSyncer
+	// context
+	ctx context.Context
 }
 
 func NewConsoleOperator(
@@ -98,6 +101,8 @@ func NewConsoleOperator(
 	versionGetter status.VersionGetter,
 	recorder events.Recorder,
 	resourceSyncer resourcesynccontroller.ResourceSyncer,
+	// context
+	ctx context.Context,
 ) operator.Runner {
 	c := &consoleOperator{
 		// configs
@@ -118,6 +123,7 @@ func NewConsoleOperator(
 		// recorder
 		recorder:       recorder,
 		resourceSyncer: resourceSyncer,
+		ctx:            ctx,
 	}
 
 	secretsInformer := coreV1.Secrets()
@@ -149,7 +155,7 @@ func NewConsoleOperator(
 
 // key is actually the pivot point for the operator, which is our Console custom resource
 func (c *consoleOperator) Key() (metav1.Object, error) {
-	return c.operatorConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
+	return c.operatorConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
 }
 
 type configSet struct {
@@ -168,20 +174,20 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	operatorConfig := obj.(*operatorsv1.Console)
 
 	// ensure we have top level console config
-	consoleConfig, err := c.consoleConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
+	consoleConfig, err := c.consoleConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("console config error: %v", err)
 		return err
 	}
 
 	// we need infrastructure config for apiServerURL
-	infrastructureConfig, err := c.infrastructureConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
+	infrastructureConfig, err := c.infrastructureConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("infrastructure config error: %v", err)
 		return err
 	}
 
-	proxyConfig, err := c.proxyConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
+	proxyConfig, err := c.proxyConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("proxy config error: %v", err)
 		return err
@@ -211,18 +217,18 @@ func (c *consoleOperator) handleSync(configs configSet) error {
 	case operatorsv1.Unmanaged:
 		klog.V(4).Infoln("console is in an unmanaged state.")
 		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
-			statushelpers.SyncStatus(c.operatorConfigClient, updatedStatus)
+			statushelpers.SyncStatus(c.ctx, c.operatorConfigClient, updatedStatus)
 		}
 		return nil
 	case operatorsv1.Removed:
 		klog.V(4).Infoln("console has been removed.")
 		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
-			statushelpers.SyncStatus(c.operatorConfigClient, updatedStatus)
+			statushelpers.SyncStatus(c.ctx, c.operatorConfigClient, updatedStatus)
 		}
 		return c.removeConsole()
 	default:
 		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
-			statushelpers.SyncStatus(c.operatorConfigClient, updatedStatus)
+			statushelpers.SyncStatus(c.ctx, c.operatorConfigClient, updatedStatus)
 		}
 		return fmt.Errorf("console is in an unknown state: %v", updatedStatus.Spec.ManagementState)
 	}
@@ -232,7 +238,7 @@ func (c *consoleOperator) handleSync(configs configSet) error {
 	// finally write out the set of conditions currently set if anything has changed
 	// to avoid a hot loop
 	if !reflect.DeepEqual(updatedStatus, configs.Operator) {
-		statushelpers.SyncStatus(c.operatorConfigClient, updatedStatus)
+		statushelpers.SyncStatus(c.ctx, c.operatorConfigClient, updatedStatus)
 	}
 	return err
 }
@@ -243,20 +249,20 @@ func (c *consoleOperator) removeConsole() error {
 	defer klog.V(2).Info("finished deleting console resources")
 	var errs []error
 	// configmaps
-	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(configmap.Stub().Name, &metav1.DeleteOptions{}))
-	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(configmap.ServiceCAStub().Name, &metav1.DeleteOptions{}))
+	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(c.ctx, configmap.Stub().Name, metav1.DeleteOptions{}))
+	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(c.ctx, configmap.ServiceCAStub().Name, metav1.DeleteOptions{}))
 	// secret
-	errs = append(errs, c.secretsClient.Secrets(api.TargetNamespace).Delete(secret.Stub().Name, &metav1.DeleteOptions{}))
+	errs = append(errs, c.secretsClient.Secrets(api.TargetNamespace).Delete(c.ctx, secret.Stub().Name, metav1.DeleteOptions{}))
 	// existingOAuthClient is not a delete, it is a deregister/neutralize
-	existingOAuthClient, getAuthErr := c.oauthClient.OAuthClients().Get(oauthclient.Stub().Name, metav1.GetOptions{})
+	existingOAuthClient, getAuthErr := c.oauthClient.OAuthClients().Get(c.ctx, oauthclient.Stub().Name, metav1.GetOptions{})
 	errs = append(errs, getAuthErr)
 	if len(existingOAuthClient.RedirectURIs) != 0 {
-		_, updateAuthErr := c.oauthClient.OAuthClients().Update(oauthclient.DeRegisterConsoleFromOAuthClient(existingOAuthClient))
+		_, updateAuthErr := c.oauthClient.OAuthClients().Update(c.ctx, oauthclient.DeRegisterConsoleFromOAuthClient(existingOAuthClient), metav1.UpdateOptions{})
 		errs = append(errs, updateAuthErr)
 	}
 	// deployment
 	// NOTE: CVO controls the deployment for downloads, console-operator cannot delete it.
-	errs = append(errs, c.deploymentClient.Deployments(api.TargetNamespace).Delete(deployment.Stub().Name, &metav1.DeleteOptions{}))
+	errs = append(errs, c.deploymentClient.Deployments(api.TargetNamespace).Delete(c.ctx, deployment.Stub().Name, metav1.DeleteOptions{}))
 	// clear the console URL from the public config map in openshift-config-managed
 	_, _, updateConfigErr := resourceapply.ApplyConfigMap(c.configMapClient, c.recorder, configmap.EmptyPublicConfig())
 	errs = append(errs, updateConfigErr)

@@ -1,6 +1,7 @@
 package deployment
 
 import (
+	"context"
 	"fmt"
 
 	// kube
@@ -171,8 +172,8 @@ func Stub() *appsv1.Deployment {
 	return dep
 }
 
-func LogDeploymentAnnotationChanges(client appsclientv1.DeploymentsGetter, updated *appsv1.Deployment) {
-	existing, err := client.Deployments(updated.Namespace).Get(updated.Name, metav1.GetOptions{})
+func LogDeploymentAnnotationChanges(client appsclientv1.DeploymentsGetter, updated *appsv1.Deployment, ctx context.Context) {
+	existing, err := client.Deployments(updated.Namespace).Get(ctx, updated.Name, metav1.GetOptions{})
 	if err != nil {
 		klog.V(4).Infof("%v", err)
 		return

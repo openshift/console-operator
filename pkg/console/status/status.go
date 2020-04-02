@@ -2,14 +2,15 @@ package status
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 
-	v1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
-
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 
 	operatorsv1 "github.com/openshift/api/operator/v1"
+	v1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	"github.com/openshift/console-operator/pkg/console/errors"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 )
@@ -112,9 +113,9 @@ func IsDegraded(operatorConfig *operatorsv1.Authentication) bool {
 }
 
 // Lets transition to using this, and get the repetition out of all of the above.
-func SyncStatus(operatorConfigClient v1.ConsoleInterface, operatorConfig *operatorsv1.Console) (*operatorsv1.Console, error) {
+func SyncStatus(ctx context.Context, operatorConfigClient v1.ConsoleInterface, operatorConfig *operatorsv1.Console) (*operatorsv1.Console, error) {
 	logConditions(operatorConfig.Status.Conditions)
-	updatedConfig, err := operatorConfigClient.UpdateStatus(operatorConfig)
+	updatedConfig, err := operatorConfigClient.UpdateStatus(ctx, operatorConfig, metav1.UpdateOptions{})
 	if err != nil {
 		errMsg := fmt.Errorf("status update error: %v", err)
 		klog.Error(errMsg)

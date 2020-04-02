@@ -139,6 +139,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	operatorClient := &operatorclient.OperatorClient{
 		Informers: operatorConfigInformers,
 		Client:    operatorConfigClient.OperatorV1(),
+		Context:   ctx,
 	}
 
 	recorder := controllerContext.EventRecorder
@@ -179,6 +180,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		versionGetter,
 		recorder,
 		resourceSyncer,
+		// context
+		ctx,
 	)
 
 	cliDownloadsController := clidownloads.NewCLIDownloadsSyncController(
@@ -193,6 +196,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		routesInformersNamespaced.Route().V1().Routes(),       // Routes
 		// recorder
 		recorder,
+		// context
+		ctx,
 	)
 
 	// ResourceSyncDestinationController contains additional logic for all the
@@ -206,6 +211,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeInformersNamespaced.Core().V1().ConfigMaps(),
 		// events
 		recorder,
+		// context
+		ctx,
 	)
 
 	consoleServiceController := service.NewServiceSyncController(
@@ -220,6 +227,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		api.OpenShiftConsoleName,
 		// events
 		recorder,
+		// context
+		ctx,
 	)
 
 	consoleRouteController := route.NewRouteSyncController(
@@ -235,6 +244,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		api.OpenShiftConsoleName,
 		// events
 		recorder,
+		// context
+		ctx,
 	)
 
 	versionRecorder := status.NewVersionGetter()
