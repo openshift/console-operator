@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -47,7 +48,7 @@ func TestMain(m *testing.M) {
 func waitForOperator() error {
 	depClient := kubeClient.AppsV1().Deployments(consoleapi.OpenShiftConsoleOperatorNamespace)
 	err := wait.PollImmediate(1*time.Second, 10*time.Minute, func() (bool, error) {
-		_, err := depClient.Get(consoleapi.OpenShiftConsoleOperator, metav1.GetOptions{})
+		_, err := depClient.Get(context.TODO(), consoleapi.OpenShiftConsoleOperator, metav1.GetOptions{})
 		if err != nil {
 			fmt.Printf("error waiting for operator deployment to exist: %v\n", err)
 			return false, nil

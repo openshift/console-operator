@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -124,7 +125,7 @@ func getConsoleProviderField(t *testing.T, client *framework.ClientSet, provider
 }
 
 func setOperatorConfigStatuspageIDProvider(t *testing.T, client *framework.ClientSet, statuspageID string) {
-	operatorConfig, err := client.Operator.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("could not get operator config, %v", err)
 	}
@@ -141,7 +142,7 @@ func setOperatorConfigStatuspageIDProvider(t *testing.T, client *framework.Clien
 	}
 
 	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		_, err = client.Operator.Consoles().Update(operatorConfig)
+		_, err = client.Operator.Consoles().Update(context.TODO(), operatorConfig, metav1.UpdateOptions{})
 		return err
 	})
 

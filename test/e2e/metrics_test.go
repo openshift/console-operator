@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -29,7 +30,7 @@ const (
 func setupMetricsEndpointTestCase(t *testing.T) (*framework.ClientSet, *operatorsv1.Console) {
 	client, _ := framework.StandardSetup(t)
 	routeForTest := tempRouteForTesting()
-	_, err := client.Routes.Routes(api.OpenShiftConsoleOperatorNamespace).Create(routeForTest)
+	_, err := client.Routes.Routes(api.OpenShiftConsoleOperatorNamespace).Create(context.TODO(), routeForTest, metav1.CreateOptions{})
 	if err != nil && !errors.IsAlreadyExists(err) {
 		t.Fatalf("error: %s", err)
 	}
@@ -38,7 +39,7 @@ func setupMetricsEndpointTestCase(t *testing.T) (*framework.ClientSet, *operator
 
 func cleanUpMetricsEndpointTestCase(t *testing.T, client *framework.ClientSet) {
 	routeForTest := tempRouteForTesting()
-	err := client.Routes.Routes(api.OpenShiftConsoleOperatorNamespace).Delete(routeForTest.Name, &metav1.DeleteOptions{})
+	err := client.Routes.Routes(api.OpenShiftConsoleOperatorNamespace).Delete(context.TODO(), routeForTest.Name, metav1.DeleteOptions{})
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}
@@ -159,7 +160,7 @@ func getMetricsURL(t *testing.T, client *framework.ClientSet) string {
 	tempRoute := tempRouteForTesting()
 	routeForMetrics := ""
 	err := wait.Poll(1*time.Second, 30*time.Second, func() (stop bool, err error) {
-		tempRoute, err := client.Routes.Routes(api.OpenShiftConsoleOperatorNamespace).Get(tempRoute.Name, metav1.GetOptions{})
+		tempRoute, err := client.Routes.Routes(api.OpenShiftConsoleOperatorNamespace).Get(context.TODO(), tempRoute.Name, metav1.GetOptions{})
 		if err != nil {
 			t.Fatalf("error: %s", err)
 		}

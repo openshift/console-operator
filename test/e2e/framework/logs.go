@@ -2,6 +2,7 @@ package framework
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"regexp"
@@ -42,7 +43,7 @@ func GetLogsByLabelSelector(client *ClientSet, namespace string, labelSelector *
 		return nil, err
 	}
 
-	podList, err := client.Core.Pods(namespace).List(metav1.ListOptions{
+	podList, err := client.Core.Pods(namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: selector.String(),
 	})
 	if err != nil {
@@ -52,7 +53,7 @@ func GetLogsByLabelSelector(client *ClientSet, namespace string, labelSelector *
 	podLogs := make(PodSetLogs)
 	for _, pod := range podList.Items {
 		var podLog PodLog
-		log, err := client.Core.Pods(pod.Namespace).GetLogs(pod.Name, &corev1.PodLogOptions{}).Stream()
+		log, err := client.Core.Pods(pod.Namespace).GetLogs(pod.Name, &corev1.PodLogOptions{}).Stream(context.TODO())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get logs for pod %s: %s", pod.Name, err)
 		}

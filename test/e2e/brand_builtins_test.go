@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -22,13 +23,13 @@ var validManagedConfigMapBrands = []operatorsv1.Brand{operatorsv1.BrandOKD, oper
 func setupBrandingTestCase(t *testing.T) (*framework.ClientSet, operatorsv1.Brand, map[string]string) {
 	client := framework.MustNewClientset(t, nil)
 	// Get the original operator config
-	originalConfig, err := client.Operator.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
+	originalConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("could not get operator config, %v", err)
 	}
 	originalConfigBrand := originalConfig.Spec.Customization.Brand
 	// Get the original Managed Config Map
-	originalManagedConfigMap, err := client.Core.ConfigMaps(consoleapi.OpenShiftConfigManagedNamespace).Get(consoleapi.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
+	originalManagedConfigMap, err := client.Core.ConfigMaps(consoleapi.OpenShiftConfigManagedNamespace).Get(context.TODO(), consoleapi.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		t.Fatalf("could not get console-config configmap, %v", err)
 	}
@@ -42,7 +43,7 @@ func cleanupBrandingTestCase(t *testing.T, client *framework.ClientSet, original
 	if originalManagedConfigMapData != nil {
 		managedConfigMap.Data = originalManagedConfigMapData
 	}
-	_, err := client.Core.ConfigMaps(consoleapi.OpenShiftConfigManagedNamespace).Update(managedConfigMap)
+	_, err := client.Core.ConfigMaps(consoleapi.OpenShiftConfigManagedNamespace).Update(context.TODO(), managedConfigMap, metav1.UpdateOptions{})
 	if err != nil {
 		t.Fatalf("could not reset managed config map  %v", err)
 	}
@@ -132,7 +133,7 @@ customization:
 
 // Set Brand on the operator config
 func setOperatorConfigBrand(t *testing.T, client *framework.ClientSet, brand operatorsv1.Brand) error {
-	operatorConfig, err := client.Operator.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -145,7 +146,7 @@ func setOperatorConfigBrand(t *testing.T, client *framework.ClientSet, brand ope
 		},
 	}
 	operatorConfig.Spec = spec
-	_, err = client.Operator.Consoles().Update(operatorConfig)
+	_, err = client.Operator.Consoles().Update(context.TODO(), operatorConfig, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -191,12 +192,11 @@ func stringToBrand(t *testing.T, brandstr string) (b operatorsv1.Brand, ok bool)
 // Helper function that decides whether to update a config map (if it exists) or create a new one
 func updateOrCreateConsoleConfigMap(client *framework.ClientSet, cm *v1.ConfigMap) (*v1.ConfigMap, error) {
 	// Check if configMap exist so we know whether to update or create
-	_, err := client.Core.ConfigMaps(cm.ObjectMeta.Namespace).Get(cm.Name, metav1.GetOptions{})
+	_, err := client.Core.ConfigMaps(cm.ObjectMeta.Namespace).Get(context.TODO(), cm.Name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
-		return client.Core.ConfigMaps(cm.ObjectMeta.Namespace).Create(cm)
+		return client.Core.ConfigMaps(cm.ObjectMeta.Namespace).Create(context.TODO(), cm, metav1.CreateOptions{})
 	} else if err != nil {
 		return nil, err
 	}
-	return client.Core.ConfigMaps(cm.ObjectMeta.Namespace).Update(cm)
-
+	return client.Core.ConfigMaps(cm.ObjectMeta.Namespace).Update(context.TODO(), cm, metav1.UpdateOptions{})
 }

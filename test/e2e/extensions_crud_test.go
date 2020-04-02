@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"testing"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,11 +39,11 @@ func TestCreateCLIDownloadLink(t *testing.T) {
 		},
 	}
 
-	download, err := client.ConsoleCliDownloads.Create(download)
+	download, err := client.ConsoleCliDownloads.Create(context.TODO(), download, v1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("could not create ConsoleCliDownloads custom resource: %v", err)
 	}
-	err = client.ConsoleCliDownloads.Delete(download.Name, &v1.DeleteOptions{})
+	err = client.ConsoleCliDownloads.Delete(context.TODO(), download.Name, v1.DeleteOptions{})
 	if err != nil {
 		t.Fatalf("could not delete ConsoleCliDownloads custom resource: %v", err)
 	}
@@ -65,11 +66,11 @@ func TestCreateExternalLogLink(t *testing.T) {
 		},
 	}
 
-	externalLogLink, err := client.ConsoleExternalLogLink.Create(externalLogLink)
+	externalLogLink, err := client.ConsoleExternalLogLink.Create(context.TODO(), externalLogLink, v1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("could not create ConsoleExternalLogLink custom resource: %v", err)
 	}
-	err = client.ConsoleExternalLogLink.Delete(externalLogLink.Name, &v1.DeleteOptions{})
+	err = client.ConsoleExternalLogLink.Delete(context.TODO(), externalLogLink.Name, v1.DeleteOptions{})
 	if err != nil {
 		t.Fatalf("could not delete ConsoleExternalLogLink custom resource: %v", err)
 	}
@@ -93,11 +94,11 @@ func TestCreateLink(t *testing.T) {
 			},
 		},
 	}
-	consoleLink, err := client.ConsoleLink.Create(consoleLink)
+	consoleLink, err := client.ConsoleLink.Create(context.TODO(), consoleLink, v1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("could not create ConsoleLink custom resource: %v", err)
 	}
-	err = client.ConsoleLink.Delete(consoleLink.Name, &v1.DeleteOptions{})
+	err = client.ConsoleLink.Delete(context.TODO(), consoleLink.Name, v1.DeleteOptions{})
 	if err != nil {
 		t.Fatalf("could not delete ConsoleLink custom resource: %v", err)
 	}
@@ -119,11 +120,11 @@ func TestCreateNotification(t *testing.T) {
 			BackgroundColor: "#990000",
 		},
 	}
-	notification, err := client.ConsoleNotification.Create(notification)
+	notification, err := client.ConsoleNotification.Create(context.TODO(), notification, v1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("could not create ConsoleNotification custom resource: %v", err)
 	}
-	err = client.ConsoleNotification.Delete(notification.Name, &v1.DeleteOptions{})
+	err = client.ConsoleNotification.Delete(context.TODO(), notification.Name, v1.DeleteOptions{})
 	if err != nil {
 		t.Fatalf("could not delete ConsoleNotification custom resource: %v", err)
 	}
@@ -154,11 +155,11 @@ metadata:
 			Snippet: false,
 		},
 	}
-	yamlSample, err := client.ConsoleYAMLSample.Create(yamlSample)
+	yamlSample, err := client.ConsoleYAMLSample.Create(context.TODO(), yamlSample, v1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("could not create ConsoleYAMLSample custom resource: %v", err)
 	}
-	err = client.ConsoleYAMLSample.Delete(yamlSample.Name, &v1.DeleteOptions{})
+	err = client.ConsoleYAMLSample.Delete(context.TODO(), yamlSample.Name, v1.DeleteOptions{})
 	if err != nil {
 		t.Fatalf("could not delete ConsoleYAMLSample custom resource: %v", err)
 	}

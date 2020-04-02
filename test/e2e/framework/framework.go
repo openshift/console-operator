@@ -1,15 +1,13 @@
 package framework
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	yaml "gopkg.in/yaml.v2"
 
-	configv1 "github.com/openshift/api/config/v1"
-	consolev1 "github.com/openshift/api/console/v1"
-	routev1 "github.com/openshift/api/route/v1"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -19,6 +17,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	configv1 "github.com/openshift/api/config/v1"
+	consolev1 "github.com/openshift/api/console/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	consoleapi "github.com/openshift/console-operator/pkg/api"
 )
 
@@ -30,6 +31,10 @@ var (
 
 	AsyncOperationTimeout = 5 * time.Minute
 )
+
+type TestFramework struct {
+	ctx context.Context
+}
 
 type TestingResource struct {
 	kind      string
@@ -49,12 +54,12 @@ func getTestingResources() []TestingResource {
 }
 
 func SetClusterProxyConfig(proxyConfig configv1.ProxySpec, client *ClientSet) error {
-	_, err := client.Proxy.Proxies().Patch(consoleapi.ConfigResourceName, types.MergePatchType, []byte(fmt.Sprintf(`{"spec": {"httpProxy": "%s", "httpsProxy": "%s", "noProxy": "%s"}}`, proxyConfig.HTTPProxy, proxyConfig.HTTPSProxy, proxyConfig.NoProxy)))
+	_, err := client.Proxy.Proxies().Patch(context.TODO(), consoleapi.ConfigResourceName, types.MergePatchType, []byte(fmt.Sprintf(`{"spec": {"httpProxy": "%s", "httpsProxy": "%s", "noProxy": "%s"}}`, proxyConfig.HTTPProxy, proxyConfig.HTTPSProxy, proxyConfig.NoProxy)), metav1.PatchOptions{})
 	return err
 }
 
 func ResetClusterProxyConfig(client *ClientSet) error {
-	_, err := client.Proxy.Proxies().Patch(consoleapi.ConfigResourceName, types.MergePatchType, []byte(`{"spec": {"httpProxy": "", "httpsProxy": "", "noProxy": ""}}`))
+	_, err := client.Proxy.Proxies().Patch(context.TODO(), consoleapi.ConfigResourceName, types.MergePatchType, []byte(`{"spec": {"httpProxy": "", "httpsProxy": "", "noProxy": ""}}`), metav1.PatchOptions{})
 	return err
 }
 
@@ -82,15 +87,15 @@ func GetResource(client *ClientSet, resource TestingResource) (runtime.Object, e
 
 	switch resource.kind {
 	case "ConfigMap":
-		res, err = client.Core.ConfigMaps(resource.namespace).Get(resource.name, metav1.GetOptions{})
+		res, err = client.Core.ConfigMaps(resource.namespace).Get(context.TODO(), resource.name, metav1.GetOptions{})
 	case "Service":
-		res, err = client.Core.Services(resource.namespace).Get(resource.name, metav1.GetOptions{})
+		res, err = client.Core.Services(resource.namespace).Get(context.TODO(), resource.name, metav1.GetOptions{})
 	case "Route":
-		res, err = client.Routes.Routes(resource.namespace).Get(resource.name, metav1.GetOptions{})
+		res, err = client.Routes.Routes(resource.namespace).Get(context.TODO(), resource.name, metav1.GetOptions{})
 	case "ConsoleCLIDownloads":
-		res, err = client.ConsoleCliDownloads.Get(resource.name, metav1.GetOptions{})
+		res, err = client.ConsoleCliDownloads.Get(context.TODO(), resource.name, metav1.GetOptions{})
 	case "Deployment":
-		res, err = client.Apps.Deployments(resource.namespace).Get(resource.name, metav1.GetOptions{})
+		res, err = client.Apps.Deployments(resource.namespace).Get(context.TODO(), resource.name, metav1.GetOptions{})
 	default:
 		err = fmt.Errorf("error getting resource: resource %s not identified", resource.kind)
 	}
@@ -99,42 +104,42 @@ func GetResource(client *ClientSet, resource TestingResource) (runtime.Object, e
 
 // custom-logo in openshift-console should exist when custom branding is used
 func GetCustomLogoConfigMap(client *ClientSet) (*corev1.ConfigMap, error) {
-	return client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftCustomLogoConfigMapName, metav1.GetOptions{})
+	return client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(context.TODO(), consoleapi.OpenShiftCustomLogoConfigMapName, metav1.GetOptions{})
 }
 
 func GetConsoleConfigMap(client *ClientSet) (*corev1.ConfigMap, error) {
-	return client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
+	return client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(context.TODO(), consoleapi.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 }
 
 func GetConsoleService(client *ClientSet) (*corev1.Service, error) {
-	return client.Core.Services(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleServiceName, metav1.GetOptions{})
+	return client.Core.Services(consoleapi.OpenShiftConsoleNamespace).Get(context.TODO(), consoleapi.OpenShiftConsoleServiceName, metav1.GetOptions{})
 }
 
 func GetConsoleRoute(client *ClientSet) (*routev1.Route, error) {
-	return client.Routes.Routes(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleRouteName, metav1.GetOptions{})
+	return client.Routes.Routes(consoleapi.OpenShiftConsoleNamespace).Get(context.TODO(), consoleapi.OpenShiftConsoleRouteName, metav1.GetOptions{})
 }
 
 func GetConsoleDeployment(client *ClientSet) (*appv1.Deployment, error) {
-	return client.Apps.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(consoleapi.OpenShiftConsoleDeploymentName, metav1.GetOptions{})
+	return client.Apps.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(context.TODO(), consoleapi.OpenShiftConsoleDeploymentName, metav1.GetOptions{})
 }
 
 func GetConsoleCLIDownloads(client *ClientSet, consoleCLIDownloadName string) (*consolev1.ConsoleCLIDownload, error) {
-	return client.ConsoleCliDownloads.Get(consoleCLIDownloadName, metav1.GetOptions{})
+	return client.ConsoleCliDownloads.Get(context.TODO(), consoleCLIDownloadName, metav1.GetOptions{})
 }
 
 func deleteResource(client *ClientSet, resource TestingResource) error {
 	var err error
 	switch resource.kind {
 	case "ConfigMap":
-		err = client.Core.ConfigMaps(resource.namespace).Delete(resource.name, &metav1.DeleteOptions{})
+		err = client.Core.ConfigMaps(resource.namespace).Delete(context.TODO(), resource.name, metav1.DeleteOptions{})
 	case "Service":
-		err = client.Core.Services(resource.namespace).Delete(resource.name, &metav1.DeleteOptions{})
+		err = client.Core.Services(resource.namespace).Delete(context.TODO(), resource.name, metav1.DeleteOptions{})
 	case "Route":
-		err = client.Routes.Routes(resource.namespace).Delete(resource.name, &metav1.DeleteOptions{})
+		err = client.Routes.Routes(resource.namespace).Delete(context.TODO(), resource.name, metav1.DeleteOptions{})
 	case "ConsoleCLIDownloads":
-		err = client.ConsoleCliDownloads.Delete(resource.name, &metav1.DeleteOptions{})
+		err = client.ConsoleCliDownloads.Delete(context.TODO(), resource.name, metav1.DeleteOptions{})
 	case "Deployment":
-		err = client.Apps.Deployments(resource.namespace).Delete(resource.name, &metav1.DeleteOptions{})
+		err = client.Apps.Deployments(resource.namespace).Delete(context.TODO(), resource.name, metav1.DeleteOptions{})
 	default:
 		err = fmt.Errorf("error deleting resource: resource %s not identified", resource.kind)
 	}

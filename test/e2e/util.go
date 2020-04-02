@@ -1,10 +1,12 @@
 package e2e
 
 import (
+	"context"
 	"reflect"
 	"testing"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -24,7 +26,7 @@ var pollTimeout = 10 * time.Second
 
 func patchAndCheckConfigMap(t *testing.T, client *framework.ClientSet, isOperatorManaged bool) error {
 	t.Logf("patching Data on the console ConfigMap")
-	configMap, err := client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.OpenShiftConsoleConfigMapName, types.MergePatchType, []byte(`{"data": {"console-config.yaml": "test"}}`))
+	configMap, err := client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Patch(context.TODO(), consoleapi.OpenShiftConsoleConfigMapName, types.MergePatchType, []byte(`{"data": {"console-config.yaml": "test"}}`), metav1.PatchOptions{})
 	if err != nil {
 		return err
 	}
@@ -47,7 +49,7 @@ func patchAndCheckConfigMap(t *testing.T, client *framework.ClientSet, isOperato
 
 func patchAndCheckService(t *testing.T, client *framework.ClientSet, isOperatorManaged bool) error {
 	t.Logf("patching Annotation on the console Service")
-	service, err := client.Core.Services(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.OpenShiftConsoleServiceName, types.MergePatchType, []byte(`{"metadata": {"annotations": {"service.alpha.openshift.io/serving-cert-secret-name": "test"}}}`))
+	service, err := client.Core.Services(consoleapi.OpenShiftConsoleNamespace).Patch(context.TODO(), consoleapi.OpenShiftConsoleServiceName, types.MergePatchType, []byte(`{"metadata": {"annotations": {"service.alpha.openshift.io/serving-cert-secret-name": "test"}}}`), metav1.PatchOptions{})
 	if err != nil {
 		return err
 	}
@@ -70,7 +72,7 @@ func patchAndCheckService(t *testing.T, client *framework.ClientSet, isOperatorM
 
 func patchAndCheckRoute(t *testing.T, client *framework.ClientSet, isOperatorManaged bool) error {
 	t.Logf("patching TargetPort on the console Route")
-	route, err := client.Routes.Routes(consoleapi.OpenShiftConsoleNamespace).Patch(consoleapi.OpenShiftConsoleRouteName, types.MergePatchType, []byte(`{"spec": {"port": {"targetPort": "http"}}}`))
+	route, err := client.Routes.Routes(consoleapi.OpenShiftConsoleNamespace).Patch(context.TODO(), consoleapi.OpenShiftConsoleRouteName, types.MergePatchType, []byte(`{"spec": {"port": {"targetPort": "http"}}}`), metav1.PatchOptions{})
 	if err != nil {
 		return err
 	}
@@ -93,7 +95,7 @@ func patchAndCheckRoute(t *testing.T, client *framework.ClientSet, isOperatorMan
 
 func patchAndCheckConsoleCLIDownloads(t *testing.T, client *framework.ClientSet, isOperatorManaged bool, consoleCLIDownloadName string) error {
 	t.Logf("patching DisplayName on the %s ConsoleCLIDownloads custom resource", consoleCLIDownloadName)
-	consoleCLIDownload, err := client.ConsoleCliDownloads.Patch(consoleCLIDownloadName, types.MergePatchType, []byte(`{"spec": {"displayName": "test"}}`))
+	consoleCLIDownload, err := client.ConsoleCliDownloads.Patch(context.TODO(), consoleCLIDownloadName, types.MergePatchType, []byte(`{"spec": {"displayName": "test"}}`), metav1.PatchOptions{})
 	if err != nil {
 		return err
 	}
