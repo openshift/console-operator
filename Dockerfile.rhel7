@@ -1,14 +1,13 @@
-FROM registry.svc.ci.openshift.org/ocp/builder:golang-1.12 AS builder
+FROM registry.svc.ci.openshift.org/ocp/builder:golang-1.13 AS builder
 WORKDIR /go/src/github.com/openshift/console-operator
 COPY . .
-RUN ADDITIONAL_GOTAGS="ocp" make build WHAT="cmd/console"; \
-    mkdir -p /tmp/build; \
-    cp /go/src/github.com/openshift/console-operator/_output/local/bin/linux/$(go env GOARCH)/console /tmp/build/console
+ENV GO_PACKAGE github.com/openshift/console-operator
+RUN go build -ldflags "-X $GO_PACKAGE/pkg/version.versionFromGit=$(git describe --long --tags --abbrev=7 --match 'v[0-9]*')" -tags="ocp" -o console ./cmd/console
 
-FROM registry.svc.ci.openshift.org/ocp/4.0:base
+FROM registry.svc.ci.openshift.org/ocp/4.5:base
 RUN useradd console-operator
 USER console-operator
-COPY --from=builder /tmp/build/console /usr/bin/console
+COPY --from=builder /go/src/github.com/openshift/console-operator/console /usr/bin/console
 
 # these manifests are necessary for the installer
 COPY manifests /manifests/

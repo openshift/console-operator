@@ -9,6 +9,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-test/deep v1.0.5
 	github.com/openshift/api v0.0.0-20200306192528-e5737622441f
+	github.com/openshift/build-machinery-go v0.0.0-20200211121458-5e3d6e570160
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
 	github.com/openshift/library-go v0.0.0-20200309133644-48193d0ad816
 	github.com/pkg/profile v1.4.0 // indirect
