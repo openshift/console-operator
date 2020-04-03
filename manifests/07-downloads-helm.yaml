@@ -6,8 +6,7 @@ spec:
   description: |
     Helm 3 is a package manager for Kubernetes applications which enables defining,
     installing, and upgrading applications packaged as Helm Charts.
-    Helm 3 is a [Technology Preview](https://access.redhat.com/support/offerings/techpreview) feature on OpenShift 4.
   displayName: helm - Helm 3 CLI
   links:
     - href: 'https://mirror.openshift.com/pub/openshift-v4/clients/helm/latest'
-      text: Download helm
+      text: Download Helm
