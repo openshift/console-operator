@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -25,7 +26,7 @@ func TestDownloadsEndpoint(t *testing.T) {
 	client, _ := setupDownloadsTestCase(t)
 	defer cleanupDownloadsTestCase(t, client)
 
-	route, err := client.Routes.Routes(api.OpenShiftConsoleNamespace).Get(api.OpenShiftConsoleName, v1.GetOptions{})
+	route, err := client.Routes.Routes(api.OpenShiftConsoleNamespace).Get(context.TODO(), api.OpenShiftConsoleName, v1.GetOptions{})
 	if err != nil {
 		t.Fatalf("could not get route: %s", err)
 	}

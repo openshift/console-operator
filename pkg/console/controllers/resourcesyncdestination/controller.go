@@ -1,6 +1,7 @@
 package resourcesyncdestination
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -32,6 +33,8 @@ type ResourceSyncDestinationController struct {
 	cachesToSync []cache.InformerSynced
 	queue        workqueue.RateLimitingInterface
 	recorder     events.Recorder
+	// context
+	ctx context.Context
 }
 
 func NewResourceSyncDestinationController(
@@ -43,6 +46,8 @@ func NewResourceSyncDestinationController(
 	configMapInformer coreinformersv1.ConfigMapInformer,
 	// events
 	recorder events.Recorder,
+	// context
+	ctx context.Context,
 ) *ResourceSyncDestinationController {
 	corev1Client.ConfigMaps(api.OpenShiftConsoleNamespace)
 
@@ -53,6 +58,7 @@ func NewResourceSyncDestinationController(
 		recorder:     recorder,
 		cachesToSync: nil,
 		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerName),
+		ctx:          ctx,
 	}
 
 	configMapInformer.Informer().AddEventHandler(ctrl.newEventHandler())
@@ -66,7 +72,7 @@ func NewResourceSyncDestinationController(
 }
 
 func (c *ResourceSyncDestinationController) sync() error {
-	operatorConfig, err := c.operatorConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := c.operatorConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -90,7 +96,7 @@ func (c *ResourceSyncDestinationController) sync() error {
 func (c *ResourceSyncDestinationController) removeDefaultIngressCertConfigMap() error {
 	klog.V(2).Info("deleting default-ingress-cert configmap")
 	defer klog.V(2).Info("finished deleting default-ingress-cert configmap")
-	return c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Delete(api.DefaultIngressCertConfigMapName, &metav1.DeleteOptions{})
+	return c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Delete(c.ctx, api.DefaultIngressCertConfigMapName, metav1.DeleteOptions{})
 }
 
 func (c *ResourceSyncDestinationController) Run(workers int, stopCh <-chan struct{}) {

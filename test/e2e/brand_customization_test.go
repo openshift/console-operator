@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -105,9 +106,9 @@ func TestCustomBrand(t *testing.T) {
 	// remove custom configuration from console config
 	t.Log("removing custom-product-name and custom-logo")
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		operatorConfig, err := client.Operator.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
+		operatorConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
 		operatorConfig.Spec = originalConfig.Spec
-		_, err = client.Operator.Consoles().Update(operatorConfig)
+		_, err = client.Operator.Consoles().Update(context.TODO(), operatorConfig, metav1.UpdateOptions{})
 		return err
 	})
 	if err != nil {
@@ -135,9 +136,9 @@ func setAndCheckCustomLogo(t *testing.T, client *framework.ClientSet, customProd
 	// set operator config with the custom-logo and custom-product-name
 	t.Logf("setting custom-product-name and custom-logo in %q format", strings.Split(customLogoFileName, ".")[1])
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		operatorConfig, err := client.Operator.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
+		operatorConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
 		operatorConfigWithCustomLogo := withCustomBrand(operatorConfig, customProductName, customLogoConfigMapName, customLogoFileName)
-		_, err = client.Operator.Consoles().Update(operatorConfigWithCustomLogo)
+		_, err = client.Operator.Consoles().Update(context.TODO(), operatorConfigWithCustomLogo, metav1.UpdateOptions{})
 		return err
 	})
 	if err != nil {
@@ -248,9 +249,9 @@ func customLogoConfigmap(customLogoConfigMapName string, imageKey string) *v1.Co
 }
 
 func createCustomLogoConfigMap(client *framework.ClientSet, customLogoConfigMapName string, imageKey string) (*v1.ConfigMap, error) {
-	return client.Core.ConfigMaps(consoleapi.OpenShiftConfigNamespace).Create(customLogoConfigmap(customLogoConfigMapName, imageKey))
+	return client.Core.ConfigMaps(consoleapi.OpenShiftConfigNamespace).Create(context.TODO(), customLogoConfigmap(customLogoConfigMapName, imageKey), metav1.CreateOptions{})
 }
 
 func deleteCustomLogoConfigMap(client *framework.ClientSet, customLogoConfigMapName string) error {
-	return client.Core.ConfigMaps(consoleapi.OpenShiftConfigNamespace).Delete(customLogoConfigMapName, &metav1.DeleteOptions{})
+	return client.Core.ConfigMaps(consoleapi.OpenShiftConfigNamespace).Delete(context.TODO(), customLogoConfigMapName, metav1.DeleteOptions{})
 }

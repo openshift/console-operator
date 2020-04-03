@@ -1,6 +1,8 @@
 package oauthclient
 
 import (
+	"context"
+
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,10 +20,10 @@ import (
 // - should look like resourceapply.ApplyService and the other Apply funcs
 //   once its in a trustworthy state, PR to library-go so it can live with
 //   the other Apply funcs
-func CustomApplyOAuth(client oauthclient.OAuthClientsGetter, required *oauthv1.OAuthClient) (*oauthv1.OAuthClient, bool, error) {
-	existing, err := client.OAuthClients().Get(required.Name, metav1.GetOptions{})
+func CustomApplyOAuth(client oauthclient.OAuthClientsGetter, required *oauthv1.OAuthClient, ctx context.Context) (*oauthv1.OAuthClient, bool, error) {
+	existing, err := client.OAuthClients().Get(ctx, required.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		actual, err := client.OAuthClients().Create(required)
+		actual, err := client.OAuthClients().Create(ctx, required, metav1.CreateOptions{})
 		return actual, true, err
 	}
 	if err != nil {
@@ -48,7 +50,7 @@ func CustomApplyOAuth(client oauthclient.OAuthClientsGetter, required *oauthv1.O
 	// existing.ScopeRestrictions = required.ScopeRestrictions
 	// existing.AccessTokenMaxAgeSeconds = required.AccessTokenMaxAgeSeconds
 	// existing.AccessTokenInactivityTimeoutSeconds = required.AccessTokenInactivityTimeoutSeconds
-	actual, err := client.OAuthClients().Update(existing)
+	actual, err := client.OAuthClients().Update(ctx, existing, metav1.UpdateOptions{})
 	return actual, true, err
 }
 

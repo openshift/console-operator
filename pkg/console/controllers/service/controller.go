@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -43,6 +44,8 @@ type ServiceSyncController struct {
 	cachesToSync []cache.InformerSynced
 	queue        workqueue.RateLimitingInterface
 	recorder     events.Recorder
+	// context
+	ctx context.Context
 }
 
 // factory func needs clients and informers
@@ -58,6 +61,8 @@ func NewServiceSyncController(
 	serviceName string,
 	// events
 	recorder events.Recorder,
+	// context
+	ctx context.Context,
 ) *ServiceSyncController {
 
 	corev1Client.Services(targetNamespace)
@@ -72,6 +77,7 @@ func NewServiceSyncController(
 		recorder:     recorder,
 		cachesToSync: nil,
 		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerName),
+		ctx:          ctx,
 	}
 
 	operatorConfigInformer.Informer().AddEventHandler(ctrl.newEventHandler())
@@ -89,7 +95,7 @@ func (c *ServiceSyncController) sync() error {
 	startTime := time.Now()
 	klog.V(4).Infof("started syncing service %q (%v)", c.serviceName, startTime)
 	defer klog.V(4).Infof("finished syncing service %q (%v)", c.serviceName, time.Since(startTime))
-	operatorConfig, err := c.operatorConfigClient.Get(api.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := c.operatorConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -110,7 +116,7 @@ func (c *ServiceSyncController) sync() error {
 	updatedOperatorConfig := operatorConfig.DeepCopy()
 	_, _, svcErr := resourceapply.ApplyService(c.serviceClient, c.recorder, service.DefaultService(nil))
 	status.HandleProgressingOrDegraded(updatedOperatorConfig, "ServiceSync", "FailedApply", svcErr)
-	status.SyncStatus(c.operatorConfigClient, updatedOperatorConfig)
+	status.SyncStatus(c.ctx, c.operatorConfigClient, updatedOperatorConfig)
 
 	return svcErr
 }
@@ -118,7 +124,7 @@ func (c *ServiceSyncController) sync() error {
 func (c *ServiceSyncController) removeService() error {
 	klog.V(2).Info("deleting console service")
 	defer klog.V(2).Info("finished deleting console service")
-	return c.serviceClient.Services(c.targetNamespace).Delete(service.Stub().Name, &metav1.DeleteOptions{})
+	return c.serviceClient.Services(c.targetNamespace).Delete(c.ctx, service.Stub().Name, metav1.DeleteOptions{})
 }
 
 // boilerplate, since this controller is not making use of monis.app/go boilerplate

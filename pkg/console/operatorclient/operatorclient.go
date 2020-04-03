@@ -1,6 +1,9 @@
 package operatorclient
 
 import (
+	"context"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 
 	operatorv1 "github.com/openshift/api/operator/v1"
@@ -12,6 +15,7 @@ import (
 type OperatorClient struct {
 	Informers operatorv1informers.SharedInformerFactory
 	Client    operatorv1client.ConsolesGetter
+	Context   context.Context
 }
 
 func (c *OperatorClient) Informer() cache.SharedIndexInformer {
@@ -36,7 +40,7 @@ func (c *OperatorClient) UpdateOperatorSpec(resourceVersion string, spec *operat
 	copy.ResourceVersion = resourceVersion
 	copy.Spec.OperatorSpec = *spec
 
-	ret, err := c.Client.Consoles().Update(copy)
+	ret, err := c.Client.Consoles().Update(c.Context, copy, metav1.UpdateOptions{})
 	if err != nil {
 		return nil, "", err
 	}
@@ -52,7 +56,7 @@ func (c *OperatorClient) UpdateOperatorStatus(resourceVersion string, status *op
 	copy.ResourceVersion = resourceVersion
 	copy.Status.OperatorStatus = *status
 
-	ret, err := c.Client.Consoles().UpdateStatus(copy)
+	ret, err := c.Client.Consoles().UpdateStatus(c.Context, copy, metav1.UpdateOptions{})
 	if err != nil {
 		return nil, err
 	}
