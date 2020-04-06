@@ -32,6 +32,9 @@ GO_TEST_PACKAGES :=./pkg/... ./cmd/...
 test: test-unit test-e2e
 .PHONY: test
 
+test-unit:
+.PHONY: test-unit
+
 test-e2e:
 	KUBERNETES_CONFIG=${KUBECONFIG} go test -timeout 30m -v ./test/e2e/
 .PHONY: test-e2e
