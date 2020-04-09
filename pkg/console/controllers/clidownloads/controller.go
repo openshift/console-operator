@@ -129,6 +129,13 @@ func (c *CLIDownloadsSyncController) sync() error {
 		return ocCLIDownloadsErr
 	}
 
+	ocLicenseCLIDownloads := LicenseDownloads(host, api.OCCLIDownloadsLicenseCustomResourceName)
+	_, ocLicenseCLIDownloadsErrReason, ocLicenseCLIDownloadsErr := ApplyCLIDownloads(c.consoleCliDownloadsClient, ocLicenseCLIDownloads)
+	status.HandleDegraded(updatedOperatorConfig, "OCDownloadsSync", ocLicenseCLIDownloadsErrReason, ocLicenseCLIDownloadsErr)
+	if ocLicenseCLIDownloadsErr != nil {
+		return ocLicenseCLIDownloadsErr
+	}
+
 	_, odoCLIDownloadsErrReason, odoCLIDownloadsErr := ApplyCLIDownloads(c.consoleCliDownloadsClient, ODOConsoleCLIDownloads())
 	status.HandleDegraded(updatedOperatorConfig, "ODODownloadsSync", odoCLIDownloadsErrReason, odoCLIDownloadsErr)
 	if odoCLIDownloadsErr != nil {
@@ -207,7 +214,7 @@ func LicenseDownloads(host, cliDownloadsName string) *v1.ConsoleCLIDownload {
 	for _, platform := range platforms {
 		links = append(links, v1.CLIDownloadLink{
 			Href: GetPlatformURL(baseURL, platform.key, platform.archType),
-			Text: fmt.Sprintf("Download LICENSE at %s", platform.label),
+			Text: fmt.Sprintf("Download LICENSE for %s", platform.label),
 		})
 	}
 
