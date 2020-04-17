@@ -116,24 +116,24 @@ The oc binary offers the same capabilities as the kubectl binary, but it is furt
 							Text: "Download oc for Linux for x86_64",
 						},
 						{
-							Href: "https://www.example.com/arm64/linux/oc.tar",
-							Text: "Download oc for Linux for ARM 64",
-						},
-						{
-							Href: "https://www.example.com/ppc64le/linux/oc.tar",
-							Text: "Download oc for Linux for IBM Power, little endian",
-						},
-						{
-							Href: "https://www.example.com/s390x/linux/oc.tar",
-							Text: "Download oc for Linux for IBM Z",
-						},
-						{
 							Href: "https://www.example.com/amd64/mac/oc.zip",
 							Text: "Download oc for Mac for x86_64",
 						},
 						{
 							Href: "https://www.example.com/amd64/windows/oc.zip",
 							Text: "Download oc for Windows for x86_64",
+						},
+						{
+							Href: "https://www.example.com/arm64/linux/oc.tar",
+							Text: "Download oc for Linux for ARM 64 (unsupported)",
+						},
+						{
+							Href: "https://www.example.com/ppc64le/linux/oc.tar",
+							Text: "Download oc for Linux for IBM Power, little endian (unsupported)",
+						},
+						{
+							Href: "https://www.example.com/s390x/linux/oc.tar",
+							Text: "Download oc for Linux for IBM Z (unsupported)",
 						},
 					},
 				},
