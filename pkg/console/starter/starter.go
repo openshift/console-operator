@@ -90,10 +90,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OAuthClientName).String()
 	}
 
-	tweakListOptionsForRoute := func(options *metav1.ListOptions) {
-		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OpenShiftConsoleRouteName).String()
-	}
-
 	kubeInformersNamespaced := informers.NewSharedInformerFactoryWithOptions(
 		kubeClient,
 		resync,
@@ -121,7 +117,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		routesClient,
 		resync,
 		routesinformers.WithNamespace(api.TargetNamespace),
-		routesinformers.WithTweakListOptions(tweakListOptionsForRoute),
 	)
 
 	// oauthclients are not namespaced
@@ -232,16 +227,19 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	)
 
 	consoleRouteController := route.NewRouteSyncController(
-		// operator config
+		// top level config
+		configClient.ConfigV1(),
+		// clients
 		operatorConfigClient.OperatorV1().Consoles(),
 		routesClient.RouteV1(),
+		kubeClient.CoreV1(),
 		kubeClient.CoreV1(),
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
 		routesInformersNamespaced.Route().V1().Routes(),
 		// names
 		api.OpenShiftConsoleNamespace,
-		api.OpenShiftConsoleName,
+		api.OpenShiftConsoleRouteName,
 		// events
 		recorder,
 		// context

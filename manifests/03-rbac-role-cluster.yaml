@@ -18,6 +18,7 @@ rules:
   - config.openshift.io
   resources:
   - infrastructures
+  - ingresses
   verbs:
   - get
   - list
