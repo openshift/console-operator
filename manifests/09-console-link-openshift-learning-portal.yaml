@@ -1,0 +1,8 @@
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: openshift-learning-portal
+spec:
+  href: 'https://learn.openshift.com/'
+  location: HelpMenu
+  text: Learning Portal
