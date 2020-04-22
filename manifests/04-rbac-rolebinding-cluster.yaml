@@ -39,3 +39,18 @@ subjects:
   - kind: ServiceAccount
     name: console-operator
     namespace: openshift-console-operator
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: console
+roleRef:
+  # CRD lists are protected from unpriviledged users, access is
+  # granted to Service Account by this ClusterRole
+  kind: ClusterRole
+  name: console
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: console
+    namespace: openshift-console
