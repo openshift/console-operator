@@ -1,0 +1,8 @@
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: openshift-blog
+spec:
+  href: 'https://blog.openshift.com'
+  location: HelpMenu
+  text: OpenShift Blog
