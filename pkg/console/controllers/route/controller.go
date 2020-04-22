@@ -164,7 +164,7 @@ func (c *RouteSyncController) SyncDefaultRoute(operatorConfig *operatorsv1.Conso
 	}
 
 	if !routesub.IsCustomRouteSet(operatorConfig) {
-		c.CheckRouteHealth(operatorConfig, defaultRoute)
+		c.CheckRouteHealth(operatorConfig, defaultRoute, nil)
 	}
 
 	return "", defaultRouteError
@@ -177,6 +177,9 @@ func (c *RouteSyncController) SyncDefaultRoute(operatorConfig *operatorsv1.Conso
 // 5. apply the custom route
 func (c *RouteSyncController) SyncCustomRoute(operatorConfig *operatorsv1.Console) (string, error) {
 	if !routesub.IsCustomRouteSet(operatorConfig) {
+		if err := c.removeRoute(api.OpenshiftConsoleCustomRouteName); err != nil {
+			return "FailedDeleteCustomRoutes", err
+		}
 		return "", nil
 	}
 
@@ -200,9 +203,7 @@ func (c *RouteSyncController) SyncCustomRoute(operatorConfig *operatorsv1.Consol
 		return "FailedCustomRouteHost", customerrors.NewSyncError(fmt.Sprintf("custom route is not available at canonical host %s", customRoute.Status.Ingress))
 	}
 
-	if routesub.IsCustomRouteSet(operatorConfig) {
-		c.CheckRouteHealth(operatorConfig, customRoute)
-	}
+	c.CheckRouteHealth(operatorConfig, customRoute, customTLSCert)
 
 	return "", customRouteError
 }
@@ -225,7 +226,11 @@ func (c *RouteSyncController) ValidateCustomRouteConfig(operatorConfig *operator
 		return nil, nil
 	}
 
-	return c.secretClient.Secrets(api.OpenShiftConfigNamespace).Get(c.ctx, operatorConfig.Spec.Route.Secret.Name, metav1.GetOptions{})
+	secret, secretErr := c.secretClient.Secrets(api.OpenShiftConfigNamespace).Get(c.ctx, operatorConfig.Spec.Route.Secret.Name, metav1.GetOptions{})
+	if secretErr != nil {
+		return nil, fmt.Errorf("failed to GET custom route TLS secret: %s", secretErr)
+	}
+	return secret, nil
 }
 
 // Validate secret that holds custom TLS certificate and key.
@@ -345,11 +350,11 @@ func (c *RouteSyncController) newEventHandler() cache.ResourceEventHandler {
 	}
 }
 
-func (c *RouteSyncController) CheckRouteHealth(operatorConfig *operatorsv1.Console, route *routev1.Route) {
+func (c *RouteSyncController) CheckRouteHealth(operatorConfig *operatorsv1.Console, route *routev1.Route, tlsCert *routesub.CustomTLSCert) {
 	status.HandleDegraded(func() (conf *operatorsv1.Console, prefix string, reason string, err error) {
 		prefix = "RouteHealth"
 
-		caPool, err := c.getCA()
+		caPool, err := c.getCA(tlsCert)
 		if err != nil {
 			return operatorConfig, prefix, "FailedLoadCA", fmt.Errorf("failed to read CA to check route health: %v", err)
 		}
@@ -384,8 +389,14 @@ func (c *RouteSyncController) CheckRouteHealth(operatorConfig *operatorsv1.Conso
 	}())
 }
 
-func (c *RouteSyncController) getCA() (*x509.CertPool, error) {
+func (c *RouteSyncController) getCA(tlsCert *routesub.CustomTLSCert) (*x509.CertPool, error) {
 	caCertPool := x509.NewCertPool()
+
+	if tlsCert != nil {
+		if ok := caCertPool.AppendCertsFromPEM([]byte(tlsCert.Certificate)); !ok {
+			klog.V(4).Infof("failed to parse custom tls.crt")
+		}
+	}
 
 	for _, cmName := range []string{api.TrustedCAConfigMapName, api.DefaultIngressCertConfigMapName} {
 		cm, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(c.ctx, cmName, metav1.GetOptions{})
