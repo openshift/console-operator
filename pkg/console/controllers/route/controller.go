@@ -177,6 +177,9 @@ func (c *RouteSyncController) SyncDefaultRoute(operatorConfig *operatorsv1.Conso
 // 5. apply the custom route
 func (c *RouteSyncController) SyncCustomRoute(operatorConfig *operatorsv1.Console) (string, error) {
 	if !routesub.IsCustomRouteSet(operatorConfig) {
+		if err := c.removeRoute(api.OpenshiftConsoleCustomRouteName); err != nil {
+			return "FailedDeleteCustomRoutes", err
+		}
 		return "", nil
 	}
 
