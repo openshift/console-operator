@@ -3,6 +3,6 @@ kind: ConsoleLink
 metadata:
   name: openshift-learning-portal
 spec:
-  href: 'https://learn.openshift.com/'
+  href: 'https://learn.openshift.com/?ref=webconsole'
   location: HelpMenu
   text: Learning Portal
