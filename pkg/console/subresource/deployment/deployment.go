@@ -21,9 +21,8 @@ import (
 )
 
 const (
-	consolePortName        = "https"
-	consolePort            = 443
-	consoleTargetPort      = 8443
+	containerPortName      = "https"
+	containerPort          = 8443
 	publicURLName          = "BRIDGE_DEVELOPER_CONSOLE_URL"
 	ConsoleServingCertName = "console-serving-cert"
 	ConsoleOauthConfigName = "console-oauth-config"
@@ -293,9 +292,9 @@ func consoleContainer(cr *operatorv1.Console, volConfigList []volumeConfig, prox
 		//}},
 		Env: setEnvironmentVariables(proxyConfig),
 		Ports: []corev1.ContainerPort{{
-			Name:          consolePortName,
+			Name:          containerPortName,
 			Protocol:      corev1.ProtocolTCP,
-			ContainerPort: consolePort,
+			ContainerPort: containerPort,
 		}},
 		// Delay shutdown for 25 seconds, which is the estimated time for:
 		// * endpoint propagation on delete to the router: 5s
