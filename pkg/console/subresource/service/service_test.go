@@ -1,8 +1,9 @@
 package service
 
 import (
-	"github.com/go-test/deep"
 	"testing"
+
+	"github.com/go-test/deep"
 
 	corev1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,15 +34,15 @@ func TestDefaultService(t *testing.T) {
 					Namespace: api.OpenShiftConsoleNamespace,
 					Labels:    map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{
-						ServingCertSecretAnnotation: ConsoleServingCertName},
+						ServingCertSecretAnnotation: api.ConsoleServingCertName},
 				},
 				Spec: corev1.ServiceSpec{
 					Ports: []corev1.ServicePort{
 						{
-							Name:       consolePortName,
+							Name:       api.ConsoleContainerPortName,
 							Protocol:   corev1.ProtocolTCP,
-							Port:       consolePort,
-							TargetPort: intstr.FromInt(consoleTargetPort),
+							Port:       api.ConsoleContainerPort,
+							TargetPort: intstr.FromInt(api.ConsoleContainerTargetPort),
 						},
 					},
 					Selector:        map[string]string{"app": api.OpenShiftConsoleName, "component": "ui"},
@@ -55,6 +56,55 @@ func TestDefaultService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if diff := deep.Equal(DefaultService(tt.args.cr), tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestRedirectService(t *testing.T) {
+	type args struct {
+		cr *operatorv1.Console
+	}
+	tests := []struct {
+		name string
+		args args
+		want *corev1.Service
+	}{
+		{
+			name: "Test redirect service generation",
+			args: args{
+				cr: &operatorv1.Console{},
+			},
+			want: &corev1.Service{
+				TypeMeta: v12.TypeMeta{},
+				ObjectMeta: v12.ObjectMeta{
+					Name:      api.OpenshiftConsoleRedirectServiceName,
+					Namespace: api.OpenShiftConsoleNamespace,
+					Labels:    map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{
+						ServingCertSecretAnnotation: api.ConsoleServingCertName},
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Name:       api.RedirectContainerPortName,
+							Protocol:   corev1.ProtocolTCP,
+							Port:       api.RedirectContainerPort,
+							TargetPort: intstr.FromInt(api.RedirectContainerTargetPort),
+						},
+					},
+					Selector:        map[string]string{"app": api.OpenShiftConsoleName, "component": "ui"},
+					Type:            "ClusterIP",
+					SessionAffinity: "None",
+				},
+				Status: corev1.ServiceStatus{},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if diff := deep.Equal(RedirectService(tt.args.cr), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
@@ -75,7 +125,7 @@ func TestStub(t *testing.T) {
 					Namespace: api.OpenShiftConsoleNamespace,
 					Labels:    map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{
-						ServingCertSecretAnnotation: ConsoleServingCertName},
+						ServingCertSecretAnnotation: api.ConsoleServingCertName},
 				},
 				Spec:   corev1.ServiceSpec{},
 				Status: corev1.ServiceStatus{},

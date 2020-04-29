@@ -341,10 +341,10 @@ func Test_consoleVolumes(t *testing.T) {
 		vc []volumeConfig
 	}
 	consoleServingCert := corev1.Volume{
-		Name: ConsoleServingCertName,
+		Name: api.ConsoleServingCertName,
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
-				SecretName:  ConsoleServingCertName,
+				SecretName:  api.ConsoleServingCertName,
 				Items:       nil,
 				DefaultMode: nil,
 				Optional:    nil,
@@ -476,7 +476,7 @@ func Test_consoleVolumeMounts(t *testing.T) {
 			},
 			want: []corev1.VolumeMount{
 				{
-					Name:      ConsoleServingCertName,
+					Name:      api.ConsoleServingCertName,
 					ReadOnly:  true,
 					MountPath: "/var/serving-cert",
 				},
@@ -508,7 +508,7 @@ func Test_consoleVolumeMounts(t *testing.T) {
 			},
 			want: []corev1.VolumeMount{
 				{
-					Name:      ConsoleServingCertName,
+					Name:      api.ConsoleServingCertName,
 					ReadOnly:  true,
 					MountPath: "/var/serving-cert",
 				},

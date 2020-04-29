@@ -2,6 +2,7 @@ package configmap
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 
 	yaml "gopkg.in/yaml.v2"
@@ -19,6 +20,7 @@ import (
 
 const (
 	host               = "localhost"
+	customHostname     = "custom-route-hostname.openshift.com"
 	mockAPIServer      = "https://api.some.cluster.openshift.com:6443"
 	mockConsoleURL     = "https://console-openshift-console.apps.some.cluster.openshift.com"
 	configKey          = "console-config.yaml"
@@ -449,6 +451,60 @@ servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
+providers: {}
+`,
+				},
+			},
+		},
+		{
+			name: "Test configmap with custom route hostname",
+			args: args{
+				operatorConfig: &operatorv1.Console{
+					Spec: operatorv1.ConsoleSpec{
+						Route: operatorv1.ConsoleConfigRoute{
+							Hostname: customHostname,
+						},
+					},
+				},
+				consoleConfig:          &configv1.Console{},
+				managedConfig:          &corev1.ConfigMap{},
+				monitoringSharedConfig: &corev1.ConfigMap{},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL: mockAPIServer,
+					},
+				},
+				rt: &routev1.Route{
+					Spec: routev1.RouteSpec{
+						Host: customHostname,
+					},
+				},
+				useDefaultCAFile: false,
+			},
+			want: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/default-ingress-cert/ca-bundle.crt
+clusterInfo:
+  consoleBaseAddress: https://` + customHostname + `
+  masterPublicURL: ` + mockAPIServer + `
+customization:
+  branding: ` + DEFAULT_BRAND + `
+  documentationBaseURL: ` + DEFAULT_DOC_URL + `
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+  redirectPort: ` + strconv.Itoa(api.RedirectContainerPort) + `
 providers: {}
 `,
 				},
