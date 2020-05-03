@@ -153,6 +153,56 @@ openshift-install create cluster --dir ~/openshift/aws/us-east --log-level debug
 
 If successful, you should have gotten instructions to set `KUBECONFIG`, login to the console, etc.
 
+#### Run and Debug Locally with Telepresence
+
+It's possible to run and debug the console operator locally with
+[telepresence](https://www.telepresence.io). Using telepresence avoids having to
+build/push/rollout a new image when evaluating a code change. The current state of the source tree
+will be run locally with the same environment variables and volume mounts as the operator
+pod. Telepresence will scale down the operator deployment and create a new deployment in its place
+to proxy traffic between the cluster and the local environment. The operator deployment is scaled
+back up when telepresence exits.
+
+A make target (`make telepresence`) simplifies the executation of telepresence against the console
+operator. Among other things, the make target disables CVO management of the operator before
+starting telepresence, and re-enables CVO management on exit. `sudo` privileges are required due
+to the need to mount volumes and configure AWS-compatible DNS (can be disabled if the cluster is
+not in AWS).
+
+##### Install Telepresence
+
+See the [telepresence helper
+script](vendor/github.com/openshift/build-machinery-go/scripts/run-telepresence.sh) for
+instructions on installing telepresence and related dependencies.
+
+##### Run and Debug with Telepresence
+
+Before running the operator with telepresence on a cluster for the first time, grant the
+operator's service account permission to run with the `anyuid` scc:
+
+```bash
+oc adm policy add-scc-to-user anyuid -z console-operator -n openshift-console-operator
+```
+
+Once telepresence is installed and anyuid configured, the operator can be run locally as follows:
+
+```bash
+make telepresence
+```
+
+Assuming the delve debugger is installed, the operator can be debugged locally as follows:
+
+```bash
+TP_DEBUG=y make telepresence
+```
+
+To override the logging verbosity for the operator, set `TP_VERBOSITY=<value>`. This ensures the
+operator executes with `-v=<value>` as its final argument.
+
+See the [telepresence helper
+script](vendor/github.com/openshift/build-machinery-go/scripts/run-telepresence.sh) for details on
+available options.
+
 #### Shut down CVO & the Default Console Operator
 
 We don't want the default `console-operator` to run if we are going to test our own. Therefore, do

@@ -1,6 +1,7 @@
 .DS_Store 
 .idea
 ./deploy
+telepresence.log
 
 # tools output reports into _output
 _output

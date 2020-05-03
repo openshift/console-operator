@@ -7,6 +7,7 @@ include $(addprefix ./vendor/github.com/openshift/build-machinery-go/make/, \
     targets/openshift/deps-gomod.mk \
     targets/openshift/images.mk \
     targets/openshift/bindata.mk \
+    targets/openshift/operator/telepresence.mk \
 )
 
 # Run core verification and all self contained tests.
@@ -47,3 +48,8 @@ test-e2e:
 clean:
 	rm -rf $(OUT_DIR)
 .PHONY: clean
+
+# Configure the 'telepresence' target
+# See vendor/github.com/openshift/build-machinery-go/scripts/run-telepresence.sh for usage and configuration details
+export TP_DEPLOYMENT_YAML ?=./manifests/07-operator.yaml
+export TP_CMD_PATH ?=./cmd/console
