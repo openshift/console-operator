@@ -76,8 +76,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 		consoleImageAnnotation:                               util.GetImageEnv(),
 	}
 	// Set any annotations as needed so that `ApplyDeployment` rolls out a
-	// new version when they change. `ApplyDeployment` doesn't compare that
-	// pod template, but it does check deployment annotations.
+	// new version when they change.
 	meta.Annotations = annotations
 	replicas := int32(ConsoleReplicas)
 	gracePeriod := int64(40)
