@@ -26,7 +26,6 @@ var (
 
 func init() {
 	legacyregistry.MustRegister(consoleURL)
-	legacyregistry.MustRegister(consoleBuildInfo)
 }
 
 func HandleConsoleURL(oldURL, newURL string) {
