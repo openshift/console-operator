@@ -154,6 +154,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configClient.ConfigV1(),
 		configInformers,
 		// operator
+		operatorClient,
 		operatorConfigClient.OperatorV1(),
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
 
@@ -212,6 +213,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 	consoleServiceController := service.NewServiceSyncController(
 		// clients
+		operatorClient,
 		operatorConfigClient.OperatorV1().Consoles(), // operator config so we can update status
 		kubeClient.CoreV1(),                          // only needs to interact with the service resource
 		// informers
@@ -230,6 +232,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// top level config
 		configClient.ConfigV1(),
 		// clients
+		operatorClient,
 		operatorConfigClient.OperatorV1().Consoles(),
 		routesClient.RouteV1(),
 		kubeClient.CoreV1(),

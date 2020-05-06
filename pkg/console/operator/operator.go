@@ -4,7 +4,6 @@ import (
 	// standard lib
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	// kube
@@ -23,11 +22,11 @@ import (
 	oauthinformersv1 "github.com/openshift/client-go/oauth/informers/externalversions/oauth/v1"
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
-
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/status"
+	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	"monis.app/go/openshift/operator"
 
@@ -43,7 +42,6 @@ import (
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 
 	// operator
-	statushelpers "github.com/openshift/console-operator/pkg/console/status"
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	"github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
@@ -56,6 +54,7 @@ const (
 
 type consoleOperator struct {
 	// configs
+	operatorClient             v1helpers.OperatorClient
 	operatorConfigClient       operatorclientv1.ConsoleInterface
 	consoleConfigClient        configclientv1.ConsoleInterface
 	infrastructureConfigClient configclientv1.InfrastructureInterface
@@ -81,6 +80,7 @@ func NewConsoleOperator(
 	configClient configclientv1.ConfigV1Interface,
 	configInformer configinformer.SharedInformerFactory,
 	// operator
+	operatorClient v1helpers.OperatorClient,
 	operatorConfigClient operatorclientv1.OperatorV1Interface,
 	operatorConfigInformer operatorinformerv1.ConsoleInformer,
 	// core resources
@@ -106,6 +106,7 @@ func NewConsoleOperator(
 ) operator.Runner {
 	c := &consoleOperator{
 		// configs
+		operatorClient:             operatorClient,
 		operatorConfigClient:       operatorConfigClient.Consoles(),
 		consoleConfigClient:        configClient.Consoles(),
 		infrastructureConfigClient: configClient.Infrastructures(),
@@ -216,31 +217,15 @@ func (c *consoleOperator) handleSync(configs configSet) error {
 		// handled below
 	case operatorsv1.Unmanaged:
 		klog.V(4).Infoln("console is in an unmanaged state.")
-		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
-			statushelpers.SyncStatus(c.ctx, c.operatorConfigClient, updatedStatus)
-		}
 		return nil
 	case operatorsv1.Removed:
 		klog.V(4).Infoln("console has been removed.")
-		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
-			statushelpers.SyncStatus(c.ctx, c.operatorConfigClient, updatedStatus)
-		}
 		return c.removeConsole()
 	default:
-		if !reflect.DeepEqual(updatedStatus, configs.Operator) {
-			statushelpers.SyncStatus(c.ctx, c.operatorConfigClient, updatedStatus)
-		}
 		return fmt.Errorf("console is in an unknown state: %v", updatedStatus.Spec.ManagementState)
 	}
 
-	err := c.sync_v400(updatedStatus, configs)
-
-	// finally write out the set of conditions currently set if anything has changed
-	// to avoid a hot loop
-	if !reflect.DeepEqual(updatedStatus, configs.Operator) {
-		statushelpers.SyncStatus(c.ctx, c.operatorConfigClient, updatedStatus)
-	}
-	return err
+	return c.sync_v400(updatedStatus, configs)
 }
 
 // this may need to move to sync_v400 if versions ever have custom delete logic

@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/console-operator/pkg/console/subresource/service"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
+	"github.com/openshift/library-go/pkg/operator/v1helpers"
 )
 
 const (
@@ -36,6 +37,7 @@ const (
 // the informers will automatically notify it of changes
 // and kick the sync loop
 type ServiceSyncController struct {
+	operatorClient       v1helpers.OperatorClient
 	operatorConfigClient operatorclientv1.ConsoleInterface
 	// live clients, we dont need listers w/caches
 	serviceClient coreclientv1.ServicesGetter
@@ -53,6 +55,8 @@ type ServiceSyncController struct {
 // factory func needs clients and informers
 // informers to start them up, clients to pass
 func NewServiceSyncController(
+	// clients
+	operatorClient v1helpers.OperatorClient,
 	operatorConfigClient operatorclientv1.ConsoleInterface,
 	corev1Client coreclientv1.CoreV1Interface,
 	// informers
@@ -70,6 +74,7 @@ func NewServiceSyncController(
 	corev1Client.Services(targetNamespace)
 
 	ctrl := &ServiceSyncController{
+		operatorClient:       operatorClient,
 		operatorConfigClient: operatorConfigClient,
 		serviceClient:        corev1Client,
 		// names
@@ -82,10 +87,12 @@ func NewServiceSyncController(
 		ctx:          ctx,
 	}
 
+	operatorClient.Informer().AddEventHandler(ctrl.newEventHandler())
 	operatorConfigInformer.Informer().AddEventHandler(ctrl.newEventHandler())
 	serviceInformer.Informer().AddEventHandler(ctrl.newEventHandler())
 
 	ctrl.cachesToSync = append(ctrl.cachesToSync,
+		operatorClient.Informer().HasSynced,
 		operatorConfigInformer.Informer().HasSynced,
 		serviceInformer.Informer().HasSynced,
 	)
@@ -101,8 +108,9 @@ func (c *ServiceSyncController) sync() error {
 	if err != nil {
 		return err
 	}
+	updatedOperatorConfig := operatorConfig.DeepCopy()
 
-	switch operatorConfig.Spec.ManagementState {
+	switch updatedOperatorConfig.Spec.ManagementState {
 	case operatorsv1.Managed:
 		klog.V(4).Infoln("console is in a managed state: syncing service")
 	case operatorsv1.Unmanaged:
@@ -115,27 +123,22 @@ func (c *ServiceSyncController) sync() error {
 		}
 		return c.removeService(c.serviceName)
 	default:
-		return fmt.Errorf("unknown state: %v", operatorConfig.Spec.ManagementState)
+		return fmt.Errorf("unknown state: %v", updatedOperatorConfig.Spec.ManagementState)
 	}
 
-	updatedOperatorConfig := operatorConfig.DeepCopy()
+	statusHandler := status.NewStatusHandler(c.operatorClient)
 
 	requiredSvc := service.DefaultService(updatedOperatorConfig)
 	_, _, svcErr := resourceapply.ApplyService(c.serviceClient, c.recorder, requiredSvc)
-	status.HandleProgressingOrDegraded(updatedOperatorConfig, "ServiceSync", "FailedApply", svcErr)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ServiceSync", "FailedApply", svcErr))
 	if svcErr != nil {
-		return svcErr
+		return statusHandler.FlushAndReturn(svcErr)
 	}
 
 	redirectSvcErrReason, redirectSvcErr := c.SyncRedirectService(updatedOperatorConfig)
-	status.HandleProgressingOrDegraded(updatedOperatorConfig, "RedirectServiceSync", redirectSvcErrReason, redirectSvcErr)
-	if redirectSvcErr != nil {
-		return redirectSvcErr
-	}
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("RedirectServiceSync", redirectSvcErrReason, redirectSvcErr))
 
-	status.SyncStatus(c.ctx, c.operatorConfigClient, updatedOperatorConfig)
-
-	return svcErr
+	return statusHandler.FlushAndReturn(redirectSvcErr)
 }
 
 func (c *ServiceSyncController) SyncRedirectService(operatorConfcig *operatorsv1.Console) (string, error) {

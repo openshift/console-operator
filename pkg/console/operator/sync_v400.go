@@ -42,6 +42,7 @@ import (
 // the loop.
 func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, set configSet) error {
 	klog.V(4).Infoln("running sync loop 4.0.0")
+	statusHandler := status.NewStatusHandler(co.operatorClient)
 
 	// track changes, may trigger ripples & update operator config or console config status
 	toUpdate := false
@@ -60,73 +61,77 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	//     at the same resource.
 	//     - RouteSyncController is responsible for updates
 	//     - ConsoleOperatorController (future ConsoleDeploymentController) is responsible for reads only.
-	status.HandleProgressingOrDegraded(updatedOperatorConfig, "SyncLoopRefresh", "InProgress", routeErr)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("SyncLoopRefresh", "InProgress", routeErr))
 	if routeErr != nil {
-		return routeErr
+		return statusHandler.FlushAndReturn(routeErr)
 	}
 
 	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(set.Operator, set.Console, set.Infrastructure, route)
 	toUpdate = toUpdate || cmChanged
-	status.HandleProgressingOrDegraded(updatedOperatorConfig, "ConfigMapSync", cmErrReason, cmErr)
-	if cmErr != nil {
-		return cmErr
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
+	if routeErr != nil {
+		return statusHandler.FlushAndReturn(routeErr)
 	}
 
 	serviceCAConfigMap, serviceCAChanged, serviceCAErrReason, serviceCAErr := co.SyncServiceCAConfigMap(set.Operator)
 	toUpdate = toUpdate || serviceCAChanged
-	status.HandleProgressingOrDegraded(updatedOperatorConfig, "ServiceCASync", serviceCAErrReason, serviceCAErr)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ServiceCASync", serviceCAErrReason, serviceCAErr))
 	if serviceCAErr != nil {
-		return serviceCAErr
+		return statusHandler.FlushAndReturn(serviceCAErr)
 	}
 
 	trustedCAConfigMap, trustedCAConfigMapChanged, trustedCAErrReason, trustedCAErr := co.SyncTrustedCAConfigMap(set.Operator)
 	toUpdate = toUpdate || trustedCAConfigMapChanged
-	status.HandleProgressingOrDegraded(updatedOperatorConfig, "TrustedCASync", trustedCAErrReason, trustedCAErr)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("TrustedCASync", trustedCAErrReason, trustedCAErr))
 	if trustedCAErr != nil {
-		return trustedCAErr
+		return statusHandler.FlushAndReturn(trustedCAErr)
 	}
 
 	// TODO: why is this missing a toUpdate change?
 	customLogoCanMount, customLogoErrReason, customLogoError := co.SyncCustomLogoConfigMap(updatedOperatorConfig)
 	// If the custom logo sync fails for any reason, we are degraded, not progressing.
 	// The sync loop may not settle, we are unable to honor it in current state.
-	status.HandleProgressingOrDegraded(updatedOperatorConfig, "CustomLogoSync", customLogoErrReason, customLogoError)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("CustomLogoSync", customLogoErrReason, customLogoError))
+	if customLogoError != nil {
+		return statusHandler.FlushAndReturn(customLogoError)
+	}
 
 	defaultIngressCertConfigMap, defaultIngressCertErrReason, defaultIngressCertErr := co.ValidateDefaultIngressCertConfigMap()
-	status.HandleProgressingOrDegraded(updatedOperatorConfig, "DefaultIngressCertValidation", defaultIngressCertErrReason, defaultIngressCertErr)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DefaultIngressCertValidation", defaultIngressCertErrReason, defaultIngressCertErr))
 	if defaultIngressCertErr != nil {
-		return defaultIngressCertErr
+		return statusHandler.FlushAndReturn(defaultIngressCertErr)
 	}
 
 	sec, secChanged, secErr := co.SyncSecret(set.Operator)
 	toUpdate = toUpdate || secChanged
-	status.HandleProgressingOrDegraded(updatedOperatorConfig, "OAuthClientSecretSync", "FailedApply", secErr)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "FailedApply", secErr))
 	if secErr != nil {
-		return secErr
+		return statusHandler.FlushAndReturn(secErr)
 	}
 
 	oauthClient, oauthChanged, oauthErrReason, oauthErr := co.SyncOAuthClient(set.Operator, sec, route)
 	toUpdate = toUpdate || oauthChanged
-	status.HandleProgressingOrDegraded(updatedOperatorConfig, "OAuthClientSync", oauthErrReason, oauthErr)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSync", oauthErrReason, oauthErr))
 	if oauthErr != nil {
-		return oauthErr
+		return statusHandler.FlushAndReturn(oauthErr)
 	}
 
 	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(set.Operator, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, set.Proxy, customLogoCanMount)
 	toUpdate = toUpdate || depChanged
-	status.HandleProgressingOrDegraded(updatedOperatorConfig, "DeploymentSync", depErrReason, depErr)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DeploymentSync", depErrReason, depErr))
 	if depErr != nil {
-		return depErr
+		return statusHandler.FlushAndReturn(depErr)
 	}
 
-	resourcemerge.SetDeploymentGeneration(&updatedOperatorConfig.Status.Generations, actualDeployment)
-	updatedOperatorConfig.Status.ObservedGeneration = set.Operator.ObjectMeta.Generation
+	statusHandler.UpdateDeploymentsLastGeneration(actualDeployment)
+	statusHandler.UpdateReadyReplicas(actualDeployment.Status.ReadyReplicas)
+	statusHandler.UpdateObservedGeneration(set.Operator.ObjectMeta.Generation)
 
 	klog.V(4).Infoln("-----------------------")
 	klog.V(4).Infof("sync loop 4.0.0 resources updated: %v", toUpdate)
 	klog.V(4).Infoln("-----------------------")
 
-	status.HandleProgressing(updatedOperatorConfig, "SyncLoopRefresh", "InProgress", func() error {
+	statusHandler.AddCondition(status.HandleProgressing("SyncLoopRefresh", "InProgress", func() error {
 		if toUpdate {
 			return errors.New("Changes made during sync updates, additional sync expected.")
 		}
@@ -138,18 +143,18 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 			co.versionGetter.SetVersion("operator", version)
 		}
 		return nil
-	}())
+	}()))
 
-	status.HandleAvailable(func() (conf *operatorv1.Console, prefix string, reason string, err error) {
+	statusHandler.AddCondition(status.HandleAvailable(func() (prefix string, reason string, err error) {
 		prefix = "Deployment"
 		if !deploymentsub.IsReady(actualDeployment) {
-			return updatedOperatorConfig, prefix, "InsufficientReplicas", errors.New(fmt.Sprintf("%v pods available for console deployment", actualDeployment.Status.ReadyReplicas))
+			return prefix, "InsufficientReplicas", errors.New(fmt.Sprintf("%v pods available for console deployment", actualDeployment.Status.ReadyReplicas))
 		}
 		if !deploymentsub.IsReadyAndUpdated(actualDeployment) {
-			return updatedOperatorConfig, prefix, "FailedUpdate", errors.New(fmt.Sprintf("%v replicas ready at version %s", actualDeployment.Status.ReadyReplicas, os.Getenv("RELEASE_VERSION")))
+			return prefix, "FailedUpdate", errors.New(fmt.Sprintf("%v replicas ready at version %s", actualDeployment.Status.ReadyReplicas, os.Getenv("RELEASE_VERSION")))
 		}
-		return updatedOperatorConfig, prefix, "", nil
-	}())
+		return prefix, "", nil
+	}()))
 
 	// if we survive the gauntlet, we need to update the console config with the
 	// public hostname so that the world can know the console is ready to roll
@@ -159,17 +164,17 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	if consoleURL == "" {
 		err := customerrors.NewSyncError("waiting on route host")
 		klog.Errorf("%q: %v", "route", err)
-		return err
+		return statusHandler.FlushAndReturn(err)
 	}
 
 	if _, err := co.SyncConsoleConfig(set.Console, consoleURL); err != nil {
 		klog.Errorf("could not update console config status: %v", err)
-		return err
+		return statusHandler.FlushAndReturn(err)
 	}
 
 	if _, _, err := co.SyncConsolePublicConfig(consoleURL); err != nil {
 		klog.Errorf("could not update public console config status: %v", err)
-		return err
+		return statusHandler.FlushAndReturn(err)
 	}
 
 	defer func() {
@@ -192,7 +197,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		}
 	}()
 
-	return nil
+	return statusHandler.FlushAndReturn(nil)
 }
 
 func (co *consoleOperator) SyncConsoleConfig(consoleConfig *configv1.Console, consoleURL string) (*configv1.Console, error) {
@@ -221,8 +226,8 @@ func (co *consoleOperator) SyncDeployment(
 	proxyConfig *configv1.Proxy,
 	canMountCustomLogo bool) (consoleDeployment *appsv1.Deployment, changed bool, reason string, err error) {
 
+	updatedOperatorConfig := operatorConfig.DeepCopy()
 	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, proxyConfig, canMountCustomLogo)
-	expectedGeneration := getDeploymentGeneration(co)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
 	if genChanged {
@@ -234,7 +239,7 @@ func (co *consoleOperator) SyncDeployment(
 		co.deploymentClient,
 		co.recorder,
 		requiredDeployment,
-		expectedGeneration,
+		resourcemerge.ExpectedDeploymentGeneration(requiredDeployment, updatedOperatorConfig.Status.Generations),
 	)
 
 	if applyDepErr != nil {

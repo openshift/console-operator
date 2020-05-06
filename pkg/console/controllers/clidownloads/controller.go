@@ -49,6 +49,7 @@ const (
 
 type CLIDownloadsSyncController struct {
 	// clients
+	operatorClient            v1helpers.OperatorClient
 	consoleCliDownloadsClient consoleclientv1.ConsoleCLIDownloadInterface
 	routeClient               routeclientv1.RoutesGetter
 	operatorConfigClient      operatorclientv1.ConsoleInterface
@@ -78,6 +79,7 @@ func NewCLIDownloadsSyncController(
 
 	ctrl := &CLIDownloadsSyncController{
 		// clients
+		operatorClient:            operatorClient,
 		consoleCliDownloadsClient: cliDownloadsInterface,
 		routeClient:               routeClient,
 		operatorConfigClient:      operatorConfigClient.Consoles(),
@@ -127,23 +129,23 @@ func (c *CLIDownloadsSyncController) sync() error {
 		return err
 	}
 
+	statusHandler := status.NewStatusHandler(c.operatorClient)
+
 	host := routesub.GetCanonicalHost(consoleRoute)
 	ocConsoleCLIDownloads := PlatformBasedOCConsoleCLIDownloads(host, api.OCCLIDownloadsCustomResourceName)
 	_, ocCLIDownloadsErrReason, ocCLIDownloadsErr := ApplyCLIDownloads(c.consoleCliDownloadsClient, ocConsoleCLIDownloads, c.ctx)
-	status.HandleDegraded(updatedOperatorConfig, "OCDownloadsSync", ocCLIDownloadsErrReason, ocCLIDownloadsErr)
+	statusHandler.AddCondition(status.HandleDegraded("OCDownloadsSync", ocCLIDownloadsErrReason, ocCLIDownloadsErr))
 	if ocCLIDownloadsErr != nil {
-		return ocCLIDownloadsErr
+		return statusHandler.FlushAndReturn(ocCLIDownloadsErr)
 	}
 
 	_, odoCLIDownloadsErrReason, odoCLIDownloadsErr := ApplyCLIDownloads(c.consoleCliDownloadsClient, ODOConsoleCLIDownloads(), c.ctx)
-	status.HandleDegraded(updatedOperatorConfig, "ODODownloadsSync", odoCLIDownloadsErrReason, odoCLIDownloadsErr)
+	statusHandler.AddCondition(status.HandleDegraded("ODODownloadsSync", odoCLIDownloadsErrReason, odoCLIDownloadsErr))
 	if odoCLIDownloadsErr != nil {
-		return odoCLIDownloadsErr
+		return statusHandler.FlushAndReturn(odoCLIDownloadsErr)
 	}
 
-	status.SyncStatus(c.ctx, c.operatorConfigClient, updatedOperatorConfig)
-
-	return nil
+	return statusHandler.FlushAndReturn(nil)
 }
 
 func (c *CLIDownloadsSyncController) removeCLIDownloads() error {
