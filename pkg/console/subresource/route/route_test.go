@@ -15,6 +15,11 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 )
 
+const (
+	tlsKey         = "key"
+	tlsCertificate = "certificate"
+)
+
 func TestDefaultRoute(t *testing.T) {
 	var (
 		weight int32 = 100
@@ -52,10 +57,50 @@ func TestDefaultRoute(t *testing.T) {
 						Weight: &weight,
 					},
 					Port: &routev1.RoutePort{
-						TargetPort: intstr.FromString("https"),
+						TargetPort: intstr.FromString(api.ConsoleContainerPortName),
 					},
 					TLS: &routev1.TLSConfig{
 						Termination:                   routev1.TLSTerminationReencrypt,
+						InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+					},
+					WildcardPolicy: routev1.WildcardPolicyNone,
+				},
+				Status: routev1.RouteStatus{},
+			},
+		},
+		{
+			name: "Test default route with custom route set",
+			args: args{
+				cr: &operatorv1.Console{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: operatorv1.ConsoleSpec{
+						Route: operatorv1.ConsoleConfigRoute{
+							Hostname: "custom-hostname",
+						},
+					},
+					Status: operatorv1.ConsoleStatus{},
+				},
+			},
+			want: &routev1.Route{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Spec: routev1.RouteSpec{
+					To: routev1.RouteTargetReference{
+						Kind:   "Service",
+						Name:   api.OpenshiftConsoleRedirectServiceName,
+						Weight: &weight,
+					},
+					Port: &routev1.RoutePort{
+						TargetPort: intstr.FromString(api.RedirectContainerPortName),
+					},
+					TLS: &routev1.TLSConfig{
+						Termination:                   routev1.TLSTerminationEdge,
 						InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 					},
 					WildcardPolicy: routev1.WildcardPolicyNone,
@@ -67,6 +112,108 @@ func TestDefaultRoute(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if diff := deep.Equal(DefaultRoute(tt.args.cr), tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestCustomRoute(t *testing.T) {
+	var (
+		weight int32 = 100
+	)
+	type args struct {
+		cr        *operatorv1.Console
+		tlsConfig *CustomTLSCert
+	}
+	tests := []struct {
+		name string
+		args args
+		want *routev1.Route
+	}{
+		{
+			name: "Test custom hostname route without custom TLS",
+			args: args{
+				cr: &operatorv1.Console{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec:       operatorv1.ConsoleSpec{},
+					Status:     operatorv1.ConsoleStatus{},
+				},
+				tlsConfig: nil,
+			},
+			want: &routev1.Route{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenshiftConsoleCustomRouteName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Spec: routev1.RouteSpec{
+					To: routev1.RouteTargetReference{
+						Kind:   "Service",
+						Name:   api.OpenShiftConsoleName,
+						Weight: &weight,
+					},
+					Port: &routev1.RoutePort{
+						TargetPort: intstr.FromString(api.ConsoleContainerPortName),
+					},
+					TLS: &routev1.TLSConfig{
+						Termination:                   routev1.TLSTerminationReencrypt,
+						InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+					},
+					WildcardPolicy: routev1.WildcardPolicyNone,
+				},
+				Status: routev1.RouteStatus{},
+			},
+		},
+		{
+			name: "Test custom hostname route without custom TLS",
+			args: args{
+				cr: &operatorv1.Console{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec:       operatorv1.ConsoleSpec{},
+					Status:     operatorv1.ConsoleStatus{},
+				},
+				tlsConfig: &CustomTLSCert{
+					Key:         tlsKey,
+					Certificate: tlsCertificate,
+				},
+			},
+			want: &routev1.Route{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenshiftConsoleCustomRouteName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Spec: routev1.RouteSpec{
+					To: routev1.RouteTargetReference{
+						Kind:   "Service",
+						Name:   api.OpenShiftConsoleName,
+						Weight: &weight,
+					},
+					Port: &routev1.RoutePort{
+						TargetPort: intstr.FromString(api.ConsoleContainerPortName),
+					},
+					TLS: &routev1.TLSConfig{
+						Termination:                   routev1.TLSTerminationReencrypt,
+						InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+						Key:                           tlsKey,
+						Certificate:                   tlsCertificate,
+					},
+					WildcardPolicy: routev1.WildcardPolicyNone,
+				},
+				Status: routev1.RouteStatus{},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if diff := deep.Equal(CustomRoute(tt.args.cr, tt.args.tlsConfig), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})

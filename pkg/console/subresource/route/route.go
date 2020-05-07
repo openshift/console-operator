@@ -76,12 +76,24 @@ func GetOrCreate(ctx context.Context, client routeclient.RoutesGetter, required 
 	return route, isNew, nil
 }
 
+// Default `console` route points by default to the `console` service.
+// If custom hostname for the console is set, then the default route
+// should point to the redirect `console-redirect` service and the
+// created custom route should be pointing to the `console` service.
 func DefaultRoute(cr *operatorv1.Console) *routev1.Route {
 	route := DefaultStub()
+	usePort := api.ConsoleContainerPortName
+	tlsTermination := routev1.TLSTerminationReencrypt
+	serviceName := api.OpenShiftConsoleServiceName
+	if IsCustomRouteSet(cr) {
+		usePort = api.RedirectContainerPortName
+		tlsTermination = routev1.TLSTerminationEdge
+		serviceName = api.OpenshiftConsoleRedirectServiceName
+	}
 	route.Spec = routev1.RouteSpec{
-		To:             toService(),
-		Port:           port(),
-		TLS:            tls(nil),
+		To:             toService(serviceName),
+		Port:           port(usePort),
+		TLS:            tls(nil, tlsTermination),
 		WildcardPolicy: wildcard(),
 	}
 	util.AddOwnerRef(route, util.OwnerRefFrom(cr))
@@ -100,38 +112,33 @@ func CustomRoute(cr *operatorv1.Console, tlsConfig *CustomTLSCert) *routev1.Rout
 	route.ObjectMeta.Name = api.OpenshiftConsoleCustomRouteName
 	route.Spec = routev1.RouteSpec{
 		Host:           cr.Spec.Route.Hostname,
-		To:             toService(),
-		Port:           port(),
-		TLS:            tls(tlsConfig),
+		To:             toService(api.OpenShiftConsoleServiceName),
+		Port:           port(api.ConsoleContainerPortName),
+		TLS:            tls(tlsConfig, routev1.TLSTerminationReencrypt),
 		WildcardPolicy: wildcard(),
 	}
 	util.AddOwnerRef(route, util.OwnerRefFrom(cr))
 	return route
 }
 
-func routeMeta() metav1.ObjectMeta {
-	meta := util.SharedMeta()
-	return meta
-}
-
-func toService() routev1.RouteTargetReference {
+func toService(serviceName string) routev1.RouteTargetReference {
 	weight := int32(100)
 	return routev1.RouteTargetReference{
 		Kind:   "Service",
-		Name:   routeMeta().Name,
+		Name:   serviceName,
 		Weight: &weight,
 	}
 }
 
-func port() *routev1.RoutePort {
+func port(port string) *routev1.RoutePort {
 	return &routev1.RoutePort{
-		TargetPort: intstr.FromString("https"),
+		TargetPort: intstr.FromString(port),
 	}
 }
 
-func tls(tlsConfig *CustomTLSCert) *routev1.TLSConfig {
+func tls(tlsConfig *CustomTLSCert, terminationType routev1.TLSTerminationType) *routev1.TLSConfig {
 	tls := &routev1.TLSConfig{
-		Termination:                   routev1.TLSTerminationReencrypt,
+		Termination:                   terminationType,
 		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 	}
 	if tlsConfig != nil {
@@ -186,10 +193,16 @@ func isIngressAdmitted(ingress routev1.RouteIngress) bool {
 }
 
 func IsCustomRouteSet(operatorConfig *operatorv1.Console) bool {
+	if operatorConfig == nil {
+		return false
+	}
 	return len(operatorConfig.Spec.Route.Hostname) != 0
 }
 
 // Check if reference for secret holding custom TLS certificate and key is set
 func IsCustomRouteSecretSet(operatorConfig *operatorv1.Console) bool {
+	if operatorConfig == nil {
+		return false
+	}
 	return len(operatorConfig.Spec.Route.Secret.Name) != 0
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -19,6 +20,7 @@ import (
 	operatorinformersv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/status"
+	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	"github.com/openshift/console-operator/pkg/console/subresource/service"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
@@ -108,23 +110,55 @@ func (c *ServiceSyncController) sync() error {
 		return nil
 	case operatorsv1.Removed:
 		klog.V(4).Infoln("console is in a removed state: deleting service")
-		return c.removeService()
+		if err = c.removeService(api.OpenshiftConsoleRedirectServiceName); err != nil {
+			return err
+		}
+		return c.removeService(c.serviceName)
 	default:
 		return fmt.Errorf("unknown state: %v", operatorConfig.Spec.ManagementState)
 	}
 
 	updatedOperatorConfig := operatorConfig.DeepCopy()
-	_, _, svcErr := resourceapply.ApplyService(c.serviceClient, c.recorder, service.DefaultService(nil))
+
+	requiredSvc := service.DefaultService(updatedOperatorConfig)
+	_, _, svcErr := resourceapply.ApplyService(c.serviceClient, c.recorder, requiredSvc)
 	status.HandleProgressingOrDegraded(updatedOperatorConfig, "ServiceSync", "FailedApply", svcErr)
+	if svcErr != nil {
+		return svcErr
+	}
+
+	redirectSvcErrReason, redirectSvcErr := c.SyncRedirectService(updatedOperatorConfig)
+	status.HandleProgressingOrDegraded(updatedOperatorConfig, "RedirectServiceSync", redirectSvcErrReason, redirectSvcErr)
+	if redirectSvcErr != nil {
+		return redirectSvcErr
+	}
+
 	status.SyncStatus(c.ctx, c.operatorConfigClient, updatedOperatorConfig)
 
 	return svcErr
 }
 
-func (c *ServiceSyncController) removeService() error {
-	klog.V(2).Info("deleting console service")
-	defer klog.V(2).Info("finished deleting console service")
-	return c.serviceClient.Services(c.targetNamespace).Delete(c.ctx, service.Stub().Name, metav1.DeleteOptions{})
+func (c *ServiceSyncController) SyncRedirectService(operatorConfcig *operatorsv1.Console) (string, error) {
+	if !routesub.IsCustomRouteSet(operatorConfcig) {
+		if err := c.removeService(api.OpenshiftConsoleRedirectServiceName); err != nil {
+			return "FailedDelete", err
+		}
+		return "", nil
+	}
+	requiredRedirectService := service.RedirectService(operatorConfcig)
+	_, _, redirectSvcErr := resourceapply.ApplyService(c.serviceClient, c.recorder, requiredRedirectService)
+	if redirectSvcErr != nil {
+		return "FailedApply", redirectSvcErr
+	}
+	return "", redirectSvcErr
+}
+
+func (c *ServiceSyncController) removeService(serviceName string) error {
+	err := c.serviceClient.Services(c.targetNamespace).Delete(c.ctx, serviceName, metav1.DeleteOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	return err
 }
 
 // boilerplate, since this controller is not making use of monis.app/go boilerplate

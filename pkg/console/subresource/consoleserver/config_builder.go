@@ -31,16 +31,17 @@ const (
 // set only some values:
 //   b.Host().Brand("").Config()
 type ConsoleServerCLIConfigBuilder struct {
-	host              string
-	logoutRedirectURL string
-	brand             operatorv1.Brand
-	docURL            string
-	apiServerURL      string
-	statusPageID      string
-	customProductName string
-	customLogoFile    string
-	CAFile            string
-	monitoring        map[string]string
+	host                       string
+	logoutRedirectURL          string
+	brand                      operatorv1.Brand
+	docURL                     string
+	apiServerURL               string
+	statusPageID               string
+	customProductName          string
+	customLogoFile             string
+	CAFile                     string
+	monitoring                 map[string]string
+	customHostnameRedirectPort int
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -73,7 +74,15 @@ func (b *ConsoleServerCLIConfigBuilder) CustomLogoFile(customLogoFile string) *C
 	}
 	return b
 }
-
+func (b *ConsoleServerCLIConfigBuilder) CustomHostnameRedirectPort(redirect bool) *ConsoleServerCLIConfigBuilder {
+	// If custom hostname is set on the console operator config,
+	// set the port under which the console backend will listen
+	// for redirect.
+	if redirect {
+		b.customHostnameRedirectPort = api.RedirectContainerTargetPort
+	}
+	return b
+}
 func (b *ConsoleServerCLIConfigBuilder) StatusPageID(id string) *ConsoleServerCLIConfigBuilder {
 	b.statusPageID = id
 	return b
@@ -119,11 +128,17 @@ func (b *ConsoleServerCLIConfigBuilder) ConfigYAML() (consoleConfigYAML []byte, 
 }
 
 func (b *ConsoleServerCLIConfigBuilder) servingInfo() ServingInfo {
-	return ServingInfo{
+	conf := ServingInfo{
 		BindAddress: "https://[::]:8443",
 		CertFile:    certFilePath,
 		KeyFile:     keyFilePath,
 	}
+
+	if b.customHostnameRedirectPort != 0 {
+		conf.RedirectPort = b.customHostnameRedirectPort
+	}
+
+	return conf
 }
 
 func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {

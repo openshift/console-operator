@@ -1,6 +1,7 @@
 package consoleserver
 
 import (
+	"strconv"
 	"testing"
 
 	v1 "github.com/openshift/api/operator/v1"
@@ -335,6 +336,7 @@ providers:
 					Brand(v1.BrandOKD).
 					DocURL("https://foobar.com/docs").
 					APIServerURL("https://foobar.com/api").
+					CustomHostnameRedirectPort(true).
 					StatusPageID("status-12345").
 					Monitoring(&corev1.ConfigMap{
 						Data: map[string]string{
@@ -353,6 +355,7 @@ servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
+  redirectPort: ` + strconv.Itoa(api.RedirectContainerPort) + `
 clusterInfo:
   masterPublicURL: https://foobar.com/api
 auth:

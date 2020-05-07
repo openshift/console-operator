@@ -12,6 +12,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
+	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
@@ -64,6 +65,7 @@ func DefaultConfigMap(
 		Monitoring(monitoringSharedConfig).
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
 		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).
+		CustomHostnameRedirectPort(routesub.IsCustomRouteSet(operatorConfig)).
 		StatusPageID(statusPageId(operatorConfig)).
 		ConfigYAML()
 

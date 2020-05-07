@@ -21,10 +21,6 @@ import (
 )
 
 const (
-	containerPortName      = "https"
-	containerPort          = 8443
-	publicURLName          = "BRIDGE_DEVELOPER_CONSOLE_URL"
-	ConsoleServingCertName = "console-serving-cert"
 	ConsoleOauthConfigName = "console-oauth-config"
 	ConsoleReplicas        = 2
 )
@@ -284,16 +280,11 @@ func consoleContainer(cr *operatorv1.Console, volConfigList []volumeConfig, prox
 		ImagePullPolicy: corev1.PullPolicy("IfNotPresent"),
 		Name:            api.OpenShiftConsoleName,
 		Command:         flags,
-		// TODO: can probably remove, this is used for local dev
-		//Env: []corev1.EnvVar{{
-		//	Name:  publicURLName,
-		//	Value: consoleURL(),
-		//}},
-		Env: setEnvironmentVariables(proxyConfig),
+		Env:             setEnvironmentVariables(proxyConfig),
 		Ports: []corev1.ContainerPort{{
-			Name:          containerPortName,
+			Name:          api.ConsoleContainerPortName,
 			Protocol:      corev1.ProtocolTCP,
-			ContainerPort: containerPort,
+			ContainerPort: api.ConsoleContainerTargetPort,
 		}},
 		// Delay shutdown for 25 seconds, which is the estimated time for:
 		// * endpoint propagation on delete to the router: 5s
@@ -350,7 +341,7 @@ func defaultProbe() *corev1.Probe {
 		Handler: corev1.Handler{
 			HTTPGet: &corev1.HTTPGetAction{
 				Path:   "/health",
-				Port:   intstr.FromInt(8443),
+				Port:   intstr.FromInt(api.ConsoleContainerTargetPort),
 				Scheme: corev1.URIScheme("HTTPS"),
 			},
 		},
@@ -409,7 +400,7 @@ func IsAvailableAndUpdated(deployment *appsv1.Deployment) bool {
 func defaultVolumeConfig() []volumeConfig {
 	return []volumeConfig{
 		{
-			name:     ConsoleServingCertName,
+			name:     api.ConsoleServingCertName,
 			readOnly: true,
 			path:     "/var/serving-cert",
 			isSecret: true,

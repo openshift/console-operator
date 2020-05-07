@@ -139,8 +139,13 @@ func (c *RouteSyncController) sync() error {
 
 	customRouteErrReason, customRouteErr := c.SyncCustomRoute(updatedOperatorConfig)
 	status.HandleProgressingOrDegraded(updatedOperatorConfig, "CustomRouteSync", customRouteErrReason, customRouteErr)
+	if customRouteErr != nil {
+		return customRouteErr
+	}
 
-	return err
+	status.SyncStatus(c.ctx, c.operatorConfigClient, updatedOperatorConfig)
+
+	return nil
 }
 
 func (c *RouteSyncController) removeRoute(routeName string) error {
