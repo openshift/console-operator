@@ -235,8 +235,6 @@ func (co *consoleOperator) SyncDeployment(
 		co.recorder,
 		requiredDeployment,
 		expectedGeneration,
-		// redeploy on operatorConfig.spec changes
-		genChanged,
 	)
 
 	if applyDepErr != nil {
