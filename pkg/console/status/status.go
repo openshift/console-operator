@@ -2,16 +2,15 @@ package status
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"strings"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/klog"
 
 	operatorsv1 "github.com/openshift/api/operator/v1"
-	v1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	"github.com/openshift/console-operator/pkg/console/errors"
+	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 )
 
@@ -37,19 +36,22 @@ import (
 //     Reason: Failedhost
 //     Message: error string value is used as message
 // all degraded suffix conditions will be aggregated into a final "Degraded" status that will be set on the console ClusterOperator
-func HandleDegraded(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
+func HandleDegraded(typePrefix string, reason string, err error) v1helpers.UpdateStatusFunc {
 	conditionType := typePrefix + operatorsv1.OperatorStatusTypeDegraded
-	handleCondition(operatorConfig, conditionType, reason, err)
+	condition := handleCondition(conditionType, reason, err)
+	return v1helpers.UpdateConditionFn(condition)
 }
 
-func HandleProgressing(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
+func HandleProgressing(typePrefix string, reason string, err error) v1helpers.UpdateStatusFunc {
 	conditionType := typePrefix + operatorsv1.OperatorStatusTypeProgressing
-	handleCondition(operatorConfig, conditionType, reason, err)
+	condition := handleCondition(conditionType, reason, err)
+	return v1helpers.UpdateConditionFn(condition)
 }
 
-func HandleAvailable(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
+func HandleAvailable(typePrefix string, reason string, err error) v1helpers.UpdateStatusFunc {
 	conditionType := typePrefix + operatorsv1.OperatorStatusTypeAvailable
-	handleCondition(operatorConfig, conditionType, reason, err)
+	condition := handleCondition(conditionType, reason, err)
+	return v1helpers.UpdateConditionFn(condition)
 }
 
 // HandleProgressingOrDegraded exists until we remove type SyncError
@@ -59,33 +61,32 @@ func HandleAvailable(operatorConfig *operatorsv1.Console, typePrefix string, rea
 // - Type suffix will be set to Degraded
 // TODO: when we eliminate the special case SyncError, this helper can go away.
 // When we do that, however, we must make sure to register deprecated conditions with NewRemoveStaleConditions()
-func HandleProgressingOrDegraded(operatorConfig *operatorsv1.Console, typePrefix string, reason string, err error) {
+func HandleProgressingOrDegraded(typePrefix string, reason string, err error) []v1helpers.UpdateStatusFunc {
+	updateStatusFuncs := []v1helpers.UpdateStatusFunc{}
 	if errors.IsSyncError(err) {
-		HandleDegraded(operatorConfig, typePrefix, reason, nil)
-		HandleProgressing(operatorConfig, typePrefix, reason, err)
+		updateStatusFuncs = append(updateStatusFuncs, HandleDegraded(typePrefix, reason, nil))
+		updateStatusFuncs = append(updateStatusFuncs, HandleProgressing(typePrefix, reason, err))
 	} else {
-		HandleDegraded(operatorConfig, typePrefix, reason, err)
-		HandleProgressing(operatorConfig, typePrefix, reason, nil)
+		updateStatusFuncs = append(updateStatusFuncs, HandleDegraded(typePrefix, reason, err))
+		updateStatusFuncs = append(updateStatusFuncs, HandleProgressing(typePrefix, reason, nil))
 	}
+	return updateStatusFuncs
 }
 
-func handleCondition(operatorConfig *operatorsv1.Console, conditionTypeWithSuffix string, reason string, err error) {
+func handleCondition(conditionTypeWithSuffix string, reason string, err error) operatorsv1.OperatorCondition {
 	if err != nil {
 		klog.Errorln(conditionTypeWithSuffix, reason, err.Error())
-		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions,
-			operatorsv1.OperatorCondition{
-				Type:    conditionTypeWithSuffix,
-				Status:  setConditionValue(conditionTypeWithSuffix, err),
-				Reason:  reason,
-				Message: err.Error(),
-			})
-		return
+		return operatorsv1.OperatorCondition{
+			Type:    conditionTypeWithSuffix,
+			Status:  setConditionValue(conditionTypeWithSuffix, err),
+			Reason:  reason,
+			Message: err.Error(),
+		}
 	}
-	v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions,
-		operatorsv1.OperatorCondition{
-			Type:   conditionTypeWithSuffix,
-			Status: setConditionValue(conditionTypeWithSuffix, err),
-		})
+	return operatorsv1.OperatorCondition{
+		Type:   conditionTypeWithSuffix,
+		Status: setConditionValue(conditionTypeWithSuffix, err),
+	}
 }
 
 // Available is an inversion of the other conditions
@@ -102,26 +103,56 @@ func setConditionValue(conditionType string, err error) operatorsv1.ConditionSta
 	return operatorsv1.ConditionFalse
 }
 
-func IsDegraded(operatorConfig *operatorsv1.Authentication) bool {
-	for _, condition := range operatorConfig.Status.Conditions {
-		if strings.HasSuffix(condition.Type, operatorsv1.OperatorStatusTypeDegraded) &&
-			condition.Status == operatorsv1.ConditionTrue {
-			return true
-		}
-	}
-	return false
+type StatusHandler struct {
+	client      v1helpers.OperatorClient
+	statusFuncs []v1helpers.UpdateStatusFunc
 }
 
-// Lets transition to using this, and get the repetition out of all of the above.
-func SyncStatus(ctx context.Context, operatorConfigClient v1.ConsoleInterface, operatorConfig *operatorsv1.Console) (*operatorsv1.Console, error) {
-	logConditions(operatorConfig.Status.Conditions)
-	updatedConfig, err := operatorConfigClient.UpdateStatus(ctx, operatorConfig, metav1.UpdateOptions{})
-	if err != nil {
-		errMsg := fmt.Errorf("status update error: %v", err)
-		klog.Error(errMsg)
-		return nil, errMsg
+func (c *StatusHandler) AddCondition(newStatusFunc v1helpers.UpdateStatusFunc) {
+	c.statusFuncs = append(c.statusFuncs, newStatusFunc)
+}
+
+func (c *StatusHandler) AddConditions(newStatusFuncs []v1helpers.UpdateStatusFunc) {
+	for _, newStatusFunc := range newStatusFuncs {
+		c.statusFuncs = append(c.statusFuncs, newStatusFunc)
 	}
-	return updatedConfig, nil
+}
+
+func (c *StatusHandler) FlushAndReturn(returnErr error) error {
+	if _, _, updateErr := v1helpers.UpdateStatus(c.client, c.statusFuncs...); updateErr != nil {
+		return updateErr
+	}
+	return returnErr
+}
+
+func (c *StatusHandler) UpdateObservedGeneration(newObservedGeneration int64) {
+	generationFunc := func(oldStatus *operatorsv1.OperatorStatus) error {
+		oldStatus.ObservedGeneration = newObservedGeneration
+		return nil
+	}
+	c.statusFuncs = append(c.statusFuncs, generationFunc)
+}
+
+func (c *StatusHandler) UpdateReadyReplicas(newReadyReplicas int32) {
+	generationFunc := func(oldStatus *operatorsv1.OperatorStatus) error {
+		oldStatus.ReadyReplicas = newReadyReplicas
+		return nil
+	}
+	c.statusFuncs = append(c.statusFuncs, generationFunc)
+}
+
+func (c *StatusHandler) UpdateDeploymentsLastGeneration(actualDeployment *appsv1.Deployment) {
+	generationFunc := func(oldStatus *operatorsv1.OperatorStatus) error {
+		resourcemerge.SetDeploymentGeneration(&oldStatus.Generations, actualDeployment)
+		return nil
+	}
+	c.statusFuncs = append(c.statusFuncs, generationFunc)
+}
+
+func NewStatusHandler(client v1helpers.OperatorClient) StatusHandler {
+	return StatusHandler{
+		client: client,
+	}
 }
 
 // Outputs the condition as a log message based on the detail of the condition in the form of:
