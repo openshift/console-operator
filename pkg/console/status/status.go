@@ -141,7 +141,7 @@ func (c *StatusHandler) UpdateReadyReplicas(newReadyReplicas int32) {
 	c.statusFuncs = append(c.statusFuncs, generationFunc)
 }
 
-func (c *StatusHandler) UpdateDeploymentsLastGeneration(actualDeployment *appsv1.Deployment) {
+func (c *StatusHandler) UpdateDeploymentGeneration(actualDeployment *appsv1.Deployment) {
 	generationFunc := func(oldStatus *operatorsv1.OperatorStatus) error {
 		resourcemerge.SetDeploymentGeneration(&oldStatus.Generations, actualDeployment)
 		return nil
