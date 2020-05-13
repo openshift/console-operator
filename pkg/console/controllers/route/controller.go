@@ -137,16 +137,19 @@ func (c *RouteSyncController) sync() error {
 
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
-	defaultRoute, defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(updatedOperatorConfig)
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DefaultRouteSync", defaultRouteErrReason, defaultRouteErr))
-	if defaultRouteErr != nil {
-		return statusHandler.FlushAndReturn(defaultRouteErr)
-	}
-
+	// try to sync the custom route first. If the sync fails for any reason, error
+	// out the sync loop and inform about this fact instead of putting default
+	// route into inaccessible state.
 	customRoute, customRouteErrReason, customRouteErr := c.SyncCustomRoute(updatedOperatorConfig)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("CustomRouteSync", customRouteErrReason, customRouteErr))
 	if customRouteErr != nil {
 		return statusHandler.FlushAndReturn(customRouteErr)
+	}
+
+	defaultRoute, defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(updatedOperatorConfig)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DefaultRouteSync", defaultRouteErrReason, defaultRouteErr))
+	if defaultRouteErr != nil {
+		return statusHandler.FlushAndReturn(defaultRouteErr)
 	}
 
 	activeRoute := defaultRoute
@@ -228,6 +231,13 @@ func (c *RouteSyncController) ValidateCustomRouteConfig(operatorConfig *operator
 	if err != nil {
 		return nil, err
 	}
+
+	// Check if the custom route hostname is not same as the default one
+	defaultRouteHostname := GetDefaultRouteHost(ingress.Spec.Domain)
+	if operatorConfig.Spec.Route.Hostname == defaultRouteHostname {
+		return nil, fmt.Errorf("custom route hostname is duplicate of the default route hostname")
+	}
+
 	// Check if the custom hostname has cluster domain suffix, which indicates
 	// if a secret that contains TLS certificate and key needs to exist in the
 	// `openshift-config` namespace and referenced in  the operator config.
@@ -284,6 +294,10 @@ func ValidateCustomCertSecret(customCertSecret *corev1.Secret) (*routesub.Custom
 	customTLS.Key = string(key)
 
 	return customTLS, nil
+}
+
+func GetDefaultRouteHost(ingressDomain string) string {
+	return fmt.Sprintf("%s-%s.%s", api.OpenShiftConsoleRouteName, api.OpenShiftConsoleNamespace, ingressDomain)
 }
 
 func certificateVerifier(customCert []byte) error {

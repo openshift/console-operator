@@ -59,23 +59,6 @@ func ApplyRoute(client routeclient.RoutesGetter, recorder events.Recorder, requi
 	return actual, true, err
 }
 
-// ensures route exists.
-// handles 404 with a create
-// returns any other error
-func GetOrCreate(ctx context.Context, client routeclient.RoutesGetter, required *routev1.Route) (*routev1.Route, bool, error) {
-	isNew := false
-	route, err := client.Routes(required.Namespace).Get(ctx, required.Name, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		isNew = true
-		route, err = client.Routes(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
-	}
-
-	if err != nil {
-		return nil, isNew, err
-	}
-	return route, isNew, nil
-}
-
 // Default `console` route points by default to the `console` service.
 // If custom hostname for the console is set, then the default route
 // should point to the redirect `console-redirect` service and the
