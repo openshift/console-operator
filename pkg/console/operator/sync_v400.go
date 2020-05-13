@@ -123,7 +123,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		return statusHandler.FlushAndReturn(depErr)
 	}
 
-	statusHandler.UpdateDeploymentsLastGeneration(actualDeployment)
+	statusHandler.UpdateDeploymentGeneration(actualDeployment)
 	statusHandler.UpdateReadyReplicas(actualDeployment.Status.ReadyReplicas)
 	statusHandler.UpdateObservedGeneration(set.Operator.ObjectMeta.Generation)
 
@@ -467,14 +467,6 @@ func (co *consoleOperator) ValidateCustomLogo(operatorConfig *operatorv1.Console
 
 	klog.V(4).Infoln("custom logo ok to mount")
 	return true, "", nil
-}
-
-func getDeploymentGeneration(co *consoleOperator) int64 {
-	deployment, err := co.deploymentClient.Deployments(api.TargetNamespace).Get(co.ctx, deploymentsub.Stub().Name, metav1.GetOptions{})
-	if err != nil {
-		return -1
-	}
-	return deployment.Generation
 }
 
 func getConsoleURL(route *routev1.Route) string {
