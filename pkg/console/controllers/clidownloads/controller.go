@@ -204,7 +204,7 @@ func ODOConsoleCLIDownloads() *v1.ConsoleCLIDownload {
 			Name: api.ODOCLIDownloadsCustomResourceName,
 		},
 		Spec: v1.ConsoleCLIDownloadSpec{
-			Description: `OpenShift Do (odo) is a fast, iterative, and straightforward CLI tool for developers who write, build, and deploy applications on OpenShift.
+			Description: `odo is a fast, iterative, and straightforward CLI tool for developers who write, build, and deploy applications on OpenShift.
 
 odo abstracts away complex Kubernetes and OpenShift concepts, thus allowing developers to focus on what is most important to them: code.
 `,
