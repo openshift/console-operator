@@ -6,7 +6,7 @@ The console-operator installs and maintains the web console on a cluster.
 
 ## Run on a 4.0.0 Cluster
 
-The console operator is installed by default and will automatically maintain a console.  
+The console operator is installed by default and will automatically maintain a console.
 
 ## Development Setup
 
@@ -15,32 +15,32 @@ The console operator is installed by default and will automatically maintain a c
 
 ## Clone the Repo & Build Locally
 
-To avoid some of the standard quirks of `gopath`, the recommended way to clone and 
+To avoid some of the standard quirks of `gopath`, the recommended way to clone and
 work with this repository is to do the following:
 
 ### Cloning the Repo
 
-```bash 
+```bash
 # rather than ~/go for everything, provide separate gopaths
 mkdir $HOME/gopaths
-``` 
+```
 
 It is fine to have `~/gopaths` next to `~/go` if you have some legacy projects.
 
 Now, create a `dir` under `~gopaths` to hold the project:
 
-```bash 
-mkdir $HOME/gopaths/consoleoperator 
+```bash
+mkdir $HOME/gopaths/consoleoperator
 ```
 
-The name of this directory doesn't matter much, but the child directories are 
+The name of this directory doesn't matter much, but the child directories are
 important in order to install dependencies and build the project appropriately.
 
 An `src` and `bin` dir is expected:
 
-```bash 
+```bash
 mkdir $HOME/gopaths/consoleoperator/src
-mkdir $HOME/gopaths/consoleoperator/bin 
+mkdir $HOME/gopaths/consoleoperator/bin
 ```
 
 Then the familiar path for source code `src/github.com/openshift/console-operator`:
@@ -54,9 +54,9 @@ cd $HOME/gopaths/consoleoperator/src/github.com/openshift
 
 Now clone (or fork, then clone) into this directory:
 
-```bash 
-git clone git@github.com:openshift/console-operator.git 
-# or your fork 
+```bash
+git clone git@github.com:openshift/console-operator.git
+# or your fork
 git clone git@github.com:<your-fork>/console-operator.git
 ```
 
@@ -65,13 +65,13 @@ git clone git@github.com:<your-fork>/console-operator.git
 Note that we created `$HOME/gopaths`.  This implies that each project will have
 its own gopath, so you will need to set that while working:
 
-```bash 
+```bash
 export GOPATH=$HOME/gopaths/consoleoperator
-``` 
+```
 
 If you have multiple goprojects and don't want to fuss with maintaining this when
 you `cd` to different projects, give [this script](https://www.jtolio.com/2017/01/magic-gopath/)
-a try. It will add a command called `calc_gopath` to your `prompt_command` and 
+a try. It will add a command called `calc_gopath` to your `prompt_command` and
 set your gopath appropriately depending on the current working directory.
 
 (At some point `golang` will fix `$GOPATH` and this won't be necessary)
@@ -80,24 +80,24 @@ set your gopath appropriately depending on the current working directory.
 
 Running the `make` command will build the binary:
 
-```bash 
-make 
+```bash
+make
 ```
 
 The binary output will be:
 
-```bash 
+```bash
 ./_output/local/bin/<os>/<arch>/console
 ```
 
 You may want to add this to your path or symlink it:
 
-```bash 
+```bash
 # if your ~/bin is in your path:
-ln -s ./_output/local/bin/<os>/<arch>/console ~/bin/console 
+ln -s ./_output/local/bin/<os>/<arch>/console ~/bin/console
 ```
 
-However, it is no longer recommended to run the operator locally.  Instead, you 
+However, it is no longer recommended to run the operator locally.  Instead, you
 should be building a docker image and deploying it into a development cluster.
 Continue below for instructions to do this with a reasonable feedback loop.
 
@@ -105,15 +105,15 @@ Continue below for instructions to do this with a reasonable feedback loop.
 
 Test `gofmt` and other verification tools:
 
-```bash 
+```bash
 make verify
 ```
 
 Let `gofmt` automatically update your source:
 
-```bash 
+```bash
 gofmt -w ./pkg
-gofmt -w ./cmd 
+gofmt -w ./cmd
 ```
 
 ### Run Unit Tests
@@ -125,19 +125,19 @@ make test-unit
 It is suggested to run `integration` and `e2e` tests with CI.  This is automatic when opening a PR.
 
 
-### Development Against a 4.0 Dev Cluster 
+### Development Against a 4.0 Dev Cluster
 
-The approach here is to build & deploy your code in a new container on a development cluster.  Don't 
+The approach here is to build & deploy your code in a new container on a development cluster.  Don't
 be put off by the need to redeploy your container, this is intended to provide a quick feedback loop.
 
 #### Create a Cluster
 To develop features for the `console-operator`, you will need to run your code against a dev cluster.
-The `console-operator` expects to be running in a container.  It is difficult to fake a local 
-environment, and the debuggin experience is not like debugging a real container.  Instead, do the following 
+The `console-operator` expects to be running in a container.  It is difficult to fake a local
+environment, and the debuggin experience is not like debugging a real container.  Instead, do the following
 to set yourself up to build your binary & deploy a new container quickly and frequently.
 
-Visit [https://try.openshift.com/](https://try.openshift.com/), download the installer and create 
-a cluster.  [Instructions](https://cloud.openshift.com/clusters/install) (including pull secret) 
+Visit [https://try.openshift.com/](https://try.openshift.com/), download the installer and create
+a cluster.  [Instructions](https://cloud.openshift.com/clusters/install) (including pull secret)
 are maintained here.
 
 ```bash
@@ -147,7 +147,7 @@ mkdir ~/openshift/aws/us-east
 cd ~/openshift/aws/us-east
 # generate configs using the wizard
 openshift-install create install-config
-# then run the installer to get a cluster 
+# then run the installer to get a cluster
 openshift-install create cluster --dir ~/openshift/aws/us-east --log-level debug
 ```
 
@@ -155,7 +155,7 @@ If successful, you should have gotten instructions to set `KUBECONFIG`, login to
 
 #### Shut down CVO & the Default Console Operator
 
-We don't want the default `console-operator` to run if we are going to test our own. Therefore, do 
+We don't want the default `console-operator` to run if we are going to test our own. Therefore, do
 the following:
 
 ```bash
@@ -163,7 +163,7 @@ the following:
 # CVO's job is to ensure all of the operators are functioning correctly
 # if we want to make changes to the operator, we need to tell CVO to stop caring.
 oc apply -f examples/cvo-unmanage-operator.yaml
-# Then, scale down the default console-operator 
+# Then, scale down the default console-operator
 oc scale --replicas 0 deployment console-operator --namespace openshift-console-operator
 ```
 Note that you can also simply delete the CVO namespace if you want to turn it off completely (for all operators).
@@ -185,7 +185,7 @@ make build-cross
 But the `make` step is included in the `Dockerfile`, so this does not need to be done manually.
 You can instead simply build the container image and push the it to your own registry:
 
-```bash 
+```bash
 # the pattern is:
 docker build -t <registry>/<your-username>/console-operator:<version> .
 # following: docker.io/openshift/origin-console-operator:latest
@@ -197,7 +197,7 @@ You can optionally build a specific version.
 
 Then, push your image:
 
-```bash 
+```bash
 docker push <registry>/<your-username>/console-operator:<version>
 # Be sure your repository is public else the image will not be able to be pulled later
 docker push quay.io/benjaminapetersen/console-operator:latest
@@ -216,20 +216,20 @@ Then, update the image & replicas in your `07-operator-alt-image.yaml` file:
 # before
 replicas: 2
 image: docker.io/openshift/origin-console-operator:latest
-# after 
+# after
 # image: <registry>/<your-username>/console-operator:<version>
 replicas: 1
 image: quay.io/benjaminapetersen/console-operator:latest
 ```
-And ensure that the `imagePullPolicy` is still `Always`.  This will ensure a fast development feedback loop. 
+And ensure that the `imagePullPolicy` is still `Always`.  This will ensure a fast development feedback loop.
 
 ```yaml
 imagePullPolicy: Always
 ```
 
-#### Deploying 
+#### Deploying
 
-At this point, your pattern will be 
+At this point, your pattern will be
 
 - Change code
 - Build a new docker image
@@ -254,7 +254,7 @@ Docker containers are layered, so there should not be a significant time delay i
 
 If you are making changes to the manifests, you will need to `oc apply` the manifest.
 
-#### Debugging 
+#### Debugging
 
 ```bash
 # inspect the clusteroperator object
@@ -275,11 +275,11 @@ oc logs -f console-operator-<sha> -n openshift-console-operator
 
 If you don't know where your `kubeconfig` is due to running against multiple clusters this can be handy:
 
-```bash 
+```bash
 # just a high number
 oc whoami --loglevel=100
-# likely output will be $HOME/.kube/config 
-``` 
+# likely output will be $HOME/.kube/config
+```
 If you need to know information about your cluster:
 
 ```bash
@@ -289,12 +289,5 @@ oc adm release info --commits
 # get just the list of images & sha256 digest
 oc adm release info
 # coming soon...
-oc adm release extract 
+oc adm release extract
 ```
-
-
-
-
-
-
-
