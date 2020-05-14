@@ -437,6 +437,7 @@ func clientWithCA(caPool *x509.CertPool) *http.Client {
 	return &http.Client{
 		Timeout: 5 * time.Second,
 		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
 			TLSClientConfig: &tls.Config{
 				RootCAs: caPool,
 			},

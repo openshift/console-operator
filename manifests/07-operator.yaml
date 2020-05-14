@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: console-operator
   namespace: openshift-console-operator
+  annotations:
+    config.openshift.io/inject-proxy: console-operator
 spec:
   replicas: 1
   selector:
