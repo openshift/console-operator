@@ -222,8 +222,8 @@ func (co *consoleOperator) SyncDeployment(
 	proxyConfig *configv1.Proxy,
 	canMountCustomLogo bool) (consoleDeployment *appsv1.Deployment, changed bool, reason string, err error) {
 
+	updatedOperatorConfig := operatorConfig.DeepCopy()
 	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, rt, proxyConfig, canMountCustomLogo)
-	expectedGeneration := getDeploymentGeneration(co)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
 	if genChanged {
@@ -235,9 +235,7 @@ func (co *consoleOperator) SyncDeployment(
 		co.deploymentClient,
 		co.recorder,
 		requiredDeployment,
-		expectedGeneration,
-		// redeploy on operatorConfig.spec changes
-		genChanged,
+		resourcemerge.ExpectedDeploymentGeneration(requiredDeployment, updatedOperatorConfig.Status.Generations),
 	)
 
 	if applyDepErr != nil {
