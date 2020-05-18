@@ -11,7 +11,9 @@ import (
 )
 
 // Parse returns the location represented by the input.
-// All inputs are valid locations, as they can always be a pure filename.
+// Only file paths are accepted, not URIs.
+// The returned span will be normalized, and thus if printed may produce a
+// different string.
 func Parse(input string) Span {
 	// :0:0#0-0:0#0
 	valid := input
@@ -30,29 +32,19 @@ func Parse(input string) Span {
 	}
 	switch {
 	case suf.sep == ":":
-		p := Point{Line: clamp(suf.num), Column: clamp(hold), Offset: clamp(offset)}
-		return Span{
-			URI:   NewURI(suf.remains),
-			Start: p,
-			End:   p,
-		}
+		return New(URIFromPath(suf.remains), NewPoint(suf.num, hold, offset), Point{})
 	case suf.sep == "-":
 		// we have a span, fall out of the case to continue
 	default:
 		// separator not valid, rewind to either the : or the start
-		p := Point{Line: clamp(hold), Column: 0, Offset: clamp(offset)}
-		return Span{
-			URI:   NewURI(valid),
-			Start: p,
-			End:   p,
-		}
+		return New(URIFromPath(valid), NewPoint(hold, 0, offset), Point{})
 	}
 	// only the span form can get here
 	// at this point we still don't know what the numbers we have mean
 	// if have not yet seen a : then we might have either a line or a column depending
 	// on whether start has a column or not
 	// we build an end point and will fix it later if needed
-	end := Point{Line: clamp(suf.num), Column: clamp(hold), Offset: clamp(offset)}
+	end := NewPoint(suf.num, hold, offset)
 	hold, offset = 0, 0
 	suf = rstripSuffix(suf.remains)
 	if suf.sep == "#" {
@@ -61,33 +53,20 @@ func Parse(input string) Span {
 	}
 	if suf.sep != ":" {
 		// turns out we don't have a span after all, rewind
-		return Span{
-			URI:   NewURI(valid),
-			Start: end,
-			End:   end,
-		}
+		return New(URIFromPath(valid), end, Point{})
 	}
 	valid = suf.remains
 	hold = suf.num
 	suf = rstripSuffix(suf.remains)
 	if suf.sep != ":" {
 		// line#offset only
-		return Span{
-			URI:   NewURI(valid),
-			Start: Point{Line: clamp(hold), Column: 0, Offset: clamp(offset)},
-			End:   end,
-		}
+		return New(URIFromPath(valid), NewPoint(hold, 0, offset), end)
 	}
 	// we have a column, so if end only had one number, it is also the column
 	if !hadCol {
-		end.Column = end.Line
-		end.Line = clamp(suf.num)
+		end = NewPoint(suf.num, end.v.Line, end.v.Offset)
 	}
-	return Span{
-		URI:   NewURI(suf.remains),
-		Start: Point{Line: clamp(suf.num), Column: clamp(hold), Offset: clamp(offset)},
-		End:   end,
-	}
+	return New(URIFromPath(suf.remains), NewPoint(suf.num, hold, offset), end)
 }
 
 type suffix struct {

@@ -29,6 +29,12 @@ var (
 	// CompareUnexportedFields causes unexported struct fields, like s in
 	// T{s int}, to be compared when true.
 	CompareUnexportedFields = false
+
+	// NilSlicesAreEmpty causes a nil slice to be equal to an empty slice.
+	NilSlicesAreEmpty = false
+
+	// NilMapsAreEmpty causes a nil map to be equal to an empty map.
+	NilMapsAreEmpty = false
 )
 
 var (
@@ -228,10 +234,20 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		*/
 
 		if a.IsNil() || b.IsNil() {
-			if a.IsNil() && !b.IsNil() {
-				c.saveDiff("<nil map>", b)
-			} else if !a.IsNil() && b.IsNil() {
-				c.saveDiff(a, "<nil map>")
+			if NilMapsAreEmpty {
+				if a.IsNil() && b.Len() != 0 {
+					c.saveDiff("<nil map>", b)
+					return
+				} else if a.Len() != 0 && b.IsNil() {
+					c.saveDiff(a, "<nil map>")
+					return
+				}
+			} else {
+				if a.IsNil() && !b.IsNil() {
+					c.saveDiff("<nil map>", b)
+				} else if !a.IsNil() && b.IsNil() {
+					c.saveDiff(a, "<nil map>")
+				}
 			}
 			return
 		}
@@ -241,7 +257,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		}
 
 		for _, key := range a.MapKeys() {
-			c.push(fmt.Sprintf("map[%s]", key))
+			c.push(fmt.Sprintf("map[%v]", key))
 
 			aVal := a.MapIndex(key)
 			bVal := b.MapIndex(key)
@@ -263,7 +279,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 				continue
 			}
 
-			c.push(fmt.Sprintf("map[%s]", key))
+			c.push(fmt.Sprintf("map[%v]", key))
 			c.saveDiff("<does not have key>", b.MapIndex(key))
 			c.pop()
 			if len(c.diff) >= MaxDiff {
@@ -281,13 +297,22 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			}
 		}
 	case reflect.Slice:
-		if a.IsNil() || b.IsNil() {
+		if NilSlicesAreEmpty {
+			if a.IsNil() && b.Len() != 0 {
+				c.saveDiff("<nil slice>", b)
+				return
+			} else if a.Len() != 0 && b.IsNil() {
+				c.saveDiff(a, "<nil slice>")
+				return
+			}
+		} else {
 			if a.IsNil() && !b.IsNil() {
 				c.saveDiff("<nil slice>", b)
+				return
 			} else if !a.IsNil() && b.IsNil() {
 				c.saveDiff(a, "<nil slice>")
+				return
 			}
-			return
 		}
 
 		aLen := a.Len()

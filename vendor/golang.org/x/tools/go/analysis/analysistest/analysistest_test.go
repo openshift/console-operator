@@ -10,11 +10,12 @@ import (
 
 	"golang.org/x/tools/go/analysis/analysistest"
 	"golang.org/x/tools/go/analysis/passes/findcall"
+	"golang.org/x/tools/internal/testenv"
 )
 
 func init() {
 	// This test currently requires GOPATH mode.
-	// Explicitly disabling module mode should suffix, but
+	// Explicitly disabling module mode should suffice, but
 	// we'll also turn off GOPROXY just for good measure.
 	if err := os.Setenv("GO111MODULE", "off"); err != nil {
 		log.Fatal(err)
@@ -26,11 +27,13 @@ func init() {
 
 // TestTheTest tests the analysistest testing infrastructure.
 func TestTheTest(t *testing.T) {
+	testenv.NeedsTool(t, "go")
+
 	// We'll simulate a partly failing test of the findcall analysis,
 	// which (by default) reports calls to functions named 'println'.
 	findcall.Analyzer.Flags.Set("name", "println")
 
-	filemap := map[string]string{"a/b.go": `package main
+	filemap := map[string]string{"a/b.go": `package main // want package:"found"
 
 func main() {
 	// The expectation is ill-formed:
@@ -39,7 +42,7 @@ func main() {
 	print() // want foo:
 	print() // want "\xZZ scan error"
 
-	// A dignostic is reported at this line, but the expectation doesn't match:
+	// A diagnostic is reported at this line, but the expectation doesn't match:
 	println("hello, world") // want "wrong expectation text"
 
 	// An unexpected diagnostic is reported at this line:
@@ -51,6 +54,15 @@ func main() {
 	// OK
 	println("hello, world") // want "call of println"
 
+	// OK /* */-form.
+	println("안녕, 세계") /* want "call of println" */
+
+	// OK  (nested comment)
+	println("Γειά σου, Κόσμε") // some comment // want "call of println"
+
+	// OK (nested comment in /**/)
+	println("你好，世界") /* some comment // want "call of println" */
+
 	// OK (multiple expectations on same line)
 	println(); println() // want "call of println(...)" "call of println(...)"
 }
@@ -58,6 +70,44 @@ func main() {
 // OK (facts and diagnostics on same line)
 func println(...interface{}) { println() } // want println:"found" "call of println(...)"
 
+`,
+		"a/b.go.golden": `package main // want package:"found"
+
+func main() {
+	// The expectation is ill-formed:
+	print() // want: "diagnostic"
+	print() // want foo"fact"
+	print() // want foo:
+	print() // want "\xZZ scan error"
+
+	// A diagnostic is reported at this line, but the expectation doesn't match:
+	println_TEST_("hello, world") // want "wrong expectation text"
+
+	// An unexpected diagnostic is reported at this line:
+	println_TEST_() // trigger an unexpected diagnostic
+
+	// No diagnostic is reported at this line:
+	print() // want "unsatisfied expectation"
+
+	// OK
+	println_TEST_("hello, world") // want "call of println"
+
+	// OK /* */-form.
+	println_TEST_("안녕, 세계") /* want "call of println" */
+
+	// OK  (nested comment)
+	println_TEST_("Γειά σου, Κόσμε") // some comment // want "call of println"
+
+	// OK (nested comment in /**/)
+	println_TEST_("你好，世界") /* some comment // want "call of println" */
+
+	// OK (multiple expectations on same line)
+	println_TEST_()
+	println_TEST_() // want "call of println(...)" "call of println(...)"
+}
+
+// OK (facts and diagnostics on same line)
+func println(...interface{}) { println_TEST_() } // want println:"found" "call of println(...)"
 `}
 	dir, cleanup, err := analysistest.WriteFiles(filemap)
 	if err != nil {
@@ -67,7 +117,7 @@ func println(...interface{}) { println() } // want println:"found" "call of prin
 
 	var got []string
 	t2 := errorfunc(func(s string) { got = append(got, s) }) // a fake *testing.T
-	analysistest.Run(t2, dir, findcall.Analyzer, "a")
+	analysistest.RunWithSuggestedFixes(t2, dir, findcall.Analyzer, "a")
 
 	want := []string{
 		`a/b.go:5: in 'want' comment: unexpected ":"`,
@@ -79,12 +129,6 @@ func println(...interface{}) { println() } // want println:"found" "call of prin
 		`a/b.go:11: no diagnostic was reported matching "wrong expectation text"`,
 		`a/b.go:17: no diagnostic was reported matching "unsatisfied expectation"`,
 	}
-	// Go 1.13's scanner error messages uses the word invalid where Go 1.12 used illegal. Convert them
-	// to keep tests compatible with both.
-	// TODO(matloob): Remove this once Go 1.13 is released.
-	for i := range got {
-		got[i] = strings.Replace(got[i], "illegal", "invalid", -1)
-	} //
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got:\n%s\nwant:\n%s",
 			strings.Join(got, "\n"),

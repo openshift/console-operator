@@ -1,7 +1,6 @@
 package encryption
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -10,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
 	"github.com/stretchr/testify/require"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -22,6 +21,7 @@ import (
 
 	configv1 "github.com/openshift/api/config/v1"
 	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
+
 	"github.com/openshift/library-go/test/library"
 )
 
@@ -130,7 +130,8 @@ func waitForNoNewEncryptionKey(t testing.TB, kubeClient kubernetes.Interface, pr
 
 		return false, nil
 	}); err != nil {
-		t.Fatalf("Failed to check if no new key will be created, err %v", err)
+		newErr := fmt.Errorf("failed to check if no new key will be created, err %v", err)
+		require.NoError(t, newErr)
 	}
 }
 
@@ -142,11 +143,16 @@ func WaitForNextMigratedKey(t testing.TB, kubeClient kubernetes.Interface, prevK
 	nextKeyName, err = determineNextEncryptionKeyName(prevKeyMeta.Name, labelSelector)
 	require.NoError(t, err)
 	if len(prevKeyMeta.Name) == 0 {
-		prevKeyMeta.Name = "no previous key"
+		prevKeyMeta.Name = ""
 		prevKeyMeta.Migrated = defaultTargetGRs
 	}
 
-	t.Logf("Waiting up to %s for the next key %q, previous key was %q", waitPollTimeout.String(), nextKeyName, prevKeyMeta.Name)
+	t.Logf("Waiting up to %s for the next key %q, previous key was %q", waitPollTimeout.String(), nextKeyName, func(prevKeyName string) string {
+		if len(prevKeyName) == 0 {
+			return "no previous key"
+		}
+		return prevKeyName
+	}(prevKeyMeta.Name))
 	observedKeyName := prevKeyMeta.Name
 	if err := wait.Poll(waitPollInterval, waitPollTimeout, func() (bool, error) {
 		currentKeyMeta, err := GetLastKeyMeta(kubeClient, namespace, labelSelector)
@@ -175,13 +181,18 @@ func WaitForNextMigratedKey(t testing.TB, kubeClient kubernetes.Interface, prevK
 		}
 		return false, nil
 	}); err != nil {
-		t.Fatalf("Failed waiting for key %s to be used to migrate %v, due to %v", nextKeyName, prevKeyMeta.Migrated, err)
+		newErr := fmt.Errorf("failed waiting for key %s to be used to migrate %v, due to %v", nextKeyName, prevKeyMeta.Migrated, err)
+		require.NoError(t, newErr)
 	}
 }
 
 func GetLastKeyMeta(kubeClient kubernetes.Interface, namespace, labelSelector string) (EncryptionKeyMeta, error) {
 	secretsClient := kubeClient.CoreV1().Secrets(namespace)
-	selectedSecrets, err := secretsClient.List(metav1.ListOptions{LabelSelector: labelSelector})
+	var selectedSecrets *corev1.SecretList
+	err := onErrorWithTimeout(wait.ForeverTestTimeout, retry.DefaultBackoff, transientAPIError, func() (err error) {
+		selectedSecrets, err = secretsClient.List(metav1.ListOptions{LabelSelector: labelSelector})
+		return
+	})
 	if err != nil {
 		return EncryptionKeyMeta{}, err
 	}
@@ -227,7 +238,7 @@ func ForceKeyRotation(t testing.TB, updateUnsupportedConfig UpdateUnsupportedCon
 		return err
 	}
 
-	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+	return onErrorWithTimeout(wait.ForeverTestTimeout, retry.DefaultBackoff, orError(errors.IsConflict, transientAPIError), func() error {
 		return updateUnsupportedConfig(raw)
 	})
 }
@@ -271,18 +282,30 @@ func determineNextEncryptionKeyName(prevKeyName, labelSelector string) (string, 
 	return fmt.Sprintf("encryption-key-%s-1", ret[1]), nil
 }
 
-func GetRawSecretOfLife(t testing.TB, clientSet ClientSet, namespace string) string {
-	t.Helper()
-	timeout, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
+func setUpTearDown(namespace string) func(testing.TB, bool) {
+	return func(t testing.TB, failed bool) {
+		if failed { // we don't use t.Failed() because we handle termination differently when running on a local machine
+			t.Logf("Tearing Down %s", t.Name())
+			eventsToPrint := 20
+			clientSet := GetClients(t)
 
-	secretOfLifeEtcdPrefix := fmt.Sprintf("/kubernetes.io/secrets/%s/%s", namespace, "secret-of-life")
-	resp, err := clientSet.Etcd.Get(timeout, secretOfLifeEtcdPrefix, clientv3.WithPrefix())
-	require.NoError(t, err)
+			eventList, err := clientSet.Kube.CoreV1().Events(namespace).List(metav1.ListOptions{})
+			require.NoError(t, err)
 
-	if len(resp.Kvs) != 1 {
-		t.Errorf("Expected to get a single key from etcd, got %d", len(resp.Kvs))
+			sort.Slice(eventList.Items, func(i, j int) bool {
+				first := eventList.Items[i]
+				second := eventList.Items[j]
+				return first.LastTimestamp.After(second.LastTimestamp.Time)
+			})
+
+			t.Logf("Dumping %d events from %q namespace", eventsToPrint, namespace)
+			now := time.Now()
+			if len(eventList.Items) > eventsToPrint {
+				eventList.Items = eventList.Items[:eventsToPrint]
+			}
+			for _, ev := range eventList.Items {
+				t.Logf("Last seen: %-15v Type: %-10v Reason: %-40v Source: %-55v Message: %v", now.Sub(ev.LastTimestamp.Time), ev.Type, ev.Reason, ev.Source.Component, ev.Message)
+			}
+		}
 	}
-
-	return string(resp.Kvs[0].Value)
 }

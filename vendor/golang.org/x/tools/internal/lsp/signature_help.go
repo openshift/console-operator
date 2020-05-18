@@ -5,29 +5,26 @@
 package lsp
 
 import (
+	"context"
+
+	"golang.org/x/tools/internal/lsp/debug/tag"
 	"golang.org/x/tools/internal/lsp/protocol"
 	"golang.org/x/tools/internal/lsp/source"
+	"golang.org/x/tools/internal/telemetry/event"
 )
 
-func toProtocolSignatureHelp(info *source.SignatureInformation) *protocol.SignatureHelp {
+func (s *Server) signatureHelp(ctx context.Context, params *protocol.SignatureHelpParams) (*protocol.SignatureHelp, error) {
+	snapshot, fh, ok, err := s.beginFileRequest(params.TextDocument.URI, source.Go)
+	if !ok {
+		return nil, err
+	}
+	info, activeParameter, err := source.SignatureHelp(ctx, snapshot, fh, params.Position)
+	if err != nil {
+		event.Print(ctx, "no signature help", tag.Position.Of(params.Position), event.Err.Of(err))
+		return nil, nil
+	}
 	return &protocol.SignatureHelp{
-		ActiveParameter: float64(info.ActiveParameter),
-		ActiveSignature: 0, // there is only ever one possible signature
-		Signatures: []protocol.SignatureInformation{
-			{
-				Label:      info.Label,
-				Parameters: toProtocolParameterInformation(info.Parameters),
-			},
-		},
-	}
-}
-
-func toProtocolParameterInformation(info []source.ParameterInformation) []protocol.ParameterInformation {
-	var result []protocol.ParameterInformation
-	for _, p := range info {
-		result = append(result, protocol.ParameterInformation{
-			Label: p.Label,
-		})
-	}
-	return result
+		Signatures:      []protocol.SignatureInformation{*info},
+		ActiveParameter: float64(activeParameter),
+	}, nil
 }

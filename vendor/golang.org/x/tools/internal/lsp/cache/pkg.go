@@ -1,119 +1,171 @@
+// Copyright 2019 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package cache
 
 import (
 	"context"
 	"go/ast"
 	"go/types"
-	"sort"
-	"sync"
 
-	"golang.org/x/tools/go/analysis"
-	"golang.org/x/tools/go/packages"
+	"golang.org/x/tools/internal/lsp/protocol"
 	"golang.org/x/tools/internal/lsp/source"
+	"golang.org/x/tools/internal/packagesinternal"
+	"golang.org/x/tools/internal/span"
+	errors "golang.org/x/xerrors"
 )
 
-// Package contains the type information needed by the source package.
-type Package struct {
-	id, pkgPath string
-	files       []string
-	syntax      []*ast.File
-	errors      []packages.Error
-	imports     map[string]*Package
-	types       *types.Package
-	typesInfo   *types.Info
-
-	// The analysis cache holds analysis information for all the packages in a view.
-	// Each graph node (action) is one unit of analysis.
-	// Edges express package-to-package (vertical) dependencies,
-	// and analysis-to-analysis (horizontal) dependencies.
-	mu       sync.Mutex
-	analyses map[*analysis.Analyzer]*analysisEntry
+// pkg contains the type information needed by the source package.
+type pkg struct {
+	// ID and package path have their own types to avoid being used interchangeably.
+	id              packageID
+	pkgPath         packagePath
+	mode            source.ParseMode
+	forTest         packagePath
+	goFiles         []source.ParseGoHandle
+	compiledGoFiles []source.ParseGoHandle
+	errors          []*source.Error
+	imports         map[packagePath]*pkg
+	module          *packagesinternal.Module
+	typeErrors      []types.Error
+	types           *types.Package
+	typesInfo       *types.Info
+	typesSizes      types.Sizes
 }
 
-type analysisEntry struct {
-	ready chan struct{}
-	*source.Action
+// Declare explicit types for package paths and IDs to ensure that we never use
+// an ID where a path belongs, and vice versa. If we confused the two, it would
+// result in confusing errors because package IDs often look like package paths.
+type packageID string
+type packagePath string
+
+// Declare explicit types for files and directories to distinguish between the two.
+type fileURI span.URI
+type directoryURI span.URI
+type viewLoadScope span.URI
+
+func (p *pkg) ID() string {
+	return string(p.id)
 }
 
-func (pkg *Package) GetActionGraph(ctx context.Context, a *analysis.Analyzer) (*source.Action, error) {
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
+func (p *pkg) PkgPath() string {
+	return string(p.pkgPath)
+}
+
+func (p *pkg) CompiledGoFiles() []source.ParseGoHandle {
+	return p.compiledGoFiles
+}
+
+func (p *pkg) File(uri span.URI) (source.ParseGoHandle, error) {
+	for _, ph := range p.compiledGoFiles {
+		if ph.File().Identity().URI == uri {
+			return ph, nil
+		}
+	}
+	for _, ph := range p.goFiles {
+		if ph.File().Identity().URI == uri {
+			return ph, nil
+		}
+	}
+	return nil, errors.Errorf("no ParseGoHandle for %s", uri)
+}
+
+func (p *pkg) GetSyntax() []*ast.File {
+	var syntax []*ast.File
+	for _, ph := range p.compiledGoFiles {
+		file, _, _, _, err := ph.Cached()
+		if err == nil {
+			syntax = append(syntax, file)
+		}
+	}
+	return syntax
+}
+
+func (p *pkg) GetErrors() []*source.Error {
+	return p.errors
+}
+
+func (p *pkg) GetTypes() *types.Package {
+	return p.types
+}
+
+func (p *pkg) GetTypesInfo() *types.Info {
+	return p.typesInfo
+}
+
+func (p *pkg) GetTypesSizes() types.Sizes {
+	return p.typesSizes
+}
+
+func (p *pkg) IsIllTyped() bool {
+	return p.types == nil || p.typesInfo == nil || p.typesSizes == nil
+}
+
+func (p *pkg) ForTest() string {
+	return string(p.forTest)
+}
+
+func (p *pkg) GetImport(pkgPath string) (source.Package, error) {
+	if imp := p.imports[packagePath(pkgPath)]; imp != nil {
+		return imp, nil
+	}
+	// Don't return a nil pointer because that still satisfies the interface.
+	return nil, errors.Errorf("no imported package for %s", pkgPath)
+}
+
+func (p *pkg) Imports() []source.Package {
+	var result []source.Package
+	for _, imp := range p.imports {
+		result = append(result, imp)
+	}
+	return result
+}
+
+func (p *pkg) Module() *packagesinternal.Module {
+	return p.module
+}
+
+func (s *snapshot) FindAnalysisError(ctx context.Context, pkgID, analyzerName, msg string, rng protocol.Range) (*source.Error, *source.Analyzer, error) {
+	analyzer := findAnalyzer(s, analyzerName)
+	if analyzer.Analyzer == nil {
+		return nil, nil, errors.Errorf("unexpected analyzer: %s", analyzerName)
+	}
+	if !analyzer.Enabled {
+		return nil, nil, errors.Errorf("disabled analyzer: %s", analyzerName)
 	}
 
-	pkg.mu.Lock()
-	e, ok := pkg.analyses[a]
-	if ok {
-		// cache hit
-		pkg.mu.Unlock()
-
-		// wait for entry to become ready or the context to be cancelled
-		select {
-		case <-e.ready:
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-	} else {
-		// cache miss
-		e = &analysisEntry{
-			ready: make(chan struct{}),
-			Action: &source.Action{
-				Analyzer: a,
-				Pkg:      pkg,
-			},
-		}
-		pkg.analyses[a] = e
-		pkg.mu.Unlock()
-
-		// This goroutine becomes responsible for populating
-		// the entry and broadcasting its readiness.
-
-		// Add a dependency on each required analyzers.
-		for _, req := range a.Requires {
-			act, err := pkg.GetActionGraph(ctx, req)
-			if err != nil {
-				return nil, err
-			}
-			e.Deps = append(e.Deps, act)
-		}
-
-		// An analysis that consumes/produces facts
-		// must run on the package's dependencies too.
-		if len(a.FactTypes) > 0 {
-			importPaths := make([]string, 0, len(pkg.imports))
-			for importPath := range pkg.imports {
-				importPaths = append(importPaths, importPath)
-			}
-			sort.Strings(importPaths) // for determinism
-			for _, importPath := range importPaths {
-				dep := pkg.imports[importPath]
-				act, err := dep.GetActionGraph(ctx, a)
-				if err != nil {
-					return nil, err
-				}
-				e.Deps = append(e.Deps, act)
-			}
-		}
-		close(e.ready)
+	act, err := s.actionHandle(ctx, packageID(pkgID), analyzer.Analyzer)
+	if err != nil {
+		return nil, nil, err
 	}
-	return e.Action, nil
+	errs, _, err := act.analyze(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, err := range errs {
+		if err.Category != analyzer.Analyzer.Name {
+			continue
+		}
+		if err.Message != msg {
+			continue
+		}
+		if protocol.CompareRange(err.Range, rng) != 0 {
+			continue
+		}
+		return err, &analyzer, nil
+	}
+	return nil, nil, errors.Errorf("no matching diagnostic for %s:%v", pkgID, analyzerName)
 }
 
-func (pkg *Package) GetFilenames() []string {
-	return pkg.files
-}
-
-func (pkg *Package) GetSyntax() []*ast.File {
-	return pkg.syntax
-}
-
-func (pkg *Package) GetErrors() []packages.Error {
-	return pkg.errors
-}
-
-func (pkg *Package) GetTypes() *types.Package {
-	return pkg.types
-}
-
-func (pkg *Package) GetTypesInfo() *types.Info {
-	return pkg.typesInfo
+func findAnalyzer(s *snapshot, analyzerName string) source.Analyzer {
+	checked := s.View().Options().DefaultAnalyzers
+	if a, ok := checked[analyzerName]; ok {
+		return a
+	}
+	checked = s.View().Options().TypeErrorAnalyzers
+	if a, ok := checked[analyzerName]; ok {
+		return a
+	}
+	return source.Analyzer{}
 }
