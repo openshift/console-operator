@@ -6,39 +6,32 @@
 
 // Web server tree:
 //
-//	http://godoc/		main landing page
-//	http://godoc/doc/	serve from $GOROOT/doc - spec, mem, etc.
+//	http://godoc/		redirect to /pkg/
 //	http://godoc/src/	serve files from $GOROOT/src; .go gets pretty-printed
 //	http://godoc/cmd/	serve documentation about commands
 //	http://godoc/pkg/	serve documentation about packages
 //				(idea is if you say import "compress/zlib", you go to
 //				http://godoc/pkg/compress/zlib)
 //
-// Command-line interface:
-//
-//	godoc packagepath [name ...]
-//
-//	godoc compress/zlib
-//		- prints doc for package compress/zlib
-//	godoc crypto/block Cipher NewCMAC
-//		- prints doc for Cipher and NewCMAC in package crypto/block
-
-// +build !appengine
 
 package main
 
 import (
 	"archive/zip"
+	"bytes"
+	"encoding/json"
 	_ "expvar" // to serve /debug/vars
 	"flag"
 	"fmt"
 	"go/build"
+	"io"
 	"log"
 	"net/http"
-	"net/http/httptest"
 	_ "net/http/pprof" // to serve /debug/pprof/*
 	"net/url"
 	"os"
+	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -51,9 +44,10 @@ import (
 	"golang.org/x/tools/godoc/vfs/gatefs"
 	"golang.org/x/tools/godoc/vfs/mapfs"
 	"golang.org/x/tools/godoc/vfs/zipfs"
+	"golang.org/x/xerrors"
 )
 
-const defaultAddr = ":6060" // default webserver address
+const defaultAddr = "localhost:6060" // default webserver address
 
 var (
 	// file system to serve
@@ -63,32 +57,24 @@ var (
 	// file-based index
 	writeIndex = flag.Bool("write_index", false, "write index to a file; the file name must be specified with -index_files")
 
-	analysisFlag = flag.String("analysis", "", `comma-separated list of analyses to perform (supported: type, pointer). See http://golang.org/lib/godoc/analysis/help.html`)
+	analysisFlag = flag.String("analysis", "", `comma-separated list of analyses to perform when in GOPATH mode (supported: type, pointer). See https://golang.org/lib/godoc/analysis/help.html`)
 
 	// network
-	httpAddr   = flag.String("http", "", "HTTP service address (e.g., '"+defaultAddr+"')")
-	serverAddr = flag.String("server", "", "webserver address for command line searches")
+	httpAddr = flag.String("http", defaultAddr, "HTTP service address")
 
 	// layout control
-	html    = flag.Bool("html", false, "print HTML in command-line mode")
-	srcMode = flag.Bool("src", false, "print (exported) source in command-line mode")
 	urlFlag = flag.String("url", "", "print HTML for named URL")
-
-	// command-line searches
-	query = flag.Bool("q", false, "arguments are considered search queries")
 
 	verbose = flag.Bool("v", false, "verbose mode")
 
 	// file system roots
 	// TODO(gri) consider the invariant that goroot always end in '/'
-	goroot = flag.String("goroot", runtime.GOROOT(), "Go root directory")
+	goroot = flag.String("goroot", findGOROOT(), "Go root directory")
 
 	// layout control
-	tabWidth       = flag.Int("tabwidth", 4, "tab width")
 	showTimestamps = flag.Bool("timestamps", false, "show timestamps with directory listings")
 	templateDir    = flag.String("templates", "", "load templates/JS/CSS from disk in this directory")
-	showPlayground = flag.Bool("play", false, "enable playground in web interface")
-	showExamples   = flag.Bool("ex", false, "show examples in command line mode")
+	showPlayground = flag.Bool("play", false, "enable playground")
 	declLinks      = flag.Bool("links", true, "link identifiers to their declarations")
 
 	// search index
@@ -102,10 +88,19 @@ var (
 	notesRx = flag.String("notes", "BUG", "regular expression matching note markers to show")
 )
 
+// An httpResponseRecorder is an http.ResponseWriter
+type httpResponseRecorder struct {
+	body   *bytes.Buffer
+	header http.Header
+	code   int
+}
+
+func (w *httpResponseRecorder) Header() http.Header         { return w.header }
+func (w *httpResponseRecorder) Write(b []byte) (int, error) { return w.body.Write(b) }
+func (w *httpResponseRecorder) WriteHeader(code int)        { w.code = code }
+
 func usage() {
-	fmt.Fprintf(os.Stderr,
-		"usage: godoc package [name ...]\n"+
-			"	godoc -http="+defaultAddr+"\n")
+	fmt.Fprintf(os.Stderr, "usage: godoc -http="+defaultAddr+"\n")
 	flag.PrintDefaults()
 	os.Exit(2)
 }
@@ -132,47 +127,52 @@ func handleURLFlag() {
 
 		// Invoke default HTTP handler to serve request
 		// to our buffering httpWriter.
-		w := httptest.NewRecorder()
+		w := &httpResponseRecorder{code: 200, header: make(http.Header), body: new(bytes.Buffer)}
 		http.DefaultServeMux.ServeHTTP(w, req)
 
 		// Return data, error, or follow redirect.
-		switch w.Code {
+		switch w.code {
 		case 200: // ok
-			os.Stdout.Write(w.Body.Bytes())
+			os.Stdout.Write(w.body.Bytes())
 			return
 		case 301, 302, 303, 307: // redirect
-			redirect := w.HeaderMap.Get("Location")
+			redirect := w.header.Get("Location")
 			if redirect == "" {
-				log.Fatalf("HTTP %d without Location header", w.Code)
+				log.Fatalf("HTTP %d without Location header", w.code)
 			}
 			urlstr = redirect
 		default:
-			log.Fatalf("HTTP error %d", w.Code)
+			log.Fatalf("HTTP error %d", w.code)
 		}
 	}
 	log.Fatalf("too many redirects")
+}
+
+func initCorpus(corpus *godoc.Corpus) {
+	err := corpus.Init()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
 	flag.Usage = usage
 	flag.Parse()
 
-	playEnabled = *showPlayground
-
-	// Check usage: server and no args.
-	if (*httpAddr != "" || *urlFlag != "") && (flag.NArg() > 0) {
-		fmt.Fprintln(os.Stderr, "can't use -http with args.")
+	// Check usage.
+	if flag.NArg() > 0 {
+		fmt.Fprintln(os.Stderr, `Unexpected arguments. Use "go doc" for command-line help output instead. For example, "go doc fmt.Printf".`)
+		usage()
+	}
+	if *httpAddr == "" && *urlFlag == "" && !*writeIndex {
+		fmt.Fprintln(os.Stderr, "At least one of -http, -url, or -write_index must be set to a non-zero value.")
 		usage()
 	}
 
-	// Check usage: command line args or index creation mode.
-	if (*httpAddr != "" || *urlFlag != "") != (flag.NArg() == 0) && !*writeIndex {
-		fmt.Fprintln(os.Stderr, "missing args.")
-		usage()
-	}
+	// Set the resolved goroot.
+	vfs.GOROOT = *goroot
 
-	var fsGate chan bool
-	fsGate = make(chan bool, 20)
+	fsGate := make(chan bool, 20)
 
 	// Determine file system to use.
 	if *zipfile == "" {
@@ -194,12 +194,53 @@ func main() {
 		fs.Bind("/lib/godoc", mapfs.New(static.Files), "/", vfs.BindReplace)
 	}
 
-	// Bind $GOPATH trees into Go root.
-	for _, p := range filepath.SplitList(build.Default.GOPATH) {
-		fs.Bind("/src", gatefs.New(vfs.OS(p), fsGate), "/src", vfs.BindAfter)
+	// Get the GOMOD value, use it to determine if godoc is being invoked in module mode.
+	goModFile, err := goMod()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to determine go env GOMOD value: %v", err)
+		goModFile = "" // Fall back to GOPATH mode.
 	}
 
-	httpMode := *httpAddr != ""
+	if goModFile != "" {
+		fmt.Printf("using module mode; GOMOD=%s\n", goModFile)
+
+		if *analysisFlag != "" {
+			fmt.Fprintln(os.Stderr, "The -analysis flag is supported only in GOPATH mode at this time.")
+			fmt.Fprintln(os.Stderr, "See https://golang.org/issue/34473.")
+			usage()
+		}
+
+		// Try to download dependencies that are not in the module cache in order to
+		// to show their documentation.
+		// This may fail if module downloading is disallowed (GOPROXY=off) or due to
+		// limited connectivity, in which case we print errors to stderr and show
+		// documentation only for packages that are available.
+		fillModuleCache(os.Stderr, goModFile)
+
+		// Determine modules in the build list.
+		mods, err := buildList(goModFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to determine the build list of the main module: %v", err)
+			os.Exit(1)
+		}
+
+		// Bind module trees into Go root.
+		for _, m := range mods {
+			if m.Dir == "" {
+				// Module is not available in the module cache, skip it.
+				continue
+			}
+			dst := path.Join("/src", m.Path)
+			fs.Bind(dst, gatefs.New(vfs.OS(m.Dir), fsGate), "/", vfs.BindAfter)
+		}
+	} else {
+		fmt.Println("using GOPATH mode")
+
+		// Bind $GOPATH trees into Go root.
+		for _, p := range filepath.SplitList(build.Default.GOPATH) {
+			fs.Bind("/src", gatefs.New(vfs.OS(p), fsGate), "/src", vfs.BindAfter)
+		}
+	}
 
 	var typeAnalysis, pointerAnalysis bool
 	if *analysisFlag != "" {
@@ -215,40 +256,45 @@ func main() {
 		}
 	}
 
-	corpus := godoc.NewCorpus(fs)
+	var corpus *godoc.Corpus
+	if goModFile != "" {
+		corpus = godoc.NewCorpus(moduleFS{fs})
+	} else {
+		corpus = godoc.NewCorpus(fs)
+	}
 	corpus.Verbose = *verbose
 	corpus.MaxResults = *maxResults
-	corpus.IndexEnabled = *indexEnabled && httpMode
+	corpus.IndexEnabled = *indexEnabled
 	if *maxResults == 0 {
 		corpus.IndexFullText = false
 	}
 	corpus.IndexFiles = *indexFiles
-	corpus.IndexDirectory = indexDirectoryDefault
+	corpus.IndexDirectory = func(dir string) bool {
+		return dir != "/pkg" && !strings.HasPrefix(dir, "/pkg/")
+	}
 	corpus.IndexThrottle = *indexThrottle
 	corpus.IndexInterval = *indexInterval
-	if *writeIndex {
+	if *writeIndex || *urlFlag != "" {
 		corpus.IndexThrottle = 1.0
 		corpus.IndexEnabled = true
-	}
-	if *writeIndex || httpMode || *urlFlag != "" {
-		if err := corpus.Init(); err != nil {
-			log.Fatal(err)
-		}
+		initCorpus(corpus)
+	} else {
+		go initCorpus(corpus)
 	}
 
+	// Initialize the version info before readTemplates, which saves
+	// the map value in a method value.
+	corpus.InitVersionInfo()
+
 	pres = godoc.NewPresentation(corpus)
-	pres.TabWidth = *tabWidth
 	pres.ShowTimestamps = *showTimestamps
 	pres.ShowPlayground = *showPlayground
-	pres.ShowExamples = *showExamples
 	pres.DeclLinks = *declLinks
-	pres.SrcMode = *srcMode
-	pres.HTMLMode = *html
 	if *notesRx != "" {
 		pres.NotesRx = regexp.MustCompile(*notesRx)
 	}
 
-	readTemplates(pres, httpMode || *urlFlag != "")
+	readTemplates(pres)
 	registerHandlers(pres)
 
 	if *writeIndex {
@@ -283,63 +329,182 @@ func main() {
 		return
 	}
 
-	if httpMode {
-		// HTTP server mode.
-		var handler http.Handler = http.DefaultServeMux
-		if *verbose {
-			log.Printf("Go Documentation Server")
-			log.Printf("version = %s", runtime.Version())
-			log.Printf("address = %s", *httpAddr)
-			log.Printf("goroot = %s", *goroot)
-			log.Printf("tabwidth = %d", *tabWidth)
-			switch {
-			case !*indexEnabled:
-				log.Print("search index disabled")
-			case *maxResults > 0:
-				log.Printf("full text index enabled (maxresults = %d)", *maxResults)
-			default:
-				log.Print("identifier search index enabled")
-			}
-			fs.Fprint(os.Stderr)
-			handler = loggingHandler(handler)
+	var handler http.Handler = http.DefaultServeMux
+	if *verbose {
+		log.Printf("Go Documentation Server")
+		log.Printf("version = %s", runtime.Version())
+		log.Printf("address = %s", *httpAddr)
+		log.Printf("goroot = %s", *goroot)
+		switch {
+		case !*indexEnabled:
+			log.Print("search index disabled")
+		case *maxResults > 0:
+			log.Printf("full text index enabled (maxresults = %d)", *maxResults)
+		default:
+			log.Print("identifier search index enabled")
 		}
-
-		// Initialize search index.
-		if *indexEnabled {
-			go corpus.RunIndexer()
-		}
-
-		// Start type/pointer analysis.
-		if typeAnalysis || pointerAnalysis {
-			go analysis.Run(pointerAnalysis, &corpus.Analysis)
-		}
-
-		if serveAutoCertHook != nil {
-			go func() {
-				if err := serveAutoCertHook(handler); err != nil {
-					log.Fatalf("ListenAndServe TLS: %v", err)
-				}
-			}()
-		}
-
-		// Start http server.
-		if err := http.ListenAndServe(*httpAddr, handler); err != nil {
-			log.Fatalf("ListenAndServe %s: %v", *httpAddr, err)
-		}
-
-		return
+		fs.Fprint(os.Stderr)
+		handler = loggingHandler(handler)
 	}
 
-	if *query {
-		handleRemoteSearch()
-		return
+	// Initialize search index.
+	if *indexEnabled {
+		go corpus.RunIndexer()
 	}
 
-	if err := godoc.CommandLine(os.Stdout, fs, pres, flag.Args()); err != nil {
-		log.Print(err)
+	// Start type/pointer analysis.
+	if typeAnalysis || pointerAnalysis {
+		go analysis.Run(pointerAnalysis, &corpus.Analysis)
+	}
+
+	// Start http server.
+	if *verbose {
+		log.Println("starting HTTP server")
+	}
+	if err := http.ListenAndServe(*httpAddr, handler); err != nil {
+		log.Fatalf("ListenAndServe %s: %v", *httpAddr, err)
 	}
 }
 
-// serveAutoCertHook if non-nil specifies a function to listen on port 443.
-// See autocert.go.
-var serveAutoCertHook func(http.Handler) error
+// goMod returns the go env GOMOD value in the current directory
+// by invoking the go command.
+//
+// GOMOD is documented at https://golang.org/cmd/go/#hdr-Environment_variables:
+//
+// 	The absolute path to the go.mod of the main module,
+// 	or the empty string if not using modules.
+//
+func goMod() (string, error) {
+	out, err := exec.Command("go", "env", "-json", "GOMOD").Output()
+	if ee := (*exec.ExitError)(nil); xerrors.As(err, &ee) {
+		return "", fmt.Errorf("go command exited unsuccessfully: %v\n%s", ee.ProcessState.String(), ee.Stderr)
+	} else if err != nil {
+		return "", err
+	}
+	var env struct {
+		GoMod string
+	}
+	err = json.Unmarshal(out, &env)
+	if err != nil {
+		return "", err
+	}
+	return env.GoMod, nil
+}
+
+// fillModuleCache does a best-effort attempt to fill the module cache
+// with all dependencies of the main module in the current directory
+// by invoking the go command. Module download logs are streamed to w.
+// If there are any problems encountered, they are also written to w.
+// It should only be used when operating in module mode.
+//
+// See https://golang.org/cmd/go/#hdr-Download_modules_to_local_cache.
+func fillModuleCache(w io.Writer, goMod string) {
+	if goMod == os.DevNull {
+		// No module requirements, nothing to do.
+		return
+	}
+
+	cmd := exec.Command("go", "mod", "download", "-json")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = w
+	err := cmd.Run()
+	if ee := (*exec.ExitError)(nil); xerrors.As(err, &ee) && ee.ExitCode() == 1 {
+		// Exit code 1 from this command means there were some
+		// non-empty Error values in the output. Print them to w.
+		fmt.Fprintf(w, "documentation for some packages is not shown:\n")
+		for dec := json.NewDecoder(&out); ; {
+			var m struct {
+				Path    string // Module path.
+				Version string // Module version.
+				Error   string // Error loading module.
+			}
+			err := dec.Decode(&m)
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				fmt.Fprintf(w, "error decoding JSON object from go mod download -json: %v\n", err)
+				continue
+			}
+			if m.Error == "" {
+				continue
+			}
+			fmt.Fprintf(w, "\tmodule %s@%s is not in the module cache and there was a problem downloading it: %s\n", m.Path, m.Version, m.Error)
+		}
+	} else if err != nil {
+		fmt.Fprintf(w, "there was a problem filling module cache: %v\n", err)
+	}
+}
+
+// buildList determines the build list in the current directory
+// by invoking the go command. It should only be used when operating
+// in module mode.
+//
+// See https://golang.org/cmd/go/#hdr-The_main_module_and_the_build_list.
+func buildList(goMod string) ([]mod, error) {
+	if goMod == os.DevNull {
+		// Empty build list.
+		return nil, nil
+	}
+
+	out, err := exec.Command("go", "list", "-m", "-json", "all").Output()
+	if ee := (*exec.ExitError)(nil); xerrors.As(err, &ee) {
+		return nil, fmt.Errorf("go command exited unsuccessfully: %v\n%s", ee.ProcessState.String(), ee.Stderr)
+	} else if err != nil {
+		return nil, err
+	}
+	var mods []mod
+	for dec := json.NewDecoder(bytes.NewReader(out)); ; {
+		var m mod
+		err := dec.Decode(&m)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+		mods = append(mods, m)
+	}
+	return mods, nil
+}
+
+type mod struct {
+	Path string // Module path.
+	Dir  string // Directory holding files for this module, if any.
+}
+
+// moduleFS is a vfs.FileSystem wrapper used when godoc is running
+// in module mode. It's needed so that packages inside modules are
+// considered to be third party.
+//
+// It overrides the RootType method of the underlying filesystem
+// and implements it using a heuristic based on the import path.
+// If the first element of the import path does not contain a dot,
+// that package is considered to be inside GOROOT. If it contains
+// a dot, then that package is considered to be third party.
+//
+// TODO(dmitshur): The RootType abstraction works well when GOPATH
+// workspaces are bound at their roots, but scales poorly in the
+// general case. It should be replaced by a more direct solution
+// for determining whether a package is third party or not.
+//
+type moduleFS struct{ vfs.FileSystem }
+
+func (moduleFS) RootType(path string) vfs.RootType {
+	if !strings.HasPrefix(path, "/src/") {
+		return ""
+	}
+	domain := path[len("/src/"):]
+	if i := strings.Index(domain, "/"); i >= 0 {
+		domain = domain[:i]
+	}
+	if !strings.Contains(domain, ".") {
+		// No dot in the first element of import path
+		// suggests this is a package in GOROOT.
+		return vfs.RootTypeGoRoot
+	} else {
+		// A dot in the first element of import path
+		// suggests this is a third party package.
+		return vfs.RootTypeGoPath
+	}
+}
+func (fs moduleFS) String() string { return "module(" + fs.FileSystem.String() + ")" }

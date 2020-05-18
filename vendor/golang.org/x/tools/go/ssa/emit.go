@@ -147,7 +147,7 @@ func emitCompare(f *Function, op token.Token, x, y Value, pos token.Pos) Value {
 //
 func isValuePreserving(ut_src, ut_dst types.Type) bool {
 	// Identical underlying types?
-	if types.Identical(ut_dst, ut_src) {
+	if structTypesIdentical(ut_dst, ut_src) {
 		return true
 	}
 
@@ -204,7 +204,7 @@ func emitConv(f *Function, val Value, typ types.Type) Value {
 
 		// Convert (non-nil) "untyped" literals to their default type.
 		if t, ok := ut_src.(*types.Basic); ok && t.Info()&types.IsUntyped != 0 {
-			val = emitConv(f, val, DefaultType(ut_src))
+			val = emitConv(f, val, types.Default(ut_src))
 		}
 
 		f.Pkg.Prog.needMethodsOf(val.Type())

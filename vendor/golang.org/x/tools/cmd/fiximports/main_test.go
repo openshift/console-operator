@@ -10,11 +10,14 @@ package main
 
 import (
 	"bytes"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+
+	"golang.org/x/tools/internal/testenv"
 )
 
 // TODO(adonovan):
@@ -32,11 +35,27 @@ import (
 // titanic.biz/bar	-- domain is sinking; package has jumped ship to new.com/bar
 // titanic.biz/foo	-- domain is sinking but package has no import comment yet
 
-func TestFixImports(t *testing.T) {
-	gopath := filepath.Join(cwd, "testdata")
+var gopath = filepath.Join(cwd, "testdata")
+
+func init() {
 	if err := os.Setenv("GOPATH", gopath); err != nil {
-		t.Fatalf("os.Setenv: %v", err)
+		log.Fatal(err)
 	}
+
+	// This test currently requires GOPATH mode.
+	// Explicitly disabling module mode should suffix, but
+	// we'll also turn off GOPROXY just for good measure.
+	if err := os.Setenv("GO111MODULE", "off"); err != nil {
+		log.Fatal(err)
+	}
+	if err := os.Setenv("GOPROXY", "off"); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func TestFixImports(t *testing.T) {
+	testenv.NeedsTool(t, "go")
+
 	defer func() {
 		stderr = os.Stderr
 		*badDomains = "code.google.com"
@@ -193,6 +212,7 @@ import (
 			test.wantStderr = strings.Replace(test.wantStderr, `testdata/src/old.com/bad/bad.go`, `testdata\src\old.com\bad\bad.go`, -1)
 			test.wantStderr = strings.Replace(test.wantStderr, `testdata/src/fruit.io/banana/banana.go`, `testdata\src\fruit.io\banana\banana.go`, -1)
 		}
+		test.wantStderr = strings.TrimSpace(test.wantStderr)
 
 		// Check status code.
 		if fiximports(test.packages...) != test.wantOK {
@@ -200,12 +220,12 @@ import (
 		}
 
 		// Compare stderr output.
-		if got := stderr.(*bytes.Buffer).String(); got != test.wantStderr {
+		if got := strings.TrimSpace(stderr.(*bytes.Buffer).String()); got != test.wantStderr {
 			if strings.Contains(got, "vendor/golang_org/x/text/unicode/norm") {
 				t.Skip("skipping known-broken test; see golang.org/issue/17417")
 			}
-			t.Errorf("#%d. stderr: got <<%s>>, want <<%s>>",
-				i, stderr, test.wantStderr)
+			t.Errorf("#%d. stderr: got <<\n%s\n>>, want <<\n%s\n>>",
+				i, got, test.wantStderr)
 		}
 
 		// Compare rewrites.
@@ -224,10 +244,7 @@ import (
 
 // TestDryRun tests that the -n flag suppresses calls to writeFile.
 func TestDryRun(t *testing.T) {
-	gopath := filepath.Join(cwd, "testdata")
-	if err := os.Setenv("GOPATH", gopath); err != nil {
-		t.Fatalf("os.Setenv: %v", err)
-	}
+	testenv.NeedsTool(t, "go")
 
 	*dryrun = true
 	defer func() { *dryrun = false }() // restore

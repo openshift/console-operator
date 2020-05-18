@@ -2,14 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// The /doc/codewalk/ tree is synthesized from codewalk descriptions,
-// files named $GOROOT/doc/codewalk/*.xml.
-// For an example and a description of the format, see
-// http://golang.org/doc/codewalk/codewalk or run godoc -http=:6060
-// and see http://localhost:6060/doc/codewalk/codewalk .
-// That page is itself a codewalk; the source code for it is
-// $GOROOT/doc/codewalk/codewalk.xml.
-
 package main
 
 import (
@@ -17,7 +9,6 @@ import (
 	"go/format"
 	"log"
 	"net/http"
-	"strings"
 	"text/template"
 
 	"golang.org/x/tools/godoc"
@@ -25,63 +16,32 @@ import (
 	"golang.org/x/tools/godoc/vfs"
 )
 
+// This package registers "/compile" and "/share" handlers
+// that redirect to the golang.org playground.
+import _ "golang.org/x/tools/playground"
+
 var (
 	pres *godoc.Presentation
 	fs   = vfs.NameSpace{}
 )
 
-var enforceHosts = false // set true in production on app engine
-
-// hostEnforcerHandler redirects requests to "http://foo.golang.org/bar"
-// to "https://golang.org/bar".
-// It permits requests to the host "godoc-test.golang.org" for testing.
-type hostEnforcerHandler struct {
-	h http.Handler
-}
-
-func (h hostEnforcerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !enforceHosts {
-		h.h.ServeHTTP(w, r)
-		return
-	}
-	if r.TLS == nil || !h.validHost(r.Host) {
-		r.URL.Scheme = "https"
-		if h.validHost(r.Host) {
-			r.URL.Host = r.Host
-		} else {
-			r.URL.Host = "golang.org"
-		}
-		http.Redirect(w, r, r.URL.String(), http.StatusFound)
-		return
-	}
-	w.Header().Set("Strict-Transport-Security", "max-age=31536000; preload")
-	h.h.ServeHTTP(w, r)
-}
-
-func (h hostEnforcerHandler) validHost(host string) bool {
-	switch strings.ToLower(host) {
-	case "golang.org", "godoc-test.golang.org":
-		return true
-	}
-	return false
-}
-
-func registerHandlers(pres *godoc.Presentation) *http.ServeMux {
+func registerHandlers(pres *godoc.Presentation) {
 	if pres == nil {
 		panic("nil Presentation")
 	}
 	mux := http.NewServeMux()
-	mux.HandleFunc("/doc/codewalk/", codewalk)
-	mux.Handle("/doc/play/", pres.FileServer())
-	mux.Handle("/robots.txt", pres.FileServer())
-	mux.Handle("/", pres)
+	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/" {
+			http.Redirect(w, req, "/pkg/", http.StatusFound)
+			return
+		}
+		pres.ServeHTTP(w, req)
+	})
 	mux.Handle("/pkg/C/", redirect.Handler("/cmd/cgo/"))
 	mux.HandleFunc("/fmt", fmtHandler)
 	redirect.Register(mux)
 
-	http.Handle("/", hostEnforcerHandler{mux})
-
-	return mux
+	http.Handle("/", mux)
 }
 
 func readTemplate(name string) *template.Template {
@@ -104,27 +64,20 @@ func readTemplate(name string) *template.Template {
 	return t
 }
 
-func readTemplates(p *godoc.Presentation, html bool) {
-	p.PackageText = readTemplate("package.txt")
-	p.SearchText = readTemplate("search.txt")
-
-	if html || p.HTMLMode {
-		codewalkHTML = readTemplate("codewalk.html")
-		codewalkdirHTML = readTemplate("codewalkdir.html")
-		p.CallGraphHTML = readTemplate("callgraph.html")
-		p.DirlistHTML = readTemplate("dirlist.html")
-		p.ErrorHTML = readTemplate("error.html")
-		p.ExampleHTML = readTemplate("example.html")
-		p.GodocHTML = readTemplate("godoc.html")
-		p.ImplementsHTML = readTemplate("implements.html")
-		p.MethodSetHTML = readTemplate("methodset.html")
-		p.PackageHTML = readTemplate("package.html")
-		p.SearchHTML = readTemplate("search.html")
-		p.SearchDocHTML = readTemplate("searchdoc.html")
-		p.SearchCodeHTML = readTemplate("searchcode.html")
-		p.SearchTxtHTML = readTemplate("searchtxt.html")
-		p.SearchDescXML = readTemplate("opensearch.xml")
-	}
+func readTemplates(p *godoc.Presentation) {
+	p.CallGraphHTML = readTemplate("callgraph.html")
+	p.DirlistHTML = readTemplate("dirlist.html")
+	p.ErrorHTML = readTemplate("error.html")
+	p.ExampleHTML = readTemplate("example.html")
+	p.GodocHTML = readTemplate("godoc.html")
+	p.ImplementsHTML = readTemplate("implements.html")
+	p.MethodSetHTML = readTemplate("methodset.html")
+	p.PackageHTML = readTemplate("package.html")
+	p.PackageRootHTML = readTemplate("packageroot.html")
+	p.SearchHTML = readTemplate("search.html")
+	p.SearchDocHTML = readTemplate("searchdoc.html")
+	p.SearchCodeHTML = readTemplate("searchcode.html")
+	p.SearchTxtHTML = readTemplate("searchtxt.html")
 }
 
 type fmtResponse struct {

@@ -32,7 +32,7 @@ package ssa
 import (
 	"fmt"
 	"go/ast"
-	exact "go/constant"
+	"go/constant"
 	"go/token"
 	"go/types"
 	"os"
@@ -58,12 +58,12 @@ var (
 	tString     = types.Typ[types.String]
 	tUntypedNil = types.Typ[types.UntypedNil]
 	tRangeIter  = &opaqueType{nil, "iter"} // the type of all "range" iterators
-	tEface      = new(types.Interface)
+	tEface      = types.NewInterface(nil, nil).Complete()
 
 	// SSA Value constants.
 	vZero = intConst(0)
 	vOne  = intConst(1)
-	vTrue = NewConst(exact.MakeBool(true), tBool)
+	vTrue = NewConst(constant.MakeBool(true), tBool)
 )
 
 // builder holds state associated with the package currently being built.
@@ -131,11 +131,11 @@ func (b *builder) logicalBinop(fn *Function, e *ast.BinaryExpr) Value {
 	switch e.Op {
 	case token.LAND:
 		b.cond(fn, e.X, rhs, done)
-		short = NewConst(exact.MakeBool(false), t)
+		short = NewConst(constant.MakeBool(false), t)
 
 	case token.LOR:
 		b.cond(fn, e.X, done, rhs)
-		short = NewConst(exact.MakeBool(true), t)
+		short = NewConst(constant.MakeBool(true), t)
 	}
 
 	// Is rhs unreachable?
@@ -635,7 +635,7 @@ func (b *builder) expr0(fn *Function, e ast.Expr, tv types.TypeAndValue) Value {
 		case token.EQL, token.NEQ, token.GTR, token.LSS, token.LEQ, token.GEQ:
 			cmp := emitCompare(fn, e.Op, b.expr(fn, e.X), b.expr(fn, e.Y), e.OpPos)
 			// The type of x==y may be UntypedBool.
-			return emitConv(fn, cmp, DefaultType(tv.Type))
+			return emitConv(fn, cmp, types.Default(tv.Type))
 		default:
 			panic("illegal op in BinaryExpr: " + e.Op.String())
 		}
@@ -969,10 +969,10 @@ func (b *builder) setCall(fn *Function, e *ast.CallExpr, c *CallCommon) {
 	c.Args = b.emitCallArgs(fn, sig, e, c.Args)
 }
 
-// assignOp emits to fn code to perform loc += incr or loc -= incr.
-func (b *builder) assignOp(fn *Function, loc lvalue, incr Value, op token.Token) {
+// assignOp emits to fn code to perform loc <op>= val.
+func (b *builder) assignOp(fn *Function, loc lvalue, val Value, op token.Token, pos token.Pos) {
 	oldv := loc.load(fn)
-	loc.store(fn, emitArith(fn, op, oldv, emitConv(fn, incr, oldv.Type()), loc.typ(), token.NoPos))
+	loc.store(fn, emitArith(fn, op, oldv, emitConv(fn, val, oldv.Type()), loc.typ(), pos))
 }
 
 // localValueSpec emits to fn code to define all of the vars in the
@@ -1194,7 +1194,7 @@ func (b *builder) compLit(fn *Function, addr Value, e *ast.CompositeLit, isZero 
 		for _, e := range e.Elts {
 			e := e.(*ast.KeyValueExpr)
 
-			// If a key expression in a map literal is  itself a
+			// If a key expression in a map literal is itself a
 			// composite literal, the type may be omitted.
 			// For example:
 			//	map[*struct{}]bool{{}: true}
@@ -1746,6 +1746,7 @@ func (b *builder) rangeIndexed(fn *Function, x Value, tv types.Type, pos token.P
 				Index: k,
 			}
 			instr.setType(t.Elem())
+			instr.setPos(x.Pos())
 			v = fn.emit(instr)
 
 		case *types.Pointer: // *array
@@ -1754,6 +1755,7 @@ func (b *builder) rangeIndexed(fn *Function, x Value, tv types.Type, pos token.P
 				Index: k,
 			}
 			instr.setType(types.NewPointer(t.Elem().Underlying().(*types.Array).Elem()))
+			instr.setPos(x.Pos())
 			v = emitLoad(fn, fn.emit(instr))
 
 		case *types.Slice:
@@ -1762,6 +1764,7 @@ func (b *builder) rangeIndexed(fn *Function, x Value, tv types.Type, pos token.P
 				Index: k,
 			}
 			instr.setType(types.NewPointer(t.Elem()))
+			instr.setPos(x.Pos())
 			v = emitLoad(fn, fn.emit(instr))
 
 		default:
@@ -1998,7 +2001,7 @@ start:
 			op = token.SUB
 		}
 		loc := b.addr(fn, s.X, false)
-		b.assignOp(fn, loc, NewConst(exact.MakeInt64(1), loc.typ()), op)
+		b.assignOp(fn, loc, NewConst(constant.MakeInt64(1), loc.typ()), op, s.Pos())
 
 	case *ast.AssignStmt:
 		switch s.Tok {
@@ -2007,7 +2010,7 @@ start:
 
 		default: // +=, etc.
 			op := s.Tok + token.ADD - token.ADD_ASSIGN
-			b.assignOp(fn, b.addr(fn, s.Lhs[0], false), b.expr(fn, s.Rhs[0]), op)
+			b.assignOp(fn, b.addr(fn, s.Lhs[0], false), b.expr(fn, s.Rhs[0]), op, s.Pos())
 		}
 
 	case *ast.GoStmt:
