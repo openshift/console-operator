@@ -34,7 +34,6 @@ import (
 
 	// console-operator
 	"github.com/openshift/console-operator/pkg/api"
-	customerrors "github.com/openshift/console-operator/pkg/console/errors"
 	"github.com/openshift/console-operator/pkg/console/status"
 	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 )
@@ -182,8 +181,8 @@ func (c *RouteSyncController) SyncDefaultRoute(operatorConfig *operatorsv1.Conso
 		return nil, "FailedDefaultRouteApply", defaultRouteError
 	}
 
-	if len(routesub.GetCanonicalHost(defaultRoute)) == 0 {
-		return nil, "FailedDefaultRouteHost", customerrors.NewSyncError(fmt.Sprintf("default route is not available at canonical host %s", defaultRoute.Status.Ingress))
+	if _, defaultRouteError = routesub.GetCanonicalHost(defaultRoute); defaultRouteError != nil {
+		return nil, "FailedAdmitDefaultRoute", defaultRouteError
 	}
 
 	return defaultRoute, "", defaultRouteError
@@ -218,8 +217,8 @@ func (c *RouteSyncController) SyncCustomRoute(operatorConfig *operatorsv1.Consol
 		return nil, "FailedCustomRouteApply", customRouteError
 	}
 
-	if len(routesub.GetCanonicalHost(customRoute)) == 0 {
-		return nil, "FailedCustomRouteHost", customerrors.NewSyncError(fmt.Sprintf("custom route is not available at canonical host %s", customRoute.Status.Ingress))
+	if _, customRouteError = routesub.GetCanonicalHost(customRoute); customRouteError != nil {
+		return nil, "FailedAdmitCustomRoute", customRouteError
 	}
 
 	return customRoute, "", customRouteError

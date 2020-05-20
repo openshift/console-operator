@@ -30,7 +30,10 @@ func TestDownloadsEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not get route: %s", err)
 	}
-	host := routesub.GetCanonicalHost(route)
+	host, err := routesub.GetCanonicalHost(route)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	ocDownloads := clidownloads.PlatformBasedOCConsoleCLIDownloads(host, api.OCCLIDownloadsCustomResourceName)
 

@@ -124,14 +124,17 @@ func (c *CLIDownloadsSyncController) sync() error {
 		return fmt.Errorf("console is in an unknown state: %v", updatedOperatorConfig.Spec.ManagementState)
 	}
 
-	consoleRoute, err := c.routeClient.Routes(api.TargetNamespace).Get(c.ctx, api.OpenShiftConsoleDownloadsRouteName, metav1.GetOptions{})
-	if err != nil {
-		return err
+	downloadsRoute, downloadsRouteErr := c.routeClient.Routes(api.TargetNamespace).Get(c.ctx, api.OpenShiftConsoleDownloadsRouteName, metav1.GetOptions{})
+	if downloadsRouteErr != nil {
+		return downloadsRouteErr
+	}
+
+	host, downloadsRouteErr := routesub.GetCanonicalHost(downloadsRoute)
+	if downloadsRouteErr != nil {
+		return downloadsRouteErr
 	}
 
 	statusHandler := status.NewStatusHandler(c.operatorClient)
-
-	host := routesub.GetCanonicalHost(consoleRoute)
 	ocConsoleCLIDownloads := PlatformBasedOCConsoleCLIDownloads(host, api.OCCLIDownloadsCustomResourceName)
 	_, ocCLIDownloadsErrReason, ocCLIDownloadsErr := ApplyCLIDownloads(c.consoleCliDownloadsClient, ocConsoleCLIDownloads, c.ctx)
 	statusHandler.AddCondition(status.HandleDegraded("OCDownloadsSync", ocCLIDownloadsErrReason, ocCLIDownloadsErr))

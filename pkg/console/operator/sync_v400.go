@@ -159,11 +159,8 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	// if we survive the gauntlet, we need to update the console config with the
 	// public hostname so that the world can know the console is ready to roll
 	klog.V(4).Infoln("sync_v400: updating console status")
-	consoleURL := getConsoleURL(route)
-
-	if consoleURL == "" {
-		err := customerrors.NewSyncError("waiting on route host")
-		klog.Errorf("%q: %v", "route", err)
+	consoleURL, err := getConsoleURL(route)
+	if err != nil {
 		return statusHandler.FlushAndReturn(err)
 	}
 
@@ -251,9 +248,9 @@ func (co *consoleOperator) SyncDeployment(
 // applies changes to the oauthclient
 // should not be called until route & secret dependencies are verified
 func (co *consoleOperator) SyncOAuthClient(operatorConfig *operatorv1.Console, sec *corev1.Secret, rt *routev1.Route) (consoleoauthclient *oauthv1.OAuthClient, changed bool, reason string, err error) {
-	host := routesub.GetCanonicalHost(rt)
-	if host == "" {
-		return nil, false, "FailedHost", customerrors.NewSyncError("waiting on route host")
+	host, routeErr := routesub.GetCanonicalHost(rt)
+	if routeErr != nil {
+		return nil, false, "FailedHost", routeErr
 	}
 	oauthClient, err := co.oauthClient.OAuthClients().Get(co.ctx, oauthsub.Stub().Name, metav1.GetOptions{})
 	if err != nil {
@@ -469,10 +466,10 @@ func (co *consoleOperator) ValidateCustomLogo(operatorConfig *operatorv1.Console
 	return true, "", nil
 }
 
-func getConsoleURL(route *routev1.Route) string {
-	host := routesub.GetCanonicalHost(route)
-	if host == "" {
-		return ""
+func getConsoleURL(route *routev1.Route) (string, error) {
+	host, err := routesub.GetCanonicalHost(route)
+	if err != nil {
+		return "", err
 	}
-	return util.HTTPS(host)
+	return util.HTTPS(host), nil
 }
