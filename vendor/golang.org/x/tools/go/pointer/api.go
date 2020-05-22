@@ -132,7 +132,7 @@ func (c *Config) AddIndirectQuery(v ssa.Value) {
 // 	// 'type T struct { F *int }', the following query will access the field F.
 // 	c.AddExtendedQuery(v, "x[1][0].F")
 func (c *Config) AddExtendedQuery(v ssa.Value, query string) (*Pointer, error) {
-	ops, _, err := parseExtendedQuery(v.Type().Underlying(), query)
+	ops, _, err := parseExtendedQuery(v.Type(), query)
 	if err != nil {
 		return nil, fmt.Errorf("invalid query %q: %s", query, err)
 	}
@@ -230,11 +230,11 @@ func (s PointsToSet) DynamicTypes() *typeutil.Map {
 	if s.pts != nil {
 		var space [50]int
 		for _, x := range s.pts.AppendTo(space[:0]) {
-			ifaceObjId := nodeid(x)
-			if !s.a.isTaggedObject(ifaceObjId) {
+			ifaceObjID := nodeid(x)
+			if !s.a.isTaggedObject(ifaceObjID) {
 				continue // !CanHaveDynamicTypes(tDyn)
 			}
-			tDyn, v, indirect := s.a.taggedValue(ifaceObjId)
+			tDyn, v, indirect := s.a.taggedValue(ifaceObjID)
 			if indirect {
 				panic("indirect tagged object") // implement later
 			}
@@ -251,13 +251,13 @@ func (s PointsToSet) DynamicTypes() *typeutil.Map {
 
 // Intersects reports whether this points-to set and the
 // argument points-to set contain common members.
-func (x PointsToSet) Intersects(y PointsToSet) bool {
-	if x.pts == nil || y.pts == nil {
+func (s PointsToSet) Intersects(y PointsToSet) bool {
+	if s.pts == nil || y.pts == nil {
 		return false
 	}
 	// This takes Θ(|x|+|y|) time.
 	var z intsets.Sparse
-	z.Intersection(&x.pts.Sparse, &y.pts.Sparse)
+	z.Intersection(&s.pts.Sparse, &y.pts.Sparse)
 	return !z.IsEmpty()
 }
 

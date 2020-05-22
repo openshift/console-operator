@@ -7,9 +7,11 @@ package interp
 import (
 	"bytes"
 	"fmt"
-	exact "go/constant"
+	"go/constant"
 	"go/token"
 	"go/types"
+	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"unsafe"
@@ -40,7 +42,7 @@ func constValue(c *ssa.Const) value {
 		// TODO(adonovan): eliminate untyped constants from SSA form.
 		switch t.Kind() {
 		case types.Bool, types.UntypedBool:
-			return exact.BoolVal(c.Value)
+			return constant.BoolVal(c.Value)
 		case types.Int, types.UntypedInt:
 			// Assume sizeof(int) is same on host and target.
 			return int(c.Int64())
@@ -75,8 +77,8 @@ func constValue(c *ssa.Const) value {
 		case types.Complex128, types.UntypedComplex:
 			return c.Complex128()
 		case types.String, types.UntypedString:
-			if c.Value.Kind() == exact.String {
-				return exact.StringVal(c.Value)
+			if c.Value.Kind() == constant.String {
+				return constant.StringVal(c.Value)
 			}
 			return string(rune(c.Int64()))
 		}
@@ -147,7 +149,7 @@ func zero(t types.Type) value {
 			// this is unreachable.  Currently some
 			// constants have 'untyped' types when they
 			// should be defaulted by the typechecker.
-			t = ssa.DefaultType(t).(*types.Basic)
+			t = types.Default(t).(*types.Basic)
 		}
 		switch t.Kind() {
 		case types.Bool:
@@ -918,20 +920,17 @@ func typeAssert(i *interpreter, instr *ssa.TypeAssert, itf iface) value {
 var CapturedOutput *bytes.Buffer
 var capturedOutputMu sync.Mutex
 
-// write writes bytes b to the target program's file descriptor fd.
+// write writes bytes b to the target program's standard output.
 // The print/println built-ins and the write() system call funnel
 // through here so they can be captured by the test driver.
-func write(fd int, b []byte) (int, error) {
-	// TODO(adonovan): fix: on Windows, std{out,err} are not 1, 2.
-	if CapturedOutput != nil && (fd == 1 || fd == 2) {
+func print(b []byte) (int, error) {
+	if CapturedOutput != nil {
 		capturedOutputMu.Lock()
 		CapturedOutput.Write(b) // ignore errors
 		capturedOutputMu.Unlock()
 	}
-	return syswrite(fd, b)
+	return os.Stdout.Write(b)
 }
-
-var syswrite func(int, []byte) (int, error) // set on darwin/linux only
 
 // callBuiltin interprets a call to builtin fn with arguments args,
 // returning its result.
@@ -987,7 +986,7 @@ func callBuiltin(caller *frame, callpos token.Pos, fn *ssa.Builtin, args []value
 		if ln {
 			buf.WriteRune('\n')
 		}
-		write(1, buf.Bytes())
+		print(buf.Bytes())
 		return nil
 
 	case "len":
@@ -1079,34 +1078,9 @@ func callBuiltin(caller *frame, callpos token.Pos, fn *ssa.Builtin, args []value
 func rangeIter(x value, t types.Type) iter {
 	switch x := x.(type) {
 	case map[value]value:
-		// TODO(adonovan): fix: leaks goroutines and channels
-		// on each incomplete map iteration.  We need to open
-		// up an iteration interface using the
-		// reflect.(Value).MapKeys machinery.
-		it := make(mapIter)
-		go func() {
-			for k, v := range x {
-				it <- [2]value{k, v}
-			}
-			close(it)
-		}()
-		return it
+		return &mapIter{iter: reflect.ValueOf(x).MapRange()}
 	case *hashmap:
-		// TODO(adonovan): fix: leaks goroutines and channels
-		// on each incomplete map iteration.  We need to open
-		// up an iteration interface using the
-		// reflect.(Value).MapKeys machinery.
-		it := make(mapIter)
-		go func() {
-			for _, e := range x.entries() {
-				for e != nil {
-					it <- [2]value{e.key, e.value}
-					e = e.next
-				}
-			}
-			close(it)
-		}()
-		return it
+		return &hashmapIter{iter: reflect.ValueOf(x.entries()).MapRange()}
 	case string:
 		return &stringIter{Reader: strings.NewReader(x)}
 	}

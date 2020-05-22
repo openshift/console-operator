@@ -24,23 +24,32 @@ import (
 	"golang.org/x/tools/present"
 )
 
-var validJSONPFunc = regexp.MustCompile(`(?i)^[a-z_][a-z0-9_.]*$`)
+var (
+	validJSONPFunc = regexp.MustCompile(`(?i)^[a-z_][a-z0-9_.]*$`)
+	// used to serve relative paths when ServeLocalLinks is enabled.
+	golangOrgAbsLinkReplacer = strings.NewReplacer(
+		`href="https://golang.org/pkg`, `href="/pkg`,
+		`href="https://golang.org/cmd`, `href="/cmd`,
+	)
+)
 
 // Config specifies Server configuration values.
 type Config struct {
 	ContentPath  string // Relative or absolute location of article files and related content.
 	TemplatePath string // Relative or absolute location of template files.
 
-	BaseURL  string // Absolute base URL (for permalinks; no trailing slash).
-	BasePath string // Base URL path relative to server root (no trailing slash).
-	GodocURL string // The base URL of godoc (for menu bar; no trailing slash).
-	Hostname string // Server host name, used for rendering ATOM feeds.
+	BaseURL       string        // Absolute base URL (for permalinks; no trailing slash).
+	BasePath      string        // Base URL path relative to server root (no trailing slash).
+	GodocURL      string        // The base URL of godoc (for menu bar; no trailing slash).
+	Hostname      string        // Server host name, used for rendering ATOM feeds.
+	AnalyticsHTML template.HTML // Optional analytics HTML to insert at the beginning of <head>.
 
 	HomeArticles int    // Articles to display on the home page.
 	FeedArticles int    // Articles to include in Atom and JSON feeds.
 	FeedTitle    string // The title of the Atom XML feed
 
-	PlayEnabled bool
+	PlayEnabled     bool
+	ServeLocalLinks bool // rewrite golang.org/{pkg,cmd} links to host-less, relative paths.
 }
 
 // Doc represents an article adorned with presentation data.
@@ -56,12 +65,13 @@ type Doc struct {
 
 // Server implements an http.Handler that serves blog articles.
 type Server struct {
-	cfg      Config
-	docs     []*Doc
-	tags     []string
-	docPaths map[string]*Doc // key is path without BasePath.
-	docTags  map[string][]*Doc
-	template struct {
+	cfg       Config
+	docs      []*Doc
+	redirects map[string]string
+	tags      []string
+	docPaths  map[string]*Doc // key is path without BasePath.
+	docTags   map[string][]*Doc
+	template  struct {
 		home, index, article, doc *template.Template
 	}
 	atomFeed []byte // pre-rendered Atom feed
@@ -73,10 +83,17 @@ type Server struct {
 func NewServer(cfg Config) (*Server, error) {
 	present.PlayEnabled = cfg.PlayEnabled
 
+	if notExist(cfg.TemplatePath) {
+		return nil, fmt.Errorf("template directory not found: %s", cfg.TemplatePath)
+	}
 	root := filepath.Join(cfg.TemplatePath, "root.tmpl")
 	parse := func(name string) (*template.Template, error) {
+		path := filepath.Join(cfg.TemplatePath, name)
+		if notExist(path) {
+			return nil, fmt.Errorf("template %s was not found in %s", name, cfg.TemplatePath)
+		}
 		t := template.New("").Funcs(funcMap)
-		return t.ParseFiles(root, filepath.Join(cfg.TemplatePath, name))
+		return t.ParseFiles(root, path)
 	}
 
 	s := &Server{cfg: cfg}
@@ -102,7 +119,8 @@ func NewServer(cfg Config) (*Server, error) {
 	}
 
 	// Load content.
-	err = s.loadDocs(filepath.Clean(cfg.ContentPath))
+	content := filepath.Clean(cfg.ContentPath)
+	err = s.loadDocs(content)
 	if err != nil {
 		return nil, err
 	}
@@ -141,6 +159,9 @@ func authors(authors []present.Author) string {
 	for i, a := range authors {
 		if i > 0 {
 			if i == last {
+				if len(authors) > 2 {
+					b.WriteString(",")
+				}
 				b.WriteString(" and ")
 			} else {
 				b.WriteString(", ")
@@ -172,6 +193,10 @@ func (s *Server) loadDocs(root string) error {
 	// Read content into docs field.
 	const ext = ".article"
 	fn := func(p string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
 		if filepath.Ext(p) != ext {
 			return nil
 		}
@@ -184,8 +209,8 @@ func (s *Server) loadDocs(root string) error {
 		if err != nil {
 			return err
 		}
-		html := new(bytes.Buffer)
-		err = d.Render(html, s.template.doc)
+		var html bytes.Buffer
+		err = d.Render(&html, s.template.doc)
 		if err != nil {
 			return err
 		}
@@ -208,10 +233,25 @@ func (s *Server) loadDocs(root string) error {
 	// Pull out doc paths and tags and put in reverse-associating maps.
 	s.docPaths = make(map[string]*Doc)
 	s.docTags = make(map[string][]*Doc)
+	s.redirects = make(map[string]string)
 	for _, d := range s.docs {
 		s.docPaths[strings.TrimPrefix(d.Path, s.cfg.BasePath)] = d
 		for _, t := range d.Tags {
 			s.docTags[t] = append(s.docTags[t], d)
+		}
+	}
+	for _, d := range s.docs {
+		for _, old := range d.OldURL {
+			if !strings.HasPrefix(old, "/") {
+				old = "/" + old
+			}
+			if _, ok := s.docPaths[old]; ok {
+				return fmt.Errorf("redirect %s -> %s conflicts with document %s", old, d.Path, old)
+			}
+			if new, ok := s.redirects[old]; ok {
+				return fmt.Errorf("redirect %s -> %s conflicts with redirect %s -> %s", old, d.Path, old, new)
+			}
+			s.redirects[old] = d.Path
 		}
 	}
 
@@ -275,9 +315,21 @@ func (s *Server) renderAtomFeed() error {
 		if i >= s.cfg.FeedArticles {
 			break
 		}
+
+		// Use original article path as ID in atom feed
+		// to avoid articles being treated as new when renamed.
+		idPath := doc.Path
+		if len(doc.OldURL) > 0 {
+			old := doc.OldURL[0]
+			if !strings.HasPrefix(old, "/") {
+				old = "/" + old
+			}
+			idPath = old
+		}
+
 		e := &atom.Entry{
 			Title: doc.Title,
-			ID:    feed.ID + doc.Path,
+			ID:    feed.ID + idPath,
 			Link: []atom.Link{{
 				Rel:  "alternate",
 				Href: doc.Permalink,
@@ -364,17 +416,22 @@ func summary(d *Doc) string {
 
 // rootData encapsulates data destined for the root template.
 type rootData struct {
-	Doc      *Doc
-	BasePath string
-	GodocURL string
-	Data     interface{}
+	Doc           *Doc
+	BasePath      string
+	GodocURL      string
+	AnalyticsHTML template.HTML
+	Data          interface{}
 }
 
 // ServeHTTP serves the front, index, and article pages
 // as well as the ATOM and JSON feeds.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var (
-		d = rootData{BasePath: s.cfg.BasePath, GodocURL: s.cfg.GodocURL}
+		d = rootData{
+			BasePath:      s.cfg.BasePath,
+			GodocURL:      s.cfg.GodocURL,
+			AnalyticsHTML: s.cfg.AnalyticsHTML,
+		}
 		t *template.Template
 	)
 	switch p := strings.TrimPrefix(r.URL.Path, s.cfg.BasePath); p {
@@ -401,6 +458,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write(s.jsonFeed)
 		return
 	default:
+		if redir, ok := s.redirects[p]; ok {
+			http.Redirect(w, r, redir, http.StatusMovedPermanently)
+			return
+		}
 		doc, ok := s.docPaths[p]
 		if !ok {
 			// Not a doc; try to just serve static content.
@@ -410,7 +471,18 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		d.Doc = doc
 		t = s.template.article
 	}
-	err := t.ExecuteTemplate(w, "root", d)
+	var err error
+	if s.cfg.ServeLocalLinks {
+		var buf bytes.Buffer
+		err = t.ExecuteTemplate(&buf, "root", d)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		_, err = golangOrgAbsLinkReplacer.WriteString(w, buf.String())
+	} else {
+		err = t.ExecuteTemplate(w, "root", d)
+	}
 	if err != nil {
 		log.Println(err)
 	}
@@ -422,3 +494,9 @@ type docsByTime []*Doc
 func (s docsByTime) Len() int           { return len(s) }
 func (s docsByTime) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s docsByTime) Less(i, j int) bool { return s[i].Time.After(s[j].Time) }
+
+// notExist reports whether the path exists or not.
+func notExist(path string) bool {
+	_, err := os.Stat(path)
+	return os.IsNotExist(err)
+}

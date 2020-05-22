@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// +build go1.9
+
 package main
 
 import (
@@ -39,7 +41,7 @@ func TestBundle(t *testing.T) {
 	})
 
 	os.Args = os.Args[:1] // avoid e.g. -test=short in the output
-	out, err := bundle("initial", "github.com/dest", "dest", "prefix")
+	out, err := bundle("initial", "github.com/dest", "dest", "prefix", "tag")
 	if err != nil {
 		t.Fatal(err)
 	}

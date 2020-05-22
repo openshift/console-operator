@@ -3,9 +3,9 @@ import:
 
 # kube
 - package: k8s.io/apimachinery
-  version: kubernetes-1.17.1
+  version: kubernetes-1.17.2
 - package: k8s.io/api
-  version: kubernetes-1.17.1
+  version: kubernetes-1.17.2
 - package: k8s.io/apiserver
   version: kubernetes-1.17.1
 - package: k8s.io/client-go
@@ -19,11 +19,11 @@ import:
 
 # openshift
 - package: github.com/openshift/api
-  version: master
+  version: release-4.4
 - package: github.com/openshift/client-go
-  version: master
+  version: release-4.4
 - package: github.com/openshift/library-go
-  version: master
+  version: release-4.4
 - package: monis.app/go
   version: master
 
