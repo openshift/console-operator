@@ -192,7 +192,8 @@ func (DNSList) SwaggerDoc() map[string]string {
 }
 
 var map_DNSSpec = map[string]string{
-	"": "DNSSpec is the specification of the desired behavior of the DNS.",
+	"":        "DNSSpec is the specification of the desired behavior of the DNS.",
+	"servers": "servers is a list of DNS resolvers that provide name query delegation for one or more subdomains outside the scope of the cluster domain. If servers consists of more than one Server, longest suffix match will be used to determine the Server.\n\nFor example, if there are two Servers, one for \"foo.com\" and another for \"a.foo.com\", and the name query is for \"www.a.foo.com\", it will be routed to the Server with Zone \"a.foo.com\".\n\nIf this field is nil, no servers are created.",
 }
 
 func (DNSSpec) SwaggerDoc() map[string]string {
@@ -208,6 +209,26 @@ var map_DNSStatus = map[string]string{
 
 func (DNSStatus) SwaggerDoc() map[string]string {
 	return map_DNSStatus
+}
+
+var map_ForwardPlugin = map[string]string{
+	"":          "ForwardPlugin defines a schema for configuring the CoreDNS forward plugin.",
+	"upstreams": "upstreams is a list of resolvers to forward name queries for subdomains of Zones. Upstreams are randomized when more than 1 upstream is specified. Each instance of CoreDNS performs health checking of Upstreams. When a healthy upstream returns an error during the exchange, another resolver is tried from Upstreams. Each upstream is represented by an IP address or IP:port if the upstream listens on a port other than 53.\n\nA maximum of 15 upstreams is allowed per ForwardPlugin.",
+}
+
+func (ForwardPlugin) SwaggerDoc() map[string]string {
+	return map_ForwardPlugin
+}
+
+var map_Server = map[string]string{
+	"":              "Server defines the schema for a server that runs per instance of CoreDNS.",
+	"name":          "name is required and specifies a unique name for the server. Name must comply with the Service Name Syntax of rfc6335.",
+	"zones":         "zones is required and specifies the subdomains that Server is authoritative for. Zones must conform to the rfc1123 definition of a subdomain. Specifying the cluster domain (i.e., \"cluster.local\") is invalid.",
+	"forwardPlugin": "forwardPlugin defines a schema for configuring CoreDNS to proxy DNS messages to upstream resolvers.",
+}
+
+func (Server) SwaggerDoc() map[string]string {
+	return map_Server
 }
 
 var map_Etcd = map[string]string{
@@ -269,7 +290,7 @@ var map_IngressControllerSpec = map[string]string{
 	"":                           "IngressControllerSpec is the specification of the desired behavior of the IngressController.",
 	"domain":                     "domain is a DNS name serviced by the ingress controller and is used to configure multiple features:\n\n* For the LoadBalancerService endpoint publishing strategy, domain is\n  used to configure DNS records. See endpointPublishingStrategy.\n\n* When using a generated default certificate, the certificate will be valid\n  for domain and its subdomains. See defaultCertificate.\n\n* The value is published to individual Route statuses so that end-users\n  know where to target external DNS records.\n\ndomain must be unique among all IngressControllers, and cannot be updated.\n\nIf empty, defaults to ingress.config.openshift.io/cluster .spec.domain.",
 	"replicas":                   "replicas is the desired number of ingress controller replicas. If unset, defaults to 2.",
-	"endpointPublishingStrategy": "endpointPublishingStrategy is used to publish the ingress controller endpoints to other networks, enable load balancer integrations, etc.\n\nIf unset, the default is based on infrastructure.config.openshift.io/cluster .status.platform:\n\n  AWS:      LoadBalancerService (with External scope)\n  Azure:    LoadBalancerService (with External scope)\n  GCP:      LoadBalancerService (with External scope)\n  Libvirt:  HostNetwork\n\nAny other platform types (including None) default to HostNetwork.\n\nendpointPublishingStrategy cannot be updated.",
+	"endpointPublishingStrategy": "endpointPublishingStrategy is used to publish the ingress controller endpoints to other networks, enable load balancer integrations, etc.\n\nIf unset, the default is based on infrastructure.config.openshift.io/cluster .status.platform:\n\n  AWS:      LoadBalancerService (with External scope)\n  Azure:    LoadBalancerService (with External scope)\n  GCP:      LoadBalancerService (with External scope)\n  IBMCloud: LoadBalancerService (with External scope)\n  Libvirt:  HostNetwork\n\nAny other platform types (including None) default to HostNetwork.\n\nendpointPublishingStrategy cannot be updated.",
 	"defaultCertificate":         "defaultCertificate is a reference to a secret containing the default certificate served by the ingress controller. When Routes don't specify their own certificate, defaultCertificate is used.\n\nThe secret must contain the following keys and data:\n\n  tls.crt: certificate file contents\n  tls.key: key file contents\n\nIf unset, a wildcard certificate is automatically generated and used. The certificate is valid for the ingress controller domain (and subdomains) and the generated certificate's CA will be automatically integrated with the cluster's trust store.\n\nThe in-use certificate (whether generated or user-specified) will be automatically integrated with OpenShift's built-in OAuth server.",
 	"namespaceSelector":          "namespaceSelector is used to filter the set of namespaces serviced by the ingress controller. This is useful for implementing shards.\n\nIf unset, the default is no filtering.",
 	"routeSelector":              "routeSelector is used to filter the set of Routes serviced by the ingress controller. This is useful for implementing shards.\n\nIf unset, the default is no filtering.",
@@ -324,7 +345,9 @@ func (PrivateStrategy) SwaggerDoc() map[string]string {
 }
 
 var map_KubeAPIServer = map[string]string{
-	"": "KubeAPIServer provides information to configure an operator to manage kube-apiserver.",
+	"":       "KubeAPIServer provides information to configure an operator to manage kube-apiserver.",
+	"spec":   "spec is the specification of the desired behavior of the Kubernetes API Server",
+	"status": "status is the most recently observed status of the Kubernetes API Server",
 }
 
 func (KubeAPIServer) SwaggerDoc() map[string]string {
@@ -341,7 +364,9 @@ func (KubeAPIServerList) SwaggerDoc() map[string]string {
 }
 
 var map_KubeControllerManager = map[string]string{
-	"": "KubeControllerManager provides information to configure an operator to manage kube-controller-manager.",
+	"":       "KubeControllerManager provides information to configure an operator to manage kube-controller-manager.",
+	"spec":   "spec is the specification of the desired behavior of the Kubernetes Controller Manager",
+	"status": "status is the most recently observed status of the Kubernetes Controller Manager",
 }
 
 func (KubeControllerManager) SwaggerDoc() map[string]string {
@@ -570,7 +595,9 @@ func (StaticIPAMRoutes) SwaggerDoc() map[string]string {
 }
 
 var map_OpenShiftAPIServer = map[string]string{
-	"": "OpenShiftAPIServer provides information to configure an operator to manage openshift-apiserver.",
+	"":       "OpenShiftAPIServer provides information to configure an operator to manage openshift-apiserver.",
+	"spec":   "spec is the specification of the desired behavior of the OpenShift API Server.",
+	"status": "status defines the observed status of the OpenShift API Server.",
 }
 
 func (OpenShiftAPIServer) SwaggerDoc() map[string]string {
@@ -612,7 +639,9 @@ func (OpenShiftControllerManagerList) SwaggerDoc() map[string]string {
 }
 
 var map_KubeScheduler = map[string]string{
-	"": "KubeScheduler provides information to configure an operator to manage scheduler.",
+	"":       "KubeScheduler provides information to configure an operator to manage scheduler.",
+	"spec":   "spec is the specification of the desired behavior of the Kubernetes Scheduler",
+	"status": "status is the most recently observed status of the Kubernetes Scheduler",
 }
 
 func (KubeScheduler) SwaggerDoc() map[string]string {

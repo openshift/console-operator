@@ -35,6 +35,9 @@ func TestIExportData_stdlib(t *testing.T) {
 	if runtime.GOOS == "android" {
 		t.Skipf("incomplete std lib on %s", runtime.GOOS)
 	}
+	if isRace {
+		t.Skipf("stdlib tests take too long in race mode and flake on builders")
+	}
 
 	// Load, parse and type-check the program.
 	ctxt := build.Default // copy
@@ -195,7 +198,8 @@ func TestIExportData_typealiases(t *testing.T) {
 	checkPkg(t, pkg1, "export")
 
 	// export
-	exportdata, err := gcimporter.IExportData(fset1, pkg1)
+	// use a nil fileset here to confirm that it doesn't panic
+	exportdata, err := gcimporter.IExportData(nil, pkg1)
 	if err != nil {
 		t.Fatal(err)
 	}
