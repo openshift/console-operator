@@ -89,4 +89,3 @@ rules:
   - validatingwebhookconfigurations
   verbs:
   - get
-  - watch
