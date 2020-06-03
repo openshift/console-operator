@@ -290,15 +290,14 @@ func (co *consoleOperator) SyncConfigMap(
 		return nil, false, "FailedGetManagedConfig", mcErr
 	}
 
-	useDefaultCAFile := true
+	useDefaultCAFile := false
 	// We are syncing the `default-ingress-cert` configmap from `openshift-config-managed` to `openshift-console`.
-	// `default-ingress-cert` is only published in `openshift-config-managed` if an operator-generated default certificate is used.
-	// It will not exist if all ingresscontrollers user admin-provided default certificates.
-	// If the `default-ingress-cert` configmap in `openshift-console` exist we should mount that to the console container,
+	// `default-ingress-cert` is only published in `openshift-config-managed` in OpenShift 4.4.0 and newer.
+	// If the `default-ingress-cert` configmap in `openshift-console` exists, we should mount that to the console container,
 	// otherwise default to `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt`
 	_, rcaErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(api.DefaultIngressCertConfigMapName, metav1.GetOptions{})
 	if rcaErr != nil && apierrors.IsNotFound(rcaErr) {
-		useDefaultCAFile = false
+		useDefaultCAFile = true
 	}
 
 	monitoringSharedConfig, mscErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftMonitoringConfigMapName, metav1.GetOptions{})
