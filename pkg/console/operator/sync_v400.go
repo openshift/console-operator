@@ -69,8 +69,8 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(set.Operator, set.Console, set.Infrastructure, route)
 	toUpdate = toUpdate || cmChanged
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
-	if routeErr != nil {
-		return statusHandler.FlushAndReturn(routeErr)
+	if cmErr != nil {
+		return statusHandler.FlushAndReturn(cmErr)
 	}
 
 	serviceCAConfigMap, serviceCAChanged, serviceCAErrReason, serviceCAErr := co.SyncServiceCAConfigMap(set.Operator)
