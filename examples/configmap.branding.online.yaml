@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: console-config
+  namespace: openshift-config-managed
+data:
+  console-config.yaml: |
+    kind: ConsoleConfig
+    apiVersion: console.openshift.io/v1
+    customization:
+      branding: online
+      documentationBaseURL: https://docs.okd.io/4.0/

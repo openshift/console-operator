@@ -1,0 +1,16 @@
+apiVersion: operator.openshift.io/v1
+kind: Console
+metadata:
+  name: cluster
+spec:
+  managementState: Managed
+  logLevel: Trace
+  providers:
+    statuspage:
+      pageID: id-12345678901234567890
+  customization:
+    customProductName: Custom Product Name
+    customLogoFile:
+      name: fake-logo-red
+      key: fake-logo-red.png
+      

@@ -1,0 +1,14 @@
+apiVersion: config.openshift.io/v1
+kind: OAuth
+metadata:
+  name: cluster
+spec:
+  identityProviders:
+    - name: my_htpasswd_provider
+      mappingMethod: claim
+      type: HTPasswd
+      htpasswd:
+        fileData:
+          # oc create secret generic htpass-secret --from-file <x> -n openshift-config
+          # see dev_configure_oauth_htpasswd.sh which scripts this.
+          name: htpass-secret

@@ -1,0 +1,360 @@
+# a set of instances of the console extensions CRDs
+# to illustrate that they are working.
+# this should be added to the setup script, just to ensure they function,
+# even though rhamilto wrote some e2e tests for them
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: example
+spec:
+  href: 'https://www.example.com'
+  location: HelpMenu
+  text: Link 1
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: example2
+spec:
+  href: 'https://www.example.com'
+  location: HelpMenu
+  text: Link 2
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: namespaced-dashboard-link-for-all-namespaces
+spec:
+  href: 'https://www.example.com'
+  location: NamespaceDashboard
+  text: This appears in all namespaces
+  # no namespaces defined so appears in all
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: namespaced-dashboard-link-via-namespace-list
+spec:
+  href: 'https://www.example.com'
+  location: NamespaceDashboard
+  # will appear in a box called "Laucher" under namespace or project
+  text: Link in specific namespaces via list
+  namespaceDashboard:
+    namespaces:
+    - default
+    - foo
+    - bar
+    - baz
+    - openshift-console
+    - openshift-console-operator
+    - openshift-config
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: namespaced-dashboard-link-via-match-labels
+spec:
+  href: 'https://www.example.com'
+  location: NamespaceDashboard
+  text: Link in namespaces via selector match labels
+  namespaceDashboard:
+    namespaceSelector:
+      matchLabels:
+        # make sure a namespace has these labels
+        link: has-special-link
+        other-link: has.special.link
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: namespaced-dashboard-link-via-match-expression
+spec:
+  href: 'https://www.example.com'
+  location: NamespaceDashboard
+  text: Link in namespaces via selector match expression
+  namespaceDashboard:
+    namespaceSelector:
+      matchExpressions:
+      # make sure at least one namespace meets these requirements
+      - key: link
+        operator: In
+        values:
+        - has-special
+      - key: wolverine
+        operator: In
+        values:
+        - x-men
+      - key: black.widow
+        operator: In
+        values:
+        - avengers
+      - key: hulk
+        operator: NotIn
+        values:
+        - x-men
+#      - key:
+#        operator: Exists
+#        value:
+#      - key:
+#        operator: DoesNotExist
+#        value:
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: application-menu-link-1
+spec:
+  href: 'https://www.example.com'
+  location: ApplicationMenu
+  text: Link 1
+  applicationMenu:
+    section: My Fancy Section
+    imageURL: https://via.placeholder.com/24
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: application-menu-link-2
+spec:
+  href: 'https://www.example.com'
+  location: ApplicationMenu
+  text: Link 2
+  applicationMenu:
+    section: My Fancy Section
+    imageURL: https://via.placeholder.com/24
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: badux-with-empty-strings
+spec:
+  href: 'https://www.example.com'
+  location: UserMenu
+  text: ""
+  applicationMenu:
+    section: ""
+    imageURL: ""
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: badux-with-empty-strings-except-location
+spec:
+  href: 'https://www.example.com'
+  location: ApplicationMenu
+  text: ""
+  applicationMenu:
+    section: ""
+    imageURL: ""
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: application-menu-link-3
+spec:
+  href: 'https://www.example.com'
+  location: ApplicationMenu
+  text: Link 3
+  applicationMenu:
+    section: My Fancy Other Section
+    imageURL: https://via.placeholder.com/24
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleExternalLogLink
+metadata:
+  name: example
+spec:
+  hrefTemplate: >-
+    https://example.com/logs?resourceName=${resourceName}&containerName=${containerName}&resourceNamespace=${resourceNamespace}&podLabels=${podLabels}
+  text: Example Logs
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleExternalLogLink
+metadata:
+  name: badux-empty-string-for-text
+spec:
+  hrefTemplate: "https://"
+  text: ""
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleExternalLogLink
+metadata:
+  name: to-infinity-and-beyond
+spec:
+  hrefTemplate: >-
+    https://example.com/logs?resourceName=${resourceName}&containerName=${containerName}&resourceNamespace=${resourceNamespace}&podLabels=${podLabels}
+  text: To infinity, and beyond!
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleCLIDownload
+metadata:
+  name: example
+spec:
+  displayName: examplecli
+  description: |
+    This is an example CLI download description that can include markdown such as paragraphs, unordered lists, code, [links](https://www.example.com), etc.
+     Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce a lobortis justo, eu suscipit purus.
+  links:
+    - href: 'https://www.example.com'
+      text: worker
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleCLIDownload
+metadata:
+  name: example-cli-download-links-with-names-for-each-platform
+spec:
+  description: |
+    This is an example of download links for foo
+  displayName: example-foo
+  links:
+    - href: 'https://www.example.com/public/foo.tar'
+      text: foo for linux
+    - href: 'https://www.example.com/public/foo.mac.zip'
+      text: foo for mac
+    - href: 'https://www.example.com/yikes/no/text.tar'
+      text: foo for windows
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleCLIDownload
+metadata:
+  name: example-with-two-downloads-that-defaults-name-of-both
+spec:
+  description: |
+    This is an example of download links for foo. It has 2 links, but there is no name, so it will default. That is bad, since you don't know what you are downloading.
+  displayName: example-that-defaults-name
+  links:
+    - href: 'https://www.example.com/public/foo.tar'
+    - href: 'https://www.example.com/public/foo.mac.zip'
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleCLIDownload
+metadata:
+  name: example-with-some-named-and-some-defaulted-named
+spec:
+  description: |
+    Some named and some defaulted, is really confusing.
+  displayName: example-that-defaults-name
+  links:
+    - href: 'https://www.example.com/yikes/no/text.tar'
+    - href: 'https://www.example.com/public/foo.tar'
+      text: foo for linux
+    - href: 'https://www.example.com/yikes/no/text.tar'
+    - href: 'https://www.example.com/public/foo.mac.zip'
+      text: foo for mac
+    - href: 'https://www.example.com/public/foo.win.zip'
+      text: foo for windows
+    - href: 'https://www.example.com/yikes/no/text.tar'
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleCLIDownload
+metadata:
+  name: ninnies
+spec:
+  displayName: ninnnies
+  description: |
+    Another example CLI download.
+  links:
+    - href: 'https://www.example.com'
+      text: ninnies
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleCLIDownload
+metadata:
+  name: badux-empty-strings-for-all-except-href
+spec:
+  description: ''
+  displayName: ''
+  links:
+    - href: 'https://www.example.com'
+      text: ''
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleNotification
+metadata:
+  name: example
+spec:
+  text: This is an example notification message with an optional link.
+  location: BannerTop
+  link:
+    href: 'https://www.example.com'
+    text: Optional link text
+  color: '#fff'
+  backgroundColor: '#0088ce'
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleNotification
+metadata:
+  name: example2
+spec:
+  text: Another notification!
+  location: BannerTop
+  link:
+    href: 'https://www.example.com'
+    text: Optional link
+  color: '#fff'
+  backgroundColor: '#990000'
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleNotification
+metadata:
+  name: badux-empty-strings-for-all
+spec:
+  text: ''
+  location: BannerBottom
+  link:
+    href: "https://www.example.com"
+    text: ''
+  color: ''
+  backgroundColor: ''
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleYAMLSample
+metadata:
+  name: foo-pod-example
+spec:
+  targetResource:
+    apiVersion: v1
+    kind: Pod
+  title: foo pod example
+  description: our company's preferred foo pod
+  yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: foo-pod-example
+      labels:
+        app: web
+        foo: bar
+        bar: baz
+    spec:
+      containers:
+        - name: foo-pod-example
+          image: foopod/example
+          command: ["foo"]
+          args: ["--example", "1"]
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleYAMLSample
+metadata:
+  name: foo-pod-other-example
+spec:
+  targetResource:
+    apiVersion: v1
+    kind: Pod
+  title: foo pod other example
+  description: our company's other preferred foo pod
+  yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: foo-pod-other-example
+      labels:
+        app: web
+        foo: bar
+        bar: baz
+    spec:
+      containers:
+        - name: foo-pod-example
+          image: foopod/example
+          command: ["foo"]
+          args: ["--example", "1"]

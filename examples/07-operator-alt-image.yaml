@@ -23,7 +23,7 @@ spec:
         # then
         # oc apply -f examples/05-operator-alt-image.yaml
         # with this line updated:
-        image: quay.io/<your-user>/console-operator:latest
+        image: quay.io/benjaminapetersen/console-operator:latest
         ports:
         - containerPort: 60000
           name: metrics

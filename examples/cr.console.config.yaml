@@ -1,0 +1,11 @@
+apiVersion: config.openshift.io/v1
+kind: Console
+metadata:
+  name: cluster
+spec:
+  # this is the only top level config yet
+  authentication:
+    logoutRedirect: "https://www.redhat.com/logout-redirect"
+
+
+
