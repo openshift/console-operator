@@ -89,14 +89,11 @@ spec:
               os.mkdir(arch)
               for operating_system in ['linux', 'mac', 'windows']:
                   os.mkdir(os.path.join(arch, operating_system))
-                  target_path = os.path.join(arch, operating_system, 'LICENSE')
-                  os.symlink('/usr/share/openshift/LICENSE', target_path)
           for arch in ['arm64', 'ppc64le', 's390x']:
               os.mkdir(arch)
               for operating_system in ['linux']:
                   os.mkdir(os.path.join(arch, operating_system))
-                  target_path = os.path.join(arch, operating_system, 'LICENSE')
-                  os.symlink('/usr/share/openshift/LICENSE', target_path)
+          os.symlink('/usr/share/openshift/LICENSE', 'oc-license')
 
           for arch, operating_system, path in [
                   ('amd64', 'linux', '/usr/share/openshift/linux_amd64/oc'),
