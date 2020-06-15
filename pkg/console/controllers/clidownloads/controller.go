@@ -173,6 +173,11 @@ func PlatformBasedOCConsoleCLIDownloads(host, cliDownloadsName string) *v1.Conso
 		})
 	}
 
+	links = append(links, v1.CLIDownloadLink{
+		Href: fmt.Sprintf("%s/oc-license", baseURL),
+		Text: "LICENSE",
+	})
+
 	return &v1.ConsoleCLIDownload{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: cliDownloadsName,
