@@ -12,7 +12,6 @@ set -o pipefail
 # USERNAME=you REGISTRY=docker.io CONTAINER_NAME=my-awesome-operator TAG=your-desired-tag TAG_ALSO_LATEST=true ./contrib/dev_vuild_and_deploy.sh
 # colors https://misc.flogisoft.com/bash/tip_colors_and_formatting
 YELLOW="\e[93m"
-RED="\e[31m"
 GRAY="\e[33m"
 RESET="\e[97m"
 
@@ -86,7 +85,7 @@ echo -e "${YELLOW}deleting operator deployment/pods...${RESET}"
 oc get pods --namespace openshift-console-operator
 oc delete configmap console-operator-lock
 # dont delete the deployment of the operator, it won't come back without CVO.
-oc delete pod $(oc get --no-headers pods -o custom-columns=:metadata.name --namespace openshift-console-operator) --namespace openshift-console-operator
+oc delete pod "$(oc get --no-headers pods -o custom-columns=:metadata.name --namespace openshift-console-operator)" --namespace openshift-console-operator
 # oc delete deployment console-operator
 
 echo -e "${YELLOW}deleting console deployment/pods...${RESET}"

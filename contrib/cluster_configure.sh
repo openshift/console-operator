@@ -23,11 +23,7 @@ oc get deployment console-operator --namespace openshift-console-operator
 echo -e "${YELLOW}applying current rbac roles based on what exists on disk...${RESET}"
 # NOTE: this stomps on RBAC that comes from whatever was created by the
 # installer.  usually this is what you want if you are doing new things...
-for FILE in `find ./manifests -name '*rbac*'`
-do
-  echo "creating ${FILE}"
-  oc apply -f $FILE
-done
+find ./manifests -name '*rbac*' -exec oc apply -f {} \;
 
 echo -e "${YELLOW}deploying alternative operator...${RESET}"
 oc apply -f examples/07-operator-alt-image.yaml
