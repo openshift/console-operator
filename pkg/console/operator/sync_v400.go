@@ -199,13 +199,14 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 
 func (co *consoleOperator) SyncConsoleConfig(consoleConfig *configv1.Console, consoleURL string) (*configv1.Console, error) {
 	oldURL := consoleConfig.Status.ConsoleURL
-	updated := consoleConfig.DeepCopy()
-	if updated.Status.ConsoleURL != consoleURL {
-		klog.V(4).Infof("updating console.config.openshift.io with url: %v", consoleURL)
-		updated.Status.ConsoleURL = consoleURL
-	}
 	metrics.HandleConsoleURL(oldURL, consoleURL)
-	return co.consoleConfigClient.UpdateStatus(co.ctx, updated, metav1.UpdateOptions{})
+	if oldURL != consoleURL {
+		klog.V(4).Infof("updating console.config.openshift.io with url: %v", consoleURL)
+		updated := consoleConfig.DeepCopy()
+		updated.Status.ConsoleURL = consoleURL
+		return co.consoleConfigClient.UpdateStatus(co.ctx, updated, metav1.UpdateOptions{})
+	}
+	return consoleConfig, nil
 }
 
 func (co *consoleOperator) SyncConsolePublicConfig(consoleURL string) (*corev1.ConfigMap, bool, error) {
