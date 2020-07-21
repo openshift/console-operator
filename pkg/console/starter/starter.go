@@ -259,6 +259,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 			{Group: configv1.GroupName, Resource: "consoles", Name: api.ConfigResourceName},
 			{Group: configv1.GroupName, Resource: "infrastructures", Name: api.ConfigResourceName},
 			{Group: configv1.GroupName, Resource: "proxies", Name: api.ConfigResourceName},
+			{Group: configv1.GroupName, Resource: "oauths", Name: api.ConfigResourceName},
 			{Group: oauth.GroupName, Resource: "oauthclients", Name: api.OAuthClientName},
 			{Group: corev1.GroupName, Resource: "namespaces", Name: api.OpenShiftConsoleOperatorNamespace},
 			{Group: corev1.GroupName, Resource: "namespaces", Name: api.OpenShiftConsoleNamespace},

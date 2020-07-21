@@ -42,7 +42,8 @@ func DefaultConfigMap(
 	monitoringSharedConfig *corev1.ConfigMap,
 	infrastructureConfig *configv1.Infrastructure,
 	activeConsoleRoute *routev1.Route,
-	useDefaultCAFile bool) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
+	useDefaultCAFile bool,
+	inactivityTimeoutSeconds int) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
 	defaultConfig, err := defaultBuilder.Host(activeConsoleRoute.Spec.Host).
@@ -52,6 +53,7 @@ func DefaultConfigMap(
 		DefaultIngressCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
 		Monitoring(monitoringSharedConfig).
+		InactivityTimeout(inactivityTimeoutSeconds).
 		ConfigYAML()
 
 	extractedManagedConfig := extractYAML(managedConfig)
@@ -67,6 +69,7 @@ func DefaultConfigMap(
 		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).
 		CustomHostnameRedirectPort(routesub.IsCustomRouteSet(operatorConfig)).
 		StatusPageID(statusPageId(operatorConfig)).
+		InactivityTimeout(inactivityTimeoutSeconds).
 		ConfigYAML()
 
 	unsupportedConfigOverride := operatorConfig.Spec.UnsupportedConfigOverrides.Raw

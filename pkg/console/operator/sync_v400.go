@@ -66,7 +66,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		return statusHandler.FlushAndReturn(routeErr)
 	}
 
-	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(set.Operator, set.Console, set.Infrastructure, route)
+	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(set.Operator, set.Console, set.Infrastructure, set.OAuth, route)
 	toUpdate = toUpdate || cmChanged
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
 	if cmErr != nil {
@@ -285,6 +285,7 @@ func (co *consoleOperator) SyncConfigMap(
 	operatorConfig *operatorv1.Console,
 	consoleConfig *configv1.Console,
 	infrastructureConfig *configv1.Infrastructure,
+	oauthConfig *configv1.OAuth,
 	activeConsoleRoute *routev1.Route) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
 
 	managedConfig, mcErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(co.ctx, api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
@@ -302,12 +303,25 @@ func (co *consoleOperator) SyncConfigMap(
 		useDefaultCAFile = true
 	}
 
+	inactivityTimeoutSeconds := 0
+	oauthClient, oacErr := co.oauthClient.OAuthClients().Get(co.ctx, oauthsub.Stub().Name, metav1.GetOptions{})
+	if oacErr != nil {
+		return nil, false, "FailedGetOAuthClient", oacErr
+	}
+	if oauthClient.AccessTokenInactivityTimeoutSeconds != nil {
+		inactivityTimeoutSeconds = int(*oauthClient.AccessTokenInactivityTimeoutSeconds)
+	} else {
+		if oauthConfig.Spec.TokenConfig.AccessTokenInactivityTimeout != nil {
+			inactivityTimeoutSeconds = int(oauthConfig.Spec.TokenConfig.AccessTokenInactivityTimeout.Seconds())
+		}
+	}
+
 	monitoringSharedConfig, mscErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(co.ctx, api.OpenShiftMonitoringConfigMapName, metav1.GetOptions{})
 	if mscErr != nil && !apierrors.IsNotFound(mscErr) {
 		return nil, false, "FailedGetMonitoringSharedConfig", mscErr
 	}
 
-	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, monitoringSharedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile)
+	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, monitoringSharedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile, inactivityTimeoutSeconds)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
 	}
