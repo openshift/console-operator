@@ -59,6 +59,7 @@ type consoleOperator struct {
 	consoleConfigClient        configclientv1.ConsoleInterface
 	infrastructureConfigClient configclientv1.InfrastructureInterface
 	proxyConfigClient          configclientv1.ProxyInterface
+	oauthConfigClient          configclientv1.OAuthInterface
 	// core kube
 	secretsClient    coreclientv1.SecretsGetter
 	configMapClient  coreclientv1.ConfigMapsGetter
@@ -111,6 +112,7 @@ func NewConsoleOperator(
 		consoleConfigClient:        configClient.Consoles(),
 		infrastructureConfigClient: configClient.Infrastructures(),
 		proxyConfigClient:          configClient.Proxies(),
+		oauthConfigClient:          configClient.OAuths(),
 		// console resources
 		// core kube
 		secretsClient:    corev1Client,
@@ -142,6 +144,7 @@ func NewConsoleOperator(
 		operator.WithInformer(operatorConfigInformer, configNameFilter),
 		operator.WithInformer(configV1Informers.Infrastructures(), configNameFilter),
 		operator.WithInformer(configV1Informers.Proxies(), configNameFilter),
+		operator.WithInformer(configV1Informers.OAuths(), configNameFilter),
 		// console resources
 		operator.WithInformer(deployments, targetNameFilter),
 		operator.WithInformer(routes, targetNameFilter),
@@ -164,6 +167,7 @@ type configSet struct {
 	Operator       *operatorsv1.Console
 	Infrastructure *configv1.Infrastructure
 	Proxy          *configv1.Proxy
+	OAuth          *configv1.OAuth
 }
 
 func (c *consoleOperator) Sync(obj metav1.Object) error {
@@ -194,11 +198,18 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 		return err
 	}
 
+	oauthConfig, err := c.oauthConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("oauth config error: %v", err)
+		return err
+	}
+
 	configs := configSet{
 		Console:        consoleConfig,
 		Operator:       operatorConfig,
 		Infrastructure: infrastructureConfig,
 		Proxy:          proxyConfig,
+		OAuth:          oauthConfig,
 	}
 
 	if err := c.handleSync(configs); err != nil {

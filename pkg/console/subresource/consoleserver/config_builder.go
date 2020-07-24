@@ -42,6 +42,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	CAFile                     string
 	monitoring                 map[string]string
 	customHostnameRedirectPort int
+	inactivityTimeoutSeconds   int
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -104,11 +105,16 @@ func (b *ConsoleServerCLIConfigBuilder) Monitoring(monitoringConfig *corev1.Conf
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) InactivityTimeout(timeout int) *ConsoleServerCLIConfigBuilder {
+	b.inactivityTimeoutSeconds = timeout
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
 		Kind:           "ConsoleConfig",
 		APIVersion:     "console.openshift.io/v1",
-		Auth:           b.authServer(),
+		Auth:           b.auth(),
 		ClusterInfo:    b.clusterInfo(),
 		Customization:  b.customization(),
 		ServingInfo:    b.servingInfo(),
@@ -183,16 +189,17 @@ func (b *ConsoleServerCLIConfigBuilder) monitoringInfo() MonitoringInfo {
 	return conf
 }
 
-func (b *ConsoleServerCLIConfigBuilder) authServer() Auth {
+func (b *ConsoleServerCLIConfigBuilder) auth() Auth {
 	// we need this fallback due to the way our unit test are structured,
 	// where the ConsoleServerCLIConfigBuilder object is being instantiated empty
 	if b.CAFile == "" {
 		b.CAFile = oauthEndpointCAFilePath
 	}
 	conf := Auth{
-		ClientID:            api.OpenShiftConsoleName,
-		ClientSecretFile:    clientSecretFilePath,
-		OAuthEndpointCAFile: b.CAFile,
+		ClientID:                 api.OpenShiftConsoleName,
+		ClientSecretFile:         clientSecretFilePath,
+		OAuthEndpointCAFile:      b.CAFile,
+		InactivityTimeoutSeconds: b.inactivityTimeoutSeconds,
 	}
 	if len(b.logoutRedirectURL) > 0 {
 		conf.LogoutRedirect = b.logoutRedirectURL

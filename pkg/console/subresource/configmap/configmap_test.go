@@ -30,13 +30,14 @@ const (
 // To manually run these tests: go test -v ./pkg/console/subresource/configmap/...
 func TestDefaultConfigMap(t *testing.T) {
 	type args struct {
-		operatorConfig         *operatorv1.Console
-		consoleConfig          *configv1.Console
-		managedConfig          *corev1.ConfigMap
-		monitoringSharedConfig *corev1.ConfigMap
-		infrastructureConfig   *configv1.Infrastructure
-		rt                     *routev1.Route
-		useDefaultCAFile       bool
+		operatorConfig           *operatorv1.Console
+		consoleConfig            *configv1.Console
+		managedConfig            *corev1.ConfigMap
+		monitoringSharedConfig   *corev1.ConfigMap
+		infrastructureConfig     *configv1.Infrastructure
+		rt                       *routev1.Route
+		useDefaultCAFile         bool
+		inactivityTimeoutSeconds int
 	}
 	tests := []struct {
 		name string
@@ -60,7 +61,8 @@ func TestDefaultConfigMap(t *testing.T) {
 						Host: host,
 					},
 				},
-				useDefaultCAFile: true,
+				useDefaultCAFile:         true,
+				inactivityTimeoutSeconds: 0,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -107,7 +109,8 @@ providers: {}
 						Host: host,
 					},
 				},
-				useDefaultCAFile: false,
+				useDefaultCAFile:         false,
+				inactivityTimeoutSeconds: 0,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -162,7 +165,8 @@ customization:
 						Host: host,
 					},
 				},
-				useDefaultCAFile: true,
+				useDefaultCAFile:         true,
+				inactivityTimeoutSeconds: 0,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -226,7 +230,8 @@ customization:
 						Host: host,
 					},
 				},
-				useDefaultCAFile: true,
+				useDefaultCAFile:         true,
+				inactivityTimeoutSeconds: 0,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -295,7 +300,8 @@ customization:
 						Host: host,
 					},
 				},
-				useDefaultCAFile: true,
+				useDefaultCAFile:         true,
+				inactivityTimeoutSeconds: 0,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -366,7 +372,8 @@ customization:
 						Host: host,
 					},
 				},
-				useDefaultCAFile: true,
+				useDefaultCAFile:         true,
+				inactivityTimeoutSeconds: 0,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -421,7 +428,8 @@ providers:
 						Host: host,
 					},
 				},
-				useDefaultCAFile: true,
+				useDefaultCAFile:         true,
+				inactivityTimeoutSeconds: 0,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -457,7 +465,7 @@ providers: {}
 			},
 		},
 		{
-			name: "Test configmap with custom route hostname",
+			name: "Test operator config with custom route hostname",
 			args: args{
 				operatorConfig: &operatorv1.Console{
 					Spec: operatorv1.ConsoleSpec{
@@ -479,7 +487,8 @@ providers: {}
 						Host: customHostname,
 					},
 				},
-				useDefaultCAFile: false,
+				useDefaultCAFile:         false,
+				inactivityTimeoutSeconds: 0,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -510,6 +519,55 @@ providers: {}
 				},
 			},
 		},
+		{
+			name: "Test operator config, with inactivityTimeoutSeconds set",
+			args: args{
+				operatorConfig:         &operatorv1.Console{},
+				consoleConfig:          &configv1.Console{},
+				managedConfig:          &corev1.ConfigMap{},
+				monitoringSharedConfig: &corev1.ConfigMap{},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL: mockAPIServer,
+					},
+				},
+				rt: &routev1.Route{
+					Spec: routev1.RouteSpec{
+						Host: host,
+					},
+				},
+				useDefaultCAFile:         true,
+				inactivityTimeoutSeconds: 60,
+			},
+			want: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  inactivityTimeoutSeconds: 60
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+customization:
+  branding: ` + DEFAULT_BRAND + `
+  documentationBaseURL: ` + DEFAULT_DOC_URL + `
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: {}
+`,
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -519,7 +577,9 @@ providers: {}
 				tt.args.managedConfig,
 				tt.args.monitoringSharedConfig,
 				tt.args.infrastructureConfig,
-				tt.args.rt, tt.args.useDefaultCAFile,
+				tt.args.rt,
+				tt.args.useDefaultCAFile,
+				tt.args.inactivityTimeoutSeconds,
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below
