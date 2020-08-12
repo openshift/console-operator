@@ -97,3 +97,10 @@ rules:
   - validatingwebhookconfigurations
   verbs:
   - get
+- apiGroups:
+    - helm.openshift.io
+  resources:
+    - helmchartrepositories
+  verbs:
+    - get
+    - list
