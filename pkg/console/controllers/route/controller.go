@@ -174,7 +174,16 @@ func (c *RouteSyncController) removeRoute(routeName string) error {
 }
 
 func (c *RouteSyncController) SyncDefaultRoute(operatorConfig *operatorsv1.Console) (*routev1.Route, string, error) {
-	requiredDefaultRoute := routesub.DefaultRoute(operatorConfig)
+	customTLSSecret, configErr := c.GetDefaultRouteTLSSecret(operatorConfig)
+	if configErr != nil {
+		return nil, "InvalidDefaultRouteConfig", configErr
+	}
+	customTLSCert, secretValidationErr := ValidateCustomCertSecret(customTLSSecret)
+	if secretValidationErr != nil {
+		return nil, "InvalidCustomTLSSecret", secretValidationErr
+	}
+
+	requiredDefaultRoute := routesub.DefaultRoute(operatorConfig, customTLSCert)
 
 	defaultRoute, _, defaultRouteError := routesub.ApplyRoute(c.routeClient, c.recorder, requiredDefaultRoute)
 	if defaultRouteError != nil {
@@ -201,12 +210,12 @@ func (c *RouteSyncController) SyncCustomRoute(operatorConfig *operatorsv1.Consol
 		return nil, "", nil
 	}
 
-	customSecret, configErr := c.ValidateCustomRouteConfig(operatorConfig)
+	customTLSSecret, configErr := c.ValidateCustomRouteConfig(operatorConfig)
 	if configErr != nil {
 		return nil, "InvalidCustomRouteConfig", configErr
 	}
 
-	customTLSCert, secretValidationErr := ValidateCustomCertSecret(customSecret)
+	customTLSCert, secretValidationErr := ValidateCustomCertSecret(customTLSSecret)
 	if secretValidationErr != nil {
 		return nil, "InvalidCustomTLSSecret", secretValidationErr
 	}
@@ -224,6 +233,25 @@ func (c *RouteSyncController) SyncCustomRoute(operatorConfig *operatorsv1.Consol
 	return customRoute, "", customRouteError
 }
 
+func (c *RouteSyncController) GetDefaultRouteTLSSecret(operatorConfig *operatorsv1.Console) (*corev1.Secret, error) {
+	// if custom route is set, we don't need to validate the config
+	// since it will be used for the custom route, not the default one
+	if routesub.IsCustomRouteSet(operatorConfig) {
+		return nil, nil
+	}
+
+	if !routesub.IsCustomTLSSecretSet(operatorConfig) {
+		return nil, nil
+	}
+
+	secret, secretErr := c.secretClient.Secrets(api.OpenShiftConfigNamespace).Get(c.ctx, operatorConfig.Spec.Route.Secret.Name, metav1.GetOptions{})
+	if secretErr != nil {
+		return nil, fmt.Errorf("failed to GET default route TLS secret: %s", secretErr)
+	}
+	return secret, nil
+}
+
+// TODO: Decouple and rename this method. So one will validate, other will get the secret.
 func (c *RouteSyncController) ValidateCustomRouteConfig(operatorConfig *operatorsv1.Console) (*corev1.Secret, error) {
 	// get ingress
 	ingress, err := c.ingressClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
@@ -242,7 +270,7 @@ func (c *RouteSyncController) ValidateCustomRouteConfig(operatorConfig *operator
 	// `openshift-config` namespace and referenced in  the operator config.
 	// If the suffix matches the cluster domain, then the secret is optional.
 	// If the suffix doesn't matches the cluster domain, then the secret is mandatory.
-	if !routesub.IsCustomRouteSecretSet(operatorConfig) {
+	if !routesub.IsCustomTLSSecretSet(operatorConfig) {
 		if !strings.HasSuffix(operatorConfig.Spec.Route.Hostname, ingress.Spec.Domain) {
 			return nil, fmt.Errorf("secret reference for custom route TLS secret is not defined")
 		}

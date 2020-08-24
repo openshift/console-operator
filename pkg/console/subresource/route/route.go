@@ -65,7 +65,7 @@ func ApplyRoute(client routeclient.RoutesGetter, recorder events.Recorder, requi
 // If custom hostname for the console is set, then the default route
 // should point to the redirect `console-redirect` service and the
 // created custom route should be pointing to the `console` service.
-func DefaultRoute(cr *operatorv1.Console) *routev1.Route {
+func DefaultRoute(cr *operatorv1.Console, tlsConfig *CustomTLSCert) *routev1.Route {
 	route := DefaultStub()
 	usePort := api.ConsoleContainerPortName
 	tlsTermination := routev1.TLSTerminationReencrypt
@@ -78,7 +78,7 @@ func DefaultRoute(cr *operatorv1.Console) *routev1.Route {
 	route.Spec = routev1.RouteSpec{
 		To:             toService(serviceName),
 		Port:           port(usePort),
-		TLS:            tls(nil, tlsTermination),
+		TLS:            tls(tlsConfig, tlsTermination),
 		WildcardPolicy: wildcard(),
 	}
 	util.AddOwnerRef(route, util.OwnerRefFrom(cr))
@@ -185,7 +185,7 @@ func IsCustomRouteSet(operatorConfig *operatorv1.Console) bool {
 }
 
 // Check if reference for secret holding custom TLS certificate and key is set
-func IsCustomRouteSecretSet(operatorConfig *operatorv1.Console) bool {
+func IsCustomTLSSecretSet(operatorConfig *operatorv1.Console) bool {
 	if operatorConfig == nil {
 		return false
 	}
