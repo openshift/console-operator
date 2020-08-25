@@ -108,6 +108,8 @@ func TestPlatformBasedOCConsoleCLIDownloads(t *testing.T) {
 					Description: `With the OpenShift command line interface, you can create applications and manage OpenShift projects from a terminal.
 
 The oc binary offers the same capabilities as the kubectl binary, but it is further extended to natively support OpenShift Container Platform features.
+
+Note: The downloaded binary will report a different version based on the source code revision system rather than the server version.
 `,
 					DisplayName: "oc - OpenShift Command Line Interface (CLI)",
 					Links: []v1.CLIDownloadLink{
