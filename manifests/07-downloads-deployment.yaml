@@ -137,8 +137,9 @@ spec:
                       path=os.path.join(root, directory, 'index.html'),
                       message='<p>Directory listings are disabled.  See <a href="{}">here</a> for available content.</p>'.format(root_link),
                   )
+
           write_index(
-              path=os.path.join(root, 'index.html'),
+              path=os.path.join(temp_dir, 'index.html'),
               message='\n'.join(
                   ['<ul>'] +
                   ['  <li>{}</li>'.format(entry) for entry in content] +
