@@ -59,7 +59,7 @@ spec:
         - '-c'
         - |
           cat <<EOF >>/tmp/serve.py
-          import BaseHTTPServer, errno, os, re, signal, SimpleHTTPServer, socket, sys, tarfile, tempfile, threading, time, zipfile
+          import errno, http.server, os, re, signal, socket, sys, tarfile, tempfile, threading, time, zipfile
 
           signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
 
@@ -88,7 +88,7 @@ spec:
                   self.start()
 
               def run(self):
-                  httpd = BaseHTTPServer.HTTPServer(addr, SimpleHTTPServer.SimpleHTTPRequestHandler, False)
+                  httpd = http.server.HTTPServer(addr, http.server.SimpleHTTPRequestHandler, False)
 
                   # Prevent the HTTP server from re-binding every handler.
                   # https://stackoverflow.com/questions/46210672/
@@ -135,7 +135,7 @@ spec:
               for directory in directories:
                   write_index(
                       path=os.path.join(root, directory, 'index.html'),
-                      message='<p>Directory listings are disabled.  See <a href="">here</a> for available content.</p>'.format(root_link),
+                      message='<p>Directory listings are disabled.  See <a href="{}">here</a> for available content.</p>'.format(root_link),
                   )
           write_index(
               path=os.path.join(root, 'index.html'),
@@ -168,5 +168,5 @@ spec:
           [Thread(i, socket=sock) for i in range(100)]
           time.sleep(9e9)
           EOF
-          exec python2 /tmp/serve.py  # the cli image only has Python 2.7
+          exec python3 /tmp/serve.py
       terminationGracePeriodSeconds: 1
