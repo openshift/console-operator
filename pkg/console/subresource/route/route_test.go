@@ -27,7 +27,8 @@ func TestDefaultRoute(t *testing.T) {
 		weight int32 = 100
 	)
 	type args struct {
-		cr *operatorv1.Console
+		cr        *operatorv1.Console
+		tlsConfig *CustomTLSCert
 	}
 	tests := []struct {
 		name string
@@ -42,6 +43,47 @@ func TestDefaultRoute(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{},
 					Spec:       operatorv1.ConsoleSpec{},
 					Status:     operatorv1.ConsoleStatus{},
+				},
+				tlsConfig: nil,
+			},
+			want: &routev1.Route{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Spec: routev1.RouteSpec{
+					To: routev1.RouteTargetReference{
+						Kind:   "Service",
+						Name:   api.OpenShiftConsoleName,
+						Weight: &weight,
+					},
+					Port: &routev1.RoutePort{
+						TargetPort: intstr.FromString(api.ConsoleContainerPortName),
+					},
+					TLS: &routev1.TLSConfig{
+						Termination:                   routev1.TLSTerminationReencrypt,
+						InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+					},
+					WildcardPolicy: routev1.WildcardPolicyNone,
+				},
+				Status: routev1.RouteStatus{},
+			},
+		},
+		{
+			name: "Test default route with custom TLS",
+			args: args{
+				cr: &operatorv1.Console{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec:       operatorv1.ConsoleSpec{},
+					Status:     operatorv1.ConsoleStatus{},
+				},
+				tlsConfig: &CustomTLSCert{
+					Key:         tlsKey,
+					Certificate: tlsCertificate,
 				},
 			},
 			want: &routev1.Route{
@@ -64,6 +106,8 @@ func TestDefaultRoute(t *testing.T) {
 					TLS: &routev1.TLSConfig{
 						Termination:                   routev1.TLSTerminationReencrypt,
 						InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+						Key:                           tlsKey,
+						Certificate:                   tlsCertificate,
 					},
 					WildcardPolicy: routev1.WildcardPolicyNone,
 				},
@@ -113,7 +157,7 @@ func TestDefaultRoute(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(DefaultRoute(tt.args.cr), tt.want); diff != nil {
+			if diff := deep.Equal(DefaultRoute(tt.args.cr, tt.args.tlsConfig), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
