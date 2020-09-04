@@ -129,11 +129,11 @@ The oc binary offers the same capabilities as the kubectl binary, but it is furt
 						},
 						{
 							Href: "https://www.example.com/ppc64le/linux/oc.tar",
-							Text: "Download oc for Linux for IBM Power, little endian (unsupported)",
+							Text: "Download oc for Linux for IBM Power, little endian",
 						},
 						{
 							Href: "https://www.example.com/s390x/linux/oc.tar",
-							Text: "Download oc for Linux for IBM Z (unsupported)",
+							Text: "Download oc for Linux for IBM Z",
 						},
 						{
 							Href: "https://www.example.com/oc-license",
