@@ -93,6 +93,7 @@ spec:
               os.mkdir(arch)
               for operating_system in ['linux']:
                   os.mkdir(os.path.join(arch, operating_system))
+          os.symlink('/usr/share/openshift/LICENSE', 'oc-license')
 
           for arch, operating_system, path in [
                   ('amd64', 'linux', '/usr/share/openshift/linux_amd64/oc'),

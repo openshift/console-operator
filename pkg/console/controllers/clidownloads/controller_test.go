@@ -135,6 +135,10 @@ The oc binary offers the same capabilities as the kubectl binary, but it is furt
 							Href: "https://www.example.com/s390x/linux/oc.tar",
 							Text: "Download oc for Linux for IBM Z (unsupported)",
 						},
+						{
+							Href: "https://www.example.com/oc-license",
+							Text: "LICENSE",
+						},
 					},
 				},
 			},
