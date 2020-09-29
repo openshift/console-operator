@@ -17,10 +17,10 @@ require (
 	github.com/spf13/pflag v1.0.5
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20191023171146-3cf2f69b5738 // indirect
 	gopkg.in/yaml.v2 v2.2.8
-	k8s.io/api v0.18.2
-	k8s.io/apimachinery v0.18.2
-	k8s.io/client-go v0.18.2
-	k8s.io/component-base v0.18.2
+	k8s.io/api v0.18.9
+	k8s.io/apimachinery v0.18.9
+	k8s.io/client-go v0.18.9
+	k8s.io/component-base v0.18.9
 	k8s.io/klog v1.0.0
 	monis.app/go v0.0.0-20190702030534-c65526068664
 )
