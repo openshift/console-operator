@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/console/errors"

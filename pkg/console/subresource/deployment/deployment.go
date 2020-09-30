@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	appsclientv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"

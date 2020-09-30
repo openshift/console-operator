@@ -13,7 +13,7 @@ import (
 	corev1 "k8s.io/client-go/informers/core/v1"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"

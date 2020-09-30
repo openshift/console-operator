@@ -20,6 +20,6 @@ require (
 	k8s.io/apimachinery v0.19.2
 	k8s.io/client-go v0.19.2
 	k8s.io/component-base v0.19.2
-	k8s.io/klog v1.0.0
+	k8s.io/klog/v2 v2.3.0
 	monis.app/go v0.0.0-20190702030534-c65526068664
 )
