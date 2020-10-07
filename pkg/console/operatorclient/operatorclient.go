@@ -22,6 +22,14 @@ func (c *OperatorClient) Informer() cache.SharedIndexInformer {
 	return c.Informers.Operator().V1().Consoles().Informer()
 }
 
+func (c OperatorClient) GetObjectMeta() (*metav1.ObjectMeta, error) {
+	instance, err := c.Informers.Operator().V1().Consoles().Lister().Get(api.ConfigResourceName)
+	if err != nil {
+		return nil, err
+	}
+	return &instance.ObjectMeta, nil
+}
+
 func (c *OperatorClient) GetOperatorState() (*operatorv1.OperatorSpec, *operatorv1.OperatorStatus, string, error) {
 	instance, err := c.Informers.Operator().V1().Consoles().Lister().Get(api.ConfigResourceName)
 	if err != nil {
