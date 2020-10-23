@@ -2,6 +2,8 @@ apiVersion: console.openshift.io/v1
 kind: ConsoleLink
 metadata:
   name: openshift-learning-portal
+  annotations:
+    include.release.openshift.io/self-managed-high-availability: "true"
 spec:
   href: 'https://learn.openshift.com/?ref=webconsole'
   location: HelpMenu

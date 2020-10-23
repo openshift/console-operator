@@ -2,7 +2,8 @@ apiVersion: helm.openshift.io/v1beta1
 kind: HelmChartRepository
 metadata:
   annotations:
-    "release.openshift.io/create-only": 'true'
+    include.release.openshift.io/self-managed-high-availability: "true"
+    release.openshift.io/create-only: "true"
   name: redhat-helm-repo
 spec:
   name: Red Hat Helm Charts

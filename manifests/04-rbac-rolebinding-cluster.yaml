@@ -2,6 +2,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: console-operator
+  annotations:
+    include.release.openshift.io/self-managed-high-availability: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -15,6 +17,8 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: console-extensions-reader
+  annotations:
+    include.release.openshift.io/self-managed-high-availability: "true"
 roleRef:
   kind: ClusterRole
   name: console-extensions-reader
@@ -28,6 +32,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: console-operator-auth-delegator
+  annotations:
+    include.release.openshift.io/self-managed-high-availability: "true"
 roleRef:
   # for protected endpoints like /metrics, the operator must perform
   # authentication (tokenreview) & authorization (subjectaccessreview)
@@ -44,6 +50,8 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: console
+  annotations:
+    include.release.openshift.io/self-managed-high-availability: "true"
 roleRef:
   # CRD lists are protected from unpriviledged users, access is
   # granted to Service Account by this ClusterRole
@@ -59,7 +67,8 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   annotations:
-    "release.openshift.io/create-only": 'true'
+    "release.openshift.io/create-only": "true"
+    include.release.openshift.io/self-managed-high-availability: "true"
   name: helm-chartrepos-view
 subjects:
   - kind: Group

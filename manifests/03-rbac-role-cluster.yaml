@@ -2,6 +2,8 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: console-operator
+  annotations:
+    include.release.openshift.io/self-managed-high-availability: "true"
 rules:
 - apiGroups:
   - oauth.openshift.io
@@ -81,6 +83,8 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: console
+  annotations:
+    include.release.openshift.io/self-managed-high-availability: "true"
 rules:
 - apiGroups:
   - apiextensions.k8s.io
@@ -102,6 +106,8 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: helm-chartrepos-viewer
+  annotations:
+    include.release.openshift.io/self-managed-high-availability: "true"
 rules:
   - apiGroups:
       - helm.openshift.io
