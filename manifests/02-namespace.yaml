@@ -3,6 +3,7 @@ kind: Namespace
 metadata:
   name: openshift-console
   annotations:
+    include.release.openshift.io/self-managed-high-availability: "true"
     openshift.io/node-selector: ""
 ---
 apiVersion: v1
@@ -10,6 +11,7 @@ kind: Namespace
 metadata:
   name: openshift-console-operator
   annotations:
+    include.release.openshift.io/self-managed-high-availability: "true"
     openshift.io/node-selector: ""
   labels:
     openshift.io/cluster-monitoring: "true"

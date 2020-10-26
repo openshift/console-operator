@@ -4,4 +4,5 @@ metadata:
   name: console-public
   namespace: openshift-config-managed
   annotations:
-    "release.openshift.io/create-only": "true"
+    include.release.openshift.io/self-managed-high-availability: "true"
+    release.openshift.io/create-only: "true"
