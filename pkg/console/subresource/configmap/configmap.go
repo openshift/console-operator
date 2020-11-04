@@ -62,6 +62,7 @@ func DefaultConfigMap(
 		LogoutURL(consoleConfig.Spec.Authentication.LogoutRedirect).
 		Brand(operatorConfig.Spec.Customization.Brand).
 		DocURL(operatorConfig.Spec.Customization.DocumentationBaseURL).
+		Plugins(operatorConfig.Spec.Plugins).
 		DefaultIngressCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
 		Monitoring(monitoringSharedConfig).

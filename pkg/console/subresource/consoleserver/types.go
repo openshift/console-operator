@@ -19,6 +19,7 @@ type Config struct {
 	Customization  `yaml:"customization"`
 	Providers      `yaml:"providers"`
 	MonitoringInfo `yaml:"monitoringInfo,omitempty"`
+	Plugins        []string `yaml:"plugins,omitempty"`
 }
 
 // ServingInfo holds configuration for serving HTTP.

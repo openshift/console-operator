@@ -161,7 +161,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					Brand(v1.BrandOKD).
 					DocURL("https://foobar.com/docs").
 					APIServerURL("https://foobar.com/api").
-					StatusPageID("status-12345")
+					StatusPageID("status-12345").
+					Plugins([]string{"plugin1", "plugin2"})
 				return b.Config()
 			},
 			output: Config{
@@ -189,6 +190,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Providers: Providers{
 					StatuspageID: "status-12345",
 				},
+				Plugins: []string{"plugin1", "plugin2"},
 			},
 		},
 	}
@@ -338,6 +340,7 @@ providers:
 					APIServerURL("https://foobar.com/api").
 					CustomHostnameRedirectPort(true).
 					StatusPageID("status-12345").
+					Plugins([]string{"plugin1", "plugin2"}).
 					Monitoring(&corev1.ConfigMap{
 						Data: map[string]string{
 							"alertmanagerPublicURL": "https://alertmanager.url.com",
@@ -373,6 +376,9 @@ monitoringInfo:
   grafanaPublicURL: https://grafana.url.com
   prometheusPublicURL: https://prometheus.url.com
   thanosPublicURL: https://thanos.url.com
+plugins:
+- plugin1
+- plugin2
 `,
 		},
 	}
