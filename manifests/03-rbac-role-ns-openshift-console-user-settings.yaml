@@ -1,0 +1,49 @@
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: console-user-settings-admin
+  namespace: openshift-console-user-settings
+  annotations:
+    include.release.openshift.io/self-managed-high-availability: "true"
+rules:
+- apiGroups:
+  - rbac.authorization.k8s.io/v1
+  resources:
+  - roles
+  - rolebindings
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
+  - watch
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: console-user-settings-admin
+  namespace: openshift-console-user-settings
+  annotations:
+    include.release.openshift.io/self-managed-high-availability: "true"
+roleRef:
+  kind: Role
+  name: console-user-settings-admin
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: console
+    namespace: openshift-console
