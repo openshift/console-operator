@@ -3,6 +3,7 @@ kind: ConsoleLink
 metadata:
   name: openshift-learning-portal
   annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
 spec:
   href: 'https://learn.openshift.com/?ref=webconsole'

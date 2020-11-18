@@ -3,6 +3,7 @@ kind: ConsoleCLIDownload
 metadata:
   name: helm-download-links
   annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
 spec:
   description: |

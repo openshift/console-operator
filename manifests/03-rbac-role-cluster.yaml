@@ -3,6 +3,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: console-operator
   annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
 rules:
 - apiGroups:
@@ -84,6 +85,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: console
   annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
 rules:
 - apiGroups:
@@ -107,6 +109,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: helm-chartrepos-viewer
   annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
 rules:
   - apiGroups:
