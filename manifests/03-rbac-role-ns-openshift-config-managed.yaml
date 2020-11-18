@@ -4,6 +4,7 @@ metadata:
   name: console-operator
   namespace: openshift-config-managed
   annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
 rules:
 - apiGroups:
@@ -29,6 +30,7 @@ metadata:
   name: console-public
   namespace: openshift-config-managed
   annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
 rules:
 - apiGroups:
@@ -46,6 +48,7 @@ metadata:
   name: console-configmap-reader
   namespace: openshift-config-managed
   annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
 rules:
 - apiGroups:

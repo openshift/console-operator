@@ -4,6 +4,7 @@ metadata:
   namespace: openshift-console
   name: downloads
   annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
 spec:
   replicas: 2

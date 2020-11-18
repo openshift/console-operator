@@ -3,6 +3,7 @@ kind: ClusterRoleBinding
 metadata:
   name: console-operator
   annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -18,6 +19,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: console-extensions-reader
   annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
 roleRef:
   kind: ClusterRole
@@ -33,6 +35,7 @@ kind: ClusterRoleBinding
 metadata:
   name: console-operator-auth-delegator
   annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
 roleRef:
   # for protected endpoints like /metrics, the operator must perform
@@ -51,6 +54,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: console
   annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
 roleRef:
   # CRD lists are protected from unpriviledged users, access is
@@ -68,6 +72,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   annotations:
     "release.openshift.io/create-only": "true"
+    include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
   name: helm-chartrepos-view
 subjects:
