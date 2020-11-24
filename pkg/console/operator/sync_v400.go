@@ -319,11 +319,12 @@ func (co *consoleOperator) SyncConfigMap(
 	}
 
 	pluginsList, pluginsListErr := co.consolePluginClient.List(co.ctx, metav1.ListOptions{})
+	klog.Infof("available---> %v", pluginsList.Items)
 	if pluginsListErr != nil {
 		return nil, false, "FailedGetConsolePlugins", pluginsListErr
 	}
 	enabledPlugins := co.getEnabledPlugins(operatorConfig, pluginsList.Items)
-	klog.Infof("---> %v", enabledPlugins)
+	klog.Infof("enabled---> %v", enabledPlugins)
 
 	monitoringSharedConfig, mscErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(co.ctx, api.OpenShiftMonitoringConfigMapName, metav1.GetOptions{})
 	if mscErr != nil && !apierrors.IsNotFound(mscErr) {
