@@ -28,3 +28,8 @@ require (
 	monis.app/go v0.0.0-20190702030534-c65526068664
 	sigs.k8s.io/structured-merge-diff/v4 v4.0.2 // indirect
 )
+
+replace (
+	github.com/openshift/api => github.com/jhadvig/api v0.0.0-20201120110223-105453730373
+	github.com/openshift/client-go => github.com/jhadvig/client-go v0.0.0-20201120114228-b390d4a67199
+)

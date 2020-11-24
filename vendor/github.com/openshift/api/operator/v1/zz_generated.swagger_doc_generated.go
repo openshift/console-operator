@@ -222,6 +222,7 @@ var map_ConsoleSpec = map[string]string{
 	"customization": "customization is used to optionally provide a small set of customization options to the web console.",
 	"providers":     "providers contains configuration for using specific service providers.",
 	"route":         "route contains hostname and secret reference that contains the serving certificate. If a custom route is specified, a new route will be created with the provided hostname, under which console will be available. In case of custom hostname uses the default routing suffix of the cluster, the Secret specification for a serving certificate will not be needed. In case of custom hostname points to an arbitrary domain, manual DNS configurations steps are necessary. The default console route will be maintained to reserve the default hostname for console if the custom route is removed. If not specified, default route will be used.",
+	"plugins":       "plugins defines a list of enabled console plugins.",
 }
 
 func (ConsoleSpec) SwaggerDoc() map[string]string {
@@ -762,6 +763,14 @@ func (IPAMConfig) SwaggerDoc() map[string]string {
 	return map_IPAMConfig
 }
 
+var map_IPsecConfig = map[string]string{
+	"enable": "enable enables IPsec encryption for pod-to-pod traffic on the pod network within the cluster. Default is false.",
+}
+
+func (IPsecConfig) SwaggerDoc() map[string]string {
+	return map_IPsecConfig
+}
+
 var map_KuryrConfig = map[string]string{
 	"":                             "KuryrConfig configures the Kuryr-Kubernetes SDN",
 	"daemonProbesPort":             "The port kuryr-daemon will listen for readiness and liveness requests.",
@@ -822,6 +831,7 @@ var map_OVNKubernetesConfig = map[string]string{
 	"mtu":                 "mtu is the MTU to use for the tunnel interface. This must be 100 bytes smaller than the uplink mtu. Default is 1400",
 	"genevePort":          "geneve port is the UDP port to be used by geneve encapulation. Default is 6081",
 	"hybridOverlayConfig": "HybridOverlayConfig configures an additional overlay network for peers that are not using OVN.",
+	"ipsecConfig":         "ipsecConfig enables and configures IPsec for pods on the pod network within the cluster.",
 }
 
 func (OVNKubernetesConfig) SwaggerDoc() map[string]string {

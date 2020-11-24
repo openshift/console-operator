@@ -128,6 +128,36 @@ func (ConsoleNotificationSpec) SwaggerDoc() map[string]string {
 	return map_ConsoleNotificationSpec
 }
 
+var map_ConsolePlugin = map[string]string{
+	"": "ConsolePlugin is an extension for customizing OpenShift web console by dynamically loading code from another service running on the cluster.",
+}
+
+func (ConsolePlugin) SwaggerDoc() map[string]string {
+	return map_ConsolePlugin
+}
+
+var map_ConsolePluginService = map[string]string{
+	"":          "ConsolePluginService holds informations on service that is serving dynamic plugin for the console.",
+	"name":      "name of Service that is serving the plugin.",
+	"namespace": "namespace of Service that is serving the plugin.",
+	"port":      "port on which the Service that is serving the plugin is listening to.",
+	"manifest":  "manifest is the path to the plugin manifest. The manifest is a JSON document that contains metadata about the plugin and the extensions.",
+}
+
+func (ConsolePluginService) SwaggerDoc() map[string]string {
+	return map_ConsolePluginService
+}
+
+var map_ConsolePluginSpec = map[string]string{
+	"":            "ConsolePluginSpec is the desired plugin configuration.",
+	"displayName": "displayName is the display name of the plugin.",
+	"service":     "service is a Kubernetes Service that exposes the plugin using a deployment with an HTTP server. The Service must use HTTPS and service serving certificate. The console backend will proxy the plugins assets from the Service using the service CA bundle.",
+}
+
+func (ConsolePluginSpec) SwaggerDoc() map[string]string {
+	return map_ConsolePluginSpec
+}
+
 var map_ConsoleQuickStart = map[string]string{
 	"": "ConsoleQuickStart is an extension for guiding user through various workflows in the OpenShift web console.",
 }

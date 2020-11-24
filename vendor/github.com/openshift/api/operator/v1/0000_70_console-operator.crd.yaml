@@ -128,6 +128,11 @@ spec:
                 - Debug
                 - Trace
                 - TraceAll
+              plugins:
+                description: plugins defines a list of enabled console plugins.
+                type: array
+                items:
+                  type: string
               providers:
                 description: providers contains configuration for using specific service
                   providers.
