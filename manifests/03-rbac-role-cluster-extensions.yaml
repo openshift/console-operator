@@ -16,6 +16,7 @@ rules:
   - consoleexternalloglinks
   - consoleclidownloads
   - consoleyamlsamples
+  - consoleplugins
   verbs:
   - get
   - list
