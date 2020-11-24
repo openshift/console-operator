@@ -32,6 +32,7 @@ import (
 
 	// informers
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
+	consoleinformersv1 "github.com/openshift/client-go/console/informers/externalversions/console/v1"
 	operatorinformerv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
@@ -39,6 +40,7 @@ import (
 
 	// clients
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
+	consoleclientv1 "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 
 	// operator
@@ -60,6 +62,7 @@ type consoleOperator struct {
 	infrastructureConfigClient configclientv1.InfrastructureInterface
 	proxyConfigClient          configclientv1.ProxyInterface
 	oauthConfigClient          configclientv1.OAuthInterface
+	consolePluginClient        consoleclientv1.ConsolePluginInterface
 	// core kube
 	secretsClient    coreclientv1.SecretsGetter
 	configMapClient  coreclientv1.ConfigMapsGetter
@@ -96,6 +99,9 @@ func NewConsoleOperator(
 	// oauth
 	oauthv1Client oauthclientv1.OAuthClientsGetter,
 	oauthClients oauthinformersv1.OAuthClientInformer,
+	//plugins
+	consolePluginClient consoleclientv1.ConsolePluginInterface,
+	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
 	// openshift managed
 	managedCoreV1 corev1.Interface,
 	// event handling
@@ -120,9 +126,10 @@ func NewConsoleOperator(
 		serviceClient:    corev1Client,
 		deploymentClient: deploymentClient,
 		// openshift
-		routeClient:   routev1Client,
-		oauthClient:   oauthv1Client,
-		versionGetter: versionGetter,
+		routeClient:         routev1Client,
+		oauthClient:         oauthv1Client,
+		consolePluginClient: consolePluginClient,
+		versionGetter:       versionGetter,
 		// recorder
 		recorder:       recorder,
 		resourceSyncer: resourceSyncer,

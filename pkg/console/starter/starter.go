@@ -170,6 +170,9 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// oauth
 		oauthClient.OauthV1(),
 		oauthInformers.Oauth().V1().OAuthClients(), // OAuth clients
+		// plugins
+		consoleClient.ConsoleV1().ConsolePlugins(),
+		consoleInformers.Console().V1().ConsolePlugins(),
 		// openshift managed
 		kubeInformersManagedNamespaced.Core().V1(), // Managed ConfigMaps
 		// event handling
