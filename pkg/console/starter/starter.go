@@ -148,7 +148,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		return err
 	}
 
-	// TODO: rearrange these into informer,client pairs, NOT separated.
 	consoleOperator := operator.NewConsoleOperator(
 		// top level config
 		configClient.ConfigV1(),
@@ -327,7 +326,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	go consoleServiceController.Run(1, ctx.Done())
 	go consoleRouteController.Run(1, ctx.Done())
 	go resourceSyncDestinationController.Run(1, ctx.Done())
-	go consoleOperator.Run(ctx.Done())
+	go consoleOperator.Run(1, ctx.Done())
 	go cliDownloadsController.Run(1, ctx.Done())
 	// go staleConditionsController.Run(1, ctx.Done())
 

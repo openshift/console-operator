@@ -10,9 +10,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	corev1 "k8s.io/client-go/informers/core/v1"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
 	// openshift
@@ -27,8 +31,6 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/status"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
-
-	"monis.app/go/openshift/operator"
 
 	// informers
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
@@ -51,7 +53,8 @@ import (
 )
 
 const (
-	controllerName = "Console"
+	controllerName         = "Console"
+	controllerWorkQueueKey = "console-sync--work-queue-key"
 )
 
 type consoleOperator struct {
@@ -72,7 +75,9 @@ type consoleOperator struct {
 	routeClient   routeclientv1.RoutesGetter
 	oauthClient   oauthclientv1.OAuthClientsGetter
 	versionGetter status.VersionGetter
-	// recorder
+	// events
+	cachesToSync   []cache.InformerSynced
+	queue          workqueue.RateLimitingInterface
 	recorder       events.Recorder
 	resourceSyncer resourcesynccontroller.ResourceSyncer
 	// context
@@ -95,10 +100,10 @@ func NewConsoleOperator(
 	deployments appsinformersv1.DeploymentInformer,
 	// routes
 	routev1Client routeclientv1.RoutesGetter,
-	routes routesinformersv1.RouteInformer,
+	routesInformer routesinformersv1.RouteInformer,
 	// oauth
 	oauthv1Client oauthclientv1.OAuthClientsGetter,
-	oauthClients oauthinformersv1.OAuthClientInformer,
+	oauthInformer oauthinformersv1.OAuthClientInformer,
 	//plugins
 	consolePluginClient consoleclientv1.ConsolePluginInterface,
 	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
@@ -110,7 +115,7 @@ func NewConsoleOperator(
 	resourceSyncer resourcesynccontroller.ResourceSyncer,
 	// context
 	ctx context.Context,
-) operator.Runner {
+) *consoleOperator {
 	c := &consoleOperator{
 		// configs
 		operatorClient:             operatorClient,
@@ -132,44 +137,60 @@ func NewConsoleOperator(
 		versionGetter:       versionGetter,
 		// recorder
 		recorder:       recorder,
+		queue:          workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ConsoleCliDownloadsSyncer"),
 		resourceSyncer: resourceSyncer,
 		ctx:            ctx,
 	}
 
-	secretsInformer := coreV1.Secrets()
-	configMapInformer := coreV1.ConfigMaps()
-	managedConfigMapInformer := managedCoreV1.ConfigMaps()
-	serviceInformer := coreV1.Services()
-	configV1Informers := configInformer.Config().V1()
+	// secretsInformer := coreV1.Secrets()
+	// configMapInformer := coreV1.ConfigMaps()
+	// managedConfigMapInformer := managedCoreV1.ConfigMaps()
+	// serviceInformer := coreV1.Services()
+	// configV1Informers := configInformer.Config().V1()
 
-	configNameFilter := operator.FilterByNames(api.ConfigResourceName)
-	targetNameFilter := operator.FilterByNames(api.OpenShiftConsoleName)
+	// configNameFilter := operator.FilterByNames(api.ConfigResourceName)
+	// targetNameFilter := operator.FilterByNames(api.OpenShiftConsoleName)
 
-	return operator.New(controllerName, c,
-		// configs
-		operator.WithInformer(configV1Informers.Consoles(), configNameFilter),
-		operator.WithInformer(operatorConfigInformer, configNameFilter),
-		operator.WithInformer(configV1Informers.Infrastructures(), configNameFilter),
-		operator.WithInformer(configV1Informers.Proxies(), configNameFilter),
-		operator.WithInformer(configV1Informers.OAuths(), configNameFilter),
-		// console resources
-		operator.WithInformer(deployments, targetNameFilter),
-		operator.WithInformer(routes, targetNameFilter),
-		operator.WithInformer(serviceInformer, targetNameFilter),
-		operator.WithInformer(oauthClients, targetNameFilter),
-		// special resources with unique names
-		operator.WithInformer(configMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName, api.OpenShiftCustomLogoConfigMapName, api.TrustedCAConfigMapName)),
-		operator.WithInformer(managedConfigMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName)),
-		operator.WithInformer(secretsInformer, operator.FilterByNames(deployment.ConsoleOauthConfigName)),
-		// plugins
-		operator.WithInformer(consolePluginInformer, operator.FilterByNames()),
+	// return operator.New(controllerName, c,
+	// 	// configs
+	// 	operator.WithInformer(configV1Informers.Consoles(), configNameFilter),
+	// 	operator.WithInformer(operatorConfigInformer, configNameFilter),
+	// 	operator.WithInformer(configV1Informers.Infrastructures(), configNameFilter),
+	// 	operator.WithInformer(configV1Informers.Proxies(), configNameFilter),
+	// 	operator.WithInformer(configV1Informers.OAuths(), configNameFilter),
+	// 	// console resources
+	// 	operator.WithInformer(deployments, targetNameFilter),
+	// 	operator.WithInformer(routes, targetNameFilter),
+	// 	operator.WithInformer(serviceInformer, targetNameFilter),
+	// 	operator.WithInformer(oauthClients, targetNameFilter),
+	// 	// special resources with unique names
+	// 	operator.WithInformer(configMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName, api.OpenShiftCustomLogoConfigMapName, api.TrustedCAConfigMapName)),
+	// 	operator.WithInformer(managedConfigMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName)),
+	// 	operator.WithInformer(secretsInformer, operator.FilterByNames(deployment.ConsoleOauthConfigName)),
+	// 	// plugins
+	// 	operator.WithInformer(consolePluginInformer, operator.FilterByNames()),
+	// )
+	oauthInformer.Informer().AddEventHandler(c.newEventHandler())
+	operatorClient.Informer().AddEventHandler(c.newEventHandler())
+	operatorConfigInformer.Informer().AddEventHandler(c.newEventHandler())
+	consolePluginInformer.Informer().AddEventHandler(c.newEventHandler())
+	routesInformer.Informer().AddEventHandler(c.newEventHandler())
+
+	c.cachesToSync = append(c.cachesToSync,
+		oauthInformer.Informer().HasSynced,
+		operatorClient.Informer().HasSynced,
+		operatorConfigInformer.Informer().HasSynced,
+		consolePluginInformer.Informer().HasSynced,
+		routesInformer.Informer().HasSynced,
 	)
+
+	return c
 }
 
 // key is actually the pivot point for the operator, which is our Console custom resource
-func (c *consoleOperator) Key() (metav1.Object, error) {
-	return c.operatorConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
-}
+// func (c *consoleOperator) Key() (metav1.Object, error) {
+// 	return c.operatorConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+// }
 
 type configSet struct {
 	Console        *configv1.Console
@@ -179,15 +200,21 @@ type configSet struct {
 	OAuth          *configv1.OAuth
 }
 
-func (c *consoleOperator) Sync(obj metav1.Object) error {
-	startTime := time.Now()
-	klog.V(4).Infof("started syncing operator %q (%v)", obj.GetName(), startTime)
-	defer klog.V(4).Infof("finished syncing operator %q (%v)", obj.GetName(), time.Since(startTime))
+func (c *consoleOperator) sync() error {
+	// startTime := time.Now()
+	// klog.V(4).Infof("started syncing operator %q (%v)", obj.GetName(), startTime)
+	// defer klog.V(4).Infof("finished syncing operator %q (%v)", obj.GetName(), time.Since(startTime))
 
-	// we need to cast the operator config
-	operatorConfig := obj.(*operatorsv1.Console)
+	// // we need to cast the operator config
+	// operatorConfig := obj.(*operatorsv1.Console)
 
 	// ensure we have top level console config
+	operatorConfig, err := c.operatorConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("console config error: %v", err)
+		return err
+	}
+
 	consoleConfig, err := c.consoleConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("console config error: %v", err)
@@ -273,4 +300,49 @@ func (c *consoleOperator) removeConsole() error {
 	errs = append(errs, updateConfigErr)
 
 	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
+}
+
+func (c *consoleOperator) Run(workers int, stopCh <-chan struct{}) {
+	defer runtime.HandleCrash()
+	defer c.queue.ShutDown()
+	klog.V(4).Infof("Starting %v", controllerName)
+	defer klog.V(4).Infof("Shutting down %v", controllerName)
+	if !cache.WaitForCacheSync(stopCh, c.cachesToSync...) {
+		klog.Infoln("caches did not sync")
+		runtime.HandleError(fmt.Errorf("caches did not sync"))
+		return
+	}
+	// only start one worker
+	go wait.Until(c.runWorker, time.Second, stopCh)
+
+	<-stopCh
+}
+
+func (c *consoleOperator) runWorker() {
+	for c.processNextWorkItem() {
+	}
+}
+
+func (c *consoleOperator) processNextWorkItem() bool {
+	processKey, quit := c.queue.Get()
+	if quit {
+		return false
+	}
+	defer c.queue.Done(processKey)
+	err := c.sync()
+	if err == nil {
+		c.queue.Forget(processKey)
+		return true
+	}
+	runtime.HandleError(fmt.Errorf("%v failed with : %v", processKey, err))
+	c.queue.AddRateLimited(processKey)
+	return true
+}
+
+func (c *consoleOperator) newEventHandler() cache.ResourceEventHandler {
+	return cache.ResourceEventHandlerFuncs{
+		AddFunc:    func(obj interface{}) { c.queue.Add(controllerWorkQueueKey) },
+		UpdateFunc: func(old, new interface{}) { c.queue.Add(controllerWorkQueueKey) },
+		DeleteFunc: func(obj interface{}) { c.queue.Add(controllerWorkQueueKey) },
+	}
 }
