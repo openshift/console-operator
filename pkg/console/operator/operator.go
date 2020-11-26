@@ -142,34 +142,6 @@ func NewConsoleOperator(
 		ctx:            ctx,
 	}
 
-	// secretsInformer := coreV1.Secrets()
-	// configMapInformer := coreV1.ConfigMaps()
-	// managedConfigMapInformer := managedCoreV1.ConfigMaps()
-	// serviceInformer := coreV1.Services()
-	// configV1Informers := configInformer.Config().V1()
-
-	// configNameFilter := operator.FilterByNames(api.ConfigResourceName)
-	// targetNameFilter := operator.FilterByNames(api.OpenShiftConsoleName)
-
-	// return operator.New(controllerName, c,
-	// 	// configs
-	// 	operator.WithInformer(configV1Informers.Consoles(), configNameFilter),
-	// 	operator.WithInformer(operatorConfigInformer, configNameFilter),
-	// 	operator.WithInformer(configV1Informers.Infrastructures(), configNameFilter),
-	// 	operator.WithInformer(configV1Informers.Proxies(), configNameFilter),
-	// 	operator.WithInformer(configV1Informers.OAuths(), configNameFilter),
-	// 	// console resources
-	// 	operator.WithInformer(deployments, targetNameFilter),
-	// 	operator.WithInformer(routes, targetNameFilter),
-	// 	operator.WithInformer(serviceInformer, targetNameFilter),
-	// 	operator.WithInformer(oauthClients, targetNameFilter),
-	// 	// special resources with unique names
-	// 	operator.WithInformer(configMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName, api.OpenShiftCustomLogoConfigMapName, api.TrustedCAConfigMapName)),
-	// 	operator.WithInformer(managedConfigMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName)),
-	// 	operator.WithInformer(secretsInformer, operator.FilterByNames(deployment.ConsoleOauthConfigName)),
-	// 	// plugins
-	// 	operator.WithInformer(consolePluginInformer, operator.FilterByNames()),
-	// )
 	oauthInformer.Informer().AddEventHandler(c.newEventHandler())
 	operatorClient.Informer().AddEventHandler(c.newEventHandler())
 	operatorConfigInformer.Informer().AddEventHandler(c.newEventHandler())
@@ -187,11 +159,6 @@ func NewConsoleOperator(
 	return c
 }
 
-// key is actually the pivot point for the operator, which is our Console custom resource
-// func (c *consoleOperator) Key() (metav1.Object, error) {
-// 	return c.operatorConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
-// }
-
 type configSet struct {
 	Console        *configv1.Console
 	Operator       *operatorsv1.Console
@@ -201,17 +168,9 @@ type configSet struct {
 }
 
 func (c *consoleOperator) sync() error {
-	// startTime := time.Now()
-	// klog.V(4).Infof("started syncing operator %q (%v)", obj.GetName(), startTime)
-	// defer klog.V(4).Infof("finished syncing operator %q (%v)", obj.GetName(), time.Since(startTime))
-
-	// // we need to cast the operator config
-	// operatorConfig := obj.(*operatorsv1.Console)
-
-	// ensure we have top level console config
 	operatorConfig, err := c.operatorConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("console config error: %v", err)
+		klog.Errorf("operator config error: %v", err)
 		return err
 	}
 

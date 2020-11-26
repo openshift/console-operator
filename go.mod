@@ -25,7 +25,6 @@ require (
 	k8s.io/client-go v0.19.2
 	k8s.io/component-base v0.19.2
 	k8s.io/klog/v2 v2.4.0
-	monis.app/go v0.0.0-20190702030534-c65526068664
 	sigs.k8s.io/structured-merge-diff/v4 v4.0.2 // indirect
 )
 

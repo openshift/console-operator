@@ -164,7 +164,6 @@ func (c *ServiceSyncController) removeService(serviceName string) error {
 	return err
 }
 
-// boilerplate, since this controller is not making use of monis.app/go boilerplate
 func (c *ServiceSyncController) Run(workers int, stopCh <-chan struct{}) {
 	defer runtime.HandleCrash()
 	defer c.queue.ShutDown()

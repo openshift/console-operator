@@ -857,8 +857,6 @@ k8s.io/component-base/metrics
 k8s.io/component-base/metrics/legacyregistry
 k8s.io/component-base/metrics/testutil
 k8s.io/component-base/version
-# k8s.io/klog v0.3.0
-k8s.io/klog
 # k8s.io/klog/v2 v2.4.0
 k8s.io/klog/v2
 # k8s.io/kube-aggregator v0.19.0
@@ -881,9 +879,6 @@ k8s.io/utils/net
 k8s.io/utils/path
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# monis.app/go v0.0.0-20190702030534-c65526068664
-monis.app/go/openshift/controller
-monis.app/go/openshift/operator
 # sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.9
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/pkg/client
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/proto/client
