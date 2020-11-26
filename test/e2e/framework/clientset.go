@@ -24,6 +24,7 @@ type ClientSet struct {
 	ConsoleExternalLogLink consoleclientv1.ConsoleExternalLogLinkInterface
 	ConsoleLink            consoleclientv1.ConsoleLinkInterface
 	ConsoleNotification    consoleclientv1.ConsoleNotificationInterface
+	ConsolePlugin          consoleclientv1.ConsolePluginInterface
 	ConsoleYAMLSample      consoleclientv1.ConsoleYAMLSampleInterface
 	Operator               operatorclientv1.ConsolesGetter
 	Console                configv1.ConsolesGetter
@@ -78,6 +79,7 @@ func NewClientset(kubeconfig *restclient.Config) (*ClientSet, error) {
 	clientset.ConsoleLink = consoleClient.ConsoleLinks()
 	clientset.ConsoleNotification = consoleClient.ConsoleNotifications()
 	clientset.ConsoleYAMLSample = consoleClient.ConsoleYAMLSamples()
+	clientset.ConsolePlugin = consoleClient.ConsolePlugins()
 
 	return clientset, nil
 }
