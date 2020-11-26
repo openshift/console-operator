@@ -323,7 +323,7 @@ func (co *consoleOperator) SyncConfigMap(
 	if pluginsListErr != nil {
 		return nil, false, "FailedGetConsolePlugins", pluginsListErr
 	}
-	enabledPlugins := co.getEnabledPlugins(operatorConfig, pluginsList.Items)
+	enabledPlugins := getEnabledPlugins(operatorConfig, pluginsList.Items)
 	klog.Infof("enabled---> %v", enabledPlugins)
 
 	monitoringSharedConfig, mscErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(co.ctx, api.OpenShiftMonitoringConfigMapName, metav1.GetOptions{})
@@ -502,7 +502,7 @@ func getConsoleURL(route *routev1.Route) (string, error) {
 // return plugins that are:
 // - enabled in the console-operator config
 // - created and available as a CR on the cluster
-func (co *consoleOperator) getEnabledPlugins(operatorConfig *operatorv1.Console, pluginsList []v1.ConsolePlugin) []string {
+func getEnabledPlugins(operatorConfig *operatorv1.Console, pluginsList []v1.ConsolePlugin) []string {
 	availablePluginsNames := []string{}
 	enabledPluginsNames := operatorConfig.Spec.Plugins
 	for _, plugin := range pluginsList {

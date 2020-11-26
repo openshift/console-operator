@@ -158,8 +158,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
 
 		// core resources
-		kubeClient.CoreV1(),                 // Secrets, ConfigMaps, Service
-		kubeInformersNamespaced.Core().V1(), // Secrets, ConfigMaps, Service
+		kubeClient.CoreV1(), // Secrets, ConfigMaps, Service
+		kubeInformersNamespaced.Core().V1().ConfigMaps(),
 		// deployments
 		kubeClient.AppsV1(),
 		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments

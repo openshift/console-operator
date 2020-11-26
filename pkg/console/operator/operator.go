@@ -12,6 +12,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	coreinformersv1 "k8s.io/client-go/informers/core/v1"
 	corev1 "k8s.io/client-go/informers/core/v1"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -94,7 +95,7 @@ func NewConsoleOperator(
 	operatorConfigInformer operatorinformerv1.ConsoleInformer,
 	// core resources
 	corev1Client coreclientv1.CoreV1Interface,
-	coreV1 corev1.Interface,
+	configMapInformer coreinformersv1.ConfigMapInformer,
 	// deployments
 	deploymentClient appsv1.DeploymentsGetter,
 	deployments appsinformersv1.DeploymentInformer,
@@ -147,6 +148,7 @@ func NewConsoleOperator(
 	operatorConfigInformer.Informer().AddEventHandler(c.newEventHandler())
 	consolePluginInformer.Informer().AddEventHandler(c.newEventHandler())
 	routesInformer.Informer().AddEventHandler(c.newEventHandler())
+	configMapInformer.Informer().AddEventHandler(c.newEventHandler())
 
 	c.cachesToSync = append(c.cachesToSync,
 		oauthInformer.Informer().HasSynced,
@@ -154,6 +156,7 @@ func NewConsoleOperator(
 		operatorConfigInformer.Informer().HasSynced,
 		consolePluginInformer.Informer().HasSynced,
 		routesInformer.Informer().HasSynced,
+		configMapInformer.Informer().HasSynced,
 	)
 
 	return c
