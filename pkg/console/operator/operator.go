@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 	corev1 "k8s.io/client-go/informers/core/v1"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -18,28 +19,22 @@ import (
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
+	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
+	configinformer "github.com/openshift/client-go/config/informers/externalversions"
 	oauthclientv1 "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
 	oauthinformersv1 "github.com/openshift/client-go/oauth/informers/externalversions/oauth/v1"
+	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
+	operatorinformerv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
+	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/status"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
-
-	"monis.app/go/openshift/operator"
-
-	// informers
-	configinformer "github.com/openshift/client-go/config/informers/externalversions"
-	operatorinformerv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
-
-	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	appsinformersv1 "k8s.io/client-go/informers/apps/v1"
-
-	// clients
-	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
-	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 
 	// operator
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
@@ -69,11 +64,8 @@ type consoleOperator struct {
 	routeClient   routeclientv1.RoutesGetter
 	oauthClient   oauthclientv1.OAuthClientsGetter
 	versionGetter status.VersionGetter
-	// recorder
-	recorder       events.Recorder
+
 	resourceSyncer resourcesynccontroller.ResourceSyncer
-	// context
-	ctx context.Context
 }
 
 func NewConsoleOperator(
@@ -102,9 +94,7 @@ func NewConsoleOperator(
 	versionGetter status.VersionGetter,
 	recorder events.Recorder,
 	resourceSyncer resourcesynccontroller.ResourceSyncer,
-	// context
-	ctx context.Context,
-) operator.Runner {
+) factory.Controller {
 	c := &consoleOperator{
 		// configs
 		operatorClient:             operatorClient,
@@ -123,10 +113,8 @@ func NewConsoleOperator(
 		routeClient:   routev1Client,
 		oauthClient:   oauthv1Client,
 		versionGetter: versionGetter,
-		// recorder
-		recorder:       recorder,
+
 		resourceSyncer: resourceSyncer,
-		ctx:            ctx,
 	}
 
 	secretsInformer := coreV1.Secrets()
@@ -135,31 +123,34 @@ func NewConsoleOperator(
 	serviceInformer := coreV1.Services()
 	configV1Informers := configInformer.Config().V1()
 
-	configNameFilter := operator.FilterByNames(api.ConfigResourceName)
-	targetNameFilter := operator.FilterByNames(api.OpenShiftConsoleName)
+	configNameFilter := namesFilter(api.ConfigResourceName)
+	targetNameFilter := namesFilter(api.OpenShiftConsoleName)
 
-	return operator.New(controllerName, c,
-		// configs
-		operator.WithInformer(configV1Informers.Consoles(), configNameFilter),
-		operator.WithInformer(operatorConfigInformer, configNameFilter),
-		operator.WithInformer(configV1Informers.Infrastructures(), configNameFilter),
-		operator.WithInformer(configV1Informers.Proxies(), configNameFilter),
-		operator.WithInformer(configV1Informers.OAuths(), configNameFilter),
-		// console resources
-		operator.WithInformer(deployments, targetNameFilter),
-		operator.WithInformer(routes, targetNameFilter),
-		operator.WithInformer(serviceInformer, targetNameFilter),
-		operator.WithInformer(oauthClients, targetNameFilter),
-		// special resources with unique names
-		operator.WithInformer(configMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName, api.OpenShiftCustomLogoConfigMapName, api.TrustedCAConfigMapName)),
-		operator.WithInformer(managedConfigMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName)),
-		operator.WithInformer(secretsInformer, operator.FilterByNames(deployment.ConsoleOauthConfigName)),
-	)
-}
-
-// key is actually the pivot point for the operator, which is our Console custom resource
-func (c *consoleOperator) Key() (metav1.Object, error) {
-	return c.operatorConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+	return factory.New().
+		WithFilteredEventsInformers( // configs
+			configNameFilter,
+			configV1Informers.Consoles().Informer(),
+			operatorConfigInformer.Informer(),
+			configV1Informers.Infrastructures().Informer(),
+			configV1Informers.Proxies().Informer(),
+			configV1Informers.OAuths().Informer(),
+		).WithFilteredEventsInformers( // console resources
+		targetNameFilter,
+		deployments.Informer(),
+		routes.Informer(),
+		serviceInformer.Informer(),
+		oauthClients.Informer(),
+	).WithFilteredEventsInformers(
+		namesFilter(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName, api.OpenShiftCustomLogoConfigMapName, api.TrustedCAConfigMapName),
+		configMapInformer.Informer(),
+	).WithFilteredEventsInformers(
+		namesFilter(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName),
+		managedConfigMapInformer.Informer(),
+	).WithFilteredEventsInformers(
+		namesFilter(deployment.ConsoleOauthConfigName),
+		secretsInformer.Informer(),
+	).WithSync(c.Sync).
+		ToController("ConsoleOperator", recorder.WithComponentSuffix("console-operator"))
 }
 
 type configSet struct {
@@ -170,35 +161,38 @@ type configSet struct {
 	OAuth          *configv1.OAuth
 }
 
-func (c *consoleOperator) Sync(obj metav1.Object) error {
-	startTime := time.Now()
-	klog.V(4).Infof("started syncing operator %q (%v)", obj.GetName(), startTime)
-	defer klog.V(4).Infof("finished syncing operator %q (%v)", obj.GetName(), time.Since(startTime))
+func (c *consoleOperator) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
+	operatorConfig, err := c.operatorConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		klog.Error("failed to retrieve operator config: %v", err)
+		return err
+	}
 
-	// we need to cast the operator config
-	operatorConfig := obj.(*operatorsv1.Console)
+	startTime := time.Now()
+	klog.V(4).Infof("started syncing operator %q (%v)", operatorConfig.Name, startTime)
+	defer klog.V(4).Infof("finished syncing operator %q (%v)", operatorConfig.Name, time.Since(startTime))
 
 	// ensure we have top level console config
-	consoleConfig, err := c.consoleConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+	consoleConfig, err := c.consoleConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("console config error: %v", err)
 		return err
 	}
 
 	// we need infrastructure config for apiServerURL
-	infrastructureConfig, err := c.infrastructureConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+	infrastructureConfig, err := c.infrastructureConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("infrastructure config error: %v", err)
 		return err
 	}
 
-	proxyConfig, err := c.proxyConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+	proxyConfig, err := c.proxyConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("proxy config error: %v", err)
 		return err
 	}
 
-	oauthConfig, err := c.oauthConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+	oauthConfig, err := c.oauthConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("oauth config error: %v", err)
 		return err
@@ -212,14 +206,14 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 		OAuth:          oauthConfig,
 	}
 
-	if err := c.handleSync(configs); err != nil {
+	if err := c.handleSync(ctx, controllerContext, configs); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (c *consoleOperator) handleSync(configs configSet) error {
+func (c *consoleOperator) handleSync(ctx context.Context, controllerContext factory.SyncContext, configs configSet) error {
 	updatedStatus := configs.Operator.DeepCopy()
 
 	switch updatedStatus.Spec.ManagementState {
@@ -231,37 +225,48 @@ func (c *consoleOperator) handleSync(configs configSet) error {
 		return nil
 	case operatorsv1.Removed:
 		klog.V(4).Infoln("console has been removed.")
-		return c.removeConsole()
+		return c.removeConsole(ctx, controllerContext.Recorder())
 	default:
 		return fmt.Errorf("console is in an unknown state: %v", updatedStatus.Spec.ManagementState)
 	}
 
-	return c.sync_v400(updatedStatus, configs)
+	return c.sync_v400(ctx, controllerContext, updatedStatus, configs)
 }
 
 // this may need to move to sync_v400 if versions ever have custom delete logic
-func (c *consoleOperator) removeConsole() error {
+func (c *consoleOperator) removeConsole(ctx context.Context, recorder events.Recorder) error {
 	klog.V(2).Info("deleting console resources")
 	defer klog.V(2).Info("finished deleting console resources")
 	var errs []error
 	// configmaps
-	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(c.ctx, configmap.Stub().Name, metav1.DeleteOptions{}))
-	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(c.ctx, configmap.ServiceCAStub().Name, metav1.DeleteOptions{}))
+	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(ctx, configmap.Stub().Name, metav1.DeleteOptions{}))
+	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(ctx, configmap.ServiceCAStub().Name, metav1.DeleteOptions{}))
 	// secret
-	errs = append(errs, c.secretsClient.Secrets(api.TargetNamespace).Delete(c.ctx, secret.Stub().Name, metav1.DeleteOptions{}))
+	errs = append(errs, c.secretsClient.Secrets(api.TargetNamespace).Delete(ctx, secret.Stub().Name, metav1.DeleteOptions{}))
 	// existingOAuthClient is not a delete, it is a deregister/neutralize
-	existingOAuthClient, getAuthErr := c.oauthClient.OAuthClients().Get(c.ctx, oauthclient.Stub().Name, metav1.GetOptions{})
+	existingOAuthClient, getAuthErr := c.oauthClient.OAuthClients().Get(ctx, oauthclient.Stub().Name, metav1.GetOptions{})
 	errs = append(errs, getAuthErr)
 	if len(existingOAuthClient.RedirectURIs) != 0 {
-		_, updateAuthErr := c.oauthClient.OAuthClients().Update(c.ctx, oauthclient.DeRegisterConsoleFromOAuthClient(existingOAuthClient), metav1.UpdateOptions{})
+		_, updateAuthErr := c.oauthClient.OAuthClients().Update(ctx, oauthclient.DeRegisterConsoleFromOAuthClient(existingOAuthClient), metav1.UpdateOptions{})
 		errs = append(errs, updateAuthErr)
 	}
 	// deployment
 	// NOTE: CVO controls the deployment for downloads, console-operator cannot delete it.
-	errs = append(errs, c.deploymentClient.Deployments(api.TargetNamespace).Delete(c.ctx, deployment.Stub().Name, metav1.DeleteOptions{}))
+	errs = append(errs, c.deploymentClient.Deployments(api.TargetNamespace).Delete(ctx, deployment.Stub().Name, metav1.DeleteOptions{}))
 	// clear the console URL from the public config map in openshift-config-managed
-	_, _, updateConfigErr := resourceapply.ApplyConfigMap(c.configMapClient, c.recorder, configmap.EmptyPublicConfig())
+	_, _, updateConfigErr := resourceapply.ApplyConfigMap(c.configMapClient, recorder, configmap.EmptyPublicConfig())
 	errs = append(errs, updateConfigErr)
 
 	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
+}
+
+func namesFilter(names ...string) factory.EventFilterFunc {
+	nameSet := sets.NewString(names...)
+	return func(obj interface{}) bool {
+		metaObj := obj.(metav1.Object)
+		if nameSet.Has(metaObj.GetName()) {
+			return true
+		}
+		return false
+	}
 }
