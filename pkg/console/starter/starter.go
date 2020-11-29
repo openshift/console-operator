@@ -176,8 +176,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		versionGetter,
 		recorder,
 		resourceSyncer,
-		// context
-		ctx,
 	)
 
 	cliDownloadsController := clidownloads.NewCLIDownloadsSyncController(
@@ -317,6 +315,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		logLevelController,
 		managementStateController,
 		configUpgradeableController,
+		consoleOperator,
 	} {
 		go controller.Run(ctx, 1)
 	}
@@ -324,7 +323,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	go consoleServiceController.Run(1, ctx.Done())
 	go consoleRouteController.Run(1, ctx.Done())
 	go resourceSyncDestinationController.Run(1, ctx.Done())
-	go consoleOperator.Run(ctx.Done())
 	go cliDownloadsController.Run(1, ctx.Done())
 	// go staleConditionsController.Run(1, ctx.Done())
 
