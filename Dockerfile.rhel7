@@ -12,6 +12,9 @@ COPY --from=builder /go/src/github.com/openshift/console-operator/console /usr/b
 # these manifests are necessary for the installer
 COPY manifests /manifests/
 
+# out-of-the-box quickstarts
+COPY quickstarts/*.yaml /manifests/
+
 # extensions manifests generated from openshift/api types
 COPY vendor/github.com/openshift/api/console/v1/*.yaml /manifests/
 COPY vendor/github.com/openshift/api/operator/v1/0000_70_console-operator.crd.yaml /manifests/
