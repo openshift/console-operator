@@ -291,10 +291,7 @@ oc adm release info
 # coming soon...
 oc adm release extract 
 ```
+## Quick Starts
 
-
-
-
-
-
-
+See the [Quick Starts README](quickstarts/README.md) for contributing console
+quick starts.
