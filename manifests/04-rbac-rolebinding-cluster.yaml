@@ -6,6 +6,7 @@ metadata:
     include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
+    include.release.openshift.io/single-node-production-edge: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -23,6 +24,7 @@ metadata:
     include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
+    include.release.openshift.io/single-node-production-edge: "true"
 roleRef:
   kind: ClusterRole
   name: console-extensions-reader
@@ -40,6 +42,7 @@ metadata:
     include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
+    include.release.openshift.io/single-node-production-edge: "true"
 roleRef:
   # for protected endpoints like /metrics, the operator must perform
   # authentication (tokenreview) & authorization (subjectaccessreview)
@@ -60,6 +63,7 @@ metadata:
     include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
+    include.release.openshift.io/single-node-production-edge: "true"
 roleRef:
   # CRD lists are protected from unpriviledged users, access is
   # granted to Service Account by this ClusterRole
@@ -79,6 +83,7 @@ metadata:
     include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
+    include.release.openshift.io/single-node-production-edge: "true"
   name: helm-chartrepos-view
 subjects:
   - kind: Group
