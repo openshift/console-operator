@@ -1,7 +1,7 @@
 package consoleserver
 
 // This file is a copy of the struct within the console itself:
-//   https://github.com/openshift/console/blob/master/cmd/bridge/config.go
+//   https://github.com/openshift/console/blob/master/pkg/serverconfig/types.go
 // These structs need to remain in sync.
 //
 // `yaml:",omitempty"` has not been applied to any of the properties currently
@@ -69,6 +69,34 @@ type Customization struct {
 	DocumentationBaseURL string `yaml:"documentationBaseURL,omitempty"`
 	CustomProductName    string `yaml:"customProductName,omitempty"`
 	CustomLogoFile       string `yaml:"customLogoFile,omitempty"`
+	// developerCatalog allows to configure the shown developer catalog categories.
+	DeveloperCatalog *DeveloperConsoleCatalogCustomization `yaml:"developerCatalog,omitempty"`
+}
+
+// DeveloperConsoleCatalogCustomization allow cluster admin to configure developer catalog.
+type DeveloperConsoleCatalogCustomization struct {
+	// categories which are shown the in developer catalog.
+	Categories *[]DeveloperConsoleCatalogCategory `yaml:"categories"`
+}
+
+// DeveloperConsoleCatalogCategoryMeta are the key identifiers of a developer catalog category.
+type DeveloperConsoleCatalogCategoryMeta struct {
+	// ID is an identifier used in the URL to enable deep linking in console.
+	// ID is required and must have 1-32 URL safe (A-Z, a-z, 0-9, - and _) characters.
+	ID string `yaml:"id"`
+	// label defines a category display label. It is required and must have 1-64 characters.
+	Label string `yaml:"label"`
+	// tags is a list of strings that will match the category. A selected category
+	// show all items which has at least one overlapping tag between category and item.
+	Tags []string `yaml:"tags,omitempty"`
+}
+
+// DeveloperConsoleCatalogCategory for the developer console catalog.
+type DeveloperConsoleCatalogCategory struct {
+	// defines top level category ID, label and filter tags.
+	DeveloperConsoleCatalogCategoryMeta `yaml:",inline"`
+	// subcategories defines a list of child categories.
+	Subcategories []DeveloperConsoleCatalogCategoryMeta `yaml:"subcategories,omitempty"`
 }
 
 type Providers struct {

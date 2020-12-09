@@ -38,6 +38,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	apiServerURL               string
 	statusPageID               string
 	customProductName          string
+	devCatalogCustomization    operatorv1.DeveloperConsoleCatalogCustomization
 	customLogoFile             string
 	CAFile                     string
 	monitoring                 map[string]string
@@ -67,6 +68,10 @@ func (b *ConsoleServerCLIConfigBuilder) APIServerURL(apiServerURL string) *Conso
 }
 func (b *ConsoleServerCLIConfigBuilder) CustomProductName(customProductName string) *ConsoleServerCLIConfigBuilder {
 	b.customProductName = customProductName
+	return b
+}
+func (b *ConsoleServerCLIConfigBuilder) CustomDeveloperCatalog(devCatalogCustomization operatorv1.DeveloperConsoleCatalogCustomization) *ConsoleServerCLIConfigBuilder {
+	b.devCatalogCustomization = devCatalogCustomization
 	return b
 }
 func (b *ConsoleServerCLIConfigBuilder) CustomLogoFile(customLogoFile string) *ConsoleServerCLIConfigBuilder {
@@ -220,6 +225,35 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 	}
 	if len(b.customLogoFile) > 0 {
 		conf.CustomLogoFile = b.customLogoFile
+	}
+
+	if b.devCatalogCustomization.Categories != nil {
+		mapMeta := func(meta operatorv1.DeveloperConsoleCatalogCategoryMeta) DeveloperConsoleCatalogCategoryMeta {
+			return DeveloperConsoleCatalogCategoryMeta{
+				ID:    meta.ID,
+				Label: meta.Label,
+				Tags:  meta.Tags,
+			}
+		}
+
+		categories := make([]DeveloperConsoleCatalogCategory, len(b.devCatalogCustomization.Categories))
+		for categoryIndex, category := range b.devCatalogCustomization.Categories {
+			var subcategories []DeveloperConsoleCatalogCategoryMeta = nil
+			if category.Subcategories != nil {
+				subcategories = make([]DeveloperConsoleCatalogCategoryMeta, len(category.Subcategories))
+				for subcategoryIndex, subcategory := range category.Subcategories {
+					subcategories[subcategoryIndex] = mapMeta(subcategory)
+				}
+			}
+			categories[categoryIndex] = DeveloperConsoleCatalogCategory{
+				DeveloperConsoleCatalogCategoryMeta: mapMeta(category.DeveloperConsoleCatalogCategoryMeta),
+				Subcategories:                       subcategories,
+			}
+		}
+
+		conf.DeveloperCatalog = &DeveloperConsoleCatalogCustomization{
+			Categories: &categories,
+		}
 	}
 	return conf
 
