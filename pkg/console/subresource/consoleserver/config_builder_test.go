@@ -152,7 +152,143 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					StatuspageID: "status-12345",
 				},
 			},
-		}, {
+		},
+		{
+			name: "Config builder should handle custom dev catalog without categories",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.CustomDeveloperCatalog(v1.DeveloperConsoleCatalogCustomization{})
+				return b.Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+				},
+				Customization: Customization{},
+				Providers:     Providers{},
+			},
+		},
+		{
+			name: "Config builder should handle custom dev catalog with empty (zero) categories",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.CustomDeveloperCatalog(v1.DeveloperConsoleCatalogCustomization{
+					Categories: []v1.DeveloperConsoleCatalogCategory{},
+				})
+				return b.Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+				},
+				Customization: Customization{
+					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
+						Categories: &[]DeveloperConsoleCatalogCategory{},
+					},
+				},
+				Providers: Providers{},
+			},
+		},
+		{
+			name: "Config builder should handle custom dev catalog with some categories and subcategories",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.CustomDeveloperCatalog(v1.DeveloperConsoleCatalogCustomization{
+					Categories: []v1.DeveloperConsoleCatalogCategory{
+						{
+							DeveloperConsoleCatalogCategoryMeta: v1.DeveloperConsoleCatalogCategoryMeta{
+								ID:    "java",
+								Label: "Java",
+								Tags:  []string{"java", "jvm", "quarkus"},
+							},
+							Subcategories: []v1.DeveloperConsoleCatalogCategoryMeta{
+								{
+									ID:    "quarkus",
+									Label: "Quarkus",
+									Tags:  []string{"quarkus"},
+								},
+							},
+						},
+						{
+							DeveloperConsoleCatalogCategoryMeta: v1.DeveloperConsoleCatalogCategoryMeta{
+								ID:    "notagsorsubcategory",
+								Label: "No tags or subcategory",
+							},
+						},
+					},
+				})
+				return b.Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+				},
+				Customization: Customization{
+					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
+						Categories: &[]DeveloperConsoleCatalogCategory{
+							{
+								DeveloperConsoleCatalogCategoryMeta: DeveloperConsoleCatalogCategoryMeta{
+									ID:    "java",
+									Label: "Java",
+									Tags:  []string{"java", "jvm", "quarkus"},
+								},
+								Subcategories: []DeveloperConsoleCatalogCategoryMeta{
+									{
+										ID:    "quarkus",
+										Label: "Quarkus",
+										Tags:  []string{"quarkus"},
+									},
+								},
+							},
+							{
+								DeveloperConsoleCatalogCategoryMeta: DeveloperConsoleCatalogCategoryMeta{
+									ID:    "notagsorsubcategory",
+									Label: "No tags or subcategory",
+								},
+							},
+						},
+					},
+				},
+				Providers: Providers{},
+			},
+		},
+		{
 			name: "Config builder should handle all inputs",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
@@ -325,6 +461,114 @@ auth:
 customization: {}
 providers:
   statuspageID: status-12345
+`,
+		},
+		{
+			name: "Config builder should handle custom dev catalog without categories",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.CustomDeveloperCatalog(v1.DeveloperConsoleCatalogCustomization{})
+				return b.ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo: {}
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+customization: {}
+providers: {}
+`,
+		},
+		{
+			name: "Config builder should handle custom dev catalog with empty (zero) categories",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.CustomDeveloperCatalog(v1.DeveloperConsoleCatalogCustomization{
+					Categories: []v1.DeveloperConsoleCatalogCategory{},
+				})
+				return b.ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo: {}
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+customization:
+  developerCatalog:
+    categories: []
+providers: {}
+`,
+		},
+		{
+			name: "Config builder should handle custom dev catalog with some categories and subcategories",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.CustomDeveloperCatalog(v1.DeveloperConsoleCatalogCustomization{
+					Categories: []v1.DeveloperConsoleCatalogCategory{
+						{
+							DeveloperConsoleCatalogCategoryMeta: v1.DeveloperConsoleCatalogCategoryMeta{
+								ID:    "java",
+								Label: "Java",
+								Tags:  []string{"java", "jvm", "quarkus"},
+							},
+							Subcategories: []v1.DeveloperConsoleCatalogCategoryMeta{
+								{
+									ID:    "quarkus",
+									Label: "Quarkus",
+									Tags:  []string{"quarkus"},
+								},
+							},
+						},
+						{
+							DeveloperConsoleCatalogCategoryMeta: v1.DeveloperConsoleCatalogCategoryMeta{
+								ID:    "notagsorsubcategory",
+								Label: "No tags or subcategory",
+							},
+						},
+					},
+				})
+				return b.ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo: {}
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+customization:
+  developerCatalog:
+    categories:
+    - id: java
+      label: Java
+      tags:
+      - java
+      - jvm
+      - quarkus
+      subcategories:
+      - id: quarkus
+        label: Quarkus
+        tags:
+        - quarkus
+    - id: notagsorsubcategory
+      label: No tags or subcategory
+providers: {}
 `,
 		},
 		{
