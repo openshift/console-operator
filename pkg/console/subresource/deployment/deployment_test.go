@@ -132,7 +132,7 @@ func TestDefaultDeployment(t *testing.T) {
 					LabelSelector: &metav1.LabelSelector{
 						MatchLabels: util.SharedLabels(),
 					},
-					TopologyKey: "kubernetes.io/hostname",
+					TopologyKey: "topology.kubernetes.io/zone",
 				},
 			}},
 		},
