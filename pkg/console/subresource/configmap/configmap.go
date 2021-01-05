@@ -43,7 +43,8 @@ func DefaultConfigMap(
 	infrastructureConfig *configv1.Infrastructure,
 	activeConsoleRoute *routev1.Route,
 	useDefaultCAFile bool,
-	inactivityTimeoutSeconds int) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
+	inactivityTimeoutSeconds int,
+	pluginsEndpoingMap map[string]string) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
 	defaultConfig, err := defaultBuilder.Host(activeConsoleRoute.Spec.Host).
@@ -65,6 +66,7 @@ func DefaultConfigMap(
 		DefaultIngressCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
 		Monitoring(monitoringSharedConfig).
+		Plugins(pluginsEndpoingMap).
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
 		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).
 		CustomDeveloperCatalog(operatorConfig.Spec.Customization.DeveloperCatalog).

@@ -21,6 +21,8 @@ import (
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
+	consoleinformersv1alpha1 "github.com/openshift/client-go/console/informers/externalversions/console/v1alpha1"
+	listerv1alpha1 "github.com/openshift/client-go/console/listers/console/v1alpha1"
 	oauthclientv1 "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
 	oauthinformersv1 "github.com/openshift/client-go/oauth/informers/externalversions/oauth/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
@@ -43,10 +45,6 @@ import (
 	"github.com/openshift/console-operator/pkg/console/subresource/secret"
 )
 
-const (
-	controllerName = "Console"
-)
-
 type consoleOperator struct {
 	// configs
 	operatorClient             v1helpers.OperatorClient
@@ -64,6 +62,8 @@ type consoleOperator struct {
 	routeClient   routeclientv1.RoutesGetter
 	oauthClient   oauthclientv1.OAuthClientsGetter
 	versionGetter status.VersionGetter
+	// lister
+	consolePluginLister listerv1alpha1.ConsolePluginLister
 
 	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
@@ -81,13 +81,15 @@ func NewConsoleOperator(
 	coreV1 corev1.Interface,
 	// deployments
 	deploymentClient appsv1.DeploymentsGetter,
-	deployments appsinformersv1.DeploymentInformer,
+	deploymentInformer appsinformersv1.DeploymentInformer,
 	// routes
 	routev1Client routeclientv1.RoutesGetter,
-	routes routesinformersv1.RouteInformer,
+	routeInformer routesinformersv1.RouteInformer,
 	// oauth
 	oauthv1Client oauthclientv1.OAuthClientsGetter,
 	oauthClients oauthinformersv1.OAuthClientInformer,
+	// plugins
+	consolePluginInformer consoleinformersv1alpha1.ConsolePluginInformer,
 	// openshift managed
 	managedCoreV1 corev1.Interface,
 	// event handling
@@ -113,6 +115,8 @@ func NewConsoleOperator(
 		routeClient:   routev1Client,
 		oauthClient:   oauthv1Client,
 		versionGetter: versionGetter,
+		// plugins
+		consolePluginLister: consolePluginInformer.Lister(),
 
 		resourceSyncer: resourceSyncer,
 	}
@@ -136,10 +140,12 @@ func NewConsoleOperator(
 			configV1Informers.OAuths().Informer(),
 		).WithFilteredEventsInformers( // console resources
 		targetNameFilter,
-		deployments.Informer(),
-		routes.Informer(),
+		deploymentInformer.Informer(),
+		routeInformer.Informer(),
 		serviceInformer.Informer(),
 		oauthClients.Informer(),
+	).WithInformers(
+		consolePluginInformer.Informer(),
 	).WithFilteredEventsInformers(
 		namesFilter(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName, api.OpenShiftCustomLogoConfigMapName, api.TrustedCAConfigMapName),
 		configMapInformer.Informer(),

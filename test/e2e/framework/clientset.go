@@ -10,6 +10,7 @@ import (
 
 	configv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	consoleclientv1 "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
+	consoleclientv1alpha1 "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1alpha1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	clientroutev1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 )
@@ -24,6 +25,7 @@ type ClientSet struct {
 	ConsoleExternalLogLink consoleclientv1.ConsoleExternalLogLinkInterface
 	ConsoleLink            consoleclientv1.ConsoleLinkInterface
 	ConsoleNotification    consoleclientv1.ConsoleNotificationInterface
+	ConsolePlugin          consoleclientv1alpha1.ConsolePluginInterface
 	ConsoleYAMLSample      consoleclientv1.ConsoleYAMLSampleInterface
 	Operator               operatorclientv1.ConsolesGetter
 	Console                configv1.ConsolesGetter
@@ -73,11 +75,18 @@ func NewClientset(kubeconfig *restclient.Config) (*ClientSet, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	consoleClientAlpha1, err := consoleclientv1alpha1.NewForConfig(kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+
 	clientset.ConsoleCliDownloads = consoleClient.ConsoleCLIDownloads()
 	clientset.ConsoleExternalLogLink = consoleClient.ConsoleExternalLogLinks()
 	clientset.ConsoleLink = consoleClient.ConsoleLinks()
 	clientset.ConsoleNotification = consoleClient.ConsoleNotifications()
 	clientset.ConsoleYAMLSample = consoleClient.ConsoleYAMLSamples()
+	clientset.ConsolePlugin = consoleClientAlpha1.ConsolePlugins()
 
 	return clientset, nil
 }

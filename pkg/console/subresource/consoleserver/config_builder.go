@@ -44,6 +44,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	monitoring                 map[string]string
 	customHostnameRedirectPort int
 	inactivityTimeoutSeconds   int
+	pluginsList                map[string]string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -115,6 +116,11 @@ func (b *ConsoleServerCLIConfigBuilder) InactivityTimeout(timeout int) *ConsoleS
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) Plugins(plugins map[string]string) *ConsoleServerCLIConfigBuilder {
+	b.pluginsList = plugins
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
 		Kind:           "ConsoleConfig",
@@ -125,6 +131,7 @@ func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 		ServingInfo:    b.servingInfo(),
 		Providers:      b.providers(),
 		MonitoringInfo: b.monitoringInfo(),
+		Plugins:        b.plugins(),
 	}
 }
 
@@ -266,4 +273,8 @@ func (b *ConsoleServerCLIConfigBuilder) providers() Providers {
 		}
 	}
 	return Providers{}
+}
+
+func (b *ConsoleServerCLIConfigBuilder) plugins() map[string]string {
+	return b.pluginsList
 }

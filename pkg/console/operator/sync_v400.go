@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 
 	// kube
@@ -15,6 +16,7 @@ import (
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
+	v1alpha1 "github.com/openshift/api/console/v1alpha1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -329,12 +331,13 @@ func (co *consoleOperator) SyncConfigMap(
 		}
 	}
 
+	pluginsEndpoingMap := co.GetPluginsEndpointMap(operatorConfig.Spec.Plugins)
 	monitoringSharedConfig, mscErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(ctx, api.OpenShiftMonitoringConfigMapName, metav1.GetOptions{})
 	if mscErr != nil && !apierrors.IsNotFound(mscErr) {
 		return nil, false, "FailedGetMonitoringSharedConfig", mscErr
 	}
 
-	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, monitoringSharedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile, inactivityTimeoutSeconds)
+	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, monitoringSharedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile, inactivityTimeoutSeconds, pluginsEndpoingMap)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
 	}
@@ -500,4 +503,25 @@ func getConsoleURL(route *routev1.Route) (string, error) {
 		return "", err
 	}
 	return util.HTTPS(host), nil
+}
+
+func (co *consoleOperator) GetPluginsEndpointMap(enabledPluginsNames []string) map[string]string {
+	pluginsEndpointMap := map[string]string{}
+	for _, pluginName := range enabledPluginsNames {
+		plugin, err := co.consolePluginLister.Get(pluginName)
+		if err != nil {
+			klog.Errorf("failed to set service endpoint for %q plugin: %v", pluginName, err)
+		}
+		pluginsEndpointMap[pluginName] = getServiceHostname(plugin)
+	}
+	return pluginsEndpointMap
+}
+
+func getServiceHostname(plugin *v1alpha1.ConsolePlugin) string {
+	pluginURL := &url.URL{
+		Scheme: "https",
+		Host:   fmt.Sprintf("%s.%s.svc.cluster.local:%d", plugin.Spec.Service.Name, plugin.Spec.Service.Namespace, plugin.Spec.Service.Port),
+		Path:   plugin.Spec.Service.BasePath,
+	}
+	return pluginURL.String()
 }
