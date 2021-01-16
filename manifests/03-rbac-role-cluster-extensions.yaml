@@ -18,6 +18,7 @@ rules:
   - consoleclidownloads
   - consoleyamlsamples
   - consolequickstarts
+  - consoleplugins
   verbs:
   - get
   - list
