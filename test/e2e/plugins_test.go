@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	pluginName = "test-plugin"
+	availablePluginName   = "test-plugin"
+	unavailablePluginName = "missing-test-plugin"
 )
 
 func setupPluginsTestCase(t *testing.T) (*framework.ClientSet, *operatorsv1.Console) {
@@ -31,22 +32,24 @@ func setupPluginsTestCase(t *testing.T) (*framework.ClientSet, *operatorsv1.Cons
 func cleanupPluginsTestCase(t *testing.T, client *framework.ClientSet) {
 	framework.StandardCleanup(t, client)
 
-	err := client.ConsolePlugin.Delete(context.TODO(), pluginName, metav1.DeleteOptions{})
+	err := client.ConsolePlugin.Delete(context.TODO(), availablePluginName, metav1.DeleteOptions{})
 	if err != nil && !apiErrors.IsNotFound(err) {
-		t.Fatalf("could not delete cleanup %q plugin, %v", pluginName, err)
+		t.Fatalf("could not delete cleanup %q plugin, %v", availablePluginName, err)
 	}
 	framework.StandardCleanup(t, client)
 }
 
-func TestCreatePlugin(t *testing.T) {
-	expectedPlugins := map[string]string{pluginName: "https://test-plugin-service-name.test-plugin-service-namespace.svc.cluster.local:8443/manifest"}
+// TestAddPlugins is adding available and unavailable plugin names to the console-operator config.
+// Only plugin that is available on the cluster will be set with his endpoint into the console-config ConfigMap.
+func TestAddPlugins(t *testing.T) {
+	expectedPlugins := map[string]string{availablePluginName: "https://test-plugin-service-name.test-plugin-service-namespace.svc.cluster.local:8443/manifest"}
 	currentPlugins := map[string]string{}
 	client, _ := setupPluginsTestCase(t)
 	defer cleanupPluginsTestCase(t, client)
 
 	plugin := &consolev1alpha.ConsolePlugin{
 		ObjectMeta: v1.ObjectMeta{
-			Name: pluginName,
+			Name: availablePluginName,
 		},
 		Spec: consolev1alpha.ConsolePluginSpec{
 			DisplayName: "TestPlugin",
@@ -63,7 +66,8 @@ func TestCreatePlugin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not create ConsolePlugin custom resource: %s", err)
 	}
-	setOperatorConfigPlugin(t, client)
+	enabledPlugins := []string{availablePluginName, unavailablePluginName}
+	setOperatorConfigPlugins(t, client, enabledPlugins)
 
 	err = wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
 		currentPlugins = getConsolePluginsField(t, client)
@@ -77,17 +81,17 @@ func TestCreatePlugin(t *testing.T) {
 	}
 }
 
-func setOperatorConfigPlugin(t *testing.T, client *framework.ClientSet) {
+func setOperatorConfigPlugins(t *testing.T, client *framework.ClientSet, pluginNames []string) {
 	operatorConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("could not get operator config, %v", err)
 	}
-	t.Logf("setting plugins to '%s'", pluginName)
+	t.Logf("setting plugins to '%v'", pluginNames)
 	operatorConfig.Spec = operatorsv1.ConsoleSpec{
 		OperatorSpec: operatorsv1.OperatorSpec{
 			ManagementState: "Managed",
 		},
-		Plugins: []string{pluginName},
+		Plugins: pluginNames,
 	}
 
 	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
