@@ -510,7 +510,8 @@ func (co *consoleOperator) GetPluginsEndpointMap(enabledPluginsNames []string) m
 	for _, pluginName := range enabledPluginsNames {
 		plugin, err := co.consolePluginLister.Get(pluginName)
 		if err != nil {
-			klog.Errorf("failed to set service endpoint for %q plugin: %v", pluginName, err)
+			klog.Errorf("failed to get %q plugin: %v", pluginName, err)
+			continue
 		}
 		pluginsEndpointMap[pluginName] = getServiceHostname(plugin)
 	}
