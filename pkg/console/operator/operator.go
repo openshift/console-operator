@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/sets"
 	corev1 "k8s.io/client-go/informers/core/v1"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -30,6 +29,7 @@ import (
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
@@ -126,9 +126,8 @@ func NewConsoleOperator(
 	managedConfigMapInformer := managedCoreV1.ConfigMaps()
 	serviceInformer := coreV1.Services()
 	configV1Informers := configInformer.Config().V1()
-
-	configNameFilter := namesFilter(api.ConfigResourceName)
-	targetNameFilter := namesFilter(api.OpenShiftConsoleName)
+	configNameFilter := util.NamesFilter(api.ConfigResourceName)
+	targetNameFilter := util.NamesFilter(api.OpenShiftConsoleName)
 
 	return factory.New().
 		WithFilteredEventsInformers( // configs
@@ -147,13 +146,13 @@ func NewConsoleOperator(
 	).WithInformers(
 		consolePluginInformer.Informer(),
 	).WithFilteredEventsInformers(
-		namesFilter(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName, api.OpenShiftCustomLogoConfigMapName, api.TrustedCAConfigMapName),
+		util.NamesFilter(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName, api.OpenShiftCustomLogoConfigMapName, api.TrustedCAConfigMapName),
 		configMapInformer.Informer(),
 	).WithFilteredEventsInformers(
-		namesFilter(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName),
+		util.NamesFilter(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName),
 		managedConfigMapInformer.Informer(),
 	).WithFilteredEventsInformers(
-		namesFilter(deployment.ConsoleOauthConfigName),
+		util.NamesFilter(deployment.ConsoleOauthConfigName),
 		secretsInformer.Informer(),
 	).WithSync(c.Sync).
 		ToController("ConsoleOperator", recorder.WithComponentSuffix("console-operator"))
@@ -264,15 +263,4 @@ func (c *consoleOperator) removeConsole(ctx context.Context, recorder events.Rec
 	errs = append(errs, updateConfigErr)
 
 	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
-}
-
-func namesFilter(names ...string) factory.EventFilterFunc {
-	nameSet := sets.NewString(names...)
-	return func(obj interface{}) bool {
-		metaObj := obj.(metav1.Object)
-		if nameSet.Has(metaObj.GetName()) {
-			return true
-		}
-		return false
-	}
 }

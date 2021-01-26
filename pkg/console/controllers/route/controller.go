@@ -14,33 +14,29 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
+	coreinformersv1 "k8s.io/client-go/informers/core/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
 	// openshift
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
+	configinformer "github.com/openshift/client-go/config/informers/externalversions"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	v1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
+	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
+	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	// console-operator
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	"github.com/openshift/console-operator/pkg/console/status"
 	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
-)
-
-const (
-	controllerName         = "ConsoleRouteSyncController"
-	controllerWorkQueueKey = "console-route-sync--work-queue-key"
 )
 
 type RouteSyncController struct {
@@ -51,20 +47,14 @@ type RouteSyncController struct {
 	routeClient          routeclientv1.RoutesGetter
 	configMapClient      coreclientv1.ConfigMapsGetter
 	secretClient         coreclientv1.SecretsGetter
-	// names
-	targetNamespace string
-	routeName       string
 	// events
-	cachesToSync []cache.InformerSynced
-	queue        workqueue.RateLimitingInterface
-	recorder     events.Recorder
-	// context
-	ctx context.Context
+	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
 
 func NewRouteSyncController(
 	// top level config
 	configClient configclientv1.ConfigV1Interface,
+	configInformer configinformer.SharedInformerFactory,
 	// clients
 	operatorClient v1helpers.OperatorClient,
 	operatorConfigClient operatorclientv1.ConsoleInterface,
@@ -73,15 +63,13 @@ func NewRouteSyncController(
 	secretClient coreclientv1.SecretsGetter,
 	// informers
 	operatorConfigInformer v1.ConsoleInformer,
+	coreInformer coreinformersv1.Interface,
+	secretInformer coreinformersv1.SecretInformer,
 	routeInformer routesinformersv1.RouteInformer,
-	// names
-	targetNamespace string,
-	routeName string,
 	// events
 	recorder events.Recorder,
-	// context
-	ctx context.Context,
-) *RouteSyncController {
+	resourceSyncer resourcesynccontroller.ResourceSyncer,
+) factory.Controller {
 	ctrl := &RouteSyncController{
 		operatorClient:       operatorClient,
 		operatorConfigClient: operatorConfigClient,
@@ -89,30 +77,33 @@ func NewRouteSyncController(
 		routeClient:          routev1Client,
 		configMapClient:      configMapClient,
 		secretClient:         secretClient,
-		targetNamespace:      targetNamespace,
-		routeName:            routeName,
 		// events
-		recorder:     recorder,
-		cachesToSync: nil,
-		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerName),
-		ctx:          ctx,
+		resourceSyncer: resourceSyncer,
 	}
 
-	operatorClient.Informer().AddEventHandler(ctrl.newEventHandler())
-	operatorConfigInformer.Informer().AddEventHandler(ctrl.newEventHandler())
-	routeInformer.Informer().AddEventHandler(ctrl.newEventHandler())
+	configMapInformer := coreInformer.ConfigMaps()
+	configV1Informers := configInformer.Config().V1()
 
-	ctrl.cachesToSync = append(ctrl.cachesToSync,
-		operatorClient.Informer().HasSynced,
-		operatorConfigInformer.Informer().HasSynced,
-		routeInformer.Informer().HasSynced,
-	)
-
-	return ctrl
+	return factory.New().
+		WithFilteredEventsInformers( // configs
+			util.NamesFilter(api.ConfigResourceName),
+			configV1Informers.Consoles().Informer(),
+			operatorConfigInformer.Informer(),
+			configV1Informers.Ingresses().Informer(),
+		).WithFilteredEventsInformers( // service
+		util.NamesFilter(api.TrustedCAConfigMapName, api.DefaultIngressCertConfigMapName),
+		configMapInformer.Informer(),
+	).WithInformers(
+		secretInformer.Informer(),
+	).WithFilteredEventsInformers( // route
+		util.NamesFilter(api.OpenShiftConsoleRouteName, api.OpenshiftConsoleCustomRouteName),
+		routeInformer.Informer(),
+	).WithSync(ctrl.Sync).
+		ToController("ConsoleRouteController", recorder.WithComponentSuffix("console-route-controller"))
 }
 
-func (c *RouteSyncController) sync() error {
-	operatorConfig, err := c.operatorConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
+	operatorConfig, err := c.operatorConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -126,10 +117,10 @@ func (c *RouteSyncController) sync() error {
 		return nil
 	case operatorsv1.Removed:
 		klog.V(4).Infoln("console is in a removed state: deleting route")
-		if err = c.removeRoute(api.OpenshiftConsoleCustomRouteName); err != nil {
+		if err = c.removeRoute(ctx, api.OpenshiftConsoleCustomRouteName); err != nil {
 			return err
 		}
-		return c.removeRoute(api.OpenShiftConsoleName)
+		return c.removeRoute(ctx, api.OpenShiftConsoleName)
 	default:
 		return fmt.Errorf("unknown state: %v", updatedOperatorConfig.Spec.ManagementState)
 	}
@@ -139,13 +130,13 @@ func (c *RouteSyncController) sync() error {
 	// try to sync the custom route first. If the sync fails for any reason, error
 	// out the sync loop and inform about this fact instead of putting default
 	// route into inaccessible state.
-	customRoute, customRouteErrReason, customRouteErr := c.SyncCustomRoute(updatedOperatorConfig)
+	customRoute, customRouteErrReason, customRouteErr := c.SyncCustomRoute(ctx, updatedOperatorConfig, controllerContext)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("CustomRouteSync", customRouteErrReason, customRouteErr))
 	if customRouteErr != nil {
 		return statusHandler.FlushAndReturn(customRouteErr)
 	}
 
-	defaultRoute, defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(updatedOperatorConfig)
+	defaultRoute, defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(ctx, updatedOperatorConfig, controllerContext)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DefaultRouteSync", defaultRouteErrReason, defaultRouteErr))
 	if defaultRouteErr != nil {
 		return statusHandler.FlushAndReturn(defaultRouteErr)
@@ -156,7 +147,7 @@ func (c *RouteSyncController) sync() error {
 		activeRoute = customRoute
 	}
 
-	routeHealthCheckErrReason, routeHealthCheckErr := c.CheckRouteHealth(updatedOperatorConfig, activeRoute)
+	routeHealthCheckErrReason, routeHealthCheckErr := c.CheckRouteHealth(ctx, updatedOperatorConfig, activeRoute)
 	statusHandler.AddCondition(status.HandleDegraded("RouteHealth", routeHealthCheckErrReason, routeHealthCheckErr))
 	if routeHealthCheckErr != nil {
 		return statusHandler.FlushAndReturn(routeHealthCheckErr)
@@ -165,16 +156,16 @@ func (c *RouteSyncController) sync() error {
 	return statusHandler.FlushAndReturn(nil)
 }
 
-func (c *RouteSyncController) removeRoute(routeName string) error {
-	err := c.routeClient.Routes(c.targetNamespace).Delete(c.ctx, routeName, metav1.DeleteOptions{})
+func (c *RouteSyncController) removeRoute(ctx context.Context, routeName string) error {
+	err := c.routeClient.Routes(api.OpenShiftConsoleNamespace).Delete(ctx, routeName, metav1.DeleteOptions{})
 	if apierrors.IsNotFound(err) {
 		return nil
 	}
 	return err
 }
 
-func (c *RouteSyncController) SyncDefaultRoute(operatorConfig *operatorsv1.Console) (*routev1.Route, string, error) {
-	customTLSSecret, configErr := c.GetDefaultRouteTLSSecret(operatorConfig)
+func (c *RouteSyncController) SyncDefaultRoute(ctx context.Context, operatorConfig *operatorsv1.Console, controllerContext factory.SyncContext) (*routev1.Route, string, error) {
+	customTLSSecret, configErr := c.GetDefaultRouteTLSSecret(ctx, operatorConfig)
 	if configErr != nil {
 		return nil, "InvalidDefaultRouteConfig", configErr
 	}
@@ -185,7 +176,7 @@ func (c *RouteSyncController) SyncDefaultRoute(operatorConfig *operatorsv1.Conso
 
 	requiredDefaultRoute := routesub.DefaultRoute(operatorConfig, customTLSCert)
 
-	defaultRoute, _, defaultRouteError := routesub.ApplyRoute(c.routeClient, c.recorder, requiredDefaultRoute)
+	defaultRoute, _, defaultRouteError := routesub.ApplyRoute(c.routeClient, controllerContext.Recorder(), requiredDefaultRoute)
 	if defaultRouteError != nil {
 		return nil, "FailedDefaultRouteApply", defaultRouteError
 	}
@@ -202,15 +193,15 @@ func (c *RouteSyncController) SyncDefaultRoute(operatorConfig *operatorsv1.Conso
 // 2. if secret is defined, verify the TLS certificate and key
 // 4. create the custom console route, if custom TLS certificate and key are defined use them
 // 5. apply the custom route
-func (c *RouteSyncController) SyncCustomRoute(operatorConfig *operatorsv1.Console) (*routev1.Route, string, error) {
+func (c *RouteSyncController) SyncCustomRoute(ctx context.Context, operatorConfig *operatorsv1.Console, controllerContext factory.SyncContext) (*routev1.Route, string, error) {
 	if !routesub.IsCustomRouteSet(operatorConfig) {
-		if err := c.removeRoute(api.OpenshiftConsoleCustomRouteName); err != nil {
+		if err := c.removeRoute(ctx, api.OpenshiftConsoleCustomRouteName); err != nil {
 			return nil, "FailedDeleteCustomRoutes", err
 		}
 		return nil, "", nil
 	}
 
-	customTLSSecret, configErr := c.ValidateCustomRouteConfig(operatorConfig)
+	customTLSSecret, configErr := c.ValidateCustomRouteConfig(ctx, operatorConfig)
 	if configErr != nil {
 		return nil, "InvalidCustomRouteConfig", configErr
 	}
@@ -221,7 +212,7 @@ func (c *RouteSyncController) SyncCustomRoute(operatorConfig *operatorsv1.Consol
 	}
 
 	requiredCustomRoute := routesub.CustomRoute(operatorConfig, customTLSCert)
-	customRoute, _, customRouteError := routesub.ApplyRoute(c.routeClient, c.recorder, requiredCustomRoute)
+	customRoute, _, customRouteError := routesub.ApplyRoute(c.routeClient, controllerContext.Recorder(), requiredCustomRoute)
 	if customRouteError != nil {
 		return nil, "FailedCustomRouteApply", customRouteError
 	}
@@ -233,7 +224,7 @@ func (c *RouteSyncController) SyncCustomRoute(operatorConfig *operatorsv1.Consol
 	return customRoute, "", customRouteError
 }
 
-func (c *RouteSyncController) GetDefaultRouteTLSSecret(operatorConfig *operatorsv1.Console) (*corev1.Secret, error) {
+func (c *RouteSyncController) GetDefaultRouteTLSSecret(ctx context.Context, operatorConfig *operatorsv1.Console) (*corev1.Secret, error) {
 	// if custom route is set, we don't need to validate the config
 	// since it will be used for the custom route, not the default one
 	if routesub.IsCustomRouteSet(operatorConfig) {
@@ -244,7 +235,7 @@ func (c *RouteSyncController) GetDefaultRouteTLSSecret(operatorConfig *operators
 		return nil, nil
 	}
 
-	secret, secretErr := c.secretClient.Secrets(api.OpenShiftConfigNamespace).Get(c.ctx, operatorConfig.Spec.Route.Secret.Name, metav1.GetOptions{})
+	secret, secretErr := c.secretClient.Secrets(api.OpenShiftConfigNamespace).Get(ctx, operatorConfig.Spec.Route.Secret.Name, metav1.GetOptions{})
 	if secretErr != nil {
 		return nil, fmt.Errorf("failed to GET default route TLS secret: %s", secretErr)
 	}
@@ -252,9 +243,9 @@ func (c *RouteSyncController) GetDefaultRouteTLSSecret(operatorConfig *operators
 }
 
 // TODO: Decouple and rename this method. So one will validate, other will get the secret.
-func (c *RouteSyncController) ValidateCustomRouteConfig(operatorConfig *operatorsv1.Console) (*corev1.Secret, error) {
+func (c *RouteSyncController) ValidateCustomRouteConfig(ctx context.Context, operatorConfig *operatorsv1.Console) (*corev1.Secret, error) {
 	// get ingress
-	ingress, err := c.ingressClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+	ingress, err := c.ingressClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +268,7 @@ func (c *RouteSyncController) ValidateCustomRouteConfig(operatorConfig *operator
 		return nil, nil
 	}
 
-	secret, secretErr := c.secretClient.Secrets(api.OpenShiftConfigNamespace).Get(c.ctx, operatorConfig.Spec.Route.Secret.Name, metav1.GetOptions{})
+	secret, secretErr := c.secretClient.Secrets(api.OpenShiftConfigNamespace).Get(ctx, operatorConfig.Spec.Route.Secret.Name, metav1.GetOptions{})
 	if secretErr != nil {
 		return nil, fmt.Errorf("failed to GET custom route TLS secret: %s", secretErr)
 	}
@@ -361,56 +352,12 @@ func privateKeyVerifier(customKey []byte) error {
 	return nil
 }
 
-func (c *RouteSyncController) Run(workers int, stopCh <-chan struct{}) {
-	defer runtime.HandleCrash()
-	defer c.queue.ShutDown()
-	klog.Infof("starting %v", controllerName)
-	defer klog.Infof("shutting down %v", controllerName)
-	if !cache.WaitForCacheSync(stopCh, c.cachesToSync...) {
-		klog.Infoln("caches did not sync")
-		runtime.HandleError(fmt.Errorf("caches did not sync"))
-		return
-	}
-	// only start one worker
-	go wait.Until(c.runWorker, time.Second, stopCh)
-	<-stopCh
-}
-
-func (c *RouteSyncController) runWorker() {
-	for c.processNextWorkItem() {
-	}
-}
-
-func (c *RouteSyncController) processNextWorkItem() bool {
-	processKey, quit := c.queue.Get()
-	if quit {
-		return false
-	}
-	defer c.queue.Done(processKey)
-	err := c.sync()
-	if err == nil {
-		c.queue.Forget(processKey)
-		return true
-	}
-	runtime.HandleError(fmt.Errorf("%v failed with : %v", processKey, err))
-	c.queue.AddRateLimited(processKey)
-	return true
-}
-
-func (c *RouteSyncController) newEventHandler() cache.ResourceEventHandler {
-	return cache.ResourceEventHandlerFuncs{
-		AddFunc:    func(obj interface{}) { c.queue.Add(controllerWorkQueueKey) },
-		UpdateFunc: func(old, new interface{}) { c.queue.Add(controllerWorkQueueKey) },
-		DeleteFunc: func(obj interface{}) { c.queue.Add(controllerWorkQueueKey) },
-	}
-}
-
-func (c *RouteSyncController) CheckRouteHealth(operatorConfig *operatorsv1.Console, route *routev1.Route) (string, error) {
+func (c *RouteSyncController) CheckRouteHealth(ctx context.Context, operatorConfig *operatorsv1.Console, route *routev1.Route) (string, error) {
 	if !routesub.IsAdmitted(route) {
 		return "RouteNotAdmitted", fmt.Errorf("console route is not admitted")
 	}
 
-	caPool, err := c.getCA(route.Spec.TLS)
+	caPool, err := c.getCA(ctx, route.Spec.TLS)
 	if err != nil {
 		return "FailedLoadCA", fmt.Errorf("failed to read CA to check route health: %v", err)
 	}
@@ -437,7 +384,7 @@ func (c *RouteSyncController) CheckRouteHealth(operatorConfig *operatorsv1.Conso
 	return "", nil
 }
 
-func (c *RouteSyncController) getCA(tls *routev1.TLSConfig) (*x509.CertPool, error) {
+func (c *RouteSyncController) getCA(ctx context.Context, tls *routev1.TLSConfig) (*x509.CertPool, error) {
 	caCertPool := x509.NewCertPool()
 
 	if tls != nil && len(tls.Certificate) != 0 {
@@ -447,7 +394,7 @@ func (c *RouteSyncController) getCA(tls *routev1.TLSConfig) (*x509.CertPool, err
 	}
 
 	for _, cmName := range []string{api.TrustedCAConfigMapName, api.DefaultIngressCertConfigMapName} {
-		cm, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(c.ctx, cmName, metav1.GetOptions{})
+		cm, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, cmName, metav1.GetOptions{})
 		if err != nil {
 			klog.V(4).Infof("failed to GET configmap %s / %s ", api.OpenShiftConsoleNamespace, cmName)
 			return nil, err

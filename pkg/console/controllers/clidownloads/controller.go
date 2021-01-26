@@ -4,7 +4,6 @@ import (
 	// standard lib
 	"context"
 	"fmt"
-	"time"
 
 	// kube
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -12,17 +11,15 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
 	// openshift
 	v1 "github.com/openshift/api/console/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
+	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
+	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	// informers
@@ -37,14 +34,10 @@ import (
 
 	// operator
 	"github.com/openshift/console-operator/pkg/api"
+	controllersutil "github.com/openshift/console-operator/pkg/console/controllers/util"
 	"github.com/openshift/console-operator/pkg/console/status"
 	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
-)
-
-const (
-	controllerWorkQueueKey = "clidownloads-sync-work-queue-key"
-	controllerName         = "ConsoleCLIDownloadsSyncController"
 )
 
 type CLIDownloadsSyncController struct {
@@ -54,11 +47,7 @@ type CLIDownloadsSyncController struct {
 	routeClient               routeclientv1.RoutesGetter
 	operatorConfigClient      operatorclientv1.ConsoleInterface
 	// events
-	cachesToSync []cache.InformerSynced
-	queue        workqueue.RateLimitingInterface
-	recorder     events.Recorder
-	// context
-	ctx context.Context
+	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
 
 func NewCLIDownloadsSyncController(
@@ -70,12 +59,11 @@ func NewCLIDownloadsSyncController(
 	// informers
 	operatorConfigInformer operatorinformersv1.ConsoleInformer,
 	consoleCLIDownloadsInformers consoleinformersv1.ConsoleCLIDownloadInformer,
-	routesInformers routesinformersv1.RouteInformer,
-	// recorder
+	routeInformer routesinformersv1.RouteInformer,
+	// events
 	recorder events.Recorder,
-	// context
-	ctx context.Context,
-) *CLIDownloadsSyncController {
+	resourceSyncer resourcesynccontroller.ResourceSyncer,
+) factory.Controller {
 
 	ctrl := &CLIDownloadsSyncController{
 		// clients
@@ -84,28 +72,24 @@ func NewCLIDownloadsSyncController(
 		routeClient:               routeClient,
 		operatorConfigClient:      operatorConfigClient.Consoles(),
 		// events
-		recorder: recorder,
-		queue:    workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ConsoleCliDownloadsSyncer"),
-		ctx:      ctx,
+		resourceSyncer: resourceSyncer,
 	}
 
-	operatorClient.Informer().AddEventHandler(ctrl.newEventHandler())
-	operatorConfigInformer.Informer().AddEventHandler(ctrl.newEventHandler())
-	consoleCLIDownloadsInformers.Informer().AddEventHandler(ctrl.newEventHandler())
-	routesInformers.Informer().AddEventHandler(ctrl.newEventHandler())
-
-	ctrl.cachesToSync = append(ctrl.cachesToSync,
-		operatorClient.Informer().HasSynced,
-		operatorConfigInformer.Informer().HasSynced,
-		consoleCLIDownloadsInformers.Informer().HasSynced,
-		routesInformers.Informer().HasSynced,
-	)
-
-	return ctrl
+	return factory.New().
+		WithFilteredEventsInformers( // configs
+			controllersutil.NamesFilter(api.ConfigResourceName),
+			operatorConfigInformer.Informer(),
+		).WithFilteredEventsInformers( // console resources
+		controllersutil.NamesFilter(api.OpenShiftConsoleDownloadsRouteName),
+		routeInformer.Informer(),
+	).WithInformers(
+		consoleCLIDownloadsInformers.Informer(),
+	).WithSync(ctrl.Sync).
+		ToController("ConsoleCLIDownloadsController", recorder.WithComponentSuffix("console-cli-downloads-controller"))
 }
 
-func (c *CLIDownloadsSyncController) sync() error {
-	operatorConfig, err := c.operatorConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+func (c *CLIDownloadsSyncController) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
+	operatorConfig, err := c.operatorConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -119,12 +103,12 @@ func (c *CLIDownloadsSyncController) sync() error {
 		return nil
 	case operatorsv1.Removed:
 		klog.V(4).Infoln("console is in a removed state: deleting ConsoleCliDownloads custom resources")
-		return c.removeCLIDownloads()
+		return c.removeCLIDownloads(ctx)
 	default:
 		return fmt.Errorf("console is in an unknown state: %v", updatedOperatorConfig.Spec.ManagementState)
 	}
 
-	downloadsRoute, downloadsRouteErr := c.routeClient.Routes(api.TargetNamespace).Get(c.ctx, api.OpenShiftConsoleDownloadsRouteName, metav1.GetOptions{})
+	downloadsRoute, downloadsRouteErr := c.routeClient.Routes(api.TargetNamespace).Get(ctx, api.OpenShiftConsoleDownloadsRouteName, metav1.GetOptions{})
 	if downloadsRouteErr != nil {
 		return downloadsRouteErr
 	}
@@ -136,13 +120,13 @@ func (c *CLIDownloadsSyncController) sync() error {
 
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 	ocConsoleCLIDownloads := PlatformBasedOCConsoleCLIDownloads(host, api.OCCLIDownloadsCustomResourceName)
-	_, ocCLIDownloadsErrReason, ocCLIDownloadsErr := ApplyCLIDownloads(c.consoleCliDownloadsClient, ocConsoleCLIDownloads, c.ctx)
+	_, ocCLIDownloadsErrReason, ocCLIDownloadsErr := ApplyCLIDownloads(ctx, c.consoleCliDownloadsClient, ocConsoleCLIDownloads)
 	statusHandler.AddCondition(status.HandleDegraded("OCDownloadsSync", ocCLIDownloadsErrReason, ocCLIDownloadsErr))
 	if ocCLIDownloadsErr != nil {
 		return statusHandler.FlushAndReturn(ocCLIDownloadsErr)
 	}
 
-	_, odoCLIDownloadsErrReason, odoCLIDownloadsErr := ApplyCLIDownloads(c.consoleCliDownloadsClient, ODOConsoleCLIDownloads(), c.ctx)
+	_, odoCLIDownloadsErrReason, odoCLIDownloadsErr := ApplyCLIDownloads(ctx, c.consoleCliDownloadsClient, ODOConsoleCLIDownloads())
 	statusHandler.AddCondition(status.HandleDegraded("ODODownloadsSync", odoCLIDownloadsErrReason, odoCLIDownloadsErr))
 	if odoCLIDownloadsErr != nil {
 		return statusHandler.FlushAndReturn(odoCLIDownloadsErr)
@@ -151,11 +135,11 @@ func (c *CLIDownloadsSyncController) sync() error {
 	return statusHandler.FlushAndReturn(nil)
 }
 
-func (c *CLIDownloadsSyncController) removeCLIDownloads() error {
+func (c *CLIDownloadsSyncController) removeCLIDownloads(ctx context.Context) error {
 	defer klog.V(4).Info("finished deleting ConsoleCliDownloads custom resources")
 	var errs []error
-	errs = append(errs, c.consoleCliDownloadsClient.Delete(c.ctx, api.OCCLIDownloadsCustomResourceName, metav1.DeleteOptions{}))
-	errs = append(errs, c.consoleCliDownloadsClient.Delete(c.ctx, api.ODOCLIDownloadsCustomResourceName, metav1.DeleteOptions{}))
+	errs = append(errs, c.consoleCliDownloadsClient.Delete(ctx, api.OCCLIDownloadsCustomResourceName, metav1.DeleteOptions{}))
+	errs = append(errs, c.consoleCliDownloadsClient.Delete(ctx, api.ODOCLIDownloadsCustomResourceName, metav1.DeleteOptions{}))
 	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
 }
 
@@ -229,7 +213,7 @@ odo abstracts away complex Kubernetes and OpenShift concepts, thus allowing deve
 
 // TODO: All the custom `Apply*` functions should be at some point be placed into:
 // openshift/library-go/pkg/console/resource/resourceapply/core.go
-func ApplyCLIDownloads(consoleClient consoleclientv1.ConsoleCLIDownloadInterface, requiredCLIDownloads *v1.ConsoleCLIDownload, ctx context.Context) (*v1.ConsoleCLIDownload, string, error) {
+func ApplyCLIDownloads(ctx context.Context, consoleClient consoleclientv1.ConsoleCLIDownloadInterface, requiredCLIDownloads *v1.ConsoleCLIDownload) (*v1.ConsoleCLIDownload, string, error) {
 	cliDownloadsName := requiredCLIDownloads.ObjectMeta.Name
 	existingCLIDownloads, err := consoleClient.Get(ctx, cliDownloadsName, metav1.GetOptions{})
 	existingCLIDownloadsCopy := existingCLIDownloads.DeepCopy()
@@ -261,49 +245,4 @@ func ApplyCLIDownloads(consoleClient consoleclientv1.ConsoleCLIDownloadInterface
 		return nil, "FailedUpdate", err
 	}
 	return actualCLIDownloads, "", nil
-}
-
-func (c *CLIDownloadsSyncController) Run(workers int, stopCh <-chan struct{}) {
-	defer runtime.HandleCrash()
-	defer c.queue.ShutDown()
-	klog.V(4).Infof("Starting %v", controllerName)
-	defer klog.V(4).Infof("Shutting down %v", controllerName)
-	if !cache.WaitForCacheSync(stopCh, c.cachesToSync...) {
-		klog.Infoln("caches did not sync")
-		runtime.HandleError(fmt.Errorf("caches did not sync"))
-		return
-	}
-	// only start one worker
-	go wait.Until(c.runWorker, time.Second, stopCh)
-
-	<-stopCh
-}
-
-func (c *CLIDownloadsSyncController) runWorker() {
-	for c.processNextWorkItem() {
-	}
-}
-
-func (c *CLIDownloadsSyncController) processNextWorkItem() bool {
-	processKey, quit := c.queue.Get()
-	if quit {
-		return false
-	}
-	defer c.queue.Done(processKey)
-	err := c.sync()
-	if err == nil {
-		c.queue.Forget(processKey)
-		return true
-	}
-	runtime.HandleError(fmt.Errorf("%v failed with : %v", processKey, err))
-	c.queue.AddRateLimited(processKey)
-	return true
-}
-
-func (c *CLIDownloadsSyncController) newEventHandler() cache.ResourceEventHandler {
-	return cache.ResourceEventHandlerFuncs{
-		AddFunc:    func(obj interface{}) { c.queue.Add(controllerWorkQueueKey) },
-		UpdateFunc: func(old, new interface{}) { c.queue.Add(controllerWorkQueueKey) },
-		DeleteFunc: func(obj interface{}) { c.queue.Add(controllerWorkQueueKey) },
-	}
 }
