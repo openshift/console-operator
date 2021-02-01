@@ -125,23 +125,23 @@ func getConsoleProviderField(t *testing.T, client *framework.ClientSet, provider
 }
 
 func setOperatorConfigStatuspageIDProvider(t *testing.T, client *framework.ClientSet, statuspageID string) {
-	operatorConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("could not get operator config, %v", err)
-	}
-	t.Logf("setting statuspageID to '%s'", statuspageID)
-	operatorConfig.Spec = operatorsv1.ConsoleSpec{
-		OperatorSpec: operatorsv1.OperatorSpec{
-			ManagementState: "Managed",
-		},
-		Providers: operatorsv1.ConsoleProviders{
-			Statuspage: &operatorsv1.StatuspageProvider{
-				PageID: statuspageID,
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		operatorConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("could not get operator config, %v", err)
+		}
+		t.Logf("setting statuspageID to '%s'", statuspageID)
+		operatorConfig.Spec = operatorsv1.ConsoleSpec{
+			OperatorSpec: operatorsv1.OperatorSpec{
+				ManagementState: "Managed",
 			},
-		},
-	}
+			Providers: operatorsv1.ConsoleProviders{
+				Statuspage: &operatorsv1.StatuspageProvider{
+					PageID: statuspageID,
+				},
+			},
+		}
 
-	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		_, err = client.Operator.Consoles().Update(context.TODO(), operatorConfig, metav1.UpdateOptions{})
 		return err
 	})
