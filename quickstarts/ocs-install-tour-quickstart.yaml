@@ -22,12 +22,18 @@ spec:
       To install OpenShift Container Storage, follow these steps:
 
       1. Enter the administrator perspective: In the main navigation, click the dropdown menu and select Administrator.
-      2. In the navigation menu, select **Operators > OperatorHub**
-      3. In the search bar, enter  **OpenShift container storage**
-      4. Click the **OpenShift Container Storage** tile to initiate the operator installation on your cluster.
-      5. In the panel that appears, click **Install.** 
-      6. On the operator installation page, fill out the Operator Subscription form. 
-      7. Click **Install.**
+
+      1. In the navigation menu, select **Operators > OperatorHub**
+
+      1. In the **Filter by keyword** field, type `OpenShift Container Storage`.
+
+      1. Click the **OpenShift Container Storage** tile to initiate the operator installation on your cluster.
+      
+      1. In the panel that appears, click **Install.** 
+      
+      1. On the operator installation page, fill out the Operator Subscription form. 
+      
+      1. Click **Install.**
     review:
       instructions: |-
         ####  Verify that the OpenShift Container Storage operator is installed:

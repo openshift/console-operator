@@ -8,7 +8,7 @@ metadata:
     include.release.openshift.io/single-node-developer: "true"
 spec:
   version: 4.7
-  displayName: Get started with a sample
+  displayName: Get started with a sample application
   durationMinutes: 10
   description: Is this the first time you’ve used OpenShift? Let's start with a simple
     sample app to learn the basics.

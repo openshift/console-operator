@@ -76,3 +76,5 @@ spec:
         success: >-
           Charts from the **azure-sample-repo** repository are now available.
       title: Create a HelmChartRepository CR
+  conclusion: >-
+    Helm Charts from the new repository are now available to developers. 
