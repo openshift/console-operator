@@ -8,22 +8,28 @@ metadata:
     include.release.openshift.io/single-node-developer: "true"
 spec:
   version: 4.7
-  displayName: Getting started with a sample
+  displayName: Get started with a sample application
   durationMinutes: 10
   description: Is this the first time you’ve used OpenShift? Let's start with a simple
     sample app to learn the basics.
   introduction: '### This Quick Start shows you how to deploy a sample application
     to OpenShift.'
   tasks:
-    - title: Creating a sample application
+    - title: Create a sample application
       description: |-
-        ### To create a sample application:
-        1. Using the perspective switcher at the top of the navigation, go to **</> Developer**.
-        2. Go to the **+Add** page in the navigation.
-        3. Using the project drop-down list, select the project you would like to create the sample application in. You can also create a new one if you’d like.
-        4. Click **Samples** to create an application from a code sample.
-        5. Click on the **Node.js** card.
-        6. Scroll down and click **Create**.
+        To create a sample application:
+        
+        1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation, and select **Developer**.
+        
+        1. In the navigation menu, click [Add]{{highlight qs-nav-add}}.
+       
+        1. Using the project drop-down list, select the project you would like to create the sample application in. You can also create a new one if you’d like.
+        
+        1. Click **Samples** to create an application from a code sample.
+        
+        1. Click on the **Node.js** card.
+        
+        1. Scroll down and click **Create**.
 
         The **Topology** view will load with your new sample application. The application is represented by the light grey area with the white border. The deployment is a white circle.
       review:
@@ -35,7 +41,7 @@ spec:
       summary:
         success: You have created a sample application!
         failed: Try the steps again.
-    - title: Viewing build status
+    - title: View build status
       description: |-
         ### To view the build status of the sample application:
         1. Hover over the icon on the bottom left quadrant of the **nodejs-sample** deployment to see the build status in a tooltip.
@@ -50,10 +56,10 @@ spec:
       summary:
         success: Your sample app is now built!
         failed: Try the steps again.
-    - title: Viewing the associated Git repo
+    - title: View the associated Git repo
       description: |
         ### To view the associated code:
-        1. If you aren't already there, go to the **Topology** page in the navigation.
+        1. If you aren't already there, go to the [Topology]{{highlight qs-nav-topology}} page in the navigation.
         2. The icon on the bottom right quadrant of the **nodejs-sample** deployment represents the Git repo of the associated code.  The icon shown can be for Bitbucket, GitHub, GitLab or generic Git. Click on it to navigate to the associated Git repository.
       review:
         instructions: |-
@@ -63,7 +69,7 @@ spec:
       summary:
         success: You have viewed the associated Git repo.
         failed: Try the steps again.
-    - title: Viewing the pod status
+    - title: View the pod status
       description: |-
         ### To view the pod status:
         1. Click on the browser tab with OpenShift.  Notice that the **nodejs-sample** deployment has a pod donut imposed on the circle, representing the pod status
@@ -78,7 +84,7 @@ spec:
       summary:
         success: You have viewed the pod status for your app!
         failed: Try the steps again.
-    - title: Running the sample application
+    - title: Run the sample application
       description: |-
         ### To run the sample application:
         1. The icon on the top right quadrant of the **nodejs-sample** deployment represents the route URL. Click on it to open the URL and run the application.

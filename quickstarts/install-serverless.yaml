@@ -41,20 +41,20 @@ spec:
         1. From the **Administrator** perspective, go to the **OperatorHub**
         from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
 
-        2. In the **Filter by keyword** field, type \`Serverless\`.
+        1. In the **Filter by keyword** field, type `Serverless`.
 
-        3. Look for **Red Hat OpenShift Serverless**. If the tile has an
+        1. Look for **Red Hat OpenShift Serverless**. If the tile has an
         **Installed** label on it, the Operator is already installed. Proceed to
         task two.
 
-        4. Click the tile to open the side panel.
+        1. Click the tile to open the side panel.
 
-        5. At the top of the side panel, click **Install**.
+        1. At the top of the side panel, click **Install**.
 
-        6. Verify that the **OpenShift Serverless Operator Update Channel** is
+        1. Verify that the **OpenShift Serverless Operator Update Channel** is
         set to the latest version, then click **Install**.
 
-        7. Wait for the OpenShift Serverless Operator's status to change from
+        1. Wait for the OpenShift Serverless Operator's status to change from
         **Installing operator** to **Operator installed - Ready for use**.
       review:
         instructions: >-
