@@ -161,15 +161,15 @@ func createTLSSecret(t *testing.T, client *framework.ClientSet, hostname string)
 }
 
 func setOperatorConfigRoute(t *testing.T, client *framework.ClientSet, routeConfig operatorsv1.ConsoleConfigRoute) {
-	operatorConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("could not get operator config, %v", err)
-	}
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		operatorConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("could not get operator config, %v", err)
+		}
 
-	t.Logf("setting custom URL to '%s'", routeConfig.Hostname)
-	operatorConfig.Spec.Route = routeConfig
+		t.Logf("setting custom URL to '%s'", routeConfig.Hostname)
+		operatorConfig.Spec.Route = routeConfig
 
-	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		_, err = client.Operator.Consoles().Update(context.TODO(), operatorConfig, metav1.UpdateOptions{})
 		return err
 	})
@@ -187,14 +187,14 @@ func getCustomHostname(t *testing.T, route *routev1.Route) string {
 }
 
 func unsetOperatorConfigRoute(t *testing.T, client *framework.ClientSet) {
-	operatorConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("could not get operator config, %v", err)
-	}
-	t.Logf("unsetting custom URL")
-	operatorConfig.Spec.Route = operatorsv1.ConsoleConfigRoute{}
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		operatorConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("could not get operator config, %v", err)
+		}
+		t.Logf("unsetting custom URL")
+		operatorConfig.Spec.Route = operatorsv1.ConsoleConfigRoute{}
 
-	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		_, err = client.Operator.Consoles().Update(context.TODO(), operatorConfig, metav1.UpdateOptions{})
 		return err
 	})

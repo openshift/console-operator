@@ -82,19 +82,19 @@ func TestAddPlugins(t *testing.T) {
 }
 
 func setOperatorConfigPlugins(t *testing.T, client *framework.ClientSet, pluginNames []string) {
-	operatorConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("could not get operator config, %v", err)
-	}
-	t.Logf("setting plugins to '%v'", pluginNames)
-	operatorConfig.Spec = operatorsv1.ConsoleSpec{
-		OperatorSpec: operatorsv1.OperatorSpec{
-			ManagementState: "Managed",
-		},
-		Plugins: pluginNames,
-	}
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		operatorConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("could not get operator config, %v", err)
+		}
+		t.Logf("setting plugins to '%v'", pluginNames)
+		operatorConfig.Spec = operatorsv1.ConsoleSpec{
+			OperatorSpec: operatorsv1.OperatorSpec{
+				ManagementState: "Managed",
+			},
+			Plugins: pluginNames,
+		}
 
-	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		_, err = client.Operator.Consoles().Update(context.TODO(), operatorConfig, metav1.UpdateOptions{})
 		return err
 	})
