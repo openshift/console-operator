@@ -257,7 +257,7 @@ func LoopResources(client *ClientSet, inner func(errChan chan error, client *Cli
 func IsResourceUnavailable(errChan chan error, client *ClientSet, resource TestingResource) {
 	counter := 0
 	maxCount := 15
-	err := wait.Poll(1*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
+	err := wait.Poll(5*time.Second, AsyncOperationTimeout, func() (stop bool, err error) {
 
 		obtainedResource, err := GetResource(client, resource)
 		if err == nil {
