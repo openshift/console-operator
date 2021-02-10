@@ -39,6 +39,13 @@ func LabelsForConsole() map[string]string {
 	return allLabels
 }
 
+func LabelsForDownloads() map[string]string {
+	return map[string]string{
+		"app":       api.OpenShiftConsoleName,
+		"component": api.DownloadsResourceName,
+	}
+}
+
 func SharedMeta() metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Name:        api.OpenShiftConsoleName,
@@ -89,8 +96,8 @@ func OwnerRefFrom(cr *operatorv1.Console) *metav1.OwnerReference {
 
 // borrowed from library-go
 // https://github.com/openshift/library-go/blob/master/pkg/operator/v1alpha1helpers/helpers.go
-func GetImageEnv() string {
-	return os.Getenv("IMAGE")
+func GetImageEnv(envName string) string {
+	return os.Getenv(envName)
 }
 
 // TODO: technically, this should take targetPort from route.spec.port.targetPort

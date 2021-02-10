@@ -1,8 +1,9 @@
 package util
 
 import (
-	"github.com/go-test/deep"
 	"testing"
+
+	"github.com/go-test/deep"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -44,6 +45,25 @@ func TestLabelsForConsole(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if diff := deep.Equal(LabelsForConsole(), tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestLabelsForDownloads(t *testing.T) {
+	tests := []struct {
+		name string
+		want map[string]string
+	}{
+		{
+			name: "Test labels for downloads",
+			want: map[string]string{"app": api.OpenShiftConsoleName, "component": api.DownloadsResourceName},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if diff := deep.Equal(LabelsForDownloads(), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})

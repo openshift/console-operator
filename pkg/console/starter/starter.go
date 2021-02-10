@@ -19,7 +19,9 @@ import (
 	operatorv1 "github.com/openshift/api/operator"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
+	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
+	"github.com/openshift/console-operator/pkg/console/controllers/service"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/management"
@@ -46,7 +48,6 @@ import (
 	consoleinformers "github.com/openshift/client-go/console/informers/externalversions"
 
 	"github.com/openshift/console-operator/pkg/console/clientwrapper"
-	"github.com/openshift/console-operator/pkg/console/controllers/service"
 	"github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/library-go/pkg/operator/loglevel"
 )
@@ -185,6 +186,22 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		resourceSyncer,
 	)
 
+	downloadsDeploymentController := downloadsdeployment.NewDownloadsDeploymentSyncController(
+		// top level config
+		configClient.ConfigV1(),
+		// clients
+		operatorClient,
+		operatorConfigClient.OperatorV1().Consoles(),
+		configInformers,
+		// operator
+		operatorConfigInformers.Operator().V1().Consoles(),
+
+		kubeClient.AppsV1(), // Deployments
+		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
+		recorder,
+		resourceSyncer,
+	)
+
 	cliDownloadsController := clidownloads.NewCLIDownloadsSyncController(
 		// clients
 		operatorClient,
@@ -306,6 +323,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleRouteController,
 		consoleOperator,
 		cliDownloadsController,
+		downloadsDeploymentController,
 	} {
 		go controller.Run(ctx, 1)
 	}
