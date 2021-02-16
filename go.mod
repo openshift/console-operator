@@ -10,7 +10,7 @@ require (
 	github.com/go-logr/logr v0.3.0 // indirect
 	github.com/go-test/deep v1.0.5
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/openshift/api v0.0.0-20210105115604-44119421ec6b
+	github.com/openshift/api v0.0.0-20210128095511-56a849fda73a
 	github.com/openshift/build-machinery-go v0.0.0-20200917070002-f171684f77ab
 	github.com/openshift/client-go v0.0.0-20210112160336-8889f8b15bd6
 	github.com/openshift/library-go v0.0.0-20201123212217-43f358922ea0
