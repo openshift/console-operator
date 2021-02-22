@@ -13,7 +13,7 @@ spec:
   description: Is this the first time you’ve used OpenShift? Let's start with a simple
     sample app to learn the basics.
   introduction: '### This Quick Start shows you how to deploy a sample application
-    to OpenShift.'
+    to OpenShift®.'
   tasks:
     - title: Create a sample application
       description: |-
