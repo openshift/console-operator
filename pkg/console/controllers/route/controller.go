@@ -149,11 +149,8 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 
 	routeHealthCheckErrReason, routeHealthCheckErr := c.CheckRouteHealth(ctx, updatedOperatorConfig, activeRoute)
 	statusHandler.AddCondition(status.HandleDegraded("RouteHealth", routeHealthCheckErrReason, routeHealthCheckErr))
-	if routeHealthCheckErr != nil {
-		return statusHandler.FlushAndReturn(routeHealthCheckErr)
-	}
 
-	return statusHandler.FlushAndReturn(nil)
+	return statusHandler.FlushAndReturn(routeHealthCheckErr)
 }
 
 func (c *RouteSyncController) removeRoute(ctx context.Context, routeName string) error {

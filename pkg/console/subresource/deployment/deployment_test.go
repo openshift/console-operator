@@ -7,6 +7,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	configv1 "github.com/openshift/api/config/v1"
@@ -18,9 +19,10 @@ import (
 
 func TestDefaultDeployment(t *testing.T) {
 	var (
-		replicaCount int32 = 2
-		labels             = map[string]string{"app": api.OpenShiftConsoleName, "component": "ui"}
-		gracePeriod  int64 = 40
+		defaultReplicaCount    int32 = DefaultConsoleReplicas
+		singleNodeReplicaCount int32 = SingleNodeConsoleReplicas
+		labels                       = map[string]string{"app": api.OpenShiftConsoleName, "component": "ui"}
+		gracePeriod            int64 = 40
 	)
 	type args struct {
 		config             *operatorsv1.Console
@@ -30,6 +32,7 @@ func TestDefaultDeployment(t *testing.T) {
 		tca                *corev1.ConfigMap
 		sec                *corev1.Secret
 		proxy              *configv1.Proxy
+		infrastructure     *configv1.Infrastructure
 		canMountCustomLogo bool
 	}
 
@@ -63,6 +66,7 @@ func TestDefaultDeployment(t *testing.T) {
 			serviceCAConfigMapResourceVersionAnnotation:          "",
 			trustedCAConfigMapResourceVersionAnnotation:          "",
 			proxyConfigResourceVersionAnnotation:                 "",
+			infrastructureConfigResourceVersionAnnotation:        "",
 			consoleImageAnnotation:                               "",
 		},
 		OwnerReferences: nil,
@@ -120,6 +124,7 @@ func TestDefaultDeployment(t *testing.T) {
 		serviceCAConfigMapResourceVersionAnnotation:          "",
 		trustedCAConfigMapResourceVersionAnnotation:          "",
 		proxyConfigResourceVersionAnnotation:                 "",
+		infrastructureConfigResourceVersionAnnotation:        "",
 		consoleImageAnnotation:                               "",
 	}
 
@@ -152,6 +157,10 @@ func TestDefaultDeployment(t *testing.T) {
 			HTTPSProxy: "https://testurl.openshift.com",
 		},
 	}
+
+	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
+	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
+
 	tests := []struct {
 		name string
 		args args
@@ -174,13 +183,14 @@ func TestDefaultDeployment(t *testing.T) {
 					StringData: nil,
 					Type:       "",
 				},
-				proxy: proxyConfig,
+				proxy:          proxyConfig,
+				infrastructure: infrastructureConfigHighlyAvailable,
 			},
 			want: &appsv1.Deployment{
 				TypeMeta:   metav1.TypeMeta{},
 				ObjectMeta: consoleDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
-					Replicas: &replicaCount,
+					Replicas: &defaultReplicaCount,
 					Selector: &metav1.LabelSelector{
 						MatchLabels: labels,
 					},
@@ -236,13 +246,14 @@ func TestDefaultDeployment(t *testing.T) {
 					StringData: nil,
 					Type:       "",
 				},
-				proxy: proxyConfig,
+				proxy:          proxyConfig,
+				infrastructure: infrastructureConfigHighlyAvailable,
 			},
 			want: &appsv1.Deployment{
 				TypeMeta:   metav1.TypeMeta{},
 				ObjectMeta: consoleDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
-					Replicas: &replicaCount,
+					Replicas: &defaultReplicaCount,
 					Selector: &metav1.LabelSelector{
 						MatchLabels: labels,
 					},
@@ -281,10 +292,382 @@ func TestDefaultDeployment(t *testing.T) {
 				Status: appsv1.DeploymentStatus{},
 			},
 		},
+		{
+			name: "Test Infrastructure Config SingleReplicaTopologyMode",
+			args: args{
+				config: consoleOperatorConfig,
+				cm:     consoleConfig,
+				ca:     &corev1.ConfigMap{},
+				dica: &corev1.ConfigMap{
+					Data: map[string]string{"ca-bundle.crt": "test"},
+				},
+				tca: trustedCAConfigMapEmpty,
+				sec: &corev1.Secret{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Data:       nil,
+					StringData: nil,
+					Type:       "",
+				},
+				proxy:          proxyConfig,
+				infrastructure: infrastructureConfigSingleReplica,
+			},
+			want: &appsv1.Deployment{
+				TypeMeta:   metav1.TypeMeta{},
+				ObjectMeta: consoleDeploymentObjectMeta,
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &singleNodeReplicaCount,
+					Selector: &metav1.LabelSelector{
+						MatchLabels: labels,
+					},
+					Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{
+						Name:        api.OpenShiftConsoleName,
+						Labels:      labels,
+						Annotations: consoleDeploymentTemplateAnnotations,
+					},
+						Spec: corev1.PodSpec{
+							ServiceAccountName: "console",
+							// we want to deploy on master nodes
+							NodeSelector: map[string]string{
+								// empty string is correct
+								"node-role.kubernetes.io/master": "",
+							},
+							Affinity: &corev1.Affinity{},
+							// toleration is a taint override. we can and should be scheduled on a master node.
+							Tolerations:                   consoleDeploymentTolerations,
+							PriorityClassName:             "system-cluster-critical",
+							RestartPolicy:                 corev1.RestartPolicyAlways,
+							SchedulerName:                 corev1.DefaultSchedulerName,
+							TerminationGracePeriodSeconds: &gracePeriod,
+							SecurityContext:               &corev1.PodSecurityContext{},
+							Containers: []corev1.Container{
+								consoleContainer(consoleOperatorConfig, defaultVolumeConfig(), proxyConfig),
+							},
+							Volumes: consoleVolumes(defaultVolumeConfig()),
+						},
+					},
+					Strategy:                appsv1.DeploymentStrategy{},
+					MinReadySeconds:         0,
+					RevisionHistoryLimit:    nil,
+					Paused:                  false,
+					ProgressDeadlineSeconds: nil,
+				},
+				Status: appsv1.DeploymentStatus{},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.dica, tt.args.cm, tt.args.tca, tt.args.sec, tt.args.proxy, tt.args.canMountCustomLogo), tt.want); diff != nil {
+			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.dica, tt.args.cm, tt.args.tca, tt.args.sec, tt.args.proxy, tt.args.infrastructure, tt.args.canMountCustomLogo), tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestDefaultDownloadsDeployment(t *testing.T) {
+
+	var (
+		defaultReplicaCount    int32 = DefaultConsoleReplicas
+		singleNodeReplicaCount int32 = SingleNodeConsoleReplicas
+		labels                       = util.LabelsForDownloads()
+		gracePeriod            int64 = 1
+	)
+
+	type args struct {
+		config         *operatorsv1.Console
+		infrastructure *configv1.Infrastructure
+	}
+
+	consoleOperatorConfig := &operatorsv1.Console{
+		TypeMeta:   metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{},
+		Spec: operatorsv1.ConsoleSpec{
+			OperatorSpec: operatorsv1.OperatorSpec{
+				LogLevel: operatorsv1.Debug,
+			},
+		},
+		Status: operatorsv1.ConsoleStatus{},
+	}
+
+	downloadsDeploymentObjectMeta := metav1.ObjectMeta{
+		Name:                       api.OpenShiftConsoleDownloadsDeploymentName,
+		Namespace:                  api.OpenShiftConsoleNamespace,
+		GenerateName:               "",
+		SelfLink:                   "",
+		UID:                        "",
+		ResourceVersion:            "",
+		Generation:                 0,
+		CreationTimestamp:          metav1.Time{},
+		DeletionTimestamp:          nil,
+		DeletionGracePeriodSeconds: nil,
+		Labels:                     labels,
+		Annotations:                map[string]string{},
+		OwnerReferences:            nil,
+		Finalizers:                 nil,
+		ClusterName:                "",
+	}
+
+	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
+	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
+
+	tests := []struct {
+		name string
+		args args
+		want *appsv1.Deployment
+	}{
+		{
+			name: "Test Downloads Deployment for Single Node Cluster Infrastructure Config",
+			args: args{
+				config:         consoleOperatorConfig,
+				infrastructure: infrastructureConfigSingleReplica,
+			},
+			want: &appsv1.Deployment{
+				TypeMeta:   metav1.TypeMeta{},
+				ObjectMeta: downloadsDeploymentObjectMeta,
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &singleNodeReplicaCount,
+					Selector: &metav1.LabelSelector{
+						MatchLabels: labels,
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:   api.OpenShiftConsoleDownloadsDeploymentName,
+							Labels: labels,
+						},
+						Spec: corev1.PodSpec{
+							NodeSelector: map[string]string{
+								"kubernetes.io/os": "linux",
+							},
+							Affinity:                      downloadsPodAffinity(infrastructureConfigSingleReplica),
+							Tolerations:                   tolerations(),
+							TerminationGracePeriodSeconds: &gracePeriod,
+							Containers: []corev1.Container{
+								{
+									Name:                     "download-server",
+									TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+									Image:                    "",
+									ImagePullPolicy:          corev1.PullPolicy("IfNotPresent"),
+									Ports: []corev1.ContainerPort{{
+										Name:          api.DownloadsPortName,
+										Protocol:      corev1.ProtocolTCP,
+										ContainerPort: api.DownloadsPort,
+									}},
+									ReadinessProbe: downloadsReadinessProbe(),
+									LivenessProbe:  defaultDownloadsProbe(),
+									Command:        []string{"/bin/sh"},
+									Resources: corev1.ResourceRequirements{
+										Requests: map[corev1.ResourceName]resource.Quantity{
+											corev1.ResourceCPU:    resource.MustParse("10m"),
+											corev1.ResourceMemory: resource.MustParse("50Mi"),
+										},
+									},
+									Args: downloadsContainerArgs(),
+								},
+							},
+						},
+					},
+				},
+				Status: appsv1.DeploymentStatus{},
+			},
+		},
+		{
+			name: "Test Downloads Deployment for Multi Node Cluster Infrastructure Config",
+			args: args{
+				config:         consoleOperatorConfig,
+				infrastructure: infrastructureConfigHighlyAvailable,
+			},
+			want: &appsv1.Deployment{
+				TypeMeta:   metav1.TypeMeta{},
+				ObjectMeta: downloadsDeploymentObjectMeta,
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &defaultReplicaCount,
+					Selector: &metav1.LabelSelector{
+						MatchLabels: labels,
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:   api.OpenShiftConsoleDownloadsDeploymentName,
+							Labels: labels,
+						},
+						Spec: corev1.PodSpec{
+							NodeSelector: map[string]string{
+								"kubernetes.io/os": "linux",
+							},
+							Affinity:                      downloadsPodAffinity(infrastructureConfigHighlyAvailable),
+							Tolerations:                   tolerations(),
+							TerminationGracePeriodSeconds: &gracePeriod,
+							Containers: []corev1.Container{
+								{
+									Name:                     "download-server",
+									TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+									Image:                    "",
+									ImagePullPolicy:          corev1.PullPolicy("IfNotPresent"),
+									Ports: []corev1.ContainerPort{{
+										Name:          api.DownloadsPortName,
+										Protocol:      corev1.ProtocolTCP,
+										ContainerPort: api.DownloadsPort,
+									}},
+									ReadinessProbe: downloadsReadinessProbe(),
+									LivenessProbe:  defaultDownloadsProbe(),
+									Command:        []string{"/bin/sh"},
+									Resources: corev1.ResourceRequirements{
+										Requests: map[corev1.ResourceName]resource.Quantity{
+											corev1.ResourceCPU:    resource.MustParse("10m"),
+											corev1.ResourceMemory: resource.MustParse("50Mi"),
+										},
+									},
+									Args: downloadsContainerArgs(),
+								},
+							},
+						},
+					},
+				},
+				Status: appsv1.DeploymentStatus{},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if diff := deep.Equal(DefaultDownloadsDeployment(tt.args.config, tt.args.infrastructure), tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestReplicas(t *testing.T) {
+	tests := []struct {
+		name        string
+		infraConfig *configv1.Infrastructure
+		want        int32
+	}{
+		{
+			name: "Test Replica Count For Single Node Cluster Infrastructure Config",
+			infraConfig: &configv1.Infrastructure{
+				TypeMeta:   metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{},
+				Status: configv1.InfrastructureStatus{
+					InfrastructureTopology: configv1.SingleReplicaTopologyMode,
+				},
+			},
+			want: 1,
+		},
+		{
+			name: "Test Replica Count For Single Node Cluster Infrastructure Config",
+			infraConfig: &configv1.Infrastructure{
+				TypeMeta:   metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{},
+				Status: configv1.InfrastructureStatus{
+					InfrastructureTopology: configv1.HighlyAvailableTopologyMode,
+				},
+			},
+			want: 2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if diff := deep.Equal(replicas(tt.infraConfig), tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestConsolePodAffinity(t *testing.T) {
+	tests := []struct {
+		name        string
+		infraConfig *configv1.Infrastructure
+		want        *corev1.Affinity
+	}{
+		{
+			name: "Test Affinity For Single Node Cluster Infrastructure Config",
+			infraConfig: &configv1.Infrastructure{
+				TypeMeta:   metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{},
+				Status: configv1.InfrastructureStatus{
+					ControlPlaneTopology: configv1.SingleReplicaTopologyMode,
+				},
+			},
+			want: &corev1.Affinity{},
+		},
+		{
+			name: "Test Affinity For Single Node Cluster Infrastructure Config",
+			infraConfig: &configv1.Infrastructure{
+				TypeMeta:   metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{},
+				Status: configv1.InfrastructureStatus{
+					ControlPlaneTopology: configv1.HighlyAvailableTopologyMode,
+				},
+			},
+			want: &corev1.Affinity{
+				PodAntiAffinity: &corev1.PodAntiAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+						Weight: 100,
+						PodAffinityTerm: corev1.PodAffinityTerm{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: util.SharedLabels(),
+							},
+							TopologyKey: "topology.kubernetes.io/zone",
+						},
+					}},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if diff := deep.Equal(consolePodAffinity(tt.infraConfig), tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestDownalodsPodAffinity(t *testing.T) {
+	tests := []struct {
+		name        string
+		infraConfig *configv1.Infrastructure
+		want        *corev1.Affinity
+	}{
+		{
+			name: "Test Affinity For Single Node Cluster Infrastructure Config",
+			infraConfig: &configv1.Infrastructure{
+				TypeMeta:   metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{},
+				Status: configv1.InfrastructureStatus{
+					InfrastructureTopology: configv1.SingleReplicaTopologyMode,
+				},
+			},
+			want: &corev1.Affinity{},
+		},
+		{
+			name: "Test Affinity For Single Node Cluster Infrastructure Config",
+			infraConfig: &configv1.Infrastructure{
+				TypeMeta:   metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{},
+				Status: configv1.InfrastructureStatus{
+					InfrastructureTopology: configv1.HighlyAvailableTopologyMode,
+				},
+			},
+			want: &corev1.Affinity{
+				PodAntiAffinity: &corev1.PodAntiAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+						Weight: 100,
+						PodAffinityTerm: corev1.PodAffinityTerm{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: util.SharedLabels(),
+							},
+							TopologyKey: "topology.kubernetes.io/zone",
+						},
+					}},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if diff := deep.Equal(downloadsPodAffinity(tt.infraConfig), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
@@ -699,4 +1082,15 @@ func TestIsAvailableAndUpdated(t *testing.T) {
 		})
 	}
 
+}
+
+func infrastructureConfigWithTopology(topologyMode configv1.TopologyMode) *configv1.Infrastructure {
+	return &configv1.Infrastructure{
+		TypeMeta:   metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{},
+		Status: configv1.InfrastructureStatus{
+			InfrastructureTopology: topologyMode,
+			ControlPlaneTopology:   topologyMode,
+		},
+	}
 }
