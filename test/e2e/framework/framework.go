@@ -124,6 +124,10 @@ func GetConsoleDeployment(client *ClientSet) (*appv1.Deployment, error) {
 	return client.Apps.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(context.TODO(), consoleapi.OpenShiftConsoleDeploymentName, metav1.GetOptions{})
 }
 
+func GetDownloadsDeployment(client *ClientSet) (*appv1.Deployment, error) {
+	return client.Apps.Deployments(consoleapi.OpenShiftConsoleNamespace).Get(context.TODO(), consoleapi.OpenShiftConsoleDownloadsDeploymentName, metav1.GetOptions{})
+}
+
 func GetConsoleCLIDownloads(client *ClientSet, consoleCLIDownloadName string) (*consolev1.ConsoleCLIDownload, error) {
 	return client.ConsoleCliDownloads.Get(context.TODO(), consoleCLIDownloadName, metav1.GetOptions{})
 }

@@ -554,7 +554,7 @@ func TestReplicas(t *testing.T) {
 			want: 1,
 		},
 		{
-			name: "Test Replica Count For Single Node Cluster Infrastructure Config",
+			name: "Test Replica Count For Multi Node Cluster Infrastructure Config",
 			infraConfig: &configv1.Infrastructure{
 				TypeMeta:   metav1.TypeMeta{},
 				ObjectMeta: metav1.ObjectMeta{},
@@ -566,8 +566,9 @@ func TestReplicas(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(replicas(tt.infraConfig), tt.want); diff != nil {
+			if diff := deep.Equal(Replicas(tt.infraConfig), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
