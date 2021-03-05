@@ -56,6 +56,10 @@ func DefaultConfigMap(
 		Monitoring(monitoringSharedConfig).
 		InactivityTimeout(inactivityTimeoutSeconds).
 		ConfigYAML()
+	if err != nil {
+		klog.Errorf("failed to generate default console-config config: %v", err)
+		return nil, false, err
+	}
 
 	extractedManagedConfig := extractYAML(managedConfig)
 	userDefinedBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
@@ -74,6 +78,10 @@ func DefaultConfigMap(
 		StatusPageID(statusPageId(operatorConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
 		ConfigYAML()
+	if err != nil {
+		klog.Errorf("failed to generate user defined console-config config: %v", err)
+		return nil, false, err
+	}
 
 	unsupportedConfigOverride := operatorConfig.Spec.UnsupportedConfigOverrides.Raw
 	willMergeConfigOverrides := len(unsupportedConfigOverride) != 0
