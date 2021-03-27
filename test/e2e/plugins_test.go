@@ -30,8 +30,6 @@ func setupPluginsTestCase(t *testing.T) (*framework.ClientSet, *operatorsv1.Cons
 }
 
 func cleanupPluginsTestCase(t *testing.T, client *framework.ClientSet) {
-	framework.StandardCleanup(t, client)
-
 	err := client.ConsolePlugin.Delete(context.TODO(), availablePluginName, metav1.DeleteOptions{})
 	if err != nil && !apiErrors.IsNotFound(err) {
 		t.Fatalf("could not delete cleanup %q plugin, %v", availablePluginName, err)

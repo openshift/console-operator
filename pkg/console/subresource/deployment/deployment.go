@@ -78,7 +78,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	// Set any annotations as needed so that `ApplyDeployment` rolls out a
 	// new version when they change.
 	meta.Annotations = annotations
-	replicas := replicas(infrastructureConfig)
+	replicas := Replicas(infrastructureConfig)
 	affinity := consolePodAffinity(infrastructureConfig)
 	gracePeriod := int64(40)
 	volumeConfig := defaultVolumeConfig()
@@ -135,7 +135,7 @@ func DefaultDownloadsDeployment(operatorConfig *operatorv1.Console, infrastructu
 	meta := util.SharedMeta()
 	meta.Labels = labels
 	meta.Name = api.OpenShiftConsoleDownloadsDeploymentName
-	replicas := replicas(infrastructureConfig)
+	replicas := Replicas(infrastructureConfig)
 	affinity := downloadsPodAffinity(infrastructureConfig)
 	gracePeriod := int64(1)
 
@@ -277,7 +277,7 @@ func downloadsPodAffinity(infrastructureConfig *configv1.Infrastructure) *corev1
 	}
 }
 
-func replicas(infrastructureConfig *configv1.Infrastructure) int32 {
+func Replicas(infrastructureConfig *configv1.Infrastructure) int32 {
 	if infrastructureConfig.Status.InfrastructureTopology == configv1.SingleReplicaTopologyMode {
 		return int32(SingleNodeConsoleReplicas)
 	}
