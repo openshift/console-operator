@@ -7,6 +7,7 @@ include $(addprefix ./vendor/github.com/openshift/build-machinery-go/make/, \
     targets/openshift/deps-gomod.mk \
     targets/openshift/images.mk \
     targets/openshift/bindata.mk \
+    targets/openshift/operator/profile-manifests.mk \
 )
 
 # Run core verification and all self contained tests.
@@ -26,6 +27,14 @@ IMAGE_REGISTRY?=registry.svc.ci.openshift.org
 # $4 - context directory for image build
 # It will generate target "image-$(1)" for building the image and binding it as a prerequisite to target "images".
 $(call build-image,ocp-console-operator,$(IMAGE_REGISTRY)/ocp/4.5:console-operator,./Dockerfile.rhel7,.)
+
+# This will include additional actions on the update and verify targets to ensure that profile patches are applied
+# to manifest files
+# $0 - macro name
+# $1 - target name
+# $2 - profile patches directory
+# $3 - manifests directory
+$(call add-profile-manifests,manifests,./profile-patches,./manifests)
 
 GO_TEST_PACKAGES :=./pkg/... ./cmd/...
 
