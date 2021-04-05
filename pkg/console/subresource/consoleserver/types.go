@@ -72,6 +72,12 @@ type Customization struct {
 	CustomLogoFile       string `yaml:"customLogoFile,omitempty"`
 	// developerCatalog allows to configure the shown developer catalog categories.
 	DeveloperCatalog *DeveloperConsoleCatalogCustomization `yaml:"developerCatalog,omitempty"`
+	ProjectAccess    ProjectAccess                         `yaml:"projectAccess,omitempty"`
+}
+
+// ProjectAccess contains options for project access roles
+type ProjectAccess struct {
+	AvailableClusterRoles []string `yaml:"availableClusterRoles,omitempty"`
 }
 
 // DeveloperConsoleCatalogCustomization allow cluster admin to configure developer catalog.

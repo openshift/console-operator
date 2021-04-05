@@ -39,6 +39,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	statusPageID               string
 	customProductName          string
 	devCatalogCustomization    operatorv1.DeveloperConsoleCatalogCustomization
+	projectAccess              operatorv1.ProjectAccess
 	customLogoFile             string
 	CAFile                     string
 	monitoring                 map[string]string
@@ -73,6 +74,10 @@ func (b *ConsoleServerCLIConfigBuilder) CustomProductName(customProductName stri
 }
 func (b *ConsoleServerCLIConfigBuilder) CustomDeveloperCatalog(devCatalogCustomization operatorv1.DeveloperConsoleCatalogCustomization) *ConsoleServerCLIConfigBuilder {
 	b.devCatalogCustomization = devCatalogCustomization
+	return b
+}
+func (b *ConsoleServerCLIConfigBuilder) ProjectAccess(projectAccess operatorv1.ProjectAccess) *ConsoleServerCLIConfigBuilder {
+	b.projectAccess = projectAccess
 	return b
 }
 func (b *ConsoleServerCLIConfigBuilder) CustomLogoFile(customLogoFile string) *ConsoleServerCLIConfigBuilder {
@@ -260,6 +265,12 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 
 		conf.DeveloperCatalog = &DeveloperConsoleCatalogCustomization{
 			Categories: &categories,
+		}
+	}
+
+	if len(b.projectAccess.AvailableClusterRoles) > 0 {
+		conf.ProjectAccess = ProjectAccess{
+			AvailableClusterRoles: b.projectAccess.AvailableClusterRoles,
 		}
 	}
 	return conf

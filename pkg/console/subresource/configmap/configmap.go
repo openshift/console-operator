@@ -74,6 +74,7 @@ func DefaultConfigMap(
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
 		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).
 		CustomDeveloperCatalog(operatorConfig.Spec.Customization.DeveloperCatalog).
+		ProjectAccess(operatorConfig.Spec.Customization.ProjectAccess).
 		CustomHostnameRedirectPort(routesub.IsCustomRouteSet(operatorConfig)).
 		StatusPageID(statusPageId(operatorConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
