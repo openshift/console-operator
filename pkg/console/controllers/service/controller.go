@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -66,7 +67,7 @@ func NewServiceSyncController(
 		).WithFilteredEventsInformers( // console resources
 		util.NamesFilter(api.OpenShiftConsoleServiceName, api.OpenshiftConsoleRedirectServiceName),
 		serviceInformer.Informer(),
-	).WithSync(ctrl.Sync).
+	).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
 		ToController("ConsoleServiceController", recorder.WithComponentSuffix("console-service-controller"))
 }
 

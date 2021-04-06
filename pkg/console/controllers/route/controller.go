@@ -98,7 +98,7 @@ func NewRouteSyncController(
 	).WithFilteredEventsInformers( // route
 		util.NamesFilter(api.OpenShiftConsoleRouteName, api.OpenshiftConsoleCustomRouteName),
 		routeInformer.Informer(),
-	).WithSync(ctrl.Sync).
+	).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
 		ToController("ConsoleRouteController", recorder.WithComponentSuffix("console-route-controller"))
 }
 
