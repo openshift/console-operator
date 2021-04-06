@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    config.openshift.io/inject-proxy: console-operator
+    include.release.openshift.io/ibm-cloud-managed: "true"
+  name: console-operator
+  namespace: openshift-console-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: console-operator
+  template:
+    metadata:
+      labels:
+        name: console-operator
+    spec:
+      containers:
+      - args:
+        - -v=2
+        - --config=/var/run/configmaps/config/controller-config.yaml
+        command:
+        - console
+        - operator
+        env:
+        - name: CONSOLE_IMAGE
+          value: registry.svc.ci.openshift.org/openshift:console
+        - name: DOWNLOADS_IMAGE
+          value: registry.svc.ci.openshift.org/openshift:cli-artifacts
+        - name: RELEASE_VERSION
+          value: 0.0.1-snapshot
+        - name: OPERATOR_NAME
+          value: console-operator
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        image: registry.svc.ci.openshift.org/openshift:console-operator
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8443
+            scheme: HTTPS
+        name: console-operator
+        ports:
+        - containerPort: 60000
+          name: metrics
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8443
+            scheme: HTTPS
+        resources:
+          requests:
+            cpu: 10m
+            memory: 100Mi
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /var/run/configmaps/config
+          name: config
+        - mountPath: /var/run/secrets/serving-cert
+          name: serving-cert
+      priorityClassName: system-cluster-critical
+      serviceAccountName: console-operator
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+        operator: Exists
+      - effect: NoExecute
+        key: node.kubernetes.io/unreachable
+        operator: Exists
+        tolerationSeconds: 120
+      - effect: NoExecute
+        key: node.kubernetes.io/not-ready
+        operator: Exists
+        tolerationSeconds: 120
+      volumes:
+      - configMap:
+          name: console-operator-config
+        name: config
+      - name: serving-cert
+        secret:
+          optional: true
+          secretName: serving-cert
