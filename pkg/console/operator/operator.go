@@ -154,7 +154,7 @@ func NewConsoleOperator(
 	).WithFilteredEventsInformers(
 		util.NamesFilter(deployment.ConsoleOauthConfigName),
 		secretsInformer.Informer(),
-	).WithSync(c.Sync).
+	).ResyncEvery(time.Minute).WithSync(c.Sync).
 		ToController("ConsoleOperator", recorder.WithComponentSuffix("console-operator"))
 }
 
