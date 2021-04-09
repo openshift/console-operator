@@ -289,6 +289,39 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 			},
 		},
 		{
+			name: "Config builder should handle project access options",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.ProjectAccess(v1.ProjectAccess{
+					AvailableClusterRoles: []string{"View", "Edit", "Admin"},
+				})
+				return b.Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+				},
+				Customization: Customization{
+					ProjectAccess: ProjectAccess{
+						AvailableClusterRoles: []string{"View", "Edit", "Admin"},
+					},
+				},
+				Providers: Providers{},
+			},
+		},
+		{
 			name: "Config builder should handle all inputs",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
