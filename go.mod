@@ -7,7 +7,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/getsentry/raven-go v0.2.1-0.20190513200303-c977f96e1095 // indirect
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-logr/logr v0.3.0 // indirect
 	github.com/go-test/deep v1.0.5
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/openshift/api v0.0.0-20210331155327-945e812e9d2c
@@ -17,12 +16,11 @@ require (
 	github.com/pkg/profile v1.4.0 // indirect
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb // indirect
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.20.0
-	k8s.io/apiextensions-apiserver v0.20.0 // indirect
-	k8s.io/apimachinery v0.20.0
-	k8s.io/client-go v0.20.0
-	k8s.io/component-base v0.20.0
-	k8s.io/klog/v2 v2.4.0
+	k8s.io/api v0.21.0-rc.0
+	k8s.io/apiextensions-apiserver v0.21.0-rc.0 // indirect
+	k8s.io/apimachinery v0.21.0-rc.0
+	k8s.io/client-go v0.21.0-rc.0
+	k8s.io/component-base v0.21.0-rc.0
+	k8s.io/klog/v2 v2.8.0
 )
