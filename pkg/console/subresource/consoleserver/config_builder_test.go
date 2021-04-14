@@ -322,6 +322,39 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 			},
 		},
 		{
+			name: "Config builder should handle quick starts options",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.QuickStarts(v1.QuickStarts{
+					Disabled: []string{"quick-start0", "quick-start1", "quick-start2"},
+				})
+				return b.Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+				},
+				Customization: Customization{
+					QuickStarts: QuickStarts{
+						Disabled: []string{"quick-start0", "quick-start1", "quick-start2"},
+					},
+				},
+				Providers: Providers{},
+			},
+		},
+		{
 			name: "Config builder should handle all inputs",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}

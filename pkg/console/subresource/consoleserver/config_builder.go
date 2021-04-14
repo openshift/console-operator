@@ -40,6 +40,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	customProductName          string
 	devCatalogCustomization    operatorv1.DeveloperConsoleCatalogCustomization
 	projectAccess              operatorv1.ProjectAccess
+	quickStarts                operatorv1.QuickStarts
 	customLogoFile             string
 	CAFile                     string
 	monitoring                 map[string]string
@@ -78,6 +79,10 @@ func (b *ConsoleServerCLIConfigBuilder) CustomDeveloperCatalog(devCatalogCustomi
 }
 func (b *ConsoleServerCLIConfigBuilder) ProjectAccess(projectAccess operatorv1.ProjectAccess) *ConsoleServerCLIConfigBuilder {
 	b.projectAccess = projectAccess
+	return b
+}
+func (b *ConsoleServerCLIConfigBuilder) QuickStarts(quickStarts operatorv1.QuickStarts) *ConsoleServerCLIConfigBuilder {
+	b.quickStarts = quickStarts
 	return b
 }
 func (b *ConsoleServerCLIConfigBuilder) CustomLogoFile(customLogoFile string) *ConsoleServerCLIConfigBuilder {
@@ -273,6 +278,13 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 			AvailableClusterRoles: b.projectAccess.AvailableClusterRoles,
 		}
 	}
+
+	if len(b.quickStarts.Disabled) > 0 {
+		conf.QuickStarts = QuickStarts{
+			Disabled: b.quickStarts.Disabled,
+		}
+	}
+
 	return conf
 
 }
