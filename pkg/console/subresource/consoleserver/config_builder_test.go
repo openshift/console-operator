@@ -700,6 +700,37 @@ plugins:
   plugin2: plugin2_url
 `,
 		},
+		{
+			name: "Config builder should handle inputs for quick starts options",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.QuickStarts(v1.QuickStarts{
+					Disabled: []string{
+						"quickStarts0",
+						"quickStarts1",
+					},
+				})
+				return b.ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo: {}
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+customization:
+  quickStarts:
+    disabled:
+    - quickStarts0
+    - quickStarts1
+providers: {}
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
