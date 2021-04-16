@@ -126,6 +126,7 @@ func TestDefaultDeployment(t *testing.T) {
 		proxyConfigResourceVersionAnnotation:                 "",
 		infrastructureConfigResourceVersionAnnotation:        "",
 		consoleImageAnnotation:                               "",
+		workloadManagementAnnotation:                         workloadManagementAnnotationValue,
 	}
 
 	consoleDeploymentAffinity := &corev1.Affinity{
@@ -434,6 +435,9 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:   api.OpenShiftConsoleDownloadsDeploymentName,
 							Labels: labels,
+							Annotations: map[string]string{
+								workloadManagementAnnotation: workloadManagementAnnotationValue,
+							},
 						},
 						Spec: corev1.PodSpec{
 							NodeSelector: map[string]string{
@@ -489,6 +493,9 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:   api.OpenShiftConsoleDownloadsDeploymentName,
 							Labels: labels,
+							Annotations: map[string]string{
+								workloadManagementAnnotation: workloadManagementAnnotationValue,
+							},
 						},
 						Spec: corev1.PodSpec{
 							NodeSelector: map[string]string{

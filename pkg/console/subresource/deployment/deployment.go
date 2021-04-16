@@ -35,6 +35,8 @@ const (
 	trustedCAConfigMapResourceVersionAnnotation          = "console.openshift.io/trusted-ca-config-version"
 	secretResourceVersionAnnotation                      = "console.openshift.io/oauth-secret-version"
 	consoleImageAnnotation                               = "console.openshift.io/image"
+	workloadManagementAnnotation                         = "workload.openshift.io/management"
+	workloadManagementAnnotationValue                    = `{"effect": "PreferredDuringScheduling"}`
 )
 
 var (
@@ -65,7 +67,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
-	annotations := map[string]string{
+	deploymentAnnotations := map[string]string{
 		configMapResourceVersionAnnotation:                   cm.GetResourceVersion(),
 		serviceCAConfigMapResourceVersionAnnotation:          serviceCAConfigMap.GetResourceVersion(),
 		defaultIngressCertConfigMapResourceVersionAnnotation: defaultIngressCertConfigMap.GetResourceVersion(),
@@ -77,7 +79,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	}
 	// Set any annotations as needed so that `ApplyDeployment` rolls out a
 	// new version when they change.
-	meta.Annotations = annotations
+	meta.Annotations = deploymentAnnotations
 	replicas := Replicas(infrastructureConfig)
 	affinity := consolePodAffinity(infrastructureConfig)
 	gracePeriod := int64(40)
@@ -90,6 +92,12 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 		volumeConfig = append(volumeConfig, customLogoVolume())
 	}
 
+	podAnnotations := map[string]string{
+		workloadManagementAnnotation: workloadManagementAnnotationValue,
+	}
+	for k, v := range deploymentAnnotations {
+		podAnnotations[k] = v
+	}
 	deployment := &appsv1.Deployment{
 		ObjectMeta: meta,
 		Spec: appsv1.DeploymentSpec{
@@ -101,7 +109,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleName,
 					Labels:      labels,
-					Annotations: annotations,
+					Annotations: podAnnotations,
 				},
 				Spec: corev1.PodSpec{
 					ServiceAccountName: "console",
@@ -148,7 +156,10 @@ func DefaultDownloadsDeployment(operatorConfig *operatorv1.Console, infrastructu
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   api.OpenShiftConsoleDownloadsDeploymentName,
+					Name: api.OpenShiftConsoleDownloadsDeploymentName,
+					Annotations: map[string]string{
+						workloadManagementAnnotation: workloadManagementAnnotationValue,
+					},
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
