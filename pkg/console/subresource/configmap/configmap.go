@@ -75,6 +75,7 @@ func DefaultConfigMap(
 		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).
 		CustomDeveloperCatalog(operatorConfig.Spec.Customization.DeveloperCatalog).
 		ProjectAccess(operatorConfig.Spec.Customization.ProjectAccess).
+		QuickStarts(operatorConfig.Spec.Customization.QuickStarts).
 		CustomHostnameRedirectPort(routesub.IsCustomRouteSet(operatorConfig)).
 		StatusPageID(statusPageId(operatorConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).

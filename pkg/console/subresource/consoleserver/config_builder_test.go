@@ -322,6 +322,39 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 			},
 		},
 		{
+			name: "Config builder should handle quick starts options",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.QuickStarts(v1.QuickStarts{
+					Disabled: []string{"quick-start0", "quick-start1", "quick-start2"},
+				})
+				return b.Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+				},
+				Customization: Customization{
+					QuickStarts: QuickStarts{
+						Disabled: []string{"quick-start0", "quick-start1", "quick-start2"},
+					},
+				},
+				Providers: Providers{},
+			},
+		},
+		{
 			name: "Config builder should handle all inputs",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
@@ -665,6 +698,37 @@ monitoringInfo:
 plugins:
   plugin1: plugin1_url
   plugin2: plugin2_url
+`,
+		},
+		{
+			name: "Config builder should handle inputs for quick starts options",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.QuickStarts(v1.QuickStarts{
+					Disabled: []string{
+						"quickStarts0",
+						"quickStarts1",
+					},
+				})
+				return b.ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo: {}
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+customization:
+  quickStarts:
+    disabled:
+    - quickStarts0
+    - quickStarts1
+providers: {}
 `,
 		},
 	}

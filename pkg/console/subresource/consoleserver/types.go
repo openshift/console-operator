@@ -73,6 +73,12 @@ type Customization struct {
 	// developerCatalog allows to configure the shown developer catalog categories.
 	DeveloperCatalog *DeveloperConsoleCatalogCustomization `yaml:"developerCatalog,omitempty"`
 	ProjectAccess    ProjectAccess                         `yaml:"projectAccess,omitempty"`
+	QuickStarts      QuickStarts                           `yaml:"quickStarts,omitempty"`
+}
+
+// QuickStarts contains options for quick starts
+type QuickStarts struct {
+	Disabled []string `json:"disabled,omitempty"`
 }
 
 // ProjectAccess contains options for project access roles
