@@ -218,6 +218,10 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	)
 
 	consoleServiceController := service.NewServiceSyncController(
+		api.OpenShiftConsoleServiceName,
+		// top level config
+		configClient.ConfigV1(),
+		configInformers,
 		// clients
 		operatorClient,
 		operatorConfigClient.OperatorV1().Consoles(), // operator config so we can update status
@@ -230,7 +234,50 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		resourceSyncer,
 	)
 
+	downloadsServiceController := service.NewServiceSyncController(
+		api.DownloadsResourceName,
+		// top level config
+		configClient.ConfigV1(),
+		configInformers,
+		operatorClient,
+		// clients
+		operatorConfigClient.OperatorV1().Consoles(), // operator config so we can update status
+		kubeClient.CoreV1(),                          // only needs to interact with the service resource
+		// informers
+		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
+		kubeInformersNamespaced.Core().V1().Services(),     // Services
+		// events
+		recorder,
+		resourceSyncer,
+	)
+
 	consoleRouteController := route.NewRouteSyncController(
+		api.OpenShiftConsoleRouteName,
+		// enable health check for console route
+		true,
+		// top level config
+		configClient.ConfigV1(),
+		configInformers,
+		// clients
+		operatorClient,
+		operatorConfigClient.OperatorV1().Consoles(),
+		routesClient.RouteV1(),
+		kubeClient.CoreV1(),
+		kubeClient.CoreV1(),
+		// route
+		operatorConfigInformers.Operator().V1().Consoles(),
+		kubeInformersNamespaced.Core().V1(),                 // `openshift-console` namespace informers
+		kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
+		routesInformersNamespaced.Route().V1().Routes(),
+		// events
+		recorder,
+		resourceSyncer,
+	)
+
+	downloadsRouteController := route.NewRouteSyncController(
+		api.OpenShiftConsoleDownloadsRouteName,
+		// disable health check for console route
+		false,
 		// top level config
 		configClient.ConfigV1(),
 		configInformers,
@@ -321,6 +368,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configUpgradeableController,
 		consoleServiceController,
 		consoleRouteController,
+		downloadsServiceController,
+		downloadsRouteController,
 		consoleOperator,
 		cliDownloadsController,
 		downloadsDeploymentController,

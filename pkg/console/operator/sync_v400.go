@@ -52,8 +52,9 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	// track changes, may trigger ripples & update operator config or console config status
 	toUpdate := false
 
-	routeName := api.OpenShiftConsoleName
-	if routesub.IsCustomRouteSet(updatedOperatorConfig) {
+	routeName := api.OpenShiftConsoleRouteName
+	routeConfig := routesub.NewRouteConfig(updatedOperatorConfig, set.Ingress, routeName)
+	if routeConfig.IsCustomHostnameSet() {
 		routeName = api.OpenshiftConsoleCustomRouteName
 	}
 

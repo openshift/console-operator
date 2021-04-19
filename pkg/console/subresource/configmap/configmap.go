@@ -12,7 +12,6 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
-	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
@@ -76,7 +75,7 @@ func DefaultConfigMap(
 		CustomDeveloperCatalog(operatorConfig.Spec.Customization.DeveloperCatalog).
 		ProjectAccess(operatorConfig.Spec.Customization.ProjectAccess).
 		QuickStarts(operatorConfig.Spec.Customization.QuickStarts).
-		CustomHostnameRedirectPort(routesub.IsCustomRouteSet(operatorConfig)).
+		CustomHostnameRedirectPort(isCustomRoute(activeConsoleRoute)).
 		StatusPageID(statusPageId(operatorConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
 		ConfigYAML()
@@ -108,6 +107,13 @@ func DefaultConfigMap(
 	util.AddOwnerRef(configMap, util.OwnerRefFrom(operatorConfig))
 
 	return configMap, willMergeConfigOverrides, nil
+}
+
+func isCustomRoute(activeRoute *routev1.Route) bool {
+	if activeRoute.GetName() == api.OpenShiftConsoleRouteName {
+		return false
+	}
+	return true
 }
 
 func DefaultPublicConfig(consoleURL string) *corev1.ConfigMap {
