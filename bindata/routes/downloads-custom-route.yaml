@@ -1,0 +1,18 @@
+# This route 'downloads-custom' manifest is used in case a custom downloads route is set
+# on the ingress config.
+# The 'downloads-custom' route will be pointing to the 'downloads' service. 
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  namespace: openshift-console
+  name: downloads-custom
+spec:
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  port:
+    targetPort: http
+  to:
+    kind: Service
+    name: downloads
+  wildcardPolicy: None

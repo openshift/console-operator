@@ -1,0 +1,21 @@
+# This route 'console-custom' manifest is used in case a a custom console route is set
+# either on the ingress config or console-operator config.
+# The 'console-custom' route will be pointing to the 'console' service. 
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: console-custom
+  namespace: openshift-console
+  labels:
+    app: console
+spec:
+  to:
+    kind: Service
+    name: console
+    weight: 100
+  port:
+    targetPort: https
+  tls:
+    termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

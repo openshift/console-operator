@@ -36,6 +36,9 @@ $(call build-image,ocp-console-operator,$(IMAGE_REGISTRY)/ocp/4.5:console-operat
 # $3 - manifests directory
 $(call add-profile-manifests,manifests,./profile-patches,./manifests)
 
+# generate bindata targets
+$(call add-bindata,assets,./bindata/...,bindata,assets,pkg/console/assets/bindata.go)
+
 GO_TEST_PACKAGES :=./pkg/... ./cmd/...
 
 test: test-unit test-e2e
