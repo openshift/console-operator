@@ -104,7 +104,7 @@ func NewRouteSyncController(
 	).WithFilteredEventsInformers( // route
 		util.NamesFilter(routeName, routesub.GetCustomRouteName(routeName)),
 		routeInformer.Informer(),
-	).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
+	).WithSync(ctrl.Sync).
 		ToController(fmt.Sprintf("%sRouteController", strings.Title(routeName)), recorder.WithComponentSuffix(fmt.Sprintf("%s-route-controller", routeName)))
 }
 
@@ -142,32 +142,15 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 	// try to sync the custom route first. If the sync fails for any reason, error
 	// out the sync loop and inform about this fact instead of putting default
 	// route into inaccessible state.
-	customRoute, customRouteErrReason, customRouteErr := c.SyncCustomRoute(ctx, routeConfig, controllerContext)
+	_, customRouteErrReason, customRouteErr := c.SyncCustomRoute(ctx, routeConfig, controllerContext)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("CustomRouteSync", customRouteErrReason, customRouteErr))
 	if customRouteErr != nil {
 		return statusHandler.FlushAndReturn(customRouteErr)
 	}
 
-	defaultRoute, defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(ctx, routeConfig, controllerContext)
+	_, defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(ctx, routeConfig, controllerContext)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DefaultRouteSync", defaultRouteErrReason, defaultRouteErr))
-	if defaultRouteErr != nil {
-		return statusHandler.FlushAndReturn(defaultRouteErr)
-	}
-
-	// return if the health check for a route controller instance is not enabled
-	if !c.isHealthCheckEnabled {
-		return statusHandler.FlushAndReturn(nil)
-	}
-
-	activeRoute := defaultRoute
-	if routeConfig.IsCustomHostnameSet() {
-		activeRoute = customRoute
-	}
-
-	routeHealthCheckErrReason, routeHealthCheckErr := c.CheckRouteHealth(ctx, activeRoute)
-	statusHandler.AddCondition(status.HandleDegraded("RouteHealth", routeHealthCheckErrReason, routeHealthCheckErr))
-
-	return statusHandler.FlushAndReturn(routeHealthCheckErr)
+	return statusHandler.FlushAndReturn(defaultRouteErr)
 }
 
 func (c *RouteSyncController) removeRoute(ctx context.Context, routeName string) error {

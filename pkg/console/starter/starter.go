@@ -20,6 +20,7 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
+	"github.com/openshift/console-operator/pkg/console/controllers/healthcheck"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
@@ -297,6 +298,23 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		resourceSyncer,
 	)
 
+	consoleRouteHealthCheckController := healthcheck.NewHealthCheckController(
+		// top level config
+		configClient.ConfigV1(),
+		// clients
+		operatorClient,
+		operatorConfigClient.OperatorV1().Consoles(),
+		routesClient.RouteV1(),
+		kubeClient.CoreV1(),
+		// route
+		operatorConfigInformers.Operator().V1().Consoles(),
+		kubeInformersNamespaced.Core().V1(), // `openshift-console` namespace informers
+		routesInformersNamespaced.Route().V1().Routes(),
+		// events
+		recorder,
+		resourceSyncer,
+	)
+
 	versionRecorder := status.NewVersionGetter()
 	versionRecorder.SetVersion("operator", os.Getenv("RELEASE_VERSION"))
 
@@ -373,6 +391,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleOperator,
 		cliDownloadsController,
 		downloadsDeploymentController,
+		consoleRouteHealthCheckController,
 	} {
 		go controller.Run(ctx, 1)
 	}

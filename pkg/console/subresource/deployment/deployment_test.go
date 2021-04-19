@@ -372,7 +372,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 		defaultReplicaCount    int32 = DefaultConsoleReplicas
 		singleNodeReplicaCount int32 = SingleNodeConsoleReplicas
 		labels                       = util.LabelsForDownloads()
-		gracePeriod            int64 = 1
+		gracePeriod            int64 = 0
 	)
 
 	type args struct {

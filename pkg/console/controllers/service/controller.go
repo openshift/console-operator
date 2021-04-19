@@ -3,8 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"strings"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -83,8 +81,8 @@ func NewServiceSyncController(
 		).WithFilteredEventsInformers( // console resources
 		util.NamesFilter(serviceName, ctrl.getRedirectServiceName()),
 		serviceInformer.Informer(),
-	).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
-		ToController(fmt.Sprintf("%sServiceController", strings.Title(serviceName)), recorder.WithComponentSuffix(fmt.Sprintf("%s-service-controller", serviceName)))
+	).WithSync(ctrl.Sync).
+		ToController("ConsoleServiceController", recorder.WithComponentSuffix("console-service-controller"))
 }
 
 func (c *ServiceSyncController) Sync(ctx context.Context, controllerContext factory.SyncContext) error {

@@ -3,11 +3,11 @@ package downloadsdeployment
 import (
 	"context"
 	"fmt"
-	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	appsinformersv1 "k8s.io/client-go/informers/apps/v1"
-	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	appsclientv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	"k8s.io/klog/v2"
 
 	configv1 "github.com/openshift/api/config/v1"
@@ -35,7 +35,7 @@ type DownloadsDeploymentSyncController struct {
 	operatorConfigClient       operatorclientv1.ConsoleInterface
 	infrastructureConfigClient configclientv1.InfrastructureInterface
 	// core kube
-	deploymentClient appsv1.DeploymentsGetter
+	deploymentClient appsclientv1.DeploymentsGetter
 	// events
 	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
@@ -50,7 +50,7 @@ func NewDownloadsDeploymentSyncController(
 	configInformer configinformer.SharedInformerFactory,
 	operatorConfigInformer operatorinformerv1.ConsoleInformer,
 	// core kube
-	deploymentClient appsv1.DeploymentsGetter,
+	deploymentClient appsclientv1.DeploymentsGetter,
 	deploymentInformer appsinformersv1.DeploymentInformer,
 	// events
 	recorder events.Recorder,
@@ -80,7 +80,7 @@ func NewDownloadsDeploymentSyncController(
 		).WithFilteredEventsInformers( // downloads deployment
 		downloadsNameFilter,
 		deploymentInformer.Informer(),
-	).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
+	).WithSync(ctrl.Sync).
 		ToController("ConsoleDownloadsDeploymentSyncController", recorder.WithComponentSuffix("console-downloads-deployment-controller"))
 }
 
@@ -111,28 +111,27 @@ func (c *DownloadsDeploymentSyncController) Sync(ctx context.Context, controller
 		return statusHandler.FlushAndReturn(err)
 	}
 
-	downloadsDeploymentErr := c.SyncDownloadsDeployment(ctx, updatedOperatorConfig, infrastructureConfig, controllerContext)
+	actualDownloadsDownloadsDeployment, _, downloadsDeploymentErr := c.SyncDownloadsDeployment(ctx, updatedOperatorConfig, infrastructureConfig, controllerContext)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DownloadsDeploymentSync", "FailedApply", downloadsDeploymentErr))
 	if downloadsDeploymentErr != nil {
 		return statusHandler.FlushAndReturn(downloadsDeploymentErr)
 	}
+	statusHandler.UpdateDeploymentGeneration(actualDownloadsDownloadsDeployment)
 
 	return statusHandler.FlushAndReturn(nil)
 }
 
-func (c *DownloadsDeploymentSyncController) SyncDownloadsDeployment(ctx context.Context, operatorConfig *operatorv1.Console, infrastructureConfig *configv1.Infrastructure, controllerContext factory.SyncContext) error {
+func (c *DownloadsDeploymentSyncController) SyncDownloadsDeployment(ctx context.Context, operatorConfig *operatorv1.Console, infrastructureConfig *configv1.Infrastructure, controllerContext factory.SyncContext) (*appsv1.Deployment, bool, error) {
 
 	updatedOperatorConfig := operatorConfig.DeepCopy()
-	requiredDownloadsDeployment := deploymentsub.DefaultDownloadsDeployment(operatorConfig, infrastructureConfig)
+	requiredDownloadsDeployment := deploymentsub.DefaultDownloadsDeployment(updatedOperatorConfig, infrastructureConfig)
 
-	_, _, applyErr := resourceapply.ApplyDeployment(
+	return resourceapply.ApplyDeployment(
 		c.deploymentClient,
 		controllerContext.Recorder(),
 		requiredDownloadsDeployment,
 		resourcemerge.ExpectedDeploymentGeneration(requiredDownloadsDeployment, updatedOperatorConfig.Status.Generations),
 	)
-
-	return applyErr
 }
 
 func (c *DownloadsDeploymentSyncController) removeDownloadsDeployment(ctx context.Context) error {
