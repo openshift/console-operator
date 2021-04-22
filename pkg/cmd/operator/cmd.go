@@ -1,6 +1,8 @@
 package operator
 
 import (
+	// golang
+	"context"
 	// 3rd party
 	"github.com/spf13/cobra"
 	// kube / openshift
@@ -17,7 +19,7 @@ func NewOperator() *cobra.Command {
 			"console-operator",
 			version.Get(),
 			starter.RunOperator).
-		NewCommand()
+		NewCommandWithContext(context.TODO())
 	cmd.Use = "operator"
 	cmd.Short = "Start the Console Operator"
 	// TODO: better docs on this
