@@ -35,7 +35,7 @@ const (
 	trustedCAConfigMapResourceVersionAnnotation          = "console.openshift.io/trusted-ca-config-version"
 	secretResourceVersionAnnotation                      = "console.openshift.io/oauth-secret-version"
 	consoleImageAnnotation                               = "console.openshift.io/image"
-	workloadManagementAnnotation                         = "workload.openshift.io/management"
+	workloadManagementAnnotation                         = "target.workload.openshift.io/management"
 	workloadManagementAnnotationValue                    = `{"effect": "PreferredDuringScheduling"}`
 )
 
