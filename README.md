@@ -10,8 +10,9 @@ The console operator is installed by default and will automatically maintain a c
 
 ## Development Setup
 
-* Install Go 1.12 -- https://golang.org/dl/
+* Install Go 1.15.2 -- https://golang.org/dl/
 * GVM is recommended but not required -- https://github.com/moovweb/gvm
+  * On MacOS you may need to execute `go env -w GO111MODULE=auto` after installing the main go binary before you can install other versions via GVM
 
 ## Clone the Repo & Build Locally
 
