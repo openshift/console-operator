@@ -110,10 +110,7 @@ func DefaultConfigMap(
 }
 
 func isCustomRoute(activeRoute *routev1.Route) bool {
-	if activeRoute.GetName() == api.OpenShiftConsoleRouteName {
-		return false
-	}
-	return true
+	return activeRoute.GetName() == api.OpenshiftConsoleCustomRouteName
 }
 
 func DefaultPublicConfig(consoleURL string) *corev1.ConfigMap {

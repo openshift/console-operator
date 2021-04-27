@@ -1,6 +1,7 @@
 # This route 'downloads-custom' manifest is used in case a custom downloads route is set
 # on the ingress config.
-# The 'downloads-custom' route will be pointing to the 'downloads' service. 
+# The 'downloads-custom' route will be pointing to the 'downloads' service.
+# Only a single custom downloads route is supported.
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:

@@ -2,6 +2,7 @@
 # either on the ingress config or console-operator config.
 # Service will forward the request to the 'console' deployment's backend under 8444 port,
 # which backend will redirect to the custom route.
+# Only a single custom downloads route is supported.
 kind: Service
 apiVersion: v1
 metadata:

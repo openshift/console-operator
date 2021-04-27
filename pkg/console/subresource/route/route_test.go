@@ -10,6 +10,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
@@ -249,6 +250,38 @@ func TestIsAdmitted(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsAdmitted(tt.args.route); got != tt.want {
 				t.Errorf("IsAdmitted() = \n%v\n want \n%v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetDefaultRouteHost(t *testing.T) {
+	type args struct {
+		routeName     string
+		ingressConfig *configv1.Ingress
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "Test assembling linux amd64 specific URL",
+			args: args{
+				routeName: "console",
+				ingressConfig: &configv1.Ingress{
+					Spec: configv1.IngressSpec{
+						Domain: "apps.devcluster.openshift.com",
+					},
+				},
+			},
+			want: "console-openshift-console.apps.devcluster.openshift.com",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if diff := deep.Equal(GetDefaultRouteHost(tt.args.routeName, tt.args.ingressConfig), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}

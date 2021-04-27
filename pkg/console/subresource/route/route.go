@@ -51,8 +51,7 @@ type RouteControllerSpec struct {
 func getComponentRouteSpec(ingressConfig *configv1.Ingress, componentName string) *configv1.ComponentRouteSpec {
 	for i, componentRoute := range ingressConfig.Spec.ComponentRoutes {
 		if componentRoute.Name == componentName && componentRoute.Namespace == api.OpenShiftConsoleNamespace {
-			componentRoute := ingressConfig.Spec.ComponentRoutes[i].DeepCopy()
-			return componentRoute
+			return ingressConfig.Spec.ComponentRoutes[i].DeepCopy()
 		}
 	}
 	return nil
@@ -61,8 +60,7 @@ func getComponentRouteSpec(ingressConfig *configv1.Ingress, componentName string
 func getComponentRouteStatus(ingressConfig *configv1.Ingress, componentName string) *configv1.ComponentRouteStatus {
 	for i, componentRoute := range ingressConfig.Status.ComponentRoutes {
 		if componentRoute.Name == componentName && componentRoute.Namespace == api.OpenShiftConsoleNamespace {
-			componentRoute := ingressConfig.Status.ComponentRoutes[i].DeepCopy()
-			return componentRoute
+			return ingressConfig.Status.ComponentRoutes[i].DeepCopy()
 		}
 	}
 	return nil
@@ -79,7 +77,7 @@ func NewRouteConfig(operatorConfig *operatorv1.Console, ingressConfig *configv1.
 	componentRouteSpec := getComponentRouteSpec(ingressConfig, routeName)
 	if componentRouteSpec != nil {
 		customRoute.hostname = string(componentRouteSpec.Hostname)
-		if len(componentRouteSpec.ServingCertKeyPairSecret.Name) != 0 {
+		if componentRouteSpec.ServingCertKeyPairSecret.Name != "" {
 			customRoute.secretName = componentRouteSpec.ServingCertKeyPairSecret.Name
 		}
 		isIngressConfigCustomHostnameSet = true

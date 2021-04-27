@@ -61,9 +61,10 @@ func (fi bindataFileInfo) Sys() interface{} {
 	return nil
 }
 
-var _routesConsoleCustomRouteYaml = []byte(`# This route 'console-custom' manifest is used in case a a custom console route is set
+var _routesConsoleCustomRouteYaml = []byte(`# This route 'console-custom' manifest is used in case a custom console route is set
 # either on the ingress config or console-operator config.
 # The 'console-custom' route will be pointing to the 'console' service. 
+# Only a single custom console route is supported.
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
@@ -81,7 +82,8 @@ spec:
   tls:
     termination: reencrypt
     insecureEdgeTerminationPolicy: Redirect
-  wildcardPolicy: None`)
+  wildcardPolicy: None
+`)
 
 func routesConsoleCustomRouteYamlBytes() ([]byte, error) {
 	return _routesConsoleCustomRouteYaml, nil
@@ -102,6 +104,7 @@ var _routesConsoleRedirectRouteYaml = []byte(`# This 'console' route manifest is
 # either on the ingress config or console-operator config.
 # The 'console' route will be used for redirect to the 'console-custom' route
 # by the console backend.
+# Only a single custom console route is supported.
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
@@ -119,7 +122,8 @@ spec:
   tls:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
-  wildcardPolicy: None`)
+  wildcardPolicy: None
+`)
 
 func routesConsoleRedirectRouteYamlBytes() ([]byte, error) {
 	return _routesConsoleRedirectRouteYaml, nil
@@ -155,7 +159,8 @@ spec:
   tls:
     termination: reencrypt
     insecureEdgeTerminationPolicy: Redirect
-  wildcardPolicy: None`)
+  wildcardPolicy: None
+`)
 
 func routesConsoleRouteYamlBytes() ([]byte, error) {
 	return _routesConsoleRouteYaml, nil
@@ -174,7 +179,8 @@ func routesConsoleRouteYaml() (*asset, error) {
 
 var _routesDownloadsCustomRouteYaml = []byte(`# This route 'downloads-custom' manifest is used in case a custom downloads route is set
 # on the ingress config.
-# The 'downloads-custom' route will be pointing to the 'downloads' service. 
+# The 'downloads-custom' route will be pointing to the 'downloads' service.
+# Only a single custom downloads route is supported.
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -189,7 +195,8 @@ spec:
   to:
     kind: Service
     name: downloads
-  wildcardPolicy: None`)
+  wildcardPolicy: None
+`)
 
 func routesDownloadsCustomRouteYamlBytes() ([]byte, error) {
 	return _routesDownloadsCustomRouteYaml, nil
@@ -245,6 +252,7 @@ var _servicesConsoleRedirectServiceYaml = []byte(`# This 'console-redirect' serv
 # either on the ingress config or console-operator config.
 # Service will forward the request to the 'console' deployment's backend under 8444 port,
 # which backend will redirect to the custom route.
+# Only a single custom downloads route is supported.
 kind: Service
 apiVersion: v1
 metadata:
@@ -303,7 +311,8 @@ spec:
     app: console
     component: ui
   type: ClusterIP
-  sessionAffinity: None`)
+  sessionAffinity: None
+`)
 
 func servicesConsoleServiceYamlBytes() ([]byte, error) {
 	return _servicesConsoleServiceYaml, nil
@@ -337,7 +346,8 @@ spec:
     app: console
     component: downloads
   type: ClusterIP
-  sessionAffinity: None`)
+  sessionAffinity: None
+`)
 
 func servicesDownloadsServiceYamlBytes() ([]byte, error) {
 	return _servicesDownloadsServiceYaml, nil
