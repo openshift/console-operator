@@ -58,6 +58,9 @@ func TestDefaultConfigMap(t *testing.T) {
 					},
 				},
 				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
 					Spec: routev1.RouteSpec{
 						Host: host,
 					},
@@ -106,6 +109,9 @@ providers: {}
 					},
 				},
 				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
 					Spec: routev1.RouteSpec{
 						Host: host,
 					},
@@ -162,6 +168,9 @@ customization:
 					},
 				},
 				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
 					Spec: routev1.RouteSpec{
 						Host: host,
 					},
@@ -227,6 +236,9 @@ customization:
 					},
 				},
 				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
 					Spec: routev1.RouteSpec{
 						Host: host,
 					},
@@ -297,6 +309,9 @@ customization:
 					},
 				},
 				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
 					Spec: routev1.RouteSpec{
 						Host: host,
 					},
@@ -369,6 +384,9 @@ customization:
 					},
 				},
 				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
 					Spec: routev1.RouteSpec{
 						Host: host,
 					},
@@ -425,6 +443,9 @@ providers:
 					},
 				},
 				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
 					Spec: routev1.RouteSpec{
 						Host: host,
 					},
@@ -484,6 +505,9 @@ providers: {}
 					},
 				},
 				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenshiftConsoleCustomRouteName,
+					},
 					Spec: routev1.RouteSpec{
 						Host: customHostname,
 					},
@@ -533,6 +557,9 @@ providers: {}
 					},
 				},
 				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
 					Spec: routev1.RouteSpec{
 						Host: host,
 					},
@@ -582,6 +609,9 @@ providers: {}
 					},
 				},
 				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
 					Spec: routev1.RouteSpec{
 						Host: host,
 					},

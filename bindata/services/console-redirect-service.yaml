@@ -1,0 +1,25 @@
+# This 'console-redirect' service manifest is used in case a custom downloads route is set
+# either on the ingress config or console-operator config.
+# Service will forward the request to the 'console' deployment's backend under 8444 port,
+# which backend will redirect to the custom route.
+# Only a single custom downloads route is supported.
+kind: Service
+apiVersion: v1
+metadata:
+  name: console-redirect
+  namespace: openshift-console
+  labels:
+    app: console
+  annotations:
+    service.alpha.openshift.io/serving-cert-secret-name: console-serving-cert
+spec:
+  ports:
+    - name: custom-route-redirect
+      protocol: TCP
+      port: 8444
+      targetPort: 8444
+  selector:
+    app: console
+    component: ui
+  type: ClusterIP
+  sessionAffinity: None

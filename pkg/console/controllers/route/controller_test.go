@@ -200,29 +200,3 @@ func TestValidateCustomCertSecret(t *testing.T) {
 		})
 	}
 }
-
-func TestGetDefaultRouteHost(t *testing.T) {
-	type args struct {
-		ingressDomain string
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			name: "Test assembling linux amd64 specific URL",
-			args: args{
-				ingressDomain: "apps.devcluster.openshift.com",
-			},
-			want: "console-openshift-console.apps.devcluster.openshift.com",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(GetDefaultRouteHost(tt.args.ingressDomain), tt.want); diff != nil {
-				t.Error(diff)
-			}
-		})
-	}
-}

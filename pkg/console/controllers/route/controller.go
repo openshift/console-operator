@@ -40,6 +40,8 @@ import (
 )
 
 type RouteSyncController struct {
+	routeName            string
+	isHealthCheckEnabled bool
 	// clients
 	operatorClient       v1helpers.OperatorClient
 	operatorConfigClient operatorclientv1.ConsoleInterface
@@ -52,6 +54,8 @@ type RouteSyncController struct {
 }
 
 func NewRouteSyncController(
+	routeName string,
+	isHealthCheckEnabled bool,
 	// top level config
 	configClient configclientv1.ConfigV1Interface,
 	configInformer configinformer.SharedInformerFactory,
@@ -71,6 +75,8 @@ func NewRouteSyncController(
 	resourceSyncer resourcesynccontroller.ResourceSyncer,
 ) factory.Controller {
 	ctrl := &RouteSyncController{
+		routeName:            routeName,
+		isHealthCheckEnabled: isHealthCheckEnabled,
 		operatorClient:       operatorClient,
 		operatorConfigClient: operatorConfigClient,
 		ingressClient:        configClient.Ingresses(),
@@ -96,10 +102,10 @@ func NewRouteSyncController(
 	).WithInformers(
 		secretInformer.Informer(),
 	).WithFilteredEventsInformers( // route
-		util.NamesFilter(api.OpenShiftConsoleRouteName, api.OpenshiftConsoleCustomRouteName),
+		util.NamesFilter(routeName, routesub.GetCustomRouteName(routeName)),
 		routeInformer.Informer(),
 	).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
-		ToController("ConsoleRouteController", recorder.WithComponentSuffix("console-route-controller"))
+		ToController(fmt.Sprintf("%sRouteController", strings.Title(routeName)), recorder.WithComponentSuffix(fmt.Sprintf("%s-route-controller", routeName)))
 }
 
 func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
@@ -111,43 +117,54 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 
 	switch updatedOperatorConfig.Spec.ManagementState {
 	case operatorsv1.Managed:
-		klog.V(4).Infoln("console is in a managed state: syncing route")
+		klog.V(4).Infof("console-operator is in a managed state: syncing %q route", c.routeName)
 	case operatorsv1.Unmanaged:
-		klog.V(4).Infoln("console is in an unmanaged state: skipping route sync")
+		klog.V(4).Infof("console-operator is in an unmanaged state: skipping %q route sync", c.routeName)
 		return nil
 	case operatorsv1.Removed:
-		klog.V(4).Infoln("console is in a removed state: deleting route")
-		if err = c.removeRoute(ctx, api.OpenshiftConsoleCustomRouteName); err != nil {
+		klog.V(4).Infof("console-operator is in a removed state: deleting %q route", c.routeName)
+		if err = c.removeRoute(ctx, routesub.GetCustomRouteName(c.routeName)); err != nil {
 			return err
 		}
-		return c.removeRoute(ctx, api.OpenShiftConsoleName)
+		return c.removeRoute(ctx, c.routeName)
 	default:
 		return fmt.Errorf("unknown state: %v", updatedOperatorConfig.Spec.ManagementState)
 	}
 
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
+	ingressConfig, err := c.ingressClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		return statusHandler.FlushAndReturn(err)
+	}
+	routeConfig := routesub.NewRouteConfig(updatedOperatorConfig, ingressConfig, c.routeName)
+
 	// try to sync the custom route first. If the sync fails for any reason, error
 	// out the sync loop and inform about this fact instead of putting default
 	// route into inaccessible state.
-	customRoute, customRouteErrReason, customRouteErr := c.SyncCustomRoute(ctx, updatedOperatorConfig, controllerContext)
+	customRoute, customRouteErrReason, customRouteErr := c.SyncCustomRoute(ctx, routeConfig, controllerContext)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("CustomRouteSync", customRouteErrReason, customRouteErr))
 	if customRouteErr != nil {
 		return statusHandler.FlushAndReturn(customRouteErr)
 	}
 
-	defaultRoute, defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(ctx, updatedOperatorConfig, controllerContext)
+	defaultRoute, defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(ctx, routeConfig, controllerContext)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DefaultRouteSync", defaultRouteErrReason, defaultRouteErr))
 	if defaultRouteErr != nil {
 		return statusHandler.FlushAndReturn(defaultRouteErr)
 	}
 
+	// return if the health check for a route controller instance is not enabled
+	if !c.isHealthCheckEnabled {
+		return statusHandler.FlushAndReturn(nil)
+	}
+
 	activeRoute := defaultRoute
-	if routesub.IsCustomRouteSet(updatedOperatorConfig) {
+	if routeConfig.IsCustomHostnameSet() {
 		activeRoute = customRoute
 	}
 
-	routeHealthCheckErrReason, routeHealthCheckErr := c.CheckRouteHealth(ctx, updatedOperatorConfig, activeRoute)
+	routeHealthCheckErrReason, routeHealthCheckErr := c.CheckRouteHealth(ctx, activeRoute)
 	statusHandler.AddCondition(status.HandleDegraded("RouteHealth", routeHealthCheckErrReason, routeHealthCheckErr))
 
 	return statusHandler.FlushAndReturn(routeHealthCheckErr)
@@ -161,8 +178,8 @@ func (c *RouteSyncController) removeRoute(ctx context.Context, routeName string)
 	return err
 }
 
-func (c *RouteSyncController) SyncDefaultRoute(ctx context.Context, operatorConfig *operatorsv1.Console, controllerContext factory.SyncContext) (*routev1.Route, string, error) {
-	customTLSSecret, configErr := c.GetDefaultRouteTLSSecret(ctx, operatorConfig)
+func (c *RouteSyncController) SyncDefaultRoute(ctx context.Context, routeConfig *routesub.RouteConfig, controllerContext factory.SyncContext) (*routev1.Route, string, error) {
+	customTLSSecret, configErr := c.GetDefaultRouteTLSSecret(ctx, routeConfig)
 	if configErr != nil {
 		return nil, "InvalidDefaultRouteConfig", configErr
 	}
@@ -171,7 +188,7 @@ func (c *RouteSyncController) SyncDefaultRoute(ctx context.Context, operatorConf
 		return nil, "InvalidCustomTLSSecret", secretValidationErr
 	}
 
-	requiredDefaultRoute := routesub.DefaultRoute(operatorConfig, customTLSCert)
+	requiredDefaultRoute := routeConfig.DefaultRoute(customTLSCert)
 
 	defaultRoute, _, defaultRouteError := routesub.ApplyRoute(c.routeClient, controllerContext.Recorder(), requiredDefaultRoute)
 	if defaultRouteError != nil {
@@ -190,17 +207,21 @@ func (c *RouteSyncController) SyncDefaultRoute(ctx context.Context, operatorConf
 // 2. if secret is defined, verify the TLS certificate and key
 // 4. create the custom console route, if custom TLS certificate and key are defined use them
 // 5. apply the custom route
-func (c *RouteSyncController) SyncCustomRoute(ctx context.Context, operatorConfig *operatorsv1.Console, controllerContext factory.SyncContext) (*routev1.Route, string, error) {
-	if !routesub.IsCustomRouteSet(operatorConfig) {
-		if err := c.removeRoute(ctx, api.OpenshiftConsoleCustomRouteName); err != nil {
+func (c *RouteSyncController) SyncCustomRoute(ctx context.Context, routeConfig *routesub.RouteConfig, controllerContext factory.SyncContext) (*routev1.Route, string, error) {
+	if !routeConfig.IsCustomHostnameSet() {
+		if err := c.removeRoute(ctx, routesub.GetCustomRouteName(c.routeName)); err != nil {
 			return nil, "FailedDeleteCustomRoutes", err
 		}
 		return nil, "", nil
 	}
 
-	customTLSSecret, configErr := c.ValidateCustomRouteConfig(ctx, operatorConfig)
-	if configErr != nil {
+	if configErr := c.ValidateCustomRouteConfig(ctx, routeConfig); configErr != nil {
 		return nil, "InvalidCustomRouteConfig", configErr
+	}
+
+	customTLSSecret, customTLSSecretErr := c.GetCustomRouteTLSSecret(ctx, routeConfig)
+	if customTLSSecretErr != nil {
+		return nil, "FailedCustomTLSSecretGet", fmt.Errorf("failed to GET custom route TLS secret: %s", customTLSSecretErr)
 	}
 
 	customTLSCert, secretValidationErr := ValidateCustomCertSecret(customTLSSecret)
@@ -208,7 +229,7 @@ func (c *RouteSyncController) SyncCustomRoute(ctx context.Context, operatorConfi
 		return nil, "InvalidCustomTLSSecret", secretValidationErr
 	}
 
-	requiredCustomRoute := routesub.CustomRoute(operatorConfig, customTLSCert)
+	requiredCustomRoute := routeConfig.CustomRoute(customTLSCert, c.routeName)
 	customRoute, _, customRouteError := routesub.ApplyRoute(c.routeClient, controllerContext.Recorder(), requiredCustomRoute)
 	if customRouteError != nil {
 		return nil, "FailedCustomRouteApply", customRouteError
@@ -221,36 +242,39 @@ func (c *RouteSyncController) SyncCustomRoute(ctx context.Context, operatorConfi
 	return customRoute, "", customRouteError
 }
 
-func (c *RouteSyncController) GetDefaultRouteTLSSecret(ctx context.Context, operatorConfig *operatorsv1.Console) (*corev1.Secret, error) {
+func (c *RouteSyncController) GetCustomRouteTLSSecret(ctx context.Context, routeConfig *routesub.RouteConfig) (*corev1.Secret, error) {
+	if routeConfig.IsCustomTLSSecretSet() {
+		customTLSSecret, customTLSSecretErr := c.secretClient.Secrets(api.OpenShiftConfigNamespace).Get(ctx, routeConfig.GetCustomTLSSecretName(), metav1.GetOptions{})
+		if customTLSSecretErr != nil {
+			return nil, fmt.Errorf("failed to GET custom route TLS secret: %s", customTLSSecretErr)
+		}
+		return customTLSSecret, nil
+	}
+	return nil, nil
+}
+
+func (c *RouteSyncController) GetDefaultRouteTLSSecret(ctx context.Context, routeConfig *routesub.RouteConfig) (*corev1.Secret, error) {
 	// if custom route is set, we don't need to validate the config
 	// since it will be used for the custom route, not the default one
-	if routesub.IsCustomRouteSet(operatorConfig) {
+	if routeConfig.IsCustomHostnameSet() {
 		return nil, nil
 	}
 
-	if !routesub.IsCustomTLSSecretSet(operatorConfig) {
+	if !routeConfig.IsDefaultTLSSecretSet() {
 		return nil, nil
 	}
 
-	secret, secretErr := c.secretClient.Secrets(api.OpenShiftConfigNamespace).Get(ctx, operatorConfig.Spec.Route.Secret.Name, metav1.GetOptions{})
+	secret, secretErr := c.secretClient.Secrets(api.OpenShiftConfigNamespace).Get(ctx, routeConfig.GetDefaultTLSSecretName(), metav1.GetOptions{})
 	if secretErr != nil {
 		return nil, fmt.Errorf("failed to GET default route TLS secret: %s", secretErr)
 	}
 	return secret, nil
 }
 
-// TODO: Decouple and rename this method. So one will validate, other will get the secret.
-func (c *RouteSyncController) ValidateCustomRouteConfig(ctx context.Context, operatorConfig *operatorsv1.Console) (*corev1.Secret, error) {
-	// get ingress
-	ingress, err := c.ingressClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
+func (c *RouteSyncController) ValidateCustomRouteConfig(ctx context.Context, routeConfig *routesub.RouteConfig) error {
 	// Check if the custom route hostname is not same as the default one
-	defaultRouteHostname := GetDefaultRouteHost(ingress.Spec.Domain)
-	if operatorConfig.Spec.Route.Hostname == defaultRouteHostname {
-		return nil, fmt.Errorf("custom route hostname is duplicate of the default route hostname")
+	if routeConfig.HostnameMatch() {
+		return fmt.Errorf("custom route hostname is duplicate of the default route hostname")
 	}
 
 	// Check if the custom hostname has cluster domain suffix, which indicates
@@ -258,18 +282,12 @@ func (c *RouteSyncController) ValidateCustomRouteConfig(ctx context.Context, ope
 	// `openshift-config` namespace and referenced in  the operator config.
 	// If the suffix matches the cluster domain, then the secret is optional.
 	// If the suffix doesn't matches the cluster domain, then the secret is mandatory.
-	if !routesub.IsCustomTLSSecretSet(operatorConfig) {
-		if !strings.HasSuffix(operatorConfig.Spec.Route.Hostname, ingress.Spec.Domain) {
-			return nil, fmt.Errorf("secret reference for custom route TLS secret is not defined")
+	if !routeConfig.IsCustomTLSSecretSet() {
+		if !strings.HasSuffix(routeConfig.GetCustomRouteHostname(), routeConfig.GetDomain()) {
+			return fmt.Errorf("secret reference for custom route TLS secret is not defined")
 		}
-		return nil, nil
 	}
-
-	secret, secretErr := c.secretClient.Secrets(api.OpenShiftConfigNamespace).Get(ctx, operatorConfig.Spec.Route.Secret.Name, metav1.GetOptions{})
-	if secretErr != nil {
-		return nil, fmt.Errorf("failed to GET custom route TLS secret: %s", secretErr)
-	}
-	return secret, nil
+	return nil
 }
 
 // Validate secret that holds custom TLS certificate and key.
@@ -311,10 +329,6 @@ func ValidateCustomCertSecret(customCertSecret *corev1.Secret) (*routesub.Custom
 	return customTLS, nil
 }
 
-func GetDefaultRouteHost(ingressDomain string) string {
-	return fmt.Sprintf("%s-%s.%s", api.OpenShiftConsoleRouteName, api.OpenShiftConsoleNamespace, ingressDomain)
-}
-
 func certificateVerifier(customCert []byte) error {
 	block, _ := pem.Decode([]byte(customCert))
 	if block == nil {
@@ -349,7 +363,7 @@ func privateKeyVerifier(customKey []byte) error {
 	return nil
 }
 
-func (c *RouteSyncController) CheckRouteHealth(ctx context.Context, operatorConfig *operatorsv1.Console, route *routev1.Route) (string, error) {
+func (c *RouteSyncController) CheckRouteHealth(ctx context.Context, route *routev1.Route) (string, error) {
 	if !routesub.IsAdmitted(route) {
 		return "RouteNotAdmitted", fmt.Errorf("console route is not admitted")
 	}

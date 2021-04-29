@@ -33,9 +33,12 @@ type VersionGetter interface {
 	VersionChangedChannel() <-chan struct{}
 }
 
+type RelatedObjectsFunc func() (isset bool, objs []configv1.ObjectReference)
+
 type StatusSyncer struct {
 	clusterOperatorName string
 	relatedObjects      []configv1.ObjectReference
+	relatedObjectsFunc  RelatedObjectsFunc
 
 	versionGetter         VersionGetter
 	operatorClient        operatorv1helpers.OperatorClient
@@ -70,12 +73,27 @@ func NewClusterOperatorStatusController(
 		clusterOperatorLister: clusterOperatorInformer.Lister(),
 		operatorClient:        operatorClient,
 		degradedInertia:       MustNewInertia(2 * time.Minute).Inertia,
-		controllerFactory: factory.New().ResyncEvery(time.Second).WithInformers(
+		controllerFactory: factory.New().ResyncEvery(time.Minute).WithInformers(
 			operatorClient.Informer(),
 			clusterOperatorInformer.Informer(),
 		),
 		recorder: recorder.WithComponentSuffix("status-controller"),
 	}
+}
+
+// WithRelatedObjectsFunc allows the set of related objects to be dynamically
+// determined.
+//
+// The function returns (isset, objects)
+//
+// If isset is false, then the set of related objects is copied over from the
+// existing ClusterOperator object. This is useful in cases where an operator
+// has just restarted, and hasn't yet reconciled.
+//
+// Any statically-defined related objects (in NewClusterOperatorStatusController)
+// will always be included in the result.
+func (c *StatusSyncer) WithRelatedObjectsFunc(f RelatedObjectsFunc) {
+	c.relatedObjectsFunc = f
 }
 
 func (c *StatusSyncer) Run(ctx context.Context, workers int) {
@@ -132,8 +150,6 @@ func (c StatusSyncer) Sync(ctx context.Context, syncCtx factory.SyncContext) err
 	clusterOperatorObj := originalClusterOperatorObj.DeepCopy()
 
 	if detailedSpec.ManagementState == operatorv1.Unmanaged && !management.IsOperatorAlwaysManaged() {
-		clusterOperatorObj.Status = configv1.ClusterOperatorStatus{}
-
 		configv1helpers.SetStatusCondition(&clusterOperatorObj.Status.Conditions, configv1.ClusterOperatorStatusCondition{Type: configv1.OperatorAvailable, Status: configv1.ConditionUnknown, Reason: "Unmanaged"})
 		configv1helpers.SetStatusCondition(&clusterOperatorObj.Status.Conditions, configv1.ClusterOperatorStatusCondition{Type: configv1.OperatorProgressing, Status: configv1.ConditionUnknown, Reason: "Unmanaged"})
 		configv1helpers.SetStatusCondition(&clusterOperatorObj.Status.Conditions, configv1.ClusterOperatorStatusCondition{Type: configv1.OperatorDegraded, Status: configv1.ConditionUnknown, Reason: "Unmanaged"})
@@ -149,7 +165,30 @@ func (c StatusSyncer) Sync(ctx context.Context, syncCtx factory.SyncContext) err
 		return nil
 	}
 
-	clusterOperatorObj.Status.RelatedObjects = c.relatedObjects
+	if c.relatedObjectsFunc != nil {
+		isSet, ro := c.relatedObjectsFunc()
+		if !isSet { // temporarily unknown - copy over from existing object
+			ro = clusterOperatorObj.Status.RelatedObjects
+		}
+
+		// merge in any static objects
+		for _, obj := range c.relatedObjects {
+			found := false
+			for _, existingObj := range ro {
+				if obj == existingObj {
+					found = true
+					break
+				}
+			}
+			if !found {
+				ro = append(ro, obj)
+			}
+		}
+		clusterOperatorObj.Status.RelatedObjects = ro
+	} else {
+		clusterOperatorObj.Status.RelatedObjects = c.relatedObjects
+	}
+
 	configv1helpers.SetStatusCondition(&clusterOperatorObj.Status.Conditions, UnionClusterCondition("Degraded", operatorv1.ConditionFalse, c.degradedInertia, currentDetailedStatus.Conditions...))
 	configv1helpers.SetStatusCondition(&clusterOperatorObj.Status.Conditions, UnionClusterCondition("Progressing", operatorv1.ConditionFalse, nil, currentDetailedStatus.Conditions...))
 	configv1helpers.SetStatusCondition(&clusterOperatorObj.Status.Conditions, UnionClusterCondition("Available", operatorv1.ConditionTrue, nil, currentDetailedStatus.Conditions...))

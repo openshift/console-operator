@@ -9,18 +9,19 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
 
+	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	routeclient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
+	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
 
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/assets"
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
-	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
 const (
@@ -33,6 +34,135 @@ const (
 type CustomTLSCert struct {
 	Certificate string
 	Key         string
+}
+
+type RouteConfig struct {
+	defaultRoute RouteControllerSpec
+	customRoute  RouteControllerSpec
+	domain       string
+	routeName    string
+}
+
+type RouteControllerSpec struct {
+	hostname   string
+	secretName string
+}
+
+func getComponentRouteSpec(ingressConfig *configv1.Ingress, componentName string) *configv1.ComponentRouteSpec {
+	for i, componentRoute := range ingressConfig.Spec.ComponentRoutes {
+		if componentRoute.Name == componentName && componentRoute.Namespace == api.OpenShiftConsoleNamespace {
+			return ingressConfig.Spec.ComponentRoutes[i].DeepCopy()
+		}
+	}
+	return nil
+}
+
+func getComponentRouteStatus(ingressConfig *configv1.Ingress, componentName string) *configv1.ComponentRouteStatus {
+	for i, componentRoute := range ingressConfig.Status.ComponentRoutes {
+		if componentRoute.Name == componentName && componentRoute.Namespace == api.OpenShiftConsoleNamespace {
+			return ingressConfig.Status.ComponentRoutes[i].DeepCopy()
+		}
+	}
+	return nil
+}
+
+func NewRouteConfig(operatorConfig *operatorv1.Console, ingressConfig *configv1.Ingress, routeName string) *RouteConfig {
+	defaultRoute := RouteControllerSpec{
+		hostname: GetDefaultRouteHost(routeName, ingressConfig),
+	}
+	var customRoute RouteControllerSpec
+	var isIngressConfigCustomHostnameSet bool
+
+	// Custom hostname in ingress config takes precedent over console operator's config
+	componentRouteSpec := getComponentRouteSpec(ingressConfig, routeName)
+	if componentRouteSpec != nil {
+		customRoute.hostname = string(componentRouteSpec.Hostname)
+		if componentRouteSpec.ServingCertKeyPairSecret.Name != "" {
+			customRoute.secretName = componentRouteSpec.ServingCertKeyPairSecret.Name
+		}
+		isIngressConfigCustomHostnameSet = true
+	}
+
+	// Legacy behaviour, operatorConfig only configures custom hostname for "console" route.
+	// The custom route hostname doesn't have to be set if admin just wants to set the custom
+	// TLS for the default route.
+	if !isIngressConfigCustomHostnameSet && routeName == api.OpenShiftConsoleRouteName {
+		if len(operatorConfig.Spec.Route.Secret.Name) != 0 {
+			customRoute.secretName = operatorConfig.Spec.Route.Secret.Name
+		}
+		customRoute.hostname = operatorConfig.Spec.Route.Hostname
+	}
+
+	// if hostname is not set and secret is, set the secret for the default route
+	if len(customRoute.hostname) == 0 && len(customRoute.secretName) == 0 {
+		defaultRoute.secretName = customRoute.secretName
+	}
+
+	customHostnameSpec := &RouteConfig{
+		defaultRoute: defaultRoute,
+		customRoute:  customRoute,
+		domain:       ingressConfig.Spec.Domain,
+		routeName:    routeName,
+	}
+	return customHostnameSpec
+}
+
+func (rc *RouteConfig) HostnameMatch() bool {
+	return rc.customRoute.hostname == rc.defaultRoute.hostname
+}
+
+func (rc *RouteConfig) IsCustomHostnameSet() bool {
+	return len(rc.customRoute.hostname) != 0
+}
+
+func (rc *RouteConfig) GetCustomRouteHostname() string {
+	return rc.customRoute.hostname
+}
+
+func (rc *RouteConfig) IsCustomTLSSecretSet() bool {
+	return len(rc.customRoute.secretName) != 0
+}
+
+func (rc *RouteConfig) IsDefaultTLSSecretSet() bool {
+	return len(rc.defaultRoute.secretName) != 0
+}
+
+func (rc *RouteConfig) GetCustomTLSSecretName() string {
+	return rc.customRoute.secretName
+}
+
+func (rc *RouteConfig) GetDefaultTLSSecretName() string {
+	return rc.defaultRoute.secretName
+}
+
+func (rc *RouteConfig) GetDomain() string {
+	return rc.domain
+}
+
+// Default `console` route points by default to the `console` service.
+// If custom hostname for the console is set, then the default route
+// should point to the redirect `console-redirect` service and the
+// created custom route should be pointing to the `console` service.
+func (rc *RouteConfig) DefaultRoute(tlsConfig *CustomTLSCert) *routev1.Route {
+	route := &routev1.Route{}
+	if rc.IsCustomHostnameSet() && rc.routeName == api.OpenShiftConsoleRouteName {
+		route = resourceread.ReadRouteV1OrDie(assets.MustAsset(fmt.Sprintf("routes/%s-redirect-route.yaml", rc.routeName)))
+	} else {
+		route = resourceread.ReadRouteV1OrDie(assets.MustAsset(fmt.Sprintf("routes/%s-route.yaml", rc.routeName)))
+	}
+	setTLS(tlsConfig, route)
+	return route
+}
+
+func (rc *RouteConfig) CustomRoute(tlsConfig *CustomTLSCert, routeName string) *routev1.Route {
+	route := resourceread.ReadRouteV1OrDie(assets.MustAsset(fmt.Sprintf("routes/%s-custom-route.yaml", rc.routeName)))
+	route.Spec.Host = rc.customRoute.hostname
+	setTLS(tlsConfig, route)
+	return route
+}
+
+func GetDefaultRouteHost(routeName string, ingressConfig *configv1.Ingress) string {
+	return fmt.Sprintf("%s-%s.%s", routeName, api.OpenShiftConsoleNamespace, ingressConfig.Spec.Domain)
 }
 
 func ApplyRoute(client routeclient.RoutesGetter, recorder events.Recorder, required *routev1.Route) (*routev1.Route, bool, error) {
@@ -61,80 +191,15 @@ func ApplyRoute(client routeclient.RoutesGetter, recorder events.Recorder, requi
 	return actual, true, err
 }
 
-// Default `console` route points by default to the `console` service.
-// If custom hostname for the console is set, then the default route
-// should point to the redirect `console-redirect` service and the
-// created custom route should be pointing to the `console` service.
-func DefaultRoute(cr *operatorv1.Console, tlsConfig *CustomTLSCert) *routev1.Route {
-	route := DefaultStub()
-	usePort := api.ConsoleContainerPortName
-	tlsTermination := routev1.TLSTerminationReencrypt
-	serviceName := api.OpenShiftConsoleServiceName
-	if IsCustomRouteSet(cr) {
-		usePort = api.RedirectContainerPortName
-		tlsTermination = routev1.TLSTerminationEdge
-		serviceName = api.OpenshiftConsoleRedirectServiceName
-	}
-	route.Spec = routev1.RouteSpec{
-		To:             toService(serviceName),
-		Port:           port(usePort),
-		TLS:            tls(tlsConfig, tlsTermination),
-		WildcardPolicy: wildcard(),
-	}
-	util.AddOwnerRef(route, util.OwnerRefFrom(cr))
-	return route
-}
-
-func DefaultStub() *routev1.Route {
-	meta := util.SharedMeta()
-	return &routev1.Route{
-		ObjectMeta: meta,
-	}
-}
-
-func CustomRoute(cr *operatorv1.Console, tlsConfig *CustomTLSCert) *routev1.Route {
-	route := DefaultStub()
-	route.ObjectMeta.Name = api.OpenshiftConsoleCustomRouteName
-	route.Spec = routev1.RouteSpec{
-		Host:           cr.Spec.Route.Hostname,
-		To:             toService(api.OpenShiftConsoleServiceName),
-		Port:           port(api.ConsoleContainerPortName),
-		TLS:            tls(tlsConfig, routev1.TLSTerminationReencrypt),
-		WildcardPolicy: wildcard(),
-	}
-	util.AddOwnerRef(route, util.OwnerRefFrom(cr))
-	return route
-}
-
-func toService(serviceName string) routev1.RouteTargetReference {
-	weight := int32(100)
-	return routev1.RouteTargetReference{
-		Kind:   "Service",
-		Name:   serviceName,
-		Weight: &weight,
-	}
-}
-
-func port(port string) *routev1.RoutePort {
-	return &routev1.RoutePort{
-		TargetPort: intstr.FromString(port),
-	}
-}
-
-func tls(tlsConfig *CustomTLSCert, terminationType routev1.TLSTerminationType) *routev1.TLSConfig {
-	tls := &routev1.TLSConfig{
-		Termination:                   terminationType,
-		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
-	}
+func setTLS(tlsConfig *CustomTLSCert, route *routev1.Route) {
 	if tlsConfig != nil {
-		tls.Certificate = tlsConfig.Certificate
-		tls.Key = tlsConfig.Key
+		route.Spec.TLS.Certificate = tlsConfig.Certificate
+		route.Spec.TLS.Key = tlsConfig.Key
 	}
-	return tls
 }
 
-func wildcard() routev1.WildcardPolicyType {
-	return routev1.WildcardPolicyNone
+func GetCustomRouteName(routeName string) string {
+	return fmt.Sprintf("%s-custom", routeName)
 }
 
 func GetCanonicalHost(route *routev1.Route) (string, error) {
@@ -155,9 +220,6 @@ func GetCanonicalHost(route *routev1.Route) (string, error) {
 	return "", customerrors.NewSyncError(fmt.Sprintf("route %q is not available at canonical host %s", route.ObjectMeta.Name, route.Status.Ingress))
 }
 
-// for the purpose of availability, we simply need to know when the
-// route has been admitted.  we may have multiple ingress on the route, each
-// with an admitted attribute.
 func IsAdmitted(route *routev1.Route) bool {
 	for _, ingress := range route.Status.Ingress {
 		if isIngressAdmitted(ingress) {
@@ -175,19 +237,4 @@ func isIngressAdmitted(ingress routev1.RouteIngress) bool {
 		}
 	}
 	return admitted
-}
-
-func IsCustomRouteSet(operatorConfig *operatorv1.Console) bool {
-	if operatorConfig == nil {
-		return false
-	}
-	return len(operatorConfig.Spec.Route.Hostname) != 0
-}
-
-// Check if reference for secret holding custom TLS certificate and key is set
-func IsCustomTLSSecretSet(operatorConfig *operatorv1.Console) bool {
-	if operatorConfig == nil {
-		return false
-	}
-	return len(operatorConfig.Spec.Route.Secret.Name) != 0
 }

@@ -51,6 +51,7 @@ type consoleOperator struct {
 	operatorConfigClient       operatorclientv1.ConsoleInterface
 	consoleConfigClient        configclientv1.ConsoleInterface
 	infrastructureConfigClient configclientv1.InfrastructureInterface
+	ingressConfigClient        configclientv1.IngressInterface
 	proxyConfigClient          configclientv1.ProxyInterface
 	oauthConfigClient          configclientv1.OAuthInterface
 	// core kube
@@ -103,6 +104,7 @@ func NewConsoleOperator(
 		operatorConfigClient:       operatorConfigClient.Consoles(),
 		consoleConfigClient:        configClient.Consoles(),
 		infrastructureConfigClient: configClient.Infrastructures(),
+		ingressConfigClient:        configClient.Ingresses(),
 		proxyConfigClient:          configClient.Proxies(),
 		oauthConfigClient:          configClient.OAuths(),
 		// console resources
@@ -135,6 +137,7 @@ func NewConsoleOperator(
 			configV1Informers.Consoles().Informer(),
 			operatorConfigInformer.Informer(),
 			configV1Informers.Infrastructures().Informer(),
+			configV1Informers.Ingresses().Informer(),
 			configV1Informers.Proxies().Informer(),
 			configV1Informers.OAuths().Informer(),
 		).WithFilteredEventsInformers( // console resources
@@ -164,6 +167,7 @@ type configSet struct {
 	Infrastructure *configv1.Infrastructure
 	Proxy          *configv1.Proxy
 	OAuth          *configv1.OAuth
+	Ingress        *configv1.Ingress
 }
 
 func (c *consoleOperator) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
@@ -203,12 +207,19 @@ func (c *consoleOperator) Sync(ctx context.Context, controllerContext factory.Sy
 		return err
 	}
 
+	ingressConfig, err := c.ingressConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("ingress config error: %v", err)
+		return err
+	}
+
 	configs := configSet{
 		Console:        consoleConfig,
 		Operator:       operatorConfig,
 		Infrastructure: infrastructureConfig,
 		Proxy:          proxyConfig,
 		OAuth:          oauthConfig,
+		Ingress:        ingressConfig,
 	}
 
 	if err := c.handleSync(ctx, controllerContext, configs); err != nil {
