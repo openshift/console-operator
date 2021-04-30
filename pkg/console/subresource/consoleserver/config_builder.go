@@ -41,6 +41,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	devCatalogCustomization    operatorv1.DeveloperConsoleCatalogCustomization
 	projectAccess              operatorv1.ProjectAccess
 	quickStarts                operatorv1.QuickStarts
+	addPage                    operatorv1.AddPage
 	customLogoFile             string
 	CAFile                     string
 	monitoring                 map[string]string
@@ -83,6 +84,10 @@ func (b *ConsoleServerCLIConfigBuilder) ProjectAccess(projectAccess operatorv1.P
 }
 func (b *ConsoleServerCLIConfigBuilder) QuickStarts(quickStarts operatorv1.QuickStarts) *ConsoleServerCLIConfigBuilder {
 	b.quickStarts = quickStarts
+	return b
+}
+func (b *ConsoleServerCLIConfigBuilder) AddPage(addPage operatorv1.AddPage) *ConsoleServerCLIConfigBuilder {
+	b.addPage = addPage
 	return b
 }
 func (b *ConsoleServerCLIConfigBuilder) CustomLogoFile(customLogoFile string) *ConsoleServerCLIConfigBuilder {
@@ -285,8 +290,11 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 		}
 	}
 
-	return conf
+	conf.AddPage = AddPage{
+		DisabledActions: b.addPage.DisabledActions,
+	}
 
+	return conf
 }
 
 func (b *ConsoleServerCLIConfigBuilder) providers() Providers {

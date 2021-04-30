@@ -76,6 +76,7 @@ func DefaultConfigMap(
 		ProjectAccess(operatorConfig.Spec.Customization.ProjectAccess).
 		QuickStarts(operatorConfig.Spec.Customization.QuickStarts).
 		CustomHostnameRedirectPort(isCustomRoute(activeConsoleRoute)).
+		AddPage(operatorConfig.Spec.Customization.AddPage).
 		StatusPageID(statusPageId(operatorConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
 		ConfigYAML()

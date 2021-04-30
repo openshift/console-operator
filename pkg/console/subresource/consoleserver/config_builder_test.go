@@ -646,6 +646,37 @@ providers: {}
 `,
 		},
 		{
+			name: "Config builder should handle custom add page with disabled actions",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.AddPage(v1.AddPage{
+					DisabledActions: []string{
+						"git",
+						"tekton.dev/pipelines",
+					},
+				})
+				return b.ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo: {}
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+customization:
+  addPage:
+    disabledActions:
+    - git
+    - tekton.dev/pipelines
+providers: {}
+`,
+		},
+		{
 			name: "Config builder should handle all inputs",
 			input: func() ([]byte, error) {
 				b := &ConsoleServerCLIConfigBuilder{}

@@ -74,6 +74,8 @@ type Customization struct {
 	DeveloperCatalog *DeveloperConsoleCatalogCustomization `yaml:"developerCatalog,omitempty"`
 	ProjectAccess    ProjectAccess                         `yaml:"projectAccess,omitempty"`
 	QuickStarts      QuickStarts                           `yaml:"quickStarts,omitempty"`
+	// addPage allows customizing actions on the Add page in developer perspective.
+	AddPage AddPage `yaml:"addPage,omitempty"`
 }
 
 // QuickStarts contains options for quick starts
@@ -110,6 +112,13 @@ type DeveloperConsoleCatalogCategory struct {
 	DeveloperConsoleCatalogCategoryMeta `yaml:",inline"`
 	// subcategories defines a list of child categories.
 	Subcategories []DeveloperConsoleCatalogCategoryMeta `yaml:"subcategories,omitempty"`
+}
+
+// AddPage allows customizing actions on the Add page in developer perspective.
+type AddPage struct {
+	// disabledActions is a list of actions that are not shown to users.
+	// Each action in the list is represented by its ID.
+	DisabledActions []string `yaml:"disabledActions,omitempty"`
 }
 
 type Providers struct {
