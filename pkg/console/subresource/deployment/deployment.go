@@ -145,7 +145,7 @@ func DefaultDownloadsDeployment(operatorConfig *operatorv1.Console, infrastructu
 	meta.Name = api.OpenShiftConsoleDownloadsDeploymentName
 	replicas := Replicas(infrastructureConfig)
 	affinity := downloadsPodAffinity(infrastructureConfig)
-	gracePeriod := int64(1)
+	gracePeriod := int64(0)
 
 	downloadsDeployment := &appsv1.Deployment{
 		ObjectMeta: meta,
