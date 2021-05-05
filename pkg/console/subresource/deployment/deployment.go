@@ -168,6 +168,7 @@ func DefaultDownloadsDeployment(operatorConfig *operatorv1.Console, infrastructu
 					},
 					Affinity:                      affinity,
 					Tolerations:                   tolerations(),
+					PriorityClassName:             "system-cluster-critical",
 					TerminationGracePeriodSeconds: &gracePeriod,
 					Containers: []corev1.Container{
 						{
