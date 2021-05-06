@@ -412,6 +412,41 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
 	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
 
+	downloadsDeploymentPodSpecSingleReplica := corev1.PodSpec{
+		NodeSelector: map[string]string{
+			"kubernetes.io/os": "linux",
+		},
+		Affinity:                      downloadsPodAffinity(infrastructureConfigSingleReplica),
+		Tolerations:                   tolerations(),
+		PriorityClassName:             "system-cluster-critical",
+		TerminationGracePeriodSeconds: &gracePeriod,
+		Containers: []corev1.Container{
+			{
+				Name:                     "download-server",
+				TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+				Image:                    "",
+				ImagePullPolicy:          corev1.PullPolicy("IfNotPresent"),
+				Ports: []corev1.ContainerPort{{
+					Name:          api.DownloadsPortName,
+					Protocol:      corev1.ProtocolTCP,
+					ContainerPort: api.DownloadsPort,
+				}},
+				ReadinessProbe: downloadsReadinessProbe(),
+				LivenessProbe:  defaultDownloadsProbe(),
+				Command:        []string{"/bin/sh"},
+				Resources: corev1.ResourceRequirements{
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
+					},
+				},
+				Args: downloadsContainerArgs(),
+			},
+		},
+	}
+	downloadsDeploymentPodSpecHighAvail := downloadsDeploymentPodSpecSingleReplica
+	downloadsDeploymentPodSpecHighAvail.Affinity = downloadsPodAffinity(infrastructureConfigHighlyAvailable)
+
 	tests := []struct {
 		name string
 		args args
@@ -439,37 +474,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 								workloadManagementAnnotation: workloadManagementAnnotationValue,
 							},
 						},
-						Spec: corev1.PodSpec{
-							NodeSelector: map[string]string{
-								"kubernetes.io/os": "linux",
-							},
-							Affinity:                      downloadsPodAffinity(infrastructureConfigSingleReplica),
-							Tolerations:                   tolerations(),
-							TerminationGracePeriodSeconds: &gracePeriod,
-							Containers: []corev1.Container{
-								{
-									Name:                     "download-server",
-									TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-									Image:                    "",
-									ImagePullPolicy:          corev1.PullPolicy("IfNotPresent"),
-									Ports: []corev1.ContainerPort{{
-										Name:          api.DownloadsPortName,
-										Protocol:      corev1.ProtocolTCP,
-										ContainerPort: api.DownloadsPort,
-									}},
-									ReadinessProbe: downloadsReadinessProbe(),
-									LivenessProbe:  defaultDownloadsProbe(),
-									Command:        []string{"/bin/sh"},
-									Resources: corev1.ResourceRequirements{
-										Requests: map[corev1.ResourceName]resource.Quantity{
-											corev1.ResourceCPU:    resource.MustParse("10m"),
-											corev1.ResourceMemory: resource.MustParse("50Mi"),
-										},
-									},
-									Args: downloadsContainerArgs(),
-								},
-							},
-						},
+						Spec: downloadsDeploymentPodSpecSingleReplica,
 					},
 				},
 				Status: appsv1.DeploymentStatus{},
@@ -497,37 +502,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 								workloadManagementAnnotation: workloadManagementAnnotationValue,
 							},
 						},
-						Spec: corev1.PodSpec{
-							NodeSelector: map[string]string{
-								"kubernetes.io/os": "linux",
-							},
-							Affinity:                      downloadsPodAffinity(infrastructureConfigHighlyAvailable),
-							Tolerations:                   tolerations(),
-							TerminationGracePeriodSeconds: &gracePeriod,
-							Containers: []corev1.Container{
-								{
-									Name:                     "download-server",
-									TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-									Image:                    "",
-									ImagePullPolicy:          corev1.PullPolicy("IfNotPresent"),
-									Ports: []corev1.ContainerPort{{
-										Name:          api.DownloadsPortName,
-										Protocol:      corev1.ProtocolTCP,
-										ContainerPort: api.DownloadsPort,
-									}},
-									ReadinessProbe: downloadsReadinessProbe(),
-									LivenessProbe:  defaultDownloadsProbe(),
-									Command:        []string{"/bin/sh"},
-									Resources: corev1.ResourceRequirements{
-										Requests: map[corev1.ResourceName]resource.Quantity{
-											corev1.ResourceCPU:    resource.MustParse("10m"),
-											corev1.ResourceMemory: resource.MustParse("50Mi"),
-										},
-									},
-									Args: downloadsContainerArgs(),
-								},
-							},
-						},
+						Spec: downloadsDeploymentPodSpecHighAvail,
 					},
 				},
 				Status: appsv1.DeploymentStatus{},
