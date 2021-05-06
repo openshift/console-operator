@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	corev1 "k8s.io/client-go/informers/core/v1"
-	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+	appsclientv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/klog/v2"
 
@@ -58,7 +58,7 @@ type consoleOperator struct {
 	secretsClient    coreclientv1.SecretsGetter
 	configMapClient  coreclientv1.ConfigMapsGetter
 	serviceClient    coreclientv1.ServicesGetter
-	deploymentClient appsv1.DeploymentsGetter
+	deploymentClient appsclientv1.DeploymentsGetter
 	// openshift
 	routeClient   routeclientv1.RoutesGetter
 	oauthClient   oauthclientv1.OAuthClientsGetter
@@ -81,7 +81,7 @@ func NewConsoleOperator(
 	corev1Client coreclientv1.CoreV1Interface,
 	coreV1 corev1.Interface,
 	// deployments
-	deploymentClient appsv1.DeploymentsGetter,
+	deploymentClient appsclientv1.DeploymentsGetter,
 	deploymentInformer appsinformersv1.DeploymentInformer,
 	// routes
 	routev1Client routeclientv1.RoutesGetter,

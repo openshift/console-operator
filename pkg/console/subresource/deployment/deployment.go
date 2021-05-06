@@ -77,6 +77,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 		secretResourceVersionAnnotation:                      sec.GetResourceVersion(),
 		consoleImageAnnotation:                               util.GetImageEnv("CONSOLE_IMAGE"),
 	}
+
 	// Set any annotations as needed so that `ApplyDeployment` rolls out a
 	// new version when they change.
 	meta.Annotations = deploymentAnnotations
@@ -145,7 +146,7 @@ func DefaultDownloadsDeployment(operatorConfig *operatorv1.Console, infrastructu
 	meta.Name = api.OpenShiftConsoleDownloadsDeploymentName
 	replicas := Replicas(infrastructureConfig)
 	affinity := downloadsPodAffinity(infrastructureConfig)
-	gracePeriod := int64(1)
+	gracePeriod := int64(0)
 
 	downloadsDeployment := &appsv1.Deployment{
 		ObjectMeta: meta,
