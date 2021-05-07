@@ -27,6 +27,7 @@ import (
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/management"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
+	"github.com/openshift/library-go/pkg/operator/staleconditions"
 	"github.com/openshift/library-go/pkg/operator/status"
 	"github.com/openshift/library-go/pkg/operator/unsupportedconfigoverridescontroller"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
@@ -342,19 +343,22 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	)
 
 	// NOTE: be sure to uncomment the .Run() below if using this
-	//staleConditionsController := staleconditions.NewRemoveStaleConditions(
-	//	[]string{
-	//		// If a condition is removed, we need to add it here for at least
-	//		// one release to ensure the operator does not permanently wedge.
-	//		// Please do something like the following:
-	//		//
-	//		// example: in 4.x.x we removed FooDegraded condition and can remove
-	//		// this in 4.x+1:
-	//		// "FooDegraded",
-	//	},
-	//	operatorClient,
-	//	controllerContext.EventRecorder,
-	//)
+	staleConditionsController := staleconditions.NewRemoveStaleConditionsController(
+		[]string{
+			// If a condition is removed, we need to add it here for at least
+			// one release to ensure the operator does not permanently wedge.
+			// Please do something like the following:
+			//
+			// example: in 4.x.x we removed FooDegraded condition and can remove
+			// this in 4.x+1:
+			// "FooDegraded",
+			//
+			// in 4.8 we removed DonwloadsDeploymentSyncDegraded and can remove this in 4.9
+			"DonwloadsDeploymentSyncDegraded",
+		},
+		operatorClient,
+		controllerContext.EventRecorder,
+	)
 
 	configUpgradeableController := unsupportedconfigoverridescontroller.NewUnsupportedConfigOverridesController(operatorClient, controllerContext.EventRecorder)
 	logLevelController := loglevel.NewClusterOperatorLoggingController(operatorClient, controllerContext.EventRecorder)
@@ -392,11 +396,10 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		cliDownloadsController,
 		downloadsDeploymentController,
 		consoleRouteHealthCheckController,
+		staleConditionsController,
 	} {
 		go controller.Run(ctx, 1)
 	}
-
-	// go staleConditionsController.Run(1, ctx.Done())
 
 	<-ctx.Done()
 	return fmt.Errorf("stopped")

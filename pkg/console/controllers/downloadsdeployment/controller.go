@@ -106,7 +106,7 @@ func (c *DownloadsDeploymentSyncController) Sync(ctx context.Context, controller
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
 	infrastructureConfig, err := c.infrastructureConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
-	statusHandler.AddCondition(status.HandleDegraded("DonwloadsDeploymentSync", "FailedInfrastructureConfigGet", err))
+	statusHandler.AddCondition(status.HandleDegraded("DownloadsDeploymentSync", "FailedInfrastructureConfigGet", err))
 	if err != nil {
 		return statusHandler.FlushAndReturn(err)
 	}
