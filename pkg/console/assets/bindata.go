@@ -1,5 +1,6 @@
 // Code generated for package assets by go-bindata DO NOT EDIT. (@generated)
 // sources:
+// bindata/configmaps/console-public-configmap.yaml
 // bindata/routes/console-custom-route.yaml
 // bindata/routes/console-redirect-route.yaml
 // bindata/routes/console-route.yaml
@@ -59,6 +60,30 @@ func (fi bindataFileInfo) IsDir() bool {
 // Sys return file is sys mode
 func (fi bindataFileInfo) Sys() interface{} {
 	return nil
+}
+
+var _configmapsConsolePublicConfigmapYaml = []byte(`# This configmap 'console-public' manifest is used to expose the console URL
+# to all authenticated users
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: console-public
+  namespace: openshift-config-managed
+`)
+
+func configmapsConsolePublicConfigmapYamlBytes() ([]byte, error) {
+	return _configmapsConsolePublicConfigmapYaml, nil
+}
+
+func configmapsConsolePublicConfigmapYaml() (*asset, error) {
+	bytes, err := configmapsConsolePublicConfigmapYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "configmaps/console-public-configmap.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
 }
 
 var _routesConsoleCustomRouteYaml = []byte(`# This route 'console-custom' manifest is used in case a custom console route is set
@@ -416,14 +441,15 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"routes/console-custom-route.yaml":       routesConsoleCustomRouteYaml,
-	"routes/console-redirect-route.yaml":     routesConsoleRedirectRouteYaml,
-	"routes/console-route.yaml":              routesConsoleRouteYaml,
-	"routes/downloads-custom-route.yaml":     routesDownloadsCustomRouteYaml,
-	"routes/downloads-route.yaml":            routesDownloadsRouteYaml,
-	"services/console-redirect-service.yaml": servicesConsoleRedirectServiceYaml,
-	"services/console-service.yaml":          servicesConsoleServiceYaml,
-	"services/downloads-service.yaml":        servicesDownloadsServiceYaml,
+	"configmaps/console-public-configmap.yaml": configmapsConsolePublicConfigmapYaml,
+	"routes/console-custom-route.yaml":         routesConsoleCustomRouteYaml,
+	"routes/console-redirect-route.yaml":       routesConsoleRedirectRouteYaml,
+	"routes/console-route.yaml":                routesConsoleRouteYaml,
+	"routes/downloads-custom-route.yaml":       routesDownloadsCustomRouteYaml,
+	"routes/downloads-route.yaml":              routesDownloadsRouteYaml,
+	"services/console-redirect-service.yaml":   servicesConsoleRedirectServiceYaml,
+	"services/console-service.yaml":            servicesConsoleServiceYaml,
+	"services/downloads-service.yaml":          servicesDownloadsServiceYaml,
 }
 
 // AssetDir returns the file names below a certain
@@ -467,6 +493,9 @@ type bintree struct {
 }
 
 var _bintree = &bintree{nil, map[string]*bintree{
+	"configmaps": {nil, map[string]*bintree{
+		"console-public-configmap.yaml": {configmapsConsolePublicConfigmapYaml, map[string]*bintree{}},
+	}},
 	"routes": {nil, map[string]*bintree{
 		"console-custom-route.yaml":   {routesConsoleCustomRouteYaml, map[string]*bintree{}},
 		"console-redirect-route.yaml": {routesConsoleRedirectRouteYaml, map[string]*bintree{}},

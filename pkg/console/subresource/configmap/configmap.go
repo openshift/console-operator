@@ -4,15 +4,16 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/assets"
 	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
 )
 
 const (
@@ -115,25 +116,17 @@ func isCustomRoute(activeRoute *routev1.Route) bool {
 }
 
 func DefaultPublicConfig(consoleURL string) *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      api.OpenShiftConsolePublicConfigMapName,
-			Namespace: api.OpenShiftConfigManagedNamespace,
-		},
-		Data: map[string]string{
-			"consoleURL": consoleURL,
-		},
+	config := resourceread.ReadConfigMapV1OrDie(assets.MustAsset("configmaps/console-public-configmap.yaml"))
+	config.Data = map[string]string{
+		"consoleURL": consoleURL,
 	}
+	return config
 }
 
 func EmptyPublicConfig() *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      api.OpenShiftConsolePublicConfigMapName,
-			Namespace: api.OpenShiftConfigManagedNamespace,
-		},
-		Data: map[string]string{},
-	}
+	config := resourceread.ReadConfigMapV1OrDie(assets.MustAsset("configmaps/console-public-configmap.yaml"))
+	config.Data = map[string]string{}
+	return config
 }
 
 func Stub() *corev1.ConfigMap {
