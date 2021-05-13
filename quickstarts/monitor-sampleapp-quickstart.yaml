@@ -7,7 +7,6 @@ metadata:
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
 spec:
-  version: 4.7
   displayName: Monitor your sample application
   durationMinutes: 10
   description: Now that you’ve created a sample application and added health checks,
