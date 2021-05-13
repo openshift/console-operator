@@ -43,7 +43,8 @@ func DefaultConfigMap(
 	activeConsoleRoute *routev1.Route,
 	useDefaultCAFile bool,
 	inactivityTimeoutSeconds int,
-	pluginsEndpoingMap map[string]string) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
+	pluginsEndpoingMap map[string]string,
+	managedClusterEndpointsMap map[string]string) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
 	defaultConfig, err := defaultBuilder.Host(activeConsoleRoute.Spec.Host).
@@ -54,6 +55,7 @@ func DefaultConfigMap(
 		APIServerURL(getApiUrl(infrastructureConfig)).
 		Monitoring(monitoringSharedConfig).
 		InactivityTimeout(inactivityTimeoutSeconds).
+		ManagedClusters(managedClusterEndpointsMap).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate default console-config config: %v", err)

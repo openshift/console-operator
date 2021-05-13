@@ -384,13 +384,16 @@ func consoleContainer(cr *operatorv1.Console, volConfigList []volumeConfig, prox
 		"--public-dir=/opt/bridge/static",
 		"--config=/var/console-config/console-config.yaml",
 		"--service-ca-file=/var/service-ca/service-ca.crt",
+		"--user-settings-location=localstorage",
+		"--user-auth-oidc-client-id=multicluster-console",
+		"--user-auth-oidc-client-secret=open-sesame",
 	}
 	flags = withLogLevelFlag(cr.Spec.LogLevel, flags)
 	flags = withStatusPageFlag(cr.Spec.Providers, flags)
 
 	return corev1.Container{
 		Image:           util.GetImageEnv("CONSOLE_IMAGE"),
-		ImagePullPolicy: corev1.PullPolicy("IfNotPresent"),
+		ImagePullPolicy: corev1.PullPolicy("Always"),
 		Name:            api.OpenShiftConsoleName,
 		Command:         flags,
 		Env:             setEnvironmentVariables(proxyConfig),
@@ -686,7 +689,7 @@ except socket.error as err:
 		addr = ('', 8080)
 		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	else:
-		raise    
+		raise
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sock.bind(addr)
 sock.listen(5)

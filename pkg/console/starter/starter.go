@@ -91,7 +91,12 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OAuthClientName).String()
 	}
 
-	kubeInformersNamespaced := informers.NewSharedInformerFactoryWithOptions(
+	kubeInformers := informers.NewSharedInformerFactoryWithOptions(
+		kubeClient,
+		resync,
+	);
+
+	kubeInformersConsoleNamespaced := informers.NewSharedInformerFactoryWithOptions(
 		kubeClient,
 		resync,
 		informers.WithNamespace(api.OpenShiftConsoleNamespace),
@@ -166,11 +171,12 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
 
 		// core resources
-		kubeClient.CoreV1(),                 // Secrets, ConfigMaps, Service
-		kubeInformersNamespaced.Core().V1(), // Secrets, ConfigMaps, Service
+		kubeClient.CoreV1(),                        // Namespaces, Secrets, ConfigMaps, Service
+		kubeInformersConsoleNamespaced.Core().V1(), // Secrets, ConfigMaps, Service
+		kubeInformers.Core().V1().Namespaces(),     // Namespaces
 		// deployments
 		kubeClient.AppsV1(),
-		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
+		kubeInformersConsoleNamespaced.Apps().V1().Deployments(), // Deployments
 		// routes
 		routesClient.RouteV1(),
 		routesInformersNamespaced.Route().V1().Routes(), // Route
@@ -198,7 +204,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		operatorConfigInformers.Operator().V1().Consoles(),
 
 		kubeClient.AppsV1(), // Deployments
-		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
+		kubeInformersConsoleNamespaced.Apps().V1().Deployments(), // Deployments
 		recorder,
 		resourceSyncer,
 	)
@@ -229,7 +235,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeClient.CoreV1(),                          // only needs to interact with the service resource
 		// informers
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
-		kubeInformersNamespaced.Core().V1().Services(),     // Services
+		kubeInformersConsoleNamespaced.Core().V1().Services(),     // Services
 		// events
 		recorder,
 		resourceSyncer,
@@ -246,7 +252,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeClient.CoreV1(),                          // only needs to interact with the service resource
 		// informers
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
-		kubeInformersNamespaced.Core().V1().Services(),     // Services
+		kubeInformersConsoleNamespaced.Core().V1().Services(),     // Services
 		// events
 		recorder,
 		resourceSyncer,
@@ -267,7 +273,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeClient.CoreV1(),
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
-		kubeInformersNamespaced.Core().V1(),                 // `openshift-console` namespace informers
+		kubeInformersConsoleNamespaced.Core().V1(),                 // `openshift-console` namespace informers
 		kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
 		routesInformersNamespaced.Route().V1().Routes(),
 		// events
@@ -290,7 +296,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeClient.CoreV1(),
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
-		kubeInformersNamespaced.Core().V1(),                 // `openshift-console` namespace informers
+		kubeInformersConsoleNamespaced.Core().V1(),                 // `openshift-console` namespace informers
 		kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
 		routesInformersNamespaced.Route().V1().Routes(),
 		// events
@@ -308,7 +314,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeClient.CoreV1(),
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
-		kubeInformersNamespaced.Core().V1(), // `openshift-console` namespace informers
+		kubeInformersConsoleNamespaced.Core().V1(), // `openshift-console` namespace informers
 		routesInformersNamespaced.Route().V1().Routes(),
 		// events
 		recorder,
@@ -363,7 +369,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	for _, informer := range []interface {
 		Start(stopCh <-chan struct{})
 	}{
-		kubeInformersNamespaced,
+		kubeInformers,
+		kubeInformersConsoleNamespaced,
 		kubeInformersConfigNamespaced,
 		kubeInformersManagedNamespaced,
 		resourceSyncerInformers,
