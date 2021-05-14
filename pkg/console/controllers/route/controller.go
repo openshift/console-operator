@@ -150,6 +150,12 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 
 	_, defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(ctx, routeConfig, controllerContext)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DefaultRouteSync", defaultRouteErrReason, defaultRouteErr))
+
+	// warn if deprecated configuration of custom domain for 'console' route is set on the console-operator config
+	if (len(operatorConfig.Spec.Route.Hostname) != 0 || len(operatorConfig.Spec.Route.Secret.Name) != 0) && c.routeName == api.OpenShiftConsoleRouteName {
+		klog.Warning(deprecationMessage(operatorConfig))
+	}
+
 	return statusHandler.FlushAndReturn(defaultRouteErr)
 }
 
@@ -411,4 +417,26 @@ func clientWithCA(caPool *x509.CertPool) *http.Client {
 			},
 		},
 	}
+}
+
+func deprecationMessage(operatorConfig *operatorsv1.Console) string {
+	msg := `Deprecated: custom domain is being configured on console-operator config for the 'console' route.
+Please remove that entry from console-operator config and instead configure ingress config spec with following custom domain entry for 'console' route:
+----
+spec:
+  componentRoutes:
+  - name: console
+    namespace: openshift-console
+`
+	if len(operatorConfig.Spec.Route.Hostname) != 0 {
+		msg += fmt.Sprintf("    hostname: %s\n", operatorConfig.Spec.Route.Hostname)
+	}
+
+	if len(operatorConfig.Spec.Route.Secret.Name) != 0 {
+		msg += "    servingCertKeyPairSecret:\n"
+		msg += fmt.Sprintf("      name: %s\n", operatorConfig.Spec.Route.Secret.Name)
+	}
+	msg += "----"
+
+	return msg
 }
