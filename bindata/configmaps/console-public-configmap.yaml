@@ -1,0 +1,7 @@
+# This configmap 'console-public' manifest is used to expose the console URL
+# to all authenticated users
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: console-public
+  namespace: openshift-config-managed
