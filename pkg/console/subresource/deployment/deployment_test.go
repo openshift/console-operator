@@ -9,12 +9,20 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/assets"
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
+)
+
+const (
+	workloadManagementAnnotation      = "target.workload.openshift.io/management"
+	workloadManagementAnnotationValue = `{"effect": "PreferredDuringScheduling"}`
 )
 
 func TestDefaultDeployment(t *testing.T) {
@@ -23,6 +31,7 @@ func TestDefaultDeployment(t *testing.T) {
 		singleNodeReplicaCount int32 = SingleNodeConsoleReplicas
 		labels                       = map[string]string{"app": api.OpenShiftConsoleName, "component": "ui"}
 		gracePeriod            int64 = 40
+		tolerationSeconds      int64 = 120
 	)
 	type args struct {
 		config             *operatorsv1.Console
@@ -162,6 +171,13 @@ func TestDefaultDeployment(t *testing.T) {
 	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
 	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
 
+	consoleDeploymentTemplate := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/console-deployment.yaml"))
+	withContainers(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
+	withVolumes(consoleDeploymentTemplate, trustedCAConfigMapEmpty, false)
+	consoleDeploymentContainer := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
+	withVolumes(consoleDeploymentTemplate, trustedCAConfigMapSet, false)
+	consoleDeploymentContainerTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
+
 	tests := []struct {
 		name string
 		args args
@@ -188,7 +204,10 @@ func TestDefaultDeployment(t *testing.T) {
 				infrastructure: infrastructureConfigHighlyAvailable,
 			},
 			want: &appsv1.Deployment{
-				TypeMeta:   metav1.TypeMeta{},
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "apps/v1",
+				},
 				ObjectMeta: consoleDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &defaultReplicaCount,
@@ -216,7 +235,7 @@ func TestDefaultDeployment(t *testing.T) {
 							TerminationGracePeriodSeconds: &gracePeriod,
 							SecurityContext:               &corev1.PodSecurityContext{},
 							Containers: []corev1.Container{
-								consoleContainer(consoleOperatorConfig, defaultVolumeConfig(), proxyConfig),
+								consoleDeploymentContainer,
 							},
 							Volumes: consoleVolumes(defaultVolumeConfig()),
 						},
@@ -251,7 +270,10 @@ func TestDefaultDeployment(t *testing.T) {
 				infrastructure: infrastructureConfigHighlyAvailable,
 			},
 			want: &appsv1.Deployment{
-				TypeMeta:   metav1.TypeMeta{},
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "apps/v1",
+				},
 				ObjectMeta: consoleDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &defaultReplicaCount,
@@ -279,7 +301,7 @@ func TestDefaultDeployment(t *testing.T) {
 							TerminationGracePeriodSeconds: &gracePeriod,
 							SecurityContext:               &corev1.PodSecurityContext{},
 							Containers: []corev1.Container{
-								consoleContainer(consoleOperatorConfig, append(defaultVolumeConfig(), trustedCAVolume()), proxyConfig),
+								consoleDeploymentContainerTrusted,
 							},
 							Volumes: consoleVolumes(append(defaultVolumeConfig(), trustedCAVolume())),
 						},
@@ -314,7 +336,10 @@ func TestDefaultDeployment(t *testing.T) {
 				infrastructure: infrastructureConfigSingleReplica,
 			},
 			want: &appsv1.Deployment{
-				TypeMeta:   metav1.TypeMeta{},
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "apps/v1",
+				},
 				ObjectMeta: consoleDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &singleNodeReplicaCount,
@@ -342,7 +367,7 @@ func TestDefaultDeployment(t *testing.T) {
 							TerminationGracePeriodSeconds: &gracePeriod,
 							SecurityContext:               &corev1.PodSecurityContext{},
 							Containers: []corev1.Container{
-								consoleContainer(consoleOperatorConfig, defaultVolumeConfig(), proxyConfig),
+								consoleDeploymentContainer,
 							},
 							Volumes: consoleVolumes(defaultVolumeConfig()),
 						},
@@ -366,13 +391,494 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 }
 
+func TestWithAnnotations(t *testing.T) {
+	type args struct {
+		deployment                  *appsv1.Deployment
+		cm                          *corev1.ConfigMap
+		serviceCAConfigMap          *corev1.ConfigMap
+		defaultIngressCertConfigMap *corev1.ConfigMap
+		trustedCAConfigMap          *corev1.ConfigMap
+		sec                         *corev1.Secret
+		proxyConfig                 *configv1.Proxy
+		infrastructureConfig        *configv1.Infrastructure
+	}
+
+	consoleConfig := &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "console-config",
+			ResourceVersion: "10245",
+		},
+		Data:       map[string]string{"console-config.yaml": ""},
+		BinaryData: nil,
+	}
+
+	infrastructureConfig := &configv1.Infrastructure{
+		ObjectMeta: metav1.ObjectMeta{
+			ResourceVersion: "12345",
+		},
+		Status: configv1.InfrastructureStatus{
+			InfrastructureTopology: configv1.SingleReplicaTopologyMode,
+		},
+	}
+
+	proxyConfig := &configv1.Proxy{
+		ObjectMeta: metav1.ObjectMeta{
+			ResourceVersion: "54321",
+		},
+	}
+
+	serviceCAConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			ResourceVersion: "34343",
+		},
+	}
+	defaultIngressCertConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			ResourceVersion: "77777",
+		},
+	}
+	trustedCAConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			ResourceVersion: "75577",
+		},
+	}
+
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			ResourceVersion: "101010",
+		},
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want *appsv1.Deployment
+	}{
+		{
+			name: "Test Default Annotations",
+			args: args{
+				deployment: &appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{},
+					},
+					Spec: appsv1.DeploymentSpec{
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: metav1.ObjectMeta{
+								Annotations: map[string]string{
+									workloadManagementAnnotation: workloadManagementAnnotationValue,
+								},
+							},
+						},
+					},
+				},
+				cm:                          consoleConfig,
+				serviceCAConfigMap:          serviceCAConfigMap,
+				defaultIngressCertConfigMap: defaultIngressCertConfigMap,
+				trustedCAConfigMap:          trustedCAConfigMap,
+				sec:                         sec,
+				proxyConfig:                 proxyConfig,
+				infrastructureConfig:        infrastructureConfig,
+			},
+			want: &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						configMapResourceVersionAnnotation:                   consoleConfig.GetResourceVersion(),
+						serviceCAConfigMapResourceVersionAnnotation:          serviceCAConfigMap.GetResourceVersion(),
+						defaultIngressCertConfigMapResourceVersionAnnotation: defaultIngressCertConfigMap.GetResourceVersion(),
+						trustedCAConfigMapResourceVersionAnnotation:          trustedCAConfigMap.GetResourceVersion(),
+						proxyConfigResourceVersionAnnotation:                 proxyConfig.GetResourceVersion(),
+						infrastructureConfigResourceVersionAnnotation:        infrastructureConfig.GetResourceVersion(),
+						secretResourceVersionAnnotation:                      sec.GetResourceVersion(),
+						consoleImageAnnotation:                               util.GetImageEnv("CONSOLE_IMAGE"),
+					},
+				},
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Annotations: map[string]string{
+								workloadManagementAnnotation:                         workloadManagementAnnotationValue,
+								configMapResourceVersionAnnotation:                   consoleConfig.GetResourceVersion(),
+								serviceCAConfigMapResourceVersionAnnotation:          serviceCAConfigMap.GetResourceVersion(),
+								defaultIngressCertConfigMapResourceVersionAnnotation: defaultIngressCertConfigMap.GetResourceVersion(),
+								trustedCAConfigMapResourceVersionAnnotation:          trustedCAConfigMap.GetResourceVersion(),
+								proxyConfigResourceVersionAnnotation:                 proxyConfig.GetResourceVersion(),
+								infrastructureConfigResourceVersionAnnotation:        infrastructureConfig.GetResourceVersion(),
+								secretResourceVersionAnnotation:                      sec.GetResourceVersion(),
+								consoleImageAnnotation:                               util.GetImageEnv("CONSOLE_IMAGE"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withAnnotations(tt.args.deployment, tt.args.cm, tt.args.serviceCAConfigMap, tt.args.defaultIngressCertConfigMap, tt.args.trustedCAConfigMap, tt.args.sec, tt.args.proxyConfig, tt.args.infrastructureConfig)
+			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestWithReplicas(t *testing.T) {
+	var (
+		singleNodeReplicaCount int32 = SingleNodeConsoleReplicas
+		defaultReplicaCount    int32 = DefaultConsoleReplicas
+	)
+
+	type args struct {
+		deployment           *appsv1.Deployment
+		infrastructureConfig *configv1.Infrastructure
+	}
+
+	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
+	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
+
+	tests := []struct {
+		name string
+		args args
+		want *appsv1.Deployment
+	}{
+		{
+			name: "Test Single Replica",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Spec: appsv1.DeploymentSpec{},
+				},
+				infrastructureConfig: infrastructureConfigSingleReplica,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &singleNodeReplicaCount,
+				},
+			},
+		},
+		{
+			name: "Test Highly Available Replica",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Spec: appsv1.DeploymentSpec{},
+				},
+				infrastructureConfig: infrastructureConfigHighlyAvailable,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &defaultReplicaCount,
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withReplicas(tt.args.deployment, tt.args.infrastructureConfig)
+			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestWithAffinity(t *testing.T) {
+	type args struct {
+		deployment           *appsv1.Deployment
+		infrastructureConfig *configv1.Infrastructure
+	}
+
+	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
+	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
+
+	singleReplicaSpec := corev1.PodSpec{
+		Affinity: consolePodAffinity(infrastructureConfigSingleReplica),
+	}
+	highlyAvailableSpec := corev1.PodSpec{
+		Affinity: consolePodAffinity(infrastructureConfigHighlyAvailable),
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want *appsv1.Deployment
+	}{
+		{
+			name: "Test Single Replica Affinity",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Spec: appsv1.DeploymentSpec{},
+				},
+				infrastructureConfig: infrastructureConfigSingleReplica,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: singleReplicaSpec,
+					},
+				},
+			},
+		},
+		{
+			name: "Test Highly Available Affinity",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Spec: appsv1.DeploymentSpec{},
+				},
+				infrastructureConfig: infrastructureConfigHighlyAvailable,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: highlyAvailableSpec,
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withAffinity(tt.args.deployment, tt.args.infrastructureConfig)
+			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestWithVolumes(t *testing.T) {
+	type args struct {
+		deployment         *appsv1.Deployment
+		trustedCAConfigMap *corev1.ConfigMap
+		canMountCustomLogo bool
+	}
+
+	trustedCAConfigMap := &corev1.ConfigMap{
+		Data: map[string]string{
+			"ca-bundle.crt": "foobar",
+		},
+	}
+
+	consoleDeployment := &appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: "consoleContainer",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	volumeConfig := defaultVolumeConfig()
+	trustedVolumeConfig := append(volumeConfig, trustedCAVolume())
+	customLogoVolumeConfig := append(volumeConfig, customLogoVolume())
+	allVolumeConfig := append(volumeConfig, trustedCAVolume(), customLogoVolume())
+
+	tests := []struct {
+		name string
+		args args
+		want *appsv1.Deployment
+	}{
+		{
+			name: "Test Volumes With Only CA Bundle",
+			args: args{
+				deployment:         consoleDeployment,
+				trustedCAConfigMap: trustedCAConfigMap,
+				canMountCustomLogo: false,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:         "consoleContainer",
+									VolumeMounts: consoleVolumeMounts(trustedVolumeConfig),
+								},
+							},
+							Volumes: consoleVolumes(trustedVolumeConfig),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Test Volumes Without CA Bundle And Custom Logo False",
+			args: args{
+				deployment:         consoleDeployment,
+				trustedCAConfigMap: &corev1.ConfigMap{},
+				canMountCustomLogo: false,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:         "consoleContainer",
+									VolumeMounts: consoleVolumeMounts(volumeConfig),
+								},
+							},
+							Volumes: consoleVolumes(volumeConfig),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Test Volumes With Only Custom Logo True",
+			args: args{
+				deployment:         consoleDeployment,
+				trustedCAConfigMap: &corev1.ConfigMap{},
+				canMountCustomLogo: true,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:         "consoleContainer",
+									VolumeMounts: consoleVolumeMounts(customLogoVolumeConfig),
+								},
+							},
+							Volumes: consoleVolumes(customLogoVolumeConfig),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Test Volumes With CA bundle And Custom Logo True",
+			args: args{
+				deployment:         consoleDeployment,
+				trustedCAConfigMap: trustedCAConfigMap,
+				canMountCustomLogo: true,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:         "consoleContainer",
+									VolumeMounts: consoleVolumeMounts(allVolumeConfig),
+								},
+							},
+							Volumes: consoleVolumes(allVolumeConfig),
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withVolumes(tt.args.deployment, tt.args.trustedCAConfigMap, tt.args.canMountCustomLogo)
+			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestWithContainers(t *testing.T) {
+	type args struct {
+		deployment     *appsv1.Deployment
+		operatorConfig *operatorsv1.Console
+		proxyConfig    *configv1.Proxy
+	}
+
+	operatorConfig := &operatorsv1.Console{
+		TypeMeta:   metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{},
+		Spec: operatorsv1.ConsoleSpec{
+			OperatorSpec: operatorsv1.OperatorSpec{
+				LogLevel: operatorsv1.Debug,
+			},
+		},
+		Status: operatorsv1.ConsoleStatus{},
+	}
+
+	proxyConfig := &configv1.Proxy{
+		ObjectMeta: metav1.ObjectMeta{
+			ResourceVersion: "54321",
+		},
+	}
+
+	defaultCommands := []string{
+		"ls -Al",
+	}
+	expectedCommands := withLogLevelFlag(operatorConfig.Spec.LogLevel, defaultCommands)
+	expectedCommands = withStatusPageFlag(operatorConfig.Spec.Providers, expectedCommands)
+
+	consoleDeployment := &appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:    "consoleContainer",
+							Command: defaultCommands,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want *appsv1.Deployment
+	}{
+		{
+			name: "Test Default Containers",
+			args: args{
+				deployment:     consoleDeployment,
+				operatorConfig: operatorConfig,
+				proxyConfig:    proxyConfig,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:    "consoleContainer",
+									Command: expectedCommands,
+									Env:     setEnvironmentVariables(proxyConfig),
+									Image:   util.GetImageEnv("CONSOLE_IMAGE"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withContainers(tt.args.deployment, tt.args.operatorConfig, tt.args.proxyConfig)
+			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
 func TestDefaultDownloadsDeployment(t *testing.T) {
 
 	var (
-		defaultReplicaCount    int32 = DefaultConsoleReplicas
-		singleNodeReplicaCount int32 = SingleNodeConsoleReplicas
-		labels                       = util.LabelsForDownloads()
-		gracePeriod            int64 = 0
+		defaultReplicaCount         int32 = DefaultConsoleReplicas
+		singleNodeReplicaCount      int32 = SingleNodeConsoleReplicas
+		labels                            = util.LabelsForDownloads()
+		gracePeriod                 int64 = 0
+		tolerationSeconds           int64 = 120
+		downloadsDeploymentTemplate       = resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/downloads-deployment.yaml"))
 	)
 
 	type args struct {
@@ -416,8 +922,27 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 		NodeSelector: map[string]string{
 			"kubernetes.io/os": "linux",
 		},
-		Affinity:                      downloadsPodAffinity(infrastructureConfigSingleReplica),
-		Tolerations:                   tolerations(),
+		Affinity: downloadsPodAffinity(infrastructureConfigSingleReplica),
+		Tolerations: []corev1.Toleration{
+			{
+				Key:      "node-role.kubernetes.io/master",
+				Operator: corev1.TolerationOpExists,
+				Effect:   corev1.TaintEffectNoSchedule,
+			},
+			{
+				Key:               "node.kubernetes.io/unreachable",
+				Operator:          corev1.TolerationOpExists,
+				Effect:            corev1.TaintEffectNoExecute,
+				TolerationSeconds: &tolerationSeconds,
+			},
+			{
+				Key:               "node.kubernetes.io/not-reachable",
+				Operator:          corev1.TolerationOpExists,
+				Effect:            corev1.TaintEffectNoExecute,
+				TolerationSeconds: &tolerationSeconds,
+			},
+		},
+		SecurityContext:               &corev1.PodSecurityContext{},
 		PriorityClassName:             "system-cluster-critical",
 		TerminationGracePeriodSeconds: &gracePeriod,
 		Containers: []corev1.Container{
@@ -431,16 +956,40 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 					Protocol:      corev1.ProtocolTCP,
 					ContainerPort: api.DownloadsPort,
 				}},
-				ReadinessProbe: downloadsReadinessProbe(),
-				LivenessProbe:  defaultDownloadsProbe(),
-				Command:        []string{"/bin/sh"},
+				ReadinessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path:   "/",
+							Port:   intstr.FromInt(api.DownloadsPort),
+							Scheme: corev1.URIScheme("HTTP"),
+						},
+					},
+					TimeoutSeconds:   1,
+					PeriodSeconds:    10,
+					SuccessThreshold: 1,
+					FailureThreshold: 3,
+				},
+				LivenessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path:   "/",
+							Port:   intstr.FromInt(api.DownloadsPort),
+							Scheme: corev1.URIScheme("HTTP"),
+						},
+					},
+					TimeoutSeconds:   1,
+					PeriodSeconds:    10,
+					SuccessThreshold: 1,
+					FailureThreshold: 3,
+				},
+				Command: []string{"/bin/sh"},
 				Resources: corev1.ResourceRequirements{
 					Requests: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceCPU:    resource.MustParse("10m"),
 						corev1.ResourceMemory: resource.MustParse("50Mi"),
 					},
 				},
-				Args: downloadsContainerArgs(),
+				Args: downloadsDeploymentTemplate.Spec.Template.Spec.Containers[0].Args,
 			},
 		},
 	}
@@ -459,7 +1008,10 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				infrastructure: infrastructureConfigSingleReplica,
 			},
 			want: &appsv1.Deployment{
-				TypeMeta:   metav1.TypeMeta{},
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "apps/v1",
+				},
 				ObjectMeta: downloadsDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &singleNodeReplicaCount,
@@ -487,7 +1039,10 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				infrastructure: infrastructureConfigHighlyAvailable,
 			},
 			want: &appsv1.Deployment{
-				TypeMeta:   metav1.TypeMeta{},
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "apps/v1",
+				},
 				ObjectMeta: downloadsDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &defaultReplicaCount,
@@ -512,6 +1067,183 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if diff := deep.Equal(DefaultDownloadsDeployment(tt.args.config, tt.args.infrastructure), tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestWithDownloadsReplicas(t *testing.T) {
+	var (
+		singleNodeReplicaCount int32 = SingleNodeConsoleReplicas
+		defaultReplicaCount    int32 = DefaultConsoleReplicas
+	)
+
+	type args struct {
+		deployment           *appsv1.Deployment
+		infrastructureConfig *configv1.Infrastructure
+	}
+
+	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
+	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
+
+	tests := []struct {
+		name string
+		args args
+		want *appsv1.Deployment
+	}{
+		{
+			name: "Test Downloads Single Replica",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Spec: appsv1.DeploymentSpec{},
+				},
+				infrastructureConfig: infrastructureConfigSingleReplica,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &singleNodeReplicaCount,
+				},
+			},
+		},
+		{
+			name: "Test Downloads Highly Available Replica",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Spec: appsv1.DeploymentSpec{},
+				},
+				infrastructureConfig: infrastructureConfigHighlyAvailable,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &defaultReplicaCount,
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withDownloadsReplicas(tt.args.deployment, tt.args.infrastructureConfig)
+			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestWithDownloadsAffinity(t *testing.T) {
+	type args struct {
+		deployment           *appsv1.Deployment
+		infrastructureConfig *configv1.Infrastructure
+	}
+
+	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
+	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
+
+	singleReplicaSpec := corev1.PodSpec{
+		Affinity: downloadsPodAffinity(infrastructureConfigSingleReplica),
+	}
+	highlyAvailableSpec := corev1.PodSpec{
+		Affinity: downloadsPodAffinity(infrastructureConfigHighlyAvailable),
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want *appsv1.Deployment
+	}{
+		{
+			name: "Test Single Replica Downloads Affinity",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Spec: appsv1.DeploymentSpec{},
+				},
+				infrastructureConfig: infrastructureConfigSingleReplica,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: singleReplicaSpec,
+					},
+				},
+			},
+		},
+		{
+			name: "Test Highly Available Downloads Affinity",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Spec: appsv1.DeploymentSpec{},
+				},
+				infrastructureConfig: infrastructureConfigHighlyAvailable,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: highlyAvailableSpec,
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withDownloadsAffinity(tt.args.deployment, tt.args.infrastructureConfig)
+			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestWithDownloadsContainers(t *testing.T) {
+	type args struct {
+		deployment *appsv1.Deployment
+	}
+
+	downloadsDeployment := &appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: "downloadsContainer",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want *appsv1.Deployment
+	}{
+		{
+			name: "Test Default Download Containers",
+			args: args{
+				deployment: downloadsDeployment,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "downloadsContainer",
+									Image: util.GetImageEnv("DOWNLOADS_IMAGE"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withDownloadsContainers(tt.args.deployment)
+			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})

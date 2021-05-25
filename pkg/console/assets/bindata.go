@@ -1,6 +1,8 @@
 // Code generated for package assets by go-bindata DO NOT EDIT. (@generated)
 // sources:
 // bindata/configmaps/console-public-configmap.yaml
+// bindata/deployments/console-deployment.yaml
+// bindata/deployments/downloads-deployment.yaml
 // bindata/routes/console-custom-route.yaml
 // bindata/routes/console-redirect-route.yaml
 // bindata/routes/console-route.yaml
@@ -82,6 +84,313 @@ func configmapsConsolePublicConfigmapYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "configmaps/console-public-configmap.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _deploymentsConsoleDeploymentYaml = []byte(`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: console
+  namespace: openshift-console
+  labels:
+    app: console
+    component: ui
+spec:
+  selector:
+    matchLabels:
+      app: console
+      component: ui
+  template:
+    metadata:
+      name: console
+      labels:
+        app: console
+        component: ui
+      annotations:
+        target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/master: ''
+      restartPolicy: Always
+      serviceAccountName: console
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 40
+      priorityClassName: system-cluster-critical
+      containers:
+        - resources:
+            requests:
+              cpu: 10m
+              memory: 100Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8443
+              scheme: HTTPS
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - sleep
+                  - '25'
+          name: console
+          command:
+            - /opt/bridge/bin/bridge
+            - '--public-dir=/opt/bridge/static'
+            - '--config=/var/console-config/console-config.yaml'
+            - '--service-ca-file=/var/service-ca/service-ca.crt'
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8443
+              scheme: HTTPS
+            initialDelaySeconds: 150
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          ports:
+            - name: https
+              containerPort: 8443
+              protocol: TCP
+          imagePullPolicy: IfNotPresent
+          terminationMessagePolicy: FallbackToLogsOnError
+          image: ${IMAGE}
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 120
+        - key: node.kubernetes.io/not-reachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 120
+`)
+
+func deploymentsConsoleDeploymentYamlBytes() ([]byte, error) {
+	return _deploymentsConsoleDeploymentYaml, nil
+}
+
+func deploymentsConsoleDeploymentYaml() (*asset, error) {
+	bytes, err := deploymentsConsoleDeploymentYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "deployments/console-deployment.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _deploymentsDownloadsDeploymentYaml = []byte(`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: downloads
+  namespace: openshift-console
+  labels:
+    app: console
+    component: downloads
+  annotations: {}
+spec:
+  selector:
+    matchLabels:
+      app: console
+      component: downloads
+  template:
+    metadata:
+      name: downloads
+      labels:
+        app: console
+        component: downloads
+      annotations:
+        target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      terminationGracePeriodSeconds: 0
+      securityContext: {}
+      containers:
+        - resources:
+            requests:
+              cpu: 10m
+              memory: 50Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          name: download-server
+          command:
+            - /bin/sh
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          imagePullPolicy: IfNotPresent
+          terminationMessagePolicy: FallbackToLogsOnError
+          image: ${IMAGE}
+          args:
+            - '-c'
+            - |
+              cat <<EOF >>/tmp/serve.py
+              import errno, http.server, os, re, signal, socket, sys, tarfile, tempfile, threading, time, zipfile
+
+              signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
+
+              def write_index(path, message):
+                with open(path, 'wb') as f:
+                  f.write('\n'.join([
+                    '<!doctype html>',
+                    '<html lang="en">',
+                    '<head>',
+                    '  <meta charset="utf-8">',
+                    '</head>',
+                    '<body>',
+                    '  {}'.format(message),
+                    '</body>',
+                    '</html>',
+                    '',
+                  ]).encode('utf-8'))
+
+              # Launch multiple listeners as threads
+              class Thread(threading.Thread):
+                def __init__(self, i, socket):
+                  threading.Thread.__init__(self)
+                  self.i = i
+                  self.socket = socket
+                  self.daemon = True
+                  self.start()
+
+                def run(self):
+                  httpd = http.server.HTTPServer(addr, http.server.SimpleHTTPRequestHandler, False)
+
+                  # Prevent the HTTP server from re-binding every handler.
+                  # https://stackoverflow.com/questions/46210672/
+                  httpd.socket = self.socket
+                  httpd.server_bind = self.server_close = lambda self: None
+
+                  httpd.serve_forever()
+
+              temp_dir = tempfile.mkdtemp()
+              print('serving from {}'.format(temp_dir))
+              os.chdir(temp_dir)
+              for arch in ['amd64']:
+                os.mkdir(arch)
+                for operating_system in ['linux', 'mac', 'windows']:
+                  os.mkdir(os.path.join(arch, operating_system))
+              for arch in ['arm64', 'ppc64le', 's390x']:
+                os.mkdir(arch)
+                for operating_system in ['linux']:
+                  os.mkdir(os.path.join(arch, operating_system))
+              content = ['<a href="oc-license">license</a>']
+              os.symlink('/usr/share/openshift/LICENSE', 'oc-license')
+
+              for arch, operating_system, path in [
+                  ('amd64', 'linux', '/usr/share/openshift/linux_amd64/oc'),
+                  ('amd64', 'mac', '/usr/share/openshift/mac/oc'),
+                  ('amd64', 'windows', '/usr/share/openshift/windows/oc.exe'),
+                  ('arm64', 'linux', '/usr/share/openshift/linux_arm64/oc'),
+                  ('ppc64le', 'linux', '/usr/share/openshift/linux_ppc64le/oc'),
+                  ('s390x', 'linux', '/usr/share/openshift/linux_s390x/oc'),
+                  ]:
+                basename = os.path.basename(path)
+                target_path = os.path.join(arch, operating_system, basename)
+                os.symlink(path, target_path)
+                base_root, _ = os.path.splitext(basename)
+                archive_path_root = os.path.join(arch, operating_system, base_root)
+                with tarfile.open('{}.tar'.format(archive_path_root), 'w') as tar:
+                  tar.add(path, basename)
+                with zipfile.ZipFile('{}.zip'.format(archive_path_root), 'w') as zip:
+                  zip.write(path, basename)
+                content.append('<a href="{0}">oc ({1} {2})</a> (<a href="{0}.tar">tar</a> <a href="{0}.zip">zip</a>)'.format(target_path, arch, operating_system))
+
+              for root, directories, filenames in os.walk(temp_dir):
+                root_link = os.path.relpath(temp_dir, os.path.join(root, 'child')).replace(os.path.sep, '/')
+                for directory in directories:
+                  write_index(
+                    path=os.path.join(root, directory, 'index.html'),
+                    message='<p>Directory listings are disabled.  See <a href="{}">here</a> for available content.</p>'.format(root_link),
+                  )
+
+              write_index(
+                path=os.path.join(temp_dir, 'index.html'),
+                message='\n'.join(
+                  ['<ul>'] +
+                  ['  <li>{}</li>'.format(entry) for entry in content] +
+                  ['</ul>']
+                ),
+              )
+
+              # Create socket
+              # IPv6 should handle IPv4 passively so long as it is not bound to a
+              # specific address or set to IPv6_ONLY
+              # https://stackoverflow.com/questions/25817848/python-3-does-http-server-support-ipv6
+              try:
+                addr = ('::', 8080)
+                sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+              except socket.error as err:
+                # errno.EAFNOSUPPORT is "socket.error: [Errno 97] Address family not supported by protocol"
+                # When IPv6 is disabled, socket will bind using IPv4.
+                if err.errno == errno.EAFNOSUPPORT:
+                  addr = ('', 8080)
+                  sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                else:
+                  raise    
+              sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+              sock.bind(addr)
+              sock.listen(5)
+
+              [Thread(i, socket=sock) for i in range(100)]
+              time.sleep(9e9)
+              EOF
+              exec python3 /tmp/serve.py
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 120
+        - key: node.kubernetes.io/not-reachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 120
+      priorityClassName: system-cluster-critical
+`)
+
+func deploymentsDownloadsDeploymentYamlBytes() ([]byte, error) {
+	return _deploymentsDownloadsDeploymentYaml, nil
+}
+
+func deploymentsDownloadsDeploymentYaml() (*asset, error) {
+	bytes, err := deploymentsDownloadsDeploymentYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "deployments/downloads-deployment.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -442,6 +751,8 @@ func AssetNames() []string {
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
 	"configmaps/console-public-configmap.yaml": configmapsConsolePublicConfigmapYaml,
+	"deployments/console-deployment.yaml":      deploymentsConsoleDeploymentYaml,
+	"deployments/downloads-deployment.yaml":    deploymentsDownloadsDeploymentYaml,
 	"routes/console-custom-route.yaml":         routesConsoleCustomRouteYaml,
 	"routes/console-redirect-route.yaml":       routesConsoleRedirectRouteYaml,
 	"routes/console-route.yaml":                routesConsoleRouteYaml,
@@ -495,6 +806,10 @@ type bintree struct {
 var _bintree = &bintree{nil, map[string]*bintree{
 	"configmaps": {nil, map[string]*bintree{
 		"console-public-configmap.yaml": {configmapsConsolePublicConfigmapYaml, map[string]*bintree{}},
+	}},
+	"deployments": {nil, map[string]*bintree{
+		"console-deployment.yaml":   {deploymentsConsoleDeploymentYaml, map[string]*bintree{}},
+		"downloads-deployment.yaml": {deploymentsDownloadsDeploymentYaml, map[string]*bintree{}},
 	}},
 	"routes": {nil, map[string]*bintree{
 		"console-custom-route.yaml":   {routesConsoleCustomRouteYaml, map[string]*bintree{}},
