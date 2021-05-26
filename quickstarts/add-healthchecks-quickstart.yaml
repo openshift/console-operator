@@ -7,7 +7,6 @@ metadata:
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
 spec:
-  version: 4.7
   displayName: Add health checks to your sample application
   durationMinutes: 10
   description: You just created a sample application. Now, let’s add health checks
