@@ -15,6 +15,10 @@ rules:
   verbs:
   - get
   - list
+  # We cannot restrict create or deletecollection requests by resourceName.
+  # For create, this limitation is because the object name is not known at authorization time.
+  # Check: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#referring-to-resources
+  - create
   - watch
 - apiGroups:
   - ""
