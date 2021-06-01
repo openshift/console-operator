@@ -201,7 +201,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeClient.AppsV1(), // Deployments
 		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
 		recorder,
-		resourceSyncer,
 	)
 
 	cliDownloadsController := clidownloads.NewCLIDownloadsSyncController(
@@ -216,7 +215,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		routesInformersNamespaced.Route().V1().Routes(),       // Routes
 		// events
 		recorder,
-		resourceSyncer,
 	)
 
 	consoleServiceController := service.NewServiceSyncController(
@@ -233,7 +231,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeInformersNamespaced.Core().V1().Services(),     // Services
 		// events
 		recorder,
-		resourceSyncer,
 	)
 
 	downloadsServiceController := service.NewServiceSyncController(
@@ -250,7 +247,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeInformersNamespaced.Core().V1().Services(),     // Services
 		// events
 		recorder,
-		resourceSyncer,
 	)
 
 	consoleRouteController := route.NewRouteSyncController(
@@ -273,7 +269,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		routesInformersNamespaced.Route().V1().Routes(),
 		// events
 		recorder,
-		resourceSyncer,
 	)
 
 	downloadsRouteController := route.NewRouteSyncController(
@@ -296,7 +291,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		routesInformersNamespaced.Route().V1().Routes(),
 		// events
 		recorder,
-		resourceSyncer,
 	)
 
 	consoleRouteHealthCheckController := healthcheck.NewHealthCheckController(
@@ -313,7 +307,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		routesInformersNamespaced.Route().V1().Routes(),
 		// events
 		recorder,
-		resourceSyncer,
 	)
 
 	versionRecorder := status.NewVersionGetter()

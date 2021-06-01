@@ -22,7 +22,6 @@ import (
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
-	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
@@ -36,8 +35,6 @@ type DownloadsDeploymentSyncController struct {
 	infrastructureConfigClient configclientv1.InfrastructureInterface
 	// core kube
 	deploymentClient appsclientv1.DeploymentsGetter
-	// events
-	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
 
 func NewDownloadsDeploymentSyncController(
@@ -54,7 +51,6 @@ func NewDownloadsDeploymentSyncController(
 	deploymentInformer appsinformersv1.DeploymentInformer,
 	// events
 	recorder events.Recorder,
-	resourceSyncer resourcesynccontroller.ResourceSyncer,
 ) factory.Controller {
 	configV1Informers := configInformer.Config().V1()
 
@@ -65,8 +61,6 @@ func NewDownloadsDeploymentSyncController(
 		infrastructureConfigClient: configClient.Infrastructures(),
 		// client
 		deploymentClient: deploymentClient,
-		// events
-		resourceSyncer: resourceSyncer,
 	}
 
 	configNameFilter := util.NamesFilter(api.ConfigResourceName)

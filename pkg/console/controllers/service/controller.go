@@ -25,7 +25,6 @@ import (
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
-	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 )
 
@@ -39,8 +38,6 @@ type ServiceSyncController struct {
 	ingressClient        configclientv1.IngressInterface
 	// live clients, we dont need listers w/caches
 	serviceClient coreclientv1.ServicesGetter
-	// events
-	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
 
 // factory func needs clients and informers
@@ -59,7 +56,6 @@ func NewServiceSyncController(
 	serviceInformer coreinformersv1.ServiceInformer,
 	// events
 	recorder events.Recorder,
-	resourceSyncer resourcesynccontroller.ResourceSyncer,
 ) factory.Controller {
 
 	ctrl := &ServiceSyncController{
@@ -68,7 +64,6 @@ func NewServiceSyncController(
 		operatorConfigClient: operatorConfigClient,
 		ingressClient:        configClient.Ingresses(),
 		serviceClient:        corev1Client,
-		resourceSyncer:       resourceSyncer,
 	}
 
 	configV1Informers := configInformer.Config().V1()

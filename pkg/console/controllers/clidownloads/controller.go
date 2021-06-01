@@ -19,7 +19,6 @@ import (
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
-	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	// informers
@@ -46,8 +45,6 @@ type CLIDownloadsSyncController struct {
 	consoleCliDownloadsClient consoleclientv1.ConsoleCLIDownloadInterface
 	routeClient               routeclientv1.RoutesGetter
 	operatorConfigClient      operatorclientv1.ConsoleInterface
-	// events
-	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
 
 func NewCLIDownloadsSyncController(
@@ -62,7 +59,6 @@ func NewCLIDownloadsSyncController(
 	routeInformer routesinformersv1.RouteInformer,
 	// events
 	recorder events.Recorder,
-	resourceSyncer resourcesynccontroller.ResourceSyncer,
 ) factory.Controller {
 
 	ctrl := &CLIDownloadsSyncController{
@@ -71,8 +67,6 @@ func NewCLIDownloadsSyncController(
 		consoleCliDownloadsClient: cliDownloadsInterface,
 		routeClient:               routeClient,
 		operatorConfigClient:      operatorConfigClient.Consoles(),
-		// events
-		resourceSyncer: resourceSyncer,
 	}
 
 	return factory.New().
