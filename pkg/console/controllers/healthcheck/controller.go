@@ -126,6 +126,7 @@ func (c *HealthCheckController) Sync(ctx context.Context, controllerContext fact
 
 	routeHealthCheckErrReason, routeHealthCheckErr := c.CheckRouteHealth(ctx, updatedOperatorConfig, activeRoute)
 	statusHandler.AddCondition(status.HandleDegraded("RouteHealth", routeHealthCheckErrReason, routeHealthCheckErr))
+	statusHandler.AddCondition(status.HandleAvailable("RouteHealth", routeHealthCheckErrReason, routeHealthCheckErr))
 
 	return statusHandler.FlushAndReturn(routeHealthCheckErr)
 }
