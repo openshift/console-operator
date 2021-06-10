@@ -12,13 +12,16 @@ import (
 
 	// k8s
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	coreinformersv1 "k8s.io/client-go/informers/core/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 
 	// openshift
+	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
@@ -144,6 +147,7 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 	// route into inaccessible state.
 	_, customRouteErrReason, customRouteErr := c.SyncCustomRoute(ctx, routeConfig, controllerContext)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("CustomRouteSync", customRouteErrReason, customRouteErr))
+	// if routeConfig.IsCustomHostnameSet()
 	if customRouteErr != nil {
 		return statusHandler.FlushAndReturn(customRouteErr)
 	}
@@ -157,6 +161,124 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 	}
 
 	return statusHandler.FlushAndReturn(defaultRouteErr)
+}
+
+func (c *RouteSyncController) updateIngressConfigStatus(ctx context.Context, routeConfig *routesub.RouteConfig, customRouteErrors []error) error {
+	componentRoute := &configv1.ComponentRouteStatus{
+		Namespace:        api.OpenShiftConsoleNamespace,
+		Name:             c.routeName,
+		DefaultHostname:  configv1.Hostname(routeConfig.GetDefaultRouteHostname()),
+		CurrentHostnames: []configv1.Hostname{configv1.Hostname(routeConfig.GetCustomRouteHostname())},
+		ConsumingUsers: []configv1.ConsumingUser{
+			"system:serviceaccount:openshift-console-operator:console-operator",
+		},
+		RelatedObjects: []configv1.ObjectReference{
+			{
+				Group:     routev1.GroupName,
+				Resource:  "routes",
+				Name:      c.routeName,
+				Namespace: api.OpenShiftConsoleNamespace},
+		},
+	}
+	conditions := checkErrorsConfiguringCustomRoute(customRouteErrors)
+
+	componentRoute.Conditions = ensureDefaultConditions(conditions)
+	_, err := c.updateComponentRouteStatus(ctx, componentRoute)
+
+	fmt.Printf("\nERROR - %q\n", err)
+	return err
+}
+
+func (c *RouteSyncController) updateComponentRouteStatus(ctx context.Context, componentRoute *configv1.ComponentRouteStatus) (bool, error) {
+	// Override the timestamps
+	now := metav1.Now()
+
+	// Create a copy for compairison and remove transaction times
+	componentRouteCopy := componentRoute.DeepCopy()
+	setLastTransactionTime(componentRouteCopy, now)
+
+	updated := false
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		ingressConfig, err := c.ingressClient.Get(ctx, "cluster", metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		existingComponentRoute := routesub.GetComponentRouteStatus(ingressConfig, c.routeName)
+		if existingComponentRoute != nil {
+			// Create a copy for compairison and remove transaction times
+			existingComponentRouteCopy := existingComponentRoute.DeepCopy()
+			setLastTransactionTime(existingComponentRouteCopy, now)
+
+			// Check if an update is needed
+			if equality.Semantic.DeepEqual(componentRouteCopy, existingComponentRouteCopy) {
+				return nil
+			}
+			*existingComponentRoute = *componentRoute
+		} else {
+			ingressConfig.Status.ComponentRoutes = append(ingressConfig.Status.ComponentRoutes, *componentRoute)
+		}
+
+		_, err = c.ingressClient.UpdateStatus(ctx, ingressConfig, metav1.UpdateOptions{})
+		updated = err == nil
+		return err
+	})
+
+	return updated, err
+}
+
+func checkErrorsConfiguringCustomRoute(errors []error) []metav1.Condition {
+	if len(errors) != 0 {
+		now := metav1.Now()
+		return []metav1.Condition{
+			{
+				LastTransitionTime: now,
+				Type:               "Degraded",
+				Status:             metav1.ConditionTrue,
+				Reason:             "CustomRouteError",
+				Message:            fmt.Sprintf("Error Configuring custom route: %v", errors),
+			},
+			{
+				LastTransitionTime: now,
+				Type:               "Progressing",
+				Status:             metav1.ConditionFalse,
+				Reason:             "CustomRouteError",
+				Message:            fmt.Sprintf("Error Configuring custom route: %v", errors),
+			},
+		}
+	}
+	return nil
+}
+
+func ensureDefaultConditions(conditions []metav1.Condition) []metav1.Condition {
+	for _, conditionType := range []string{"Progressing", "Degraded"} {
+		condition := findCondition(conditions, conditionType)
+		if condition == nil {
+			conditions = append(conditions, metav1.Condition{
+				LastTransitionTime: metav1.Now(),
+				Type:               conditionType,
+				Status:             metav1.ConditionFalse,
+				Reason:             "AsExpected",
+				Message:            "All is well",
+			})
+		}
+	}
+	return conditions
+}
+
+func findCondition(conditions []metav1.Condition, conditionType string) *metav1.Condition {
+	for i := range conditions {
+		if conditions[i].Type == conditionType {
+			return &conditions[i]
+		}
+	}
+	return nil
+}
+
+func setLastTransactionTime(componentRoute *configv1.ComponentRouteStatus, now metav1.Time) {
+	for i := range componentRoute.Conditions {
+		componentRoute.Conditions[i].LastTransitionTime = now
+	}
 }
 
 func (c *RouteSyncController) removeRoute(ctx context.Context, routeName string) error {
@@ -197,6 +319,8 @@ func (c *RouteSyncController) SyncDefaultRoute(ctx context.Context, routeConfig 
 // 4. create the custom console route, if custom TLS certificate and key are defined use them
 // 5. apply the custom route
 func (c *RouteSyncController) SyncCustomRoute(ctx context.Context, routeConfig *routesub.RouteConfig, controllerContext factory.SyncContext) (*routev1.Route, string, error) {
+	var err error
+	defer c.updateIngressConfigStatus(ctx, routeConfig, []error{err})
 	if !routeConfig.IsCustomHostnameSet() {
 		if err := c.removeRoute(ctx, routesub.GetCustomRouteName(c.routeName)); err != nil {
 			return nil, "FailedDeleteCustomRoutes", err
