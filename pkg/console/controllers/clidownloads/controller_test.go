@@ -125,7 +125,7 @@ The oc binary offers the same capabilities as the kubectl binary, but it is furt
 						},
 						{
 							Href: "https://www.example.com/arm64/linux/oc.tar",
-							Text: "Download oc for Linux for ARM 64 (unsupported)",
+							Text: "Download oc for Linux for ARM 64",
 						},
 						{
 							Href: "https://www.example.com/ppc64le/linux/oc.tar",
