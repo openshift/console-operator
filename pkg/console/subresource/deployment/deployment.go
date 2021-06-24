@@ -257,15 +257,13 @@ func consolePodAffinity(infrastructureConfig *configv1.Infrastructure) *corev1.A
 	}
 	return &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-				Weight: 100,
-				PodAffinityTerm: corev1.PodAffinityTerm{
-					LabelSelector: &metav1.LabelSelector{
-						MatchLabels: util.SharedLabels(),
-					},
-					TopologyKey: "topology.kubernetes.io/zone",
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: util.LabelsForConsole(),
 				},
-			}},
+				TopologyKey: "topology.kubernetes.io/zone",
+			},
+			},
 		},
 	}
 }
@@ -277,15 +275,13 @@ func downloadsPodAffinity(infrastructureConfig *configv1.Infrastructure) *corev1
 	}
 	return &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-				Weight: 100,
-				PodAffinityTerm: corev1.PodAffinityTerm{
-					LabelSelector: &metav1.LabelSelector{
-						MatchLabels: util.SharedLabels(),
-					},
-					TopologyKey: "topology.kubernetes.io/zone",
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: util.LabelsForDownloads(),
 				},
-			}},
+				TopologyKey: "topology.kubernetes.io/zone",
+			},
+			},
 		},
 	}
 }
