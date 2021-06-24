@@ -132,15 +132,13 @@ func TestDefaultDeployment(t *testing.T) {
 	consoleDeploymentAffinity := &corev1.Affinity{
 		// spread out across master nodes rather than congregate on one
 		PodAntiAffinity: &corev1.PodAntiAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-				Weight: 100,
-				PodAffinityTerm: corev1.PodAffinityTerm{
-					LabelSelector: &metav1.LabelSelector{
-						MatchLabels: util.SharedLabels(),
-					},
-					TopologyKey: "topology.kubernetes.io/zone",
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: util.LabelsForConsole(),
 				},
-			}},
+				TopologyKey: "topology.kubernetes.io/zone",
+			},
+			},
 		},
 	}
 
@@ -585,15 +583,13 @@ func TestConsolePodAffinity(t *testing.T) {
 			},
 			want: &corev1.Affinity{
 				PodAntiAffinity: &corev1.PodAntiAffinity{
-					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-						Weight: 100,
-						PodAffinityTerm: corev1.PodAffinityTerm{
-							LabelSelector: &metav1.LabelSelector{
-								MatchLabels: util.SharedLabels(),
-							},
-							TopologyKey: "topology.kubernetes.io/zone",
+					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: util.LabelsForConsole(),
 						},
-					}},
+						TopologyKey: "topology.kubernetes.io/zone",
+					},
+					},
 				},
 			},
 		},
@@ -635,15 +631,13 @@ func TestDownalodsPodAffinity(t *testing.T) {
 			},
 			want: &corev1.Affinity{
 				PodAntiAffinity: &corev1.PodAntiAffinity{
-					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-						Weight: 100,
-						PodAffinityTerm: corev1.PodAffinityTerm{
-							LabelSelector: &metav1.LabelSelector{
-								MatchLabels: util.SharedLabels(),
-							},
-							TopologyKey: "topology.kubernetes.io/zone",
+					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: util.LabelsForDownloads(),
 						},
-					}},
+						TopologyKey: "topology.kubernetes.io/zone",
+					},
+					},
 				},
 			},
 		},
