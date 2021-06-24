@@ -414,7 +414,8 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 
 	downloadsDeploymentPodSpecSingleReplica := corev1.PodSpec{
 		NodeSelector: map[string]string{
-			"kubernetes.io/os": "linux",
+			"kubernetes.io/os":               "linux",
+			"node-role.kubernetes.io/master": "",
 		},
 		Affinity:                      downloadsPodAffinity(infrastructureConfigSingleReplica),
 		Tolerations:                   tolerations(),

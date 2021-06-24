@@ -165,7 +165,8 @@ func DefaultDownloadsDeployment(operatorConfig *operatorv1.Console, infrastructu
 				},
 				Spec: corev1.PodSpec{
 					NodeSelector: map[string]string{
-						"kubernetes.io/os": "linux",
+						"kubernetes.io/os":               "linux",
+						"node-role.kubernetes.io/master": "",
 					},
 					Affinity:                      affinity,
 					Tolerations:                   tolerations(),
