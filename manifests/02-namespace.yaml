@@ -8,6 +8,8 @@ metadata:
     include.release.openshift.io/single-node-developer: "true"
     openshift.io/node-selector: ""
     workload.openshift.io/allowed: "management"
+  labels:
+    network.openshift.io/policy-group: "console"
 ---
 apiVersion: v1
 kind: Namespace
