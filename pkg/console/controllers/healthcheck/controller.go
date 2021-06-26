@@ -25,7 +25,6 @@ import (
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
-	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	// console-operator
@@ -42,8 +41,6 @@ type HealthCheckController struct {
 	ingressClient        configclientv1.IngressInterface
 	routeClient          routeclientv1.RoutesGetter
 	configMapClient      coreclientv1.ConfigMapsGetter
-	// events
-	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
 
 func NewHealthCheckController(
@@ -60,7 +57,6 @@ func NewHealthCheckController(
 	routeInformer routesinformersv1.RouteInformer,
 	// events
 	recorder events.Recorder,
-	resourceSyncer resourcesynccontroller.ResourceSyncer,
 ) factory.Controller {
 	ctrl := &HealthCheckController{
 		operatorClient:       operatorClient,
@@ -68,8 +64,6 @@ func NewHealthCheckController(
 		ingressClient:        configClient.Ingresses(),
 		routeClient:          routev1Client,
 		configMapClient:      configMapClient,
-		// events
-		resourceSyncer: resourceSyncer,
 	}
 
 	configMapInformer := coreInformer.ConfigMaps()

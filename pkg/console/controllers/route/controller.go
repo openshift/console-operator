@@ -29,7 +29,6 @@ import (
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
-	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	// console-operator
@@ -49,8 +48,6 @@ type RouteSyncController struct {
 	routeClient          routeclientv1.RoutesGetter
 	configMapClient      coreclientv1.ConfigMapsGetter
 	secretClient         coreclientv1.SecretsGetter
-	// events
-	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
 
 func NewRouteSyncController(
@@ -72,7 +69,6 @@ func NewRouteSyncController(
 	routeInformer routesinformersv1.RouteInformer,
 	// events
 	recorder events.Recorder,
-	resourceSyncer resourcesynccontroller.ResourceSyncer,
 ) factory.Controller {
 	ctrl := &RouteSyncController{
 		routeName:            routeName,
@@ -83,8 +79,6 @@ func NewRouteSyncController(
 		routeClient:          routev1Client,
 		configMapClient:      configMapClient,
 		secretClient:         secretClient,
-		// events
-		resourceSyncer: resourceSyncer,
 	}
 
 	configMapInformer := coreInformer.ConfigMaps()
@@ -179,7 +173,7 @@ func (c *RouteSyncController) SyncDefaultRoute(ctx context.Context, routeConfig 
 
 	requiredDefaultRoute := routeConfig.DefaultRoute(customTLSCert)
 
-	defaultRoute, _, defaultRouteError := routesub.ApplyRoute(c.routeClient, controllerContext.Recorder(), requiredDefaultRoute)
+	defaultRoute, _, defaultRouteError := routesub.ApplyRoute(c.routeClient, requiredDefaultRoute)
 	if defaultRouteError != nil {
 		return nil, "FailedDefaultRouteApply", defaultRouteError
 	}
@@ -219,7 +213,7 @@ func (c *RouteSyncController) SyncCustomRoute(ctx context.Context, routeConfig *
 	}
 
 	requiredCustomRoute := routeConfig.CustomRoute(customTLSCert, c.routeName)
-	customRoute, _, customRouteError := routesub.ApplyRoute(c.routeClient, controllerContext.Recorder(), requiredCustomRoute)
+	customRoute, _, customRouteError := routesub.ApplyRoute(c.routeClient, requiredCustomRoute)
 	if customRouteError != nil {
 		return nil, "FailedCustomRouteApply", customRouteError
 	}
