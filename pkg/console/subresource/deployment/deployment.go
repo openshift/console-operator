@@ -7,9 +7,7 @@ import (
 	// kube
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	appsclientv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	"k8s.io/klog/v2"
 
@@ -17,7 +15,9 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/assets"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
 )
 
 const (
@@ -35,8 +35,6 @@ const (
 	trustedCAConfigMapResourceVersionAnnotation          = "console.openshift.io/trusted-ca-config-version"
 	secretResourceVersionAnnotation                      = "console.openshift.io/oauth-secret-version"
 	consoleImageAnnotation                               = "console.openshift.io/image"
-	workloadManagementAnnotation                         = "target.workload.openshift.io/management"
-	workloadManagementAnnotationValue                    = `{"effect": "PreferredDuringScheduling"}`
 )
 
 var (
@@ -50,7 +48,6 @@ var (
 		secretResourceVersionAnnotation,
 		consoleImageAnnotation,
 	}
-	tolerationSeconds = int64(120)
 )
 
 type volumeConfig struct {
@@ -64,10 +61,18 @@ type volumeConfig struct {
 }
 
 func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, defaultIngressCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure, canMountCustomLogo bool) *appsv1.Deployment {
-	labels := util.LabelsForConsole()
-	meta := util.SharedMeta()
-	meta.Labels = labels
-	deploymentAnnotations := map[string]string{
+	deployment := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/console-deployment.yaml"))
+	withAnnotations(deployment, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig)
+	withReplicas(deployment, infrastructureConfig)
+	withAffinity(deployment, infrastructureConfig)
+	withVolumes(deployment, trustedCAConfigMap, canMountCustomLogo)
+	withContainers(deployment, operatorConfig, proxyConfig)
+	util.AddOwnerRef(deployment, util.OwnerRefFrom(operatorConfig))
+	return deployment
+}
+
+func withAnnotations(deployment *appsv1.Deployment, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, defaultIngressCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure) {
+	deployment.ObjectMeta.Annotations = map[string]string{
 		configMapResourceVersionAnnotation:                   cm.GetResourceVersion(),
 		serviceCAConfigMapResourceVersionAnnotation:          serviceCAConfigMap.GetResourceVersion(),
 		defaultIngressCertConfigMapResourceVersionAnnotation: defaultIngressCertConfigMap.GetResourceVersion(),
@@ -77,13 +82,23 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 		secretResourceVersionAnnotation:                      sec.GetResourceVersion(),
 		consoleImageAnnotation:                               util.GetImageEnv("CONSOLE_IMAGE"),
 	}
+	podAnnotations := deployment.Spec.Template.ObjectMeta.Annotations
+	for k, v := range deployment.ObjectMeta.Annotations {
+		podAnnotations[k] = v
+	}
+	deployment.Spec.Template.ObjectMeta.Annotations = podAnnotations
+}
 
-	// Set any annotations as needed so that `ApplyDeployment` rolls out a
-	// new version when they change.
-	meta.Annotations = deploymentAnnotations
+func withReplicas(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
 	replicas := Replicas(infrastructureConfig)
-	affinity := consolePodAffinity(infrastructureConfig)
-	gracePeriod := int64(40)
+	deployment.Spec.Replicas = &replicas
+}
+
+func withAffinity(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
+	deployment.Spec.Template.Spec.Affinity = consolePodAffinity(infrastructureConfig)
+}
+
+func withVolumes(deployment *appsv1.Deployment, trustedCAConfigMap *corev1.ConfigMap, canMountCustomLogo bool) {
 	volumeConfig := defaultVolumeConfig()
 	caBundle, caBundleExists := trustedCAConfigMap.Data["ca-bundle.crt"]
 	if caBundleExists && caBundle != "" {
@@ -92,114 +107,39 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	if canMountCustomLogo {
 		volumeConfig = append(volumeConfig, customLogoVolume())
 	}
+	deployment.Spec.Template.Spec.Containers[0].VolumeMounts = consoleVolumeMounts(volumeConfig)
+	deployment.Spec.Template.Spec.Volumes = consoleVolumes(volumeConfig)
+}
 
-	podAnnotations := map[string]string{
-		workloadManagementAnnotation: workloadManagementAnnotationValue,
-	}
-	for k, v := range deploymentAnnotations {
-		podAnnotations[k] = v
-	}
-	deployment := &appsv1.Deployment{
-		ObjectMeta: meta,
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        api.OpenShiftConsoleName,
-					Labels:      labels,
-					Annotations: podAnnotations,
-				},
-				Spec: corev1.PodSpec{
-					ServiceAccountName: "console",
-					// we want to deploy on master nodes
-					NodeSelector: map[string]string{
-						// empty string is correct
-						"node-role.kubernetes.io/master": "",
-					},
-					Affinity: affinity,
-					// toleration is a taint override. we can and should be scheduled on a master node.
-					Tolerations:                   tolerations(),
-					PriorityClassName:             "system-cluster-critical",
-					RestartPolicy:                 corev1.RestartPolicyAlways,
-					SchedulerName:                 corev1.DefaultSchedulerName,
-					TerminationGracePeriodSeconds: &gracePeriod,
-					SecurityContext:               &corev1.PodSecurityContext{},
-					Containers: []corev1.Container{
-						consoleContainer(operatorConfig, volumeConfig, proxyConfig),
-					},
-					Volumes: consoleVolumes(volumeConfig),
-				},
-			},
-		},
-	}
-	util.AddOwnerRef(deployment, util.OwnerRefFrom(operatorConfig))
-	return deployment
+func withContainers(deployment *appsv1.Deployment, operatorConfig *operatorv1.Console, proxyConfig *configv1.Proxy) {
+	commands := deployment.Spec.Template.Spec.Containers[0].Command
+	commands = withLogLevelFlag(operatorConfig.Spec.LogLevel, commands)
+	commands = withStatusPageFlag(operatorConfig.Spec.Providers, commands)
+	deployment.Spec.Template.Spec.Containers[0].Command = commands
+	deployment.Spec.Template.Spec.Containers[0].Env = setEnvironmentVariables(proxyConfig)
+	deployment.Spec.Template.Spec.Containers[0].Image = util.GetImageEnv("CONSOLE_IMAGE")
 }
 
 func DefaultDownloadsDeployment(operatorConfig *operatorv1.Console, infrastructureConfig *configv1.Infrastructure) *appsv1.Deployment {
-	labels := util.LabelsForDownloads()
-	meta := util.SharedMeta()
-	meta.Labels = labels
-	meta.Name = api.OpenShiftConsoleDownloadsDeploymentName
-	replicas := Replicas(infrastructureConfig)
-	affinity := downloadsPodAffinity(infrastructureConfig)
-	gracePeriod := int64(0)
-
-	downloadsDeployment := &appsv1.Deployment{
-		ObjectMeta: meta,
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: api.OpenShiftConsoleDownloadsDeploymentName,
-					Annotations: map[string]string{
-						workloadManagementAnnotation: workloadManagementAnnotationValue,
-					},
-					Labels: labels,
-				},
-				Spec: corev1.PodSpec{
-					NodeSelector: map[string]string{
-						"kubernetes.io/os": "linux",
-					},
-					Affinity:                      affinity,
-					Tolerations:                   tolerations(),
-					PriorityClassName:             "system-cluster-critical",
-					TerminationGracePeriodSeconds: &gracePeriod,
-					Containers: []corev1.Container{
-						{
-							Name:                     "download-server",
-							TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-							Image:                    util.GetImageEnv("DOWNLOADS_IMAGE"),
-							ImagePullPolicy:          corev1.PullPolicy("IfNotPresent"),
-							Ports: []corev1.ContainerPort{{
-								Name:          api.DownloadsPortName,
-								Protocol:      corev1.ProtocolTCP,
-								ContainerPort: api.DownloadsPort,
-							}},
-							ReadinessProbe: downloadsReadinessProbe(),
-							LivenessProbe:  defaultDownloadsProbe(),
-							Command:        []string{"/bin/sh"},
-							Resources: corev1.ResourceRequirements{
-								Requests: map[corev1.ResourceName]resource.Quantity{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
-									corev1.ResourceMemory: resource.MustParse("50Mi"),
-								},
-							},
-							Args: downloadsContainerArgs(),
-						},
-					},
-				},
-			},
-		},
-	}
+	downloadsDeployment := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/downloads-deployment.yaml"))
+	withDownloadsReplicas(downloadsDeployment, infrastructureConfig)
+	withDownloadsAffinity(downloadsDeployment, infrastructureConfig)
+	withDownloadsContainers(downloadsDeployment)
 	util.AddOwnerRef(downloadsDeployment, util.OwnerRefFrom(operatorConfig))
 	return downloadsDeployment
+}
+
+func withDownloadsReplicas(downloadsDeployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
+	replicas := Replicas(infrastructureConfig)
+	downloadsDeployment.Spec.Replicas = &replicas
+}
+
+func withDownloadsAffinity(downloadsDeployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
+	downloadsDeployment.Spec.Template.Spec.Affinity = downloadsPodAffinity(infrastructureConfig)
+}
+
+func withDownloadsContainers(downloadsDeployment *appsv1.Deployment) {
+	downloadsDeployment.Spec.Template.Spec.Containers[0].Image = util.GetImageEnv("DOWNLOADS_IMAGE")
 }
 
 func Stub() *appsv1.Deployment {
@@ -226,28 +166,6 @@ func LogDeploymentAnnotationChanges(client appsclientv1.DeploymentsGetter, updat
 	}
 	if changed {
 		klog.V(4).Infoln("deployment resource versions have changed")
-	}
-}
-
-func tolerations() []corev1.Toleration {
-	return []corev1.Toleration{
-		{
-			Key:      "node-role.kubernetes.io/master",
-			Operator: corev1.TolerationOpExists,
-			Effect:   corev1.TaintEffectNoSchedule,
-		},
-		{
-			Key:               "node.kubernetes.io/unreachable",
-			Operator:          corev1.TolerationOpExists,
-			Effect:            corev1.TaintEffectNoExecute,
-			TolerationSeconds: &tolerationSeconds,
-		},
-		{
-			Key:               "node.kubernetes.io/not-reachable",
-			Operator:          corev1.TolerationOpExists,
-			Effect:            corev1.TaintEffectNoExecute,
-			TolerationSeconds: &tolerationSeconds,
-		},
 	}
 }
 
@@ -376,53 +294,6 @@ func withStatusPageFlag(providers operatorv1.ConsoleProviders, flags []string) [
 	return flags
 }
 
-func consoleContainer(cr *operatorv1.Console, volConfigList []volumeConfig, proxyConfig *configv1.Proxy) corev1.Container {
-	volumeMounts := consoleVolumeMounts(volConfigList)
-
-	flags := []string{
-		"/opt/bridge/bin/bridge",
-		"--public-dir=/opt/bridge/static",
-		"--config=/var/console-config/console-config.yaml",
-		"--service-ca-file=/var/service-ca/service-ca.crt",
-	}
-	flags = withLogLevelFlag(cr.Spec.LogLevel, flags)
-	flags = withStatusPageFlag(cr.Spec.Providers, flags)
-
-	return corev1.Container{
-		Image:           util.GetImageEnv("CONSOLE_IMAGE"),
-		ImagePullPolicy: corev1.PullPolicy("IfNotPresent"),
-		Name:            api.OpenShiftConsoleName,
-		Command:         flags,
-		Env:             setEnvironmentVariables(proxyConfig),
-		Ports: []corev1.ContainerPort{{
-			Name:          api.ConsoleContainerPortName,
-			Protocol:      corev1.ProtocolTCP,
-			ContainerPort: api.ConsoleContainerTargetPort,
-		}},
-		// Delay shutdown for 25 seconds, which is the estimated time for:
-		// * endpoint propagation on delete to the router: 5s
-		// * router max reload wait: 5s
-		// * time for the longest connection to shut down: 15s
-		Lifecycle: &corev1.Lifecycle{
-			PreStop: &corev1.Handler{
-				Exec: &corev1.ExecAction{
-					Command: []string{"sleep", "25"},
-				},
-			},
-		},
-		VolumeMounts:             volumeMounts,
-		ReadinessProbe:           defaultProbe(),
-		LivenessProbe:            livenessProbe(),
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		Resources: corev1.ResourceRequirements{
-			Requests: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceCPU:    resource.MustParse("10m"),
-				corev1.ResourceMemory: resource.MustParse("100Mi"),
-			},
-		},
-	}
-}
-
 func setEnvironmentVariables(proxyConfig *configv1.Proxy) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{}
 	if proxyConfig == nil {
@@ -447,46 +318,6 @@ func setEnvironmentVariables(proxyConfig *configv1.Proxy) []corev1.EnvVar {
 		})
 	}
 	return envVars
-}
-
-func defaultProbe() *corev1.Probe {
-	return &corev1.Probe{
-		Handler: corev1.Handler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Path:   "/health",
-				Port:   intstr.FromInt(api.ConsoleContainerTargetPort),
-				Scheme: corev1.URIScheme("HTTPS"),
-			},
-		},
-		TimeoutSeconds:   1,
-		PeriodSeconds:    10,
-		SuccessThreshold: 1,
-		FailureThreshold: 3,
-	}
-}
-
-func livenessProbe() *corev1.Probe {
-	probe := defaultProbe()
-	probe.InitialDelaySeconds = 150
-	return probe
-}
-
-func defaultDownloadsProbe() *corev1.Probe {
-	return &corev1.Probe{
-		Handler: corev1.Handler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Path:   "/",
-				Port:   intstr.FromInt(api.DownloadsPort),
-				Scheme: corev1.URIScheme("HTTP"),
-			},
-		},
-	}
-}
-
-func downloadsReadinessProbe() *corev1.Probe {
-	probe := defaultDownloadsProbe()
-	probe.FailureThreshold = int32(3)
-	return probe
 }
 
 // for the purpose of availability, ready is when we have at least
@@ -580,119 +411,4 @@ func customLogoVolume() volumeConfig {
 		name:        api.OpenShiftCustomLogoConfigMapName,
 		path:        "/var/logo/",
 		isConfigMap: true}
-}
-
-func downloadsContainerArgs() []string {
-	return []string{"-c", `cat <<EOF >>/tmp/serve.py
-import errno, http.server, os, re, signal, socket, sys, tarfile, tempfile, threading, time, zipfile
-
-signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
-
-def write_index(path, message):
-	with open(path, 'wb') as f:
-		f.write('\n'.join([
-			'<!doctype html>',
-			'<html lang="en">',
-			'<head>',
-			'  <meta charset="utf-8">',
-			'</head>',
-			'<body>',
-			'  {}'.format(message),
-			'</body>',
-			'</html>',
-			'',
-		]).encode('utf-8'))
-
-# Launch multiple listeners as threads
-class Thread(threading.Thread):
-	def __init__(self, i, socket):
-		threading.Thread.__init__(self)
-		self.i = i
-		self.socket = socket
-		self.daemon = True
-		self.start()
-
-	def run(self):
-		httpd = http.server.HTTPServer(addr, http.server.SimpleHTTPRequestHandler, False)
-
-		# Prevent the HTTP server from re-binding every handler.
-		# https://stackoverflow.com/questions/46210672/
-		httpd.socket = self.socket
-		httpd.server_bind = self.server_close = lambda self: None
-
-		httpd.serve_forever()
-
-temp_dir = tempfile.mkdtemp()
-print('serving from {}'.format(temp_dir))
-os.chdir(temp_dir)
-for arch in ['amd64']:
-	os.mkdir(arch)
-	for operating_system in ['linux', 'mac', 'windows']:
-		os.mkdir(os.path.join(arch, operating_system))
-for arch in ['arm64', 'ppc64le', 's390x']:
-	os.mkdir(arch)
-	for operating_system in ['linux']:
-		os.mkdir(os.path.join(arch, operating_system))
-content = ['<a href="oc-license">license</a>']
-os.symlink('/usr/share/openshift/LICENSE', 'oc-license')
-
-for arch, operating_system, path in [
-		('amd64', 'linux', '/usr/share/openshift/linux_amd64/oc'),
-		('amd64', 'mac', '/usr/share/openshift/mac/oc'),
-		('amd64', 'windows', '/usr/share/openshift/windows/oc.exe'),
-		('arm64', 'linux', '/usr/share/openshift/linux_arm64/oc'),
-		('ppc64le', 'linux', '/usr/share/openshift/linux_ppc64le/oc'),
-		('s390x', 'linux', '/usr/share/openshift/linux_s390x/oc'),
-		]:
-	basename = os.path.basename(path)
-	target_path = os.path.join(arch, operating_system, basename)
-	os.symlink(path, target_path)
-	base_root, _ = os.path.splitext(basename)
-	archive_path_root = os.path.join(arch, operating_system, base_root)
-	with tarfile.open('{}.tar'.format(archive_path_root), 'w') as tar:
-		tar.add(path, basename)
-	with zipfile.ZipFile('{}.zip'.format(archive_path_root), 'w') as zip:
-		zip.write(path, basename)
-	content.append('<a href="{0}">oc ({1} {2})</a> (<a href="{0}.tar">tar</a> <a href="{0}.zip">zip</a>)'.format(target_path, arch, operating_system))
-
-for root, directories, filenames in os.walk(temp_dir):
-	root_link = os.path.relpath(temp_dir, os.path.join(root, 'child')).replace(os.path.sep, '/')
-	for directory in directories:
-		write_index(
-			path=os.path.join(root, directory, 'index.html'),
-			message='<p>Directory listings are disabled.  See <a href="{}">here</a> for available content.</p>'.format(root_link),
-		)
-
-write_index(
-	path=os.path.join(temp_dir, 'index.html'),
-	message='\n'.join(
-		['<ul>'] +
-		['  <li>{}</li>'.format(entry) for entry in content] +
-		['</ul>']
-	),
-)
-
-# Create socket
-# IPv6 should handle IPv4 passively so long as it is not bound to a
-# specific address or set to IPv6_ONLY
-# https://stackoverflow.com/questions/25817848/python-3-does-http-server-support-ipv6
-try:
-	addr = ('::', 8080)
-	sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-except socket.error as err:
-	# errno.EAFNOSUPPORT is "socket.error: [Errno 97] Address family not supported by protocol"
-	# When IPv6 is disabled, socket will bind using IPv4.
-	if err.errno == errno.EAFNOSUPPORT:
-		addr = ('', 8080)
-		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	else:
-		raise    
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-sock.bind(addr)
-sock.listen(5)
-
-[Thread(i, socket=sock) for i in range(100)]
-time.sleep(9e9)
-EOF
-exec python3 /tmp/serve.py`}
 }

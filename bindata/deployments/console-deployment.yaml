@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: console
+  namespace: openshift-console
+  labels:
+    app: console
+    component: ui
+spec:
+  selector:
+    matchLabels:
+      app: console
+      component: ui
+  template:
+    metadata:
+      name: console
+      labels:
+        app: console
+        component: ui
+      annotations:
+        target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/master: ''
+      restartPolicy: Always
+      serviceAccountName: console
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 40
+      priorityClassName: system-cluster-critical
+      containers:
+        - resources:
+            requests:
+              cpu: 10m
+              memory: 100Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8443
+              scheme: HTTPS
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - sleep
+                  - '25'
+          name: console
+          command:
+            - /opt/bridge/bin/bridge
+            - '--public-dir=/opt/bridge/static'
+            - '--config=/var/console-config/console-config.yaml'
+            - '--service-ca-file=/var/service-ca/service-ca.crt'
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8443
+              scheme: HTTPS
+            initialDelaySeconds: 150
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          ports:
+            - name: https
+              containerPort: 8443
+              protocol: TCP
+          imagePullPolicy: IfNotPresent
+          terminationMessagePolicy: FallbackToLogsOnError
+          image: ${IMAGE}
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 120
+        - key: node.kubernetes.io/not-reachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 120
