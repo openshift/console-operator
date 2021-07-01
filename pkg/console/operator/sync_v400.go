@@ -342,12 +342,8 @@ func (co *consoleOperator) SyncConfigMap(
 	}
 
 	pluginsEndpoingMap := co.GetPluginsEndpointMap(operatorConfig.Spec.Plugins)
-	monitoringSharedConfig, mscErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(ctx, api.OpenShiftMonitoringConfigMapName, metav1.GetOptions{})
-	if mscErr != nil && !apierrors.IsNotFound(mscErr) {
-		return nil, false, "FailedGetMonitoringSharedConfig", mscErr
-	}
 
-	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, monitoringSharedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile, inactivityTimeoutSeconds, pluginsEndpoingMap)
+	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile, inactivityTimeoutSeconds, pluginsEndpoingMap)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
 	}
