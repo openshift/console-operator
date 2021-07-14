@@ -46,7 +46,7 @@ spec:
         1. In the **Git Repo URL** field, add 
         
           ```
-            https://github.com/nodeshift-starters/nodejs-rest-http-redhat
+            https://github.com/nodeshift-starters/nodejs-rest-http
           ``` 
         
         1. At the end of the form, click **Create**. 
@@ -56,9 +56,9 @@ spec:
         instructions: |-
           The application is represented by the light grey area with the white border.  The deployment is a white circle.  Verify that the application was successfully created:
           
-          - Can you identify a **nodejs-rest-http-redhat-app** application?
+          - Can you identify a **nodejs-rest-http-app** application?
           
-          - Can you identify a **nodejs-rest-http-redhat** deployment?
+          - Can you identify a **nodejs-rest-http** deployment?
 
       summary:
         failed: Try the steps again.
@@ -67,11 +67,11 @@ spec:
     - description: >-
         To view the build status of your Node application:
         
-        1. To view build status in a tooltip, hover over the status icon on the bottom left quadrant of the **nodejs-rest-http-redhat** deployment.
+        1. To view build status in a tooltip, hover over the status icon on the bottom left quadrant of the **nodejs-rest-http** deployment.
         
         1. Click on the icon for quick access to the build log.  
         
-            - You should be able to see the log stream of the **nodejs-rest-http-redhat-1** build on the **Build Details** page.
+            - You should be able to see the log stream of the **nodejs-rest-http-1** build on the **Build Details** page.
           
             - The application and its dependencies will be built into a container image and pushed to the OpenShift container registry.
 
@@ -91,7 +91,7 @@ spec:
         
         1. In the navigation menu, click [Topology]{{highlight qs-nav-topology}}.
         
-        1. The icon on the bottom right quadrant of the **nodejs-rest-http-redhat** deployment represents the Git repository of the associated code.  
+        1. The icon on the bottom right quadrant of the **nodejs-rest-http** deployment represents the Git repository of the associated code.
         
             - The icon shown can be for Bitbucket, GitHub, GitLab or generic Git.  
           
@@ -102,7 +102,7 @@ spec:
         instructions: |-
           Verify that you can see the code associated with the sample app:
           
-          - Was a new browser tab opened with **https://github.com/nodeshift-starters/nodejs-rest-http-redhat** ?
+          - Was a new browser tab opened with **https://github.com/nodeshift-starters/nodejs-rest-http** ?
 
           - Return to the browser tab running OpenShift.  
 
@@ -115,7 +115,7 @@ spec:
 
         1. Hover over the pod donut to see the pod status in a tooltip.
 
-             - Notice that the **nodejs-rest-http-redhat** deployment has a pod donut imposed on the circle, representing the pod status (i.e. blue = running).  
+             - Notice that the **nodejs-rest-http** deployment has a pod donut imposed on the circle, representing the pod status (i.e. blue = running).
         
               - The color of the donut indicates the pod status.  
 
@@ -133,7 +133,7 @@ spec:
       title: View the pod status
 
     - description: >-
-        The external link icon on the top right quadrant of the **nodejs-rest-http-redhat** deployment represents the route URL.  
+        The external link icon on the top right quadrant of the **nodejs-rest-http** deployment represents the route URL.
         
         1. Click the external link icon to open the URL and run the application in a new browser tab.
       review:
