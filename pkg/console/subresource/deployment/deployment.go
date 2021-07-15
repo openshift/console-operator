@@ -291,19 +291,7 @@ func consolePodAffinity(infrastructureConfig *configv1.Infrastructure) *corev1.A
 					},
 				},
 				TopologyKey: "kubernetes.io/hostname",
-			}, {
-				LabelSelector: &metav1.LabelSelector{
-					MatchExpressions: []metav1.LabelSelectorRequirement{
-						{
-							Key:      "component",
-							Operator: metav1.LabelSelectorOpIn,
-							Values:   []string{"ui"},
-						},
-					},
-				},
-				TopologyKey: "topology.kubernetes.io/zone",
-			},
-			},
+			}},
 		},
 	}
 }
@@ -326,19 +314,7 @@ func downloadsPodAffinity(infrastructureConfig *configv1.Infrastructure) *corev1
 					},
 				},
 				TopologyKey: "kubernetes.io/hostname",
-			}, {
-				LabelSelector: &metav1.LabelSelector{
-					MatchExpressions: []metav1.LabelSelectorRequirement{
-						{
-							Key:      "component",
-							Operator: metav1.LabelSelectorOpIn,
-							Values:   []string{"downloads"},
-						},
-					},
-				},
-				TopologyKey: "topology.kubernetes.io/zone",
-			},
-			},
+			}},
 		},
 	}
 }

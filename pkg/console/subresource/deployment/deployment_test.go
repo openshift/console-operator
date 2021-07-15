@@ -142,19 +142,7 @@ func TestDefaultDeployment(t *testing.T) {
 					},
 				},
 				TopologyKey: "kubernetes.io/hostname",
-			}, {
-				LabelSelector: &metav1.LabelSelector{
-					MatchExpressions: []metav1.LabelSelectorRequirement{
-						{
-							Key:      "component",
-							Operator: metav1.LabelSelectorOpIn,
-							Values:   []string{"ui"},
-						},
-					},
-				},
-				TopologyKey: "topology.kubernetes.io/zone",
-			},
-			},
+			}},
 		},
 	}
 
@@ -634,19 +622,7 @@ func TestConsolePodAffinity(t *testing.T) {
 							},
 						},
 						TopologyKey: "kubernetes.io/hostname",
-					}, {
-						LabelSelector: &metav1.LabelSelector{
-							MatchExpressions: []metav1.LabelSelectorRequirement{
-								{
-									Key:      "component",
-									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"ui"},
-								},
-							},
-						},
-						TopologyKey: "topology.kubernetes.io/zone",
-					},
-					},
+					}},
 				},
 			},
 		},
@@ -699,19 +675,7 @@ func TestDownloadsPodAffinity(t *testing.T) {
 							},
 						},
 						TopologyKey: "kubernetes.io/hostname",
-					}, {
-						LabelSelector: &metav1.LabelSelector{
-							MatchExpressions: []metav1.LabelSelectorRequirement{
-								{
-									Key:      "component",
-									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"downloads"},
-								},
-							},
-						},
-						TopologyKey: "topology.kubernetes.io/zone",
-					},
-					},
+					}},
 				},
 			},
 		},
