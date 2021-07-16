@@ -58,6 +58,7 @@ type consoleOperator struct {
 	secretsClient    coreclientv1.SecretsGetter
 	configMapClient  coreclientv1.ConfigMapsGetter
 	serviceClient    coreclientv1.ServicesGetter
+	namespacesClient coreclientv1.NamespacesGetter
 	deploymentClient appsclientv1.DeploymentsGetter
 	// openshift
 	routeClient   routeclientv1.RoutesGetter
@@ -79,7 +80,8 @@ func NewConsoleOperator(
 	operatorConfigInformer operatorinformerv1.ConsoleInformer,
 	// core resources
 	corev1Client coreclientv1.CoreV1Interface,
-	coreV1 corev1.Interface,
+	coreV1Namespaced corev1.Interface,
+	namespaceInformer corev1.NamespaceInformer,
 	// deployments
 	deploymentClient appsclientv1.DeploymentsGetter,
 	deploymentInformer appsinformersv1.DeploymentInformer,
@@ -112,6 +114,7 @@ func NewConsoleOperator(
 		secretsClient:    corev1Client,
 		configMapClient:  corev1Client,
 		serviceClient:    corev1Client,
+		namespacesClient: corev1Client,
 		deploymentClient: deploymentClient,
 		// openshift
 		routeClient:   routev1Client,
@@ -123,10 +126,10 @@ func NewConsoleOperator(
 		resourceSyncer: resourceSyncer,
 	}
 
-	secretsInformer := coreV1.Secrets()
-	configMapInformer := coreV1.ConfigMaps()
+	secretsInformer := coreV1Namespaced.Secrets()
+	configMapInformer := coreV1Namespaced.ConfigMaps()
 	managedConfigMapInformer := managedCoreV1.ConfigMaps()
-	serviceInformer := coreV1.Services()
+	serviceInformer := coreV1Namespaced.Services()
 	configV1Informers := configInformer.Config().V1()
 	configNameFilter := util.NamesFilter(api.ConfigResourceName)
 	targetNameFilter := util.NamesFilter(api.OpenShiftConsoleName)
@@ -157,6 +160,9 @@ func NewConsoleOperator(
 	).WithFilteredEventsInformers(
 		util.NamesFilter(deployment.ConsoleOauthConfigName),
 		secretsInformer.Informer(),
+	).WithFilteredEventsInformers(
+		util.ManagedClusterNamespaceFilter(),
+		namespaceInformer.Informer(),
 	).WithSync(c.Sync).
 		ToController("ConsoleOperator", recorder.WithComponentSuffix("console-operator"))
 }

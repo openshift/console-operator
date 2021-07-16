@@ -11,15 +11,16 @@ package consoleserver
 
 // Config is the top-level console server cli configuration.
 type Config struct {
-	APIVersion     string `yaml:"apiVersion"`
-	Kind           string `yaml:"kind"`
-	ServingInfo    `yaml:"servingInfo"`
-	ClusterInfo    `yaml:"clusterInfo"`
-	Auth           `yaml:"auth"`
-	Customization  `yaml:"customization"`
-	Providers      `yaml:"providers"`
-	MonitoringInfo `yaml:"monitoringInfo,omitempty"`
-	Plugins        map[string]string `yaml:"plugins,omitempty"`
+	APIVersion      string `yaml:"apiVersion"`
+	Kind            string `yaml:"kind"`
+	ServingInfo     `yaml:"servingInfo"`
+	ClusterInfo     `yaml:"clusterInfo"`
+	Auth            `yaml:"auth"`
+	Customization   `yaml:"customization"`
+	Providers       `yaml:"providers"`
+	MonitoringInfo  `yaml:"monitoringInfo,omitempty"`
+	Plugins         map[string]string `yaml:"plugins,omitempty"`
+	ManagedClusters map[string]string `yaml:"managedClusters,omitempty"`
 }
 
 // ServingInfo holds configuration for serving HTTP.

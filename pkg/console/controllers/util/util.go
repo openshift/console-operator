@@ -17,3 +17,12 @@ func NamesFilter(names ...string) factory.EventFilterFunc {
 		return false
 	}
 }
+
+func ManagedClusterNamespaceFilter () factory.EventFilterFunc {
+	return func(obj interface{}) bool {
+		metaObj := obj.(metav1.Object)
+		name := metaObj.GetName()
+		labels := metaObj.GetLabels()
+		return labels["cluster.open-cluster-management.io/managedCluster"] == name && name != "local-cluster"
+	}
+}
