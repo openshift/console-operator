@@ -39,7 +39,6 @@ func DefaultConfigMap(
 	operatorConfig *operatorv1.Console,
 	consoleConfig *configv1.Console,
 	managedConfig *corev1.ConfigMap,
-	monitoringSharedConfig *corev1.ConfigMap,
 	infrastructureConfig *configv1.Infrastructure,
 	activeConsoleRoute *routev1.Route,
 	useDefaultCAFile bool,
@@ -53,7 +52,6 @@ func DefaultConfigMap(
 		DocURL(DEFAULT_DOC_URL).
 		DefaultIngressCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
-		Monitoring(monitoringSharedConfig).
 		InactivityTimeout(inactivityTimeoutSeconds).
 		ConfigYAML()
 	if err != nil {
@@ -69,7 +67,6 @@ func DefaultConfigMap(
 		DocURL(operatorConfig.Spec.Customization.DocumentationBaseURL).
 		DefaultIngressCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
-		Monitoring(monitoringSharedConfig).
 		Plugins(pluginsEndpoingMap).
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
 		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).
