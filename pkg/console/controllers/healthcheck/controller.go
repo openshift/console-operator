@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
+	"github.com/openshift/library-go/pkg/route/routeapihelpers"
 
 	// console-operator
 	"github.com/openshift/console-operator/pkg/api"
@@ -126,7 +127,8 @@ func (c *HealthCheckController) Sync(ctx context.Context, controllerContext fact
 }
 
 func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorConfig *operatorsv1.Console, route *routev1.Route) (string, error) {
-	if !routesub.IsAdmitted(route) {
+	url, _, err := routeapihelpers.IngressURI(route, route.Spec.Host)
+	if err != nil {
 		return "RouteNotAdmitted", fmt.Errorf("console route is not admitted")
 	}
 
@@ -136,11 +138,7 @@ func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorCo
 	}
 	client := clientWithCA(caPool)
 
-	if len(route.Spec.Host) == 0 {
-		return "RouteHostError", fmt.Errorf("route does not have host specified")
-	}
-	url := "https://" + route.Spec.Host + "/health"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
 	if err != nil {
 		return "FailedRequest", fmt.Errorf("failed to build request to route (%s): %v", url, err)
 	}
