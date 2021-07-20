@@ -38,6 +38,16 @@ rules:
 - apiGroups:
   - config.openshift.io
   resources:
+  - ingresses/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+- apiGroups:
+  - config.openshift.io
+  resources:
   - proxies
   verbs:
   - get
