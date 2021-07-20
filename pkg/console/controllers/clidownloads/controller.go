@@ -20,6 +20,7 @@ import (
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
+	"github.com/openshift/library-go/pkg/route/routeapihelpers"
 
 	// informers
 	consoleinformersv1 "github.com/openshift/client-go/console/informers/externalversions/console/v1"
@@ -35,7 +36,6 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 	controllersutil "github.com/openshift/console-operator/pkg/console/controllers/util"
 	"github.com/openshift/console-operator/pkg/console/status"
-	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
@@ -107,13 +107,13 @@ func (c *CLIDownloadsSyncController) Sync(ctx context.Context, controllerContext
 		return downloadsRouteErr
 	}
 
-	host, downloadsRouteErr := routesub.GetCanonicalHost(downloadsRoute)
+	downloadsURI, _, downloadsRouteErr := routeapihelpers.IngressURI(downloadsRoute, downloadsRoute.Spec.Host)
 	if downloadsRouteErr != nil {
 		return downloadsRouteErr
 	}
 
 	statusHandler := status.NewStatusHandler(c.operatorClient)
-	ocConsoleCLIDownloads := PlatformBasedOCConsoleCLIDownloads(host, api.OCCLIDownloadsCustomResourceName)
+	ocConsoleCLIDownloads := PlatformBasedOCConsoleCLIDownloads(downloadsURI.String(), api.OCCLIDownloadsCustomResourceName)
 	_, ocCLIDownloadsErrReason, ocCLIDownloadsErr := ApplyCLIDownloads(ctx, c.consoleCliDownloadsClient, ocConsoleCLIDownloads)
 	statusHandler.AddCondition(status.HandleDegraded("OCDownloadsSync", ocCLIDownloadsErrReason, ocCLIDownloadsErr))
 	if ocCLIDownloadsErr != nil {

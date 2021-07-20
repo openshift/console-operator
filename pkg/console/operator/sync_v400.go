@@ -21,13 +21,13 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	"github.com/openshift/console-operator/pkg/crypto"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
+	"github.com/openshift/library-go/pkg/route/routeapihelpers"
 
 	// operator
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
@@ -58,7 +58,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		routeName = api.OpenshiftConsoleCustomRouteName
 	}
 
-	route, routeCanonicalHost, consoleURL, routeReasoneErr, routeErr := co.GetActiveRouteInfo(ctx, routeName)
+	route, consoleURL, routeReasoneErr, routeErr := co.GetActiveRouteInfo(ctx, routeName)
 	// TODO: this controller is no longer responsible for syncing the route.
 	//   however, the route is essential for several of the components below.
 	//   - the loop should exit early and wait until the RouteSyncController creates the route.
@@ -114,7 +114,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(secErr)
 	}
 
-	oauthClient, oauthChanged, oauthErrReason, oauthErr := co.SyncOAuthClient(ctx, set.Operator, sec, routeCanonicalHost)
+	oauthClient, oauthChanged, oauthErrReason, oauthErr := co.SyncOAuthClient(ctx, set.Operator, sec, consoleURL.String())
 	toUpdate = toUpdate || oauthChanged
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSync", oauthErrReason, oauthErr))
 	if oauthErr != nil {
@@ -165,14 +165,14 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	// public hostname so that the world can know the console is ready to roll
 	klog.V(4).Infoln("sync_v400: updating console status")
 
-	_, consoleConfigErr := co.SyncConsoleConfig(ctx, set.Console, consoleURL)
+	_, consoleConfigErr := co.SyncConsoleConfig(ctx, set.Console, consoleURL.String())
 	statusHandler.AddCondition(status.HandleDegraded("ConsoleConfig", "FailedUpdate", consoleConfigErr))
 	if consoleConfigErr != nil {
 		klog.Errorf("could not update console config status: %v", consoleConfigErr)
 		return statusHandler.FlushAndReturn(consoleConfigErr)
 	}
 
-	_, _, consolePublicConfigErr := co.SyncConsolePublicConfig(consoleURL, controllerContext.Recorder())
+	_, _, consolePublicConfigErr := co.SyncConsolePublicConfig(consoleURL.String(), controllerContext.Recorder())
 	statusHandler.AddCondition(status.HandleDegraded("ConsolePublicConfigMap", "FailedApply", consolePublicConfigErr))
 	if consolePublicConfigErr != nil {
 		klog.Errorf("could not update public console config status: %v", consolePublicConfigErr)
@@ -202,17 +202,17 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	return statusHandler.FlushAndReturn(nil)
 }
 
-func (co *consoleOperator) GetActiveRouteInfo(ctx context.Context, activeRouteName string) (route *routev1.Route, canonicalHost string, routeURL string, reason string, err error) {
+func (co *consoleOperator) GetActiveRouteInfo(ctx context.Context, activeRouteName string) (route *routev1.Route, routeURL *url.URL, reason string, err error) {
 	route, routeErr := co.routeClient.Routes(api.TargetNamespace).Get(ctx, activeRouteName, metav1.GetOptions{})
 	if routeErr != nil {
-		return nil, "", "", "FailedGet", routeErr
+		return nil, nil, "FailedGet", routeErr
 	}
-	canonicalHost, canonicalHostErr := routesub.GetCanonicalHost(route)
-	if canonicalHostErr != nil {
-		return nil, "", "", "FailedHost", canonicalHostErr
+	uri, _, uriErr := routeapihelpers.IngressURI(route, route.Spec.Host)
+	if uriErr != nil {
+		return nil, nil, "FailedIngress", uriErr
 	}
 
-	return route, canonicalHost, util.HTTPS(canonicalHost), "", nil
+	return route, uri, "", nil
 }
 
 func (co *consoleOperator) SyncConsoleConfig(ctx context.Context, consoleConfig *configv1.Console, consoleURL string) (*configv1.Console, error) {
@@ -273,14 +273,14 @@ func (co *consoleOperator) SyncOAuthClient(
 	ctx context.Context,
 	operatorConfig *operatorv1.Console,
 	sec *corev1.Secret,
-	routeCanonicalHost string,
+	consoleURL string,
 ) (consoleoauthclient *oauthv1.OAuthClient, changed bool, reason string, err error) {
 	oauthClient, err := co.oauthClient.OAuthClients().Get(ctx, oauthsub.Stub().Name, metav1.GetOptions{})
 	if err != nil {
 		// at this point we must die & wait for someone to fix the lack of an outhclient. there is nothing we can do.
 		return nil, false, "FailedGet", errors.New(fmt.Sprintf("oauth client for console does not exist and cannot be created (%v)", err))
 	}
-	oauthsub.RegisterConsoleToOAuthClient(oauthClient, routeCanonicalHost, secretsub.GetSecretString(sec))
+	oauthsub.RegisterConsoleToOAuthClient(oauthClient, consoleURL, secretsub.GetSecretString(sec))
 	oauthClient, oauthChanged, oauthErr := oauthsub.CustomApplyOAuth(co.oauthClient, oauthClient, ctx)
 	if oauthErr != nil {
 		return nil, false, "FailedRegister", oauthErr

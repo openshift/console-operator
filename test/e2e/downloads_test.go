@@ -10,8 +10,8 @@ import (
 
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
-	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	"github.com/openshift/console-operator/test/e2e/framework"
+	"github.com/openshift/library-go/pkg/route/routeapihelpers"
 )
 
 func setupDownloadsTestCase(t *testing.T) (*framework.ClientSet, *operatorsv1.Console) {
@@ -30,12 +30,13 @@ func TestDownloadsEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not get route: %s", err)
 	}
-	host, err := routesub.GetCanonicalHost(route)
+
+	url, _, err := routeapihelpers.IngressURI(route, route.Spec.Host)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ocDownloads := clidownloads.PlatformBasedOCConsoleCLIDownloads(host, api.OCCLIDownloadsCustomResourceName)
+	ocDownloads := clidownloads.PlatformBasedOCConsoleCLIDownloads(url.String(), api.OCCLIDownloadsCustomResourceName)
 
 	for _, link := range ocDownloads.Spec.Links {
 		req := getRequest(t, link.Href)
