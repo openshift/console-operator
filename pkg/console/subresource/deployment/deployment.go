@@ -100,6 +100,16 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	for k, v := range deploymentAnnotations {
 		podAnnotations[k] = v
 	}
+	nodeSelector := map[string]string{
+		// by default, we want to deploy on master nodes
+		// empty string is correct
+		"node-role.kubernetes.io/master": "",
+	}
+	// If running with an externalized control plane, remove the master node selector
+	if infrastructureConfig.Status.ControlPlaneTopology == configv1.ExternalTopologyMode {
+		nodeSelector = map[string]string{}
+	}
+
 	deployment := &appsv1.Deployment{
 		ObjectMeta: meta,
 		Spec: appsv1.DeploymentSpec{
@@ -119,12 +129,8 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 				},
 				Spec: corev1.PodSpec{
 					ServiceAccountName: "console",
-					// we want to deploy on master nodes
-					NodeSelector: map[string]string{
-						// empty string is correct
-						"node-role.kubernetes.io/master": "",
-					},
-					Affinity: affinity,
+					NodeSelector:       nodeSelector,
+					Affinity:           affinity,
 					// toleration is a taint override. we can and should be scheduled on a master node.
 					Tolerations:                   tolerations(),
 					PriorityClassName:             "system-cluster-critical",
