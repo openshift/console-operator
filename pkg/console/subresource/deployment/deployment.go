@@ -65,9 +65,9 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	deployment := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/console-deployment.yaml"))
 	withAnnotations(deployment, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig)
 	withReplicas(deployment, infrastructureConfig)
-	withAffinity(deployment, infrastructureConfig)
+	withAffinity(deployment, infrastructureConfig, "ui")
 	withVolumes(deployment, trustedCAConfigMap, canMountCustomLogo)
-	withContainers(deployment, operatorConfig, proxyConfig)
+	withContainerImage(deployment, operatorConfig, proxyConfig)
 	withStrategy(deployment, infrastructureConfig)
 	util.AddOwnerRef(deployment, util.OwnerRefFrom(operatorConfig))
 	return deployment
@@ -92,16 +92,55 @@ func withAnnotations(deployment *appsv1.Deployment, cm *corev1.ConfigMap, servic
 }
 
 func withReplicas(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
-	replicas := Replicas(infrastructureConfig)
+	var replicas int32
+	if infrastructureConfig.Status.InfrastructureTopology == configv1.SingleReplicaTopologyMode {
+		replicas = int32(SingleNodeConsoleReplicas)
+	} else {
+		replicas = int32(DefaultConsoleReplicas)
+	}
 	deployment.Spec.Replicas = &replicas
 }
 
-func withAffinity(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
-	deployment.Spec.Template.Spec.Affinity = consolePodAffinity(infrastructureConfig)
+func withAffinity(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure, component string) {
+	var affinity *corev1.Affinity
+	if infrastructureConfig.Status.ControlPlaneTopology == configv1.SingleReplicaTopologyMode {
+		affinity = &corev1.Affinity{}
+	} else {
+		affinity = &corev1.Affinity{
+			PodAntiAffinity: &corev1.PodAntiAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      "component",
+								Operator: metav1.LabelSelectorOpIn,
+								Values:   []string{component},
+							},
+						},
+					},
+					TopologyKey: "kubernetes.io/hostname",
+				}, {
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      "component",
+								Operator: metav1.LabelSelectorOpIn,
+								Values:   []string{component},
+							},
+						},
+					},
+					TopologyKey: "topology.kubernetes.io/zone",
+				},
+				},
+			},
+		}
+	}
+	deployment.Spec.Template.Spec.Affinity = affinity
 }
 
 func withVolumes(deployment *appsv1.Deployment, trustedCAConfigMap *corev1.ConfigMap, canMountCustomLogo bool) {
 	volumeConfig := defaultVolumeConfig()
+
 	caBundle, caBundleExists := trustedCAConfigMap.Data["ca-bundle.crt"]
 	if caBundleExists && caBundle != "" {
 		volumeConfig = append(volumeConfig, trustedCAVolume())
@@ -109,167 +148,19 @@ func withVolumes(deployment *appsv1.Deployment, trustedCAConfigMap *corev1.Confi
 	if canMountCustomLogo {
 		volumeConfig = append(volumeConfig, customLogoVolume())
 	}
-	deployment.Spec.Template.Spec.Containers[0].VolumeMounts = consoleVolumeMounts(volumeConfig)
-	deployment.Spec.Template.Spec.Volumes = consoleVolumes(volumeConfig)
-}
 
-func withContainers(deployment *appsv1.Deployment, operatorConfig *operatorv1.Console, proxyConfig *configv1.Proxy) {
-	commands := deployment.Spec.Template.Spec.Containers[0].Command
-	commands = withLogLevelFlag(operatorConfig.Spec.LogLevel, commands)
-	commands = withStatusPageFlag(operatorConfig.Spec.Providers, commands)
-	deployment.Spec.Template.Spec.Containers[0].Command = commands
-	deployment.Spec.Template.Spec.Containers[0].Env = setEnvironmentVariables(proxyConfig)
-	deployment.Spec.Template.Spec.Containers[0].Image = util.GetImageEnv("CONSOLE_IMAGE")
-}
-
-func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
-	deployment.Spec.Strategy.RollingUpdate = rollingUpdateParams(infrastructureConfig)
-}
-
-func DefaultDownloadsDeployment(operatorConfig *operatorv1.Console, infrastructureConfig *configv1.Infrastructure) *appsv1.Deployment {
-	downloadsDeployment := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/downloads-deployment.yaml"))
-	withDownloadsReplicas(downloadsDeployment, infrastructureConfig)
-	withDownloadsAffinity(downloadsDeployment, infrastructureConfig)
-	withDownloadsContainers(downloadsDeployment)
-	withStrategy(downloadsDeployment, infrastructureConfig)
-	util.AddOwnerRef(downloadsDeployment, util.OwnerRefFrom(operatorConfig))
-	return downloadsDeployment
-}
-
-func withDownloadsReplicas(downloadsDeployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
-	replicas := Replicas(infrastructureConfig)
-	downloadsDeployment.Spec.Replicas = &replicas
-}
-
-func withDownloadsAffinity(downloadsDeployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
-	downloadsDeployment.Spec.Template.Spec.Affinity = downloadsPodAffinity(infrastructureConfig)
-}
-
-func withDownloadsContainers(downloadsDeployment *appsv1.Deployment) {
-	downloadsDeployment.Spec.Template.Spec.Containers[0].Image = util.GetImageEnv("DOWNLOADS_IMAGE")
-}
-
-func Stub() *appsv1.Deployment {
-	meta := util.SharedMeta()
-	dep := &appsv1.Deployment{
-		ObjectMeta: meta,
-	}
-	return dep
-}
-
-func LogDeploymentAnnotationChanges(client appsclientv1.DeploymentsGetter, updated *appsv1.Deployment, ctx context.Context) {
-	existing, err := client.Deployments(updated.Namespace).Get(ctx, updated.Name, metav1.GetOptions{})
-	if err != nil {
-		klog.V(4).Infof("%v", err)
-		return
-	}
-
-	changed := false
-	for _, annot := range resourceAnnotations {
-		if existing.ObjectMeta.Annotations[annot] != updated.ObjectMeta.Annotations[annot] {
-			changed = true
-			klog.V(4).Infof("deployment annotation[%v] has changed from: %v to %v", annot, existing.ObjectMeta.Annotations[annot], updated.ObjectMeta.Annotations[annot])
+	volMountList := make([]corev1.VolumeMount, len(volumeConfig))
+	for i, item := range volumeConfig {
+		volMountList[i] = corev1.VolumeMount{
+			Name:      item.name,
+			ReadOnly:  item.readOnly,
+			MountPath: item.path,
 		}
 	}
-	if changed {
-		klog.V(4).Infoln("deployment resource versions have changed")
-	}
-}
+	deployment.Spec.Template.Spec.Containers[0].VolumeMounts = volMountList
 
-func rollingUpdateParams(infrastructureConfig *configv1.Infrastructure) *appsv1.RollingUpdateDeployment {
-	if infrastructureConfig.Status.InfrastructureTopology == configv1.SingleReplicaTopologyMode {
-		return &appsv1.RollingUpdateDeployment{}
-	}
-	return &appsv1.RollingUpdateDeployment{
-		MaxSurge: &intstr.IntOrString{
-			IntVal: int32(3),
-		},
-		MaxUnavailable: &intstr.IntOrString{
-			IntVal: int32(1),
-		},
-	}
-}
-
-func consolePodAffinity(infrastructureConfig *configv1.Infrastructure) *corev1.Affinity {
-	if infrastructureConfig.Status.ControlPlaneTopology == configv1.SingleReplicaTopologyMode {
-		return &corev1.Affinity{}
-	}
-	return &corev1.Affinity{
-		PodAntiAffinity: &corev1.PodAntiAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
-				LabelSelector: &metav1.LabelSelector{
-					MatchExpressions: []metav1.LabelSelectorRequirement{
-						{
-							Key:      "component",
-							Operator: metav1.LabelSelectorOpIn,
-							Values:   []string{"ui"},
-						},
-					},
-				},
-				TopologyKey: "kubernetes.io/hostname",
-			}, {
-				LabelSelector: &metav1.LabelSelector{
-					MatchExpressions: []metav1.LabelSelectorRequirement{
-						{
-							Key:      "component",
-							Operator: metav1.LabelSelectorOpIn,
-							Values:   []string{"ui"},
-						},
-					},
-				},
-				TopologyKey: "topology.kubernetes.io/zone",
-			},
-			},
-		},
-	}
-}
-
-// Since the downloads deployment runs on any Linux node we should be looking on infrastructureTopology field
-func downloadsPodAffinity(infrastructureConfig *configv1.Infrastructure) *corev1.Affinity {
-	if infrastructureConfig.Status.InfrastructureTopology == configv1.SingleReplicaTopologyMode {
-		return &corev1.Affinity{}
-	}
-	return &corev1.Affinity{
-		PodAntiAffinity: &corev1.PodAntiAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
-				LabelSelector: &metav1.LabelSelector{
-					MatchExpressions: []metav1.LabelSelectorRequirement{
-						{
-							Key:      "component",
-							Operator: metav1.LabelSelectorOpIn,
-							Values:   []string{"downloads"},
-						},
-					},
-				},
-				TopologyKey: "kubernetes.io/hostname",
-			}, {
-				LabelSelector: &metav1.LabelSelector{
-					MatchExpressions: []metav1.LabelSelectorRequirement{
-						{
-							Key:      "component",
-							Operator: metav1.LabelSelectorOpIn,
-							Values:   []string{"downloads"},
-						},
-					},
-				},
-				TopologyKey: "topology.kubernetes.io/zone",
-			},
-			},
-		},
-	}
-}
-
-func Replicas(infrastructureConfig *configv1.Infrastructure) int32 {
-	if infrastructureConfig.Status.InfrastructureTopology == configv1.SingleReplicaTopologyMode {
-		return int32(SingleNodeConsoleReplicas)
-	}
-	return int32(DefaultConsoleReplicas)
-}
-
-// deduplication, use the same volume config to generate Volumes, and VolumeMounts
-func consoleVolumes(vc []volumeConfig) []corev1.Volume {
-	vols := make([]corev1.Volume, len(vc))
-	for i, item := range vc {
+	vols := make([]corev1.Volume, len(volumeConfig))
+	for i, item := range volumeConfig {
 		if item.isSecret {
 			vols[i] = corev1.Volume{
 				Name: item.name,
@@ -301,19 +192,74 @@ func consoleVolumes(vc []volumeConfig) []corev1.Volume {
 			}
 		}
 	}
-	return vols
+	deployment.Spec.Template.Spec.Volumes = vols
 }
 
-func consoleVolumeMounts(vc []volumeConfig) []corev1.VolumeMount {
-	volMountList := make([]corev1.VolumeMount, len(vc))
-	for i, item := range vc {
-		volMountList[i] = corev1.VolumeMount{
-			Name:      item.name,
-			ReadOnly:  item.readOnly,
-			MountPath: item.path,
+func withContainerImage(deployment *appsv1.Deployment, operatorConfig *operatorv1.Console, proxyConfig *configv1.Proxy) {
+	commands := deployment.Spec.Template.Spec.Containers[0].Command
+	commands = withLogLevelFlag(operatorConfig.Spec.LogLevel, commands)
+	commands = withStatusPageFlag(operatorConfig.Spec.Providers, commands)
+	deployment.Spec.Template.Spec.Containers[0].Command = commands
+	deployment.Spec.Template.Spec.Containers[0].Env = setEnvironmentVariables(proxyConfig)
+	deployment.Spec.Template.Spec.Containers[0].Image = util.GetImageEnv("CONSOLE_IMAGE")
+}
+
+func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
+	var rollingUpdateParams *appsv1.RollingUpdateDeployment
+	if infrastructureConfig.Status.InfrastructureTopology == configv1.SingleReplicaTopologyMode {
+		rollingUpdateParams = &appsv1.RollingUpdateDeployment{}
+	} else {
+		rollingUpdateParams = &appsv1.RollingUpdateDeployment{
+			MaxSurge: &intstr.IntOrString{
+				IntVal: int32(3),
+			},
+			MaxUnavailable: &intstr.IntOrString{
+				IntVal: int32(1),
+			},
 		}
 	}
-	return volMountList
+	deployment.Spec.Strategy.RollingUpdate = rollingUpdateParams
+}
+
+func DefaultDownloadsDeployment(operatorConfig *operatorv1.Console, infrastructureConfig *configv1.Infrastructure) *appsv1.Deployment {
+	downloadsDeployment := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/downloads-deployment.yaml"))
+	withReplicas(downloadsDeployment, infrastructureConfig)
+	withAffinity(downloadsDeployment, infrastructureConfig, "downloads")
+	withDownloadsContainerImage(downloadsDeployment)
+	withStrategy(downloadsDeployment, infrastructureConfig)
+	util.AddOwnerRef(downloadsDeployment, util.OwnerRefFrom(operatorConfig))
+	return downloadsDeployment
+}
+
+func withDownloadsContainerImage(downloadsDeployment *appsv1.Deployment) {
+	downloadsDeployment.Spec.Template.Spec.Containers[0].Image = util.GetImageEnv("DOWNLOADS_IMAGE")
+}
+
+func Stub() *appsv1.Deployment {
+	meta := util.SharedMeta()
+	dep := &appsv1.Deployment{
+		ObjectMeta: meta,
+	}
+	return dep
+}
+
+func LogDeploymentAnnotationChanges(client appsclientv1.DeploymentsGetter, updated *appsv1.Deployment, ctx context.Context) {
+	existing, err := client.Deployments(updated.Namespace).Get(ctx, updated.Name, metav1.GetOptions{})
+	if err != nil {
+		klog.V(4).Infof("%v", err)
+		return
+	}
+
+	changed := false
+	for _, annot := range resourceAnnotations {
+		if existing.ObjectMeta.Annotations[annot] != updated.ObjectMeta.Annotations[annot] {
+			changed = true
+			klog.V(4).Infof("deployment annotation[%v] has changed from: %v to %v", annot, existing.ObjectMeta.Annotations[annot], updated.ObjectMeta.Annotations[annot])
+		}
+	}
+	if changed {
+		klog.V(4).Infoln("deployment resource versions have changed")
+	}
 }
 
 func GetLogLevelFlag(logLevel operatorv1.LogLevel) string {

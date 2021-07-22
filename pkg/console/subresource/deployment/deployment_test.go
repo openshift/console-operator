@@ -186,13 +186,13 @@ func TestDefaultDeployment(t *testing.T) {
 	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
 
 	consoleDeploymentTemplate := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/console-deployment.yaml"))
-	withContainers(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
+	withContainerImage(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
 	withVolumes(consoleDeploymentTemplate, trustedCAConfigMapEmpty, false)
 	consoleDeploymentContainer := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
+	consoleDeploymentVolumes := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 	withVolumes(consoleDeploymentTemplate, trustedCAConfigMapSet, false)
 	consoleDeploymentContainerTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
-	rollingUpdateParamsForSingleReplica := rollingUpdateParams(infrastructureConfigSingleReplica)
-	rollingUpdateParamsForHighAvail := rollingUpdateParams(infrastructureConfigHighlyAvailable)
+	consoleDeploymentVolumesTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 
 	tests := []struct {
 		name string
@@ -254,12 +254,19 @@ func TestDefaultDeployment(t *testing.T) {
 							Containers: []corev1.Container{
 								consoleDeploymentContainer,
 							},
-							Volumes: consoleVolumes(defaultVolumeConfig()),
+							Volumes: consoleDeploymentVolumes,
 						},
 					},
 					Strategy: appsv1.DeploymentStrategy{
-						Type:          appsv1.RollingUpdateDeploymentStrategyType,
-						RollingUpdate: rollingUpdateParamsForHighAvail,
+						Type: appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: &appsv1.RollingUpdateDeployment{
+							MaxSurge: &intstr.IntOrString{
+								IntVal: int32(3),
+							},
+							MaxUnavailable: &intstr.IntOrString{
+								IntVal: int32(1),
+							},
+						},
 					},
 					MinReadySeconds:         0,
 					RevisionHistoryLimit:    nil,
@@ -323,12 +330,19 @@ func TestDefaultDeployment(t *testing.T) {
 							Containers: []corev1.Container{
 								consoleDeploymentContainerTrusted,
 							},
-							Volumes: consoleVolumes(append(defaultVolumeConfig(), trustedCAVolume())),
+							Volumes: consoleDeploymentVolumesTrusted,
 						},
 					},
 					Strategy: appsv1.DeploymentStrategy{
-						Type:          appsv1.RollingUpdateDeploymentStrategyType,
-						RollingUpdate: rollingUpdateParamsForHighAvail,
+						Type: appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: &appsv1.RollingUpdateDeployment{
+							MaxSurge: &intstr.IntOrString{
+								IntVal: int32(3),
+							},
+							MaxUnavailable: &intstr.IntOrString{
+								IntVal: int32(1),
+							},
+						},
 					},
 					MinReadySeconds:         0,
 					RevisionHistoryLimit:    nil,
@@ -392,12 +406,12 @@ func TestDefaultDeployment(t *testing.T) {
 							Containers: []corev1.Container{
 								consoleDeploymentContainer,
 							},
-							Volumes: consoleVolumes(defaultVolumeConfig()),
+							Volumes: consoleDeploymentVolumes,
 						},
 					},
 					Strategy: appsv1.DeploymentStrategy{
 						Type:          appsv1.RollingUpdateDeploymentStrategyType,
-						RollingUpdate: rollingUpdateParamsForSingleReplica,
+						RollingUpdate: &appsv1.RollingUpdateDeployment{},
 					},
 					MinReadySeconds:         0,
 					RevisionHistoryLimit:    nil,
@@ -611,17 +625,11 @@ func TestWithAffinity(t *testing.T) {
 	type args struct {
 		deployment           *appsv1.Deployment
 		infrastructureConfig *configv1.Infrastructure
+		component            string
 	}
 
 	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
 	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
-
-	singleReplicaSpec := corev1.PodSpec{
-		Affinity: consolePodAffinity(infrastructureConfigSingleReplica),
-	}
-	highlyAvailableSpec := corev1.PodSpec{
-		Affinity: consolePodAffinity(infrastructureConfigHighlyAvailable),
-	}
 
 	tests := []struct {
 		name string
@@ -635,11 +643,14 @@ func TestWithAffinity(t *testing.T) {
 					Spec: appsv1.DeploymentSpec{},
 				},
 				infrastructureConfig: infrastructureConfigSingleReplica,
+				component:            "ui",
 			},
 			want: &appsv1.Deployment{
 				Spec: appsv1.DeploymentSpec{
 					Template: corev1.PodTemplateSpec{
-						Spec: singleReplicaSpec,
+						Spec: corev1.PodSpec{
+							Affinity: &corev1.Affinity{},
+						},
 					},
 				},
 			},
@@ -651,11 +662,41 @@ func TestWithAffinity(t *testing.T) {
 					Spec: appsv1.DeploymentSpec{},
 				},
 				infrastructureConfig: infrastructureConfigHighlyAvailable,
+				component:            "foobar",
 			},
 			want: &appsv1.Deployment{
 				Spec: appsv1.DeploymentSpec{
 					Template: corev1.PodTemplateSpec{
-						Spec: highlyAvailableSpec,
+						Spec: corev1.PodSpec{
+							Affinity: &corev1.Affinity{
+								PodAntiAffinity: &corev1.PodAntiAffinity{
+									RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+										LabelSelector: &metav1.LabelSelector{
+											MatchExpressions: []metav1.LabelSelectorRequirement{
+												{
+													Key:      "component",
+													Operator: metav1.LabelSelectorOpIn,
+													Values:   []string{"foobar"},
+												},
+											},
+										},
+										TopologyKey: "kubernetes.io/hostname",
+									}, {
+										LabelSelector: &metav1.LabelSelector{
+											MatchExpressions: []metav1.LabelSelectorRequirement{
+												{
+													Key:      "component",
+													Operator: metav1.LabelSelectorOpIn,
+													Values:   []string{"foobar"},
+												},
+											},
+										},
+										TopologyKey: "topology.kubernetes.io/zone",
+									},
+									},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -663,7 +704,7 @@ func TestWithAffinity(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withAffinity(tt.args.deployment, tt.args.infrastructureConfig)
+			withAffinity(tt.args.deployment, tt.args.infrastructureConfig, tt.args.component)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
 			}
@@ -698,10 +739,169 @@ func TestWithVolumes(t *testing.T) {
 		},
 	}
 
-	volumeConfig := defaultVolumeConfig()
-	trustedVolumeConfig := append(volumeConfig, trustedCAVolume())
-	customLogoVolumeConfig := append(volumeConfig, customLogoVolume())
-	allVolumeConfig := append(volumeConfig, trustedCAVolume(), customLogoVolume())
+	consoleServingCertVolume := corev1.Volume{
+		Name: api.ConsoleServingCertName,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName:  api.ConsoleServingCertName,
+				Items:       nil,
+				DefaultMode: nil,
+				Optional:    nil,
+			},
+		},
+	}
+
+	consoleOauthConfigVolume := corev1.Volume{
+		Name: ConsoleOauthConfigName,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName:  ConsoleOauthConfigName,
+				Items:       nil,
+				DefaultMode: nil,
+				Optional:    nil,
+			},
+		},
+	}
+
+	consoleConfigVolume := corev1.Volume{
+		Name: api.OpenShiftConsoleConfigMapName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: api.OpenShiftConsoleConfigMapName,
+				},
+				Items:       nil,
+				DefaultMode: nil,
+				Optional:    nil,
+			},
+		},
+	}
+
+	serviceCAVolume := corev1.Volume{
+		Name: api.ServiceCAConfigMapName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: api.ServiceCAConfigMapName,
+				},
+				Items:       nil,
+				DefaultMode: nil,
+				Optional:    nil,
+			},
+		},
+	}
+
+	defaultIngressCertVolume := corev1.Volume{
+		Name: api.DefaultIngressCertConfigMapName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: api.DefaultIngressCertConfigMapName,
+				},
+				Items:       nil,
+				DefaultMode: nil,
+				Optional:    nil,
+			},
+		},
+	}
+
+	customLogoVolume := corev1.Volume{
+		Name: api.OpenShiftCustomLogoConfigMapName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: api.OpenShiftCustomLogoConfigMapName,
+				},
+				Items:       nil,
+				DefaultMode: nil,
+				Optional:    nil,
+			},
+		},
+	}
+
+	trustedCAVolume := corev1.Volume{
+		Name: api.TrustedCAConfigMapName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: api.TrustedCAConfigMapName,
+				},
+				Items: []corev1.KeyToPath{
+					{
+						Key:  api.TrustedCABundleKey,
+						Path: api.TrustedCABundleMountFile,
+						Mode: nil,
+					},
+				},
+				DefaultMode: nil,
+				Optional:    nil,
+			},
+		},
+	}
+
+	defaultVolumes := []corev1.Volume{
+		consoleServingCertVolume,
+		consoleOauthConfigVolume,
+		consoleConfigVolume,
+		serviceCAVolume,
+		defaultIngressCertVolume,
+	}
+	trustedVolumes := append(defaultVolumes, trustedCAVolume)
+	customLogoVolumes := append(defaultVolumes, customLogoVolume)
+	allVolumes := append(defaultVolumes, trustedCAVolume, customLogoVolume)
+
+	consoleServingCertVolumeMount := corev1.VolumeMount{
+		Name:      api.ConsoleServingCertName,
+		ReadOnly:  true,
+		MountPath: "/var/serving-cert",
+	}
+
+	consoleOauthConfigVolumeMount := corev1.VolumeMount{
+		Name:      ConsoleOauthConfigName,
+		ReadOnly:  true,
+		MountPath: "/var/oauth-config",
+	}
+
+	consoleConfigVolumeMount := corev1.VolumeMount{
+		Name:      api.OpenShiftConsoleConfigMapName,
+		ReadOnly:  true,
+		MountPath: "/var/console-config",
+	}
+
+	serviceCAVolumeMount := corev1.VolumeMount{
+		Name:      api.ServiceCAConfigMapName,
+		ReadOnly:  true,
+		MountPath: "/var/service-ca",
+	}
+
+	defaultIngressCertVolumeMount := corev1.VolumeMount{
+		Name:      api.DefaultIngressCertConfigMapName,
+		ReadOnly:  true,
+		MountPath: "/var/default-ingress-cert",
+	}
+
+	trustedCAVolumeMount := corev1.VolumeMount{
+		Name:      api.TrustedCAConfigMapName,
+		ReadOnly:  true,
+		MountPath: api.TrustedCABundleMountDir,
+	}
+
+	customLogoVolumeMount := corev1.VolumeMount{
+		Name:      api.OpenShiftCustomLogoConfigMapName,
+		ReadOnly:  false,
+		MountPath: "/var/logo/",
+	}
+
+	defaultVolumeMounts := []corev1.VolumeMount{
+		consoleServingCertVolumeMount,
+		consoleOauthConfigVolumeMount,
+		consoleConfigVolumeMount,
+		serviceCAVolumeMount,
+		defaultIngressCertVolumeMount,
+	}
+	trustedVolumeMounts := append(defaultVolumeMounts, trustedCAVolumeMount)
+	customLogoVolumeMounts := append(defaultVolumeMounts, customLogoVolumeMount)
+	allVolumeMounts := append(defaultVolumeMounts, trustedCAVolumeMount, customLogoVolumeMount)
 
 	tests := []struct {
 		name string
@@ -722,10 +922,10 @@ func TestWithVolumes(t *testing.T) {
 							Containers: []corev1.Container{
 								{
 									Name:         "consoleContainer",
-									VolumeMounts: consoleVolumeMounts(trustedVolumeConfig),
+									VolumeMounts: trustedVolumeMounts,
 								},
 							},
-							Volumes: consoleVolumes(trustedVolumeConfig),
+							Volumes: trustedVolumes,
 						},
 					},
 				},
@@ -745,10 +945,10 @@ func TestWithVolumes(t *testing.T) {
 							Containers: []corev1.Container{
 								{
 									Name:         "consoleContainer",
-									VolumeMounts: consoleVolumeMounts(volumeConfig),
+									VolumeMounts: defaultVolumeMounts,
 								},
 							},
-							Volumes: consoleVolumes(volumeConfig),
+							Volumes: defaultVolumes,
 						},
 					},
 				},
@@ -768,10 +968,10 @@ func TestWithVolumes(t *testing.T) {
 							Containers: []corev1.Container{
 								{
 									Name:         "consoleContainer",
-									VolumeMounts: consoleVolumeMounts(customLogoVolumeConfig),
+									VolumeMounts: customLogoVolumeMounts,
 								},
 							},
-							Volumes: consoleVolumes(customLogoVolumeConfig),
+							Volumes: customLogoVolumes,
 						},
 					},
 				},
@@ -791,10 +991,10 @@ func TestWithVolumes(t *testing.T) {
 							Containers: []corev1.Container{
 								{
 									Name:         "consoleContainer",
-									VolumeMounts: consoleVolumeMounts(allVolumeConfig),
+									VolumeMounts: allVolumeMounts,
 								},
 							},
-							Volumes: consoleVolumes(allVolumeConfig),
+							Volumes: allVolumes,
 						},
 					},
 				},
@@ -811,7 +1011,7 @@ func TestWithVolumes(t *testing.T) {
 	}
 }
 
-func TestWithContainers(t *testing.T) {
+func TestWithContainerImage(t *testing.T) {
 	type args struct {
 		deployment     *appsv1.Deployment
 		operatorConfig *operatorsv1.Console
@@ -888,7 +1088,70 @@ func TestWithContainers(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withContainers(tt.args.deployment, tt.args.operatorConfig, tt.args.proxyConfig)
+			withContainerImage(tt.args.deployment, tt.args.operatorConfig, tt.args.proxyConfig)
+			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestWithStrategy(t *testing.T) {
+	type args struct {
+		deployment           *appsv1.Deployment
+		infrastructureConfig *configv1.Infrastructure
+	}
+
+	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
+	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
+
+	singleReplicaStrategy := appsv1.RollingUpdateDeployment{}
+	highAvailStrategy := appsv1.RollingUpdateDeployment{
+		MaxSurge: &intstr.IntOrString{
+			IntVal: int32(3),
+		},
+		MaxUnavailable: &intstr.IntOrString{
+			IntVal: int32(1),
+		},
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want *appsv1.Deployment
+	}{
+		{
+			name: "Test Single Replica Strategy",
+			args: args{
+				deployment:           &appsv1.Deployment{},
+				infrastructureConfig: infrastructureConfigSingleReplica,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Strategy: appsv1.DeploymentStrategy{
+						RollingUpdate: &singleReplicaStrategy,
+					},
+				},
+			},
+		},
+		{
+			name: "Test Highly Available Strategy",
+			args: args{
+				deployment:           &appsv1.Deployment{},
+				infrastructureConfig: infrastructureConfigHighlyAvailable,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Strategy: appsv1.DeploymentStrategy{
+						RollingUpdate: &highAvailStrategy,
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withStrategy(tt.args.deployment, tt.args.infrastructureConfig)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
 			}
@@ -948,7 +1211,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 		NodeSelector: map[string]string{
 			"kubernetes.io/os": "linux",
 		},
-		Affinity: downloadsPodAffinity(infrastructureConfigSingleReplica),
+		Affinity: &corev1.Affinity{},
 		Tolerations: []corev1.Toleration{
 			{
 				Key:      "node-role.kubernetes.io/master",
@@ -1020,10 +1283,34 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 		},
 	}
 	downloadsDeploymentPodSpecHighAvail := downloadsDeploymentPodSpecSingleReplica
-	downloadsDeploymentPodSpecHighAvail.Affinity = downloadsPodAffinity(infrastructureConfigHighlyAvailable)
-
-	rollingUpdateParamsForSingleReplica := rollingUpdateParams(infrastructureConfigSingleReplica)
-	rollingUpdateParamsForHighAvail := rollingUpdateParams(infrastructureConfigHighlyAvailable)
+	downloadsDeploymentPodSpecHighAvail.Affinity = &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+				LabelSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "component",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"downloads"},
+						},
+					},
+				},
+				TopologyKey: "kubernetes.io/hostname",
+			}, {
+				LabelSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "component",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"downloads"},
+						},
+					},
+				},
+				TopologyKey: "topology.kubernetes.io/zone",
+			},
+			},
+		},
+	}
 
 	tests := []struct {
 		name string
@@ -1046,7 +1333,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 					Replicas: &singleNodeReplicaCount,
 					Strategy: appsv1.DeploymentStrategy{
 						Type:          appsv1.RollingUpdateDeploymentStrategyType,
-						RollingUpdate: rollingUpdateParamsForSingleReplica,
+						RollingUpdate: &appsv1.RollingUpdateDeployment{},
 					},
 					Selector: &metav1.LabelSelector{
 						MatchLabels: labels,
@@ -1080,8 +1367,15 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &defaultReplicaCount,
 					Strategy: appsv1.DeploymentStrategy{
-						Type:          appsv1.RollingUpdateDeploymentStrategyType,
-						RollingUpdate: rollingUpdateParamsForHighAvail,
+						Type: appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: &appsv1.RollingUpdateDeployment{
+							MaxSurge: &intstr.IntOrString{
+								IntVal: int32(3),
+							},
+							MaxUnavailable: &intstr.IntOrString{
+								IntVal: int32(1),
+							},
+						},
 					},
 					Selector: &metav1.LabelSelector{
 						MatchLabels: labels,
@@ -1110,129 +1404,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 	}
 }
 
-func TestWithDownloadsReplicas(t *testing.T) {
-	var (
-		singleNodeReplicaCount int32 = SingleNodeConsoleReplicas
-		defaultReplicaCount    int32 = DefaultConsoleReplicas
-	)
-
-	type args struct {
-		deployment           *appsv1.Deployment
-		infrastructureConfig *configv1.Infrastructure
-	}
-
-	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
-	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
-
-	tests := []struct {
-		name string
-		args args
-		want *appsv1.Deployment
-	}{
-		{
-			name: "Test Downloads Single Replica",
-			args: args{
-				deployment: &appsv1.Deployment{
-					Spec: appsv1.DeploymentSpec{},
-				},
-				infrastructureConfig: infrastructureConfigSingleReplica,
-			},
-			want: &appsv1.Deployment{
-				Spec: appsv1.DeploymentSpec{
-					Replicas: &singleNodeReplicaCount,
-				},
-			},
-		},
-		{
-			name: "Test Downloads Highly Available Replica",
-			args: args{
-				deployment: &appsv1.Deployment{
-					Spec: appsv1.DeploymentSpec{},
-				},
-				infrastructureConfig: infrastructureConfigHighlyAvailable,
-			},
-			want: &appsv1.Deployment{
-				Spec: appsv1.DeploymentSpec{
-					Replicas: &defaultReplicaCount,
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			withDownloadsReplicas(tt.args.deployment, tt.args.infrastructureConfig)
-			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
-				t.Error(diff)
-			}
-		})
-	}
-}
-
-func TestWithDownloadsAffinity(t *testing.T) {
-	type args struct {
-		deployment           *appsv1.Deployment
-		infrastructureConfig *configv1.Infrastructure
-	}
-
-	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
-	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
-
-	singleReplicaSpec := corev1.PodSpec{
-		Affinity: downloadsPodAffinity(infrastructureConfigSingleReplica),
-	}
-	highlyAvailableSpec := corev1.PodSpec{
-		Affinity: downloadsPodAffinity(infrastructureConfigHighlyAvailable),
-	}
-
-	tests := []struct {
-		name string
-		args args
-		want *appsv1.Deployment
-	}{
-		{
-			name: "Test Single Replica Downloads Affinity",
-			args: args{
-				deployment: &appsv1.Deployment{
-					Spec: appsv1.DeploymentSpec{},
-				},
-				infrastructureConfig: infrastructureConfigSingleReplica,
-			},
-			want: &appsv1.Deployment{
-				Spec: appsv1.DeploymentSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: singleReplicaSpec,
-					},
-				},
-			},
-		},
-		{
-			name: "Test Highly Available Downloads Affinity",
-			args: args{
-				deployment: &appsv1.Deployment{
-					Spec: appsv1.DeploymentSpec{},
-				},
-				infrastructureConfig: infrastructureConfigHighlyAvailable,
-			},
-			want: &appsv1.Deployment{
-				Spec: appsv1.DeploymentSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: highlyAvailableSpec,
-					},
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			withDownloadsAffinity(tt.args.deployment, tt.args.infrastructureConfig)
-			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
-				t.Error(diff)
-			}
-		})
-	}
-}
-
-func TestWithDownloadsContainers(t *testing.T) {
+func TestWithDownloadsContainerImage(t *testing.T) {
 	type args struct {
 		deployment *appsv1.Deployment
 	}
@@ -1279,177 +1451,8 @@ func TestWithDownloadsContainers(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withDownloadsContainers(tt.args.deployment)
+			withDownloadsContainerImage(tt.args.deployment)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
-				t.Error(diff)
-			}
-		})
-	}
-}
-
-func TestReplicas(t *testing.T) {
-	tests := []struct {
-		name        string
-		infraConfig *configv1.Infrastructure
-		want        int32
-	}{
-		{
-			name: "Test Replica Count For Single Node Cluster Infrastructure Config",
-			infraConfig: &configv1.Infrastructure{
-				TypeMeta:   metav1.TypeMeta{},
-				ObjectMeta: metav1.ObjectMeta{},
-				Status: configv1.InfrastructureStatus{
-					InfrastructureTopology: configv1.SingleReplicaTopologyMode,
-				},
-			},
-			want: 1,
-		},
-		{
-			name: "Test Replica Count For Multi Node Cluster Infrastructure Config",
-			infraConfig: &configv1.Infrastructure{
-				TypeMeta:   metav1.TypeMeta{},
-				ObjectMeta: metav1.ObjectMeta{},
-				Status: configv1.InfrastructureStatus{
-					InfrastructureTopology: configv1.HighlyAvailableTopologyMode,
-				},
-			},
-			want: 2,
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(Replicas(tt.infraConfig), tt.want); diff != nil {
-				t.Error(diff)
-			}
-		})
-	}
-}
-
-func TestConsolePodAffinity(t *testing.T) {
-	tests := []struct {
-		name        string
-		infraConfig *configv1.Infrastructure
-		want        *corev1.Affinity
-	}{
-		{
-			name: "Test Affinity For Single Node Cluster Infrastructure Config",
-			infraConfig: &configv1.Infrastructure{
-				TypeMeta:   metav1.TypeMeta{},
-				ObjectMeta: metav1.ObjectMeta{},
-				Status: configv1.InfrastructureStatus{
-					ControlPlaneTopology: configv1.SingleReplicaTopologyMode,
-				},
-			},
-			want: &corev1.Affinity{},
-		},
-		{
-			name: "Test Affinity For Single Node Cluster Infrastructure Config",
-			infraConfig: &configv1.Infrastructure{
-				TypeMeta:   metav1.TypeMeta{},
-				ObjectMeta: metav1.ObjectMeta{},
-				Status: configv1.InfrastructureStatus{
-					ControlPlaneTopology: configv1.HighlyAvailableTopologyMode,
-				},
-			},
-			want: &corev1.Affinity{
-				PodAntiAffinity: &corev1.PodAntiAffinity{
-					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
-						LabelSelector: &metav1.LabelSelector{
-							MatchExpressions: []metav1.LabelSelectorRequirement{
-								{
-									Key:      "component",
-									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"ui"},
-								},
-							},
-						},
-						TopologyKey: "kubernetes.io/hostname",
-					}, {
-						LabelSelector: &metav1.LabelSelector{
-							MatchExpressions: []metav1.LabelSelectorRequirement{
-								{
-									Key:      "component",
-									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"ui"},
-								},
-							},
-						},
-						TopologyKey: "topology.kubernetes.io/zone",
-					},
-					},
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(consolePodAffinity(tt.infraConfig), tt.want); diff != nil {
-				t.Error(diff)
-			}
-		})
-	}
-}
-
-func TestDownloadsPodAffinity(t *testing.T) {
-	tests := []struct {
-		name        string
-		infraConfig *configv1.Infrastructure
-		want        *corev1.Affinity
-	}{
-		{
-			name: "Test Affinity For Single Node Cluster Infrastructure Config",
-			infraConfig: &configv1.Infrastructure{
-				TypeMeta:   metav1.TypeMeta{},
-				ObjectMeta: metav1.ObjectMeta{},
-				Status: configv1.InfrastructureStatus{
-					InfrastructureTopology: configv1.SingleReplicaTopologyMode,
-				},
-			},
-			want: &corev1.Affinity{},
-		},
-		{
-			name: "Test Affinity For Single Node Cluster Infrastructure Config",
-			infraConfig: &configv1.Infrastructure{
-				TypeMeta:   metav1.TypeMeta{},
-				ObjectMeta: metav1.ObjectMeta{},
-				Status: configv1.InfrastructureStatus{
-					InfrastructureTopology: configv1.HighlyAvailableTopologyMode,
-				},
-			},
-			want: &corev1.Affinity{
-				PodAntiAffinity: &corev1.PodAntiAffinity{
-					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
-						LabelSelector: &metav1.LabelSelector{
-							MatchExpressions: []metav1.LabelSelectorRequirement{
-								{
-									Key:      "component",
-									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"downloads"},
-								},
-							},
-						},
-						TopologyKey: "kubernetes.io/hostname",
-					}, {
-						LabelSelector: &metav1.LabelSelector{
-							MatchExpressions: []metav1.LabelSelectorRequirement{
-								{
-									Key:      "component",
-									Operator: metav1.LabelSelectorOpIn,
-									Values:   []string{"downloads"},
-								},
-							},
-						},
-						TopologyKey: "topology.kubernetes.io/zone",
-					},
-					},
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(downloadsPodAffinity(tt.infraConfig), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
@@ -1495,219 +1498,6 @@ func TestStub(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if diff := deep.Equal(Stub(), tt.want); diff != nil {
-				t.Error(diff)
-			}
-		})
-	}
-}
-
-func Test_consoleVolumes(t *testing.T) {
-	type args struct {
-		vc []volumeConfig
-	}
-	consoleServingCert := corev1.Volume{
-		Name: api.ConsoleServingCertName,
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName:  api.ConsoleServingCertName,
-				Items:       nil,
-				DefaultMode: nil,
-				Optional:    nil,
-			},
-		},
-	}
-	consoleOauthConfig := corev1.Volume{
-		Name: ConsoleOauthConfigName,
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName:  ConsoleOauthConfigName,
-				Items:       nil,
-				DefaultMode: nil,
-				Optional:    nil,
-			},
-		},
-	}
-	consoleConfig := corev1.Volume{
-		Name: api.OpenShiftConsoleConfigMapName,
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: api.OpenShiftConsoleConfigMapName,
-				},
-				Items:       nil,
-				DefaultMode: nil,
-				Optional:    nil,
-			},
-		},
-	}
-	serviceCA := corev1.Volume{
-		Name: api.ServiceCAConfigMapName,
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: api.ServiceCAConfigMapName,
-				},
-				Items:       nil,
-				DefaultMode: nil,
-				Optional:    nil,
-			},
-		},
-	}
-	defaultIngressCert := corev1.Volume{
-		Name: api.DefaultIngressCertConfigMapName,
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: api.DefaultIngressCertConfigMapName,
-				},
-				Items:       nil,
-				DefaultMode: nil,
-				Optional:    nil,
-			},
-		},
-	}
-	tests := []struct {
-		name string
-		args args
-		want []corev1.Volume
-	}{
-		{
-			name: "Test console volumes creation",
-			args: args{
-				vc: defaultVolumeConfig(),
-			},
-			want: []corev1.Volume{
-				consoleServingCert,
-				consoleOauthConfig,
-				consoleConfig,
-				serviceCA,
-				defaultIngressCert,
-			},
-		},
-		{
-			name: "Test console volumes creation with TrustedCA",
-			args: args{
-				vc: append(defaultVolumeConfig(), trustedCAVolume()),
-			},
-			want: []corev1.Volume{
-				consoleServingCert,
-				consoleOauthConfig,
-				consoleConfig,
-				serviceCA,
-				defaultIngressCert,
-				{
-					Name: api.TrustedCAConfigMapName,
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: api.TrustedCAConfigMapName,
-							},
-							Items: []corev1.KeyToPath{
-								{
-									Key:  api.TrustedCABundleKey,
-									Path: api.TrustedCABundleMountFile,
-									Mode: nil,
-								},
-							},
-							DefaultMode: nil,
-							Optional:    nil,
-						},
-					},
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(consoleVolumes(tt.args.vc), tt.want); diff != nil {
-				t.Error(diff)
-			}
-		})
-	}
-}
-
-func Test_consoleVolumeMounts(t *testing.T) {
-	type args struct {
-		vc []volumeConfig
-	}
-	tests := []struct {
-		name string
-		args args
-		want []corev1.VolumeMount
-	}{
-		{name: "Test console volumes Mounts",
-			args: args{
-				vc: defaultVolumeConfig(),
-			},
-			want: []corev1.VolumeMount{
-				{
-					Name:      api.ConsoleServingCertName,
-					ReadOnly:  true,
-					MountPath: "/var/serving-cert",
-				},
-				{
-					Name:      ConsoleOauthConfigName,
-					ReadOnly:  true,
-					MountPath: "/var/oauth-config",
-				},
-				{
-					Name:      api.OpenShiftConsoleConfigMapName,
-					ReadOnly:  true,
-					MountPath: "/var/console-config",
-				},
-				{
-					Name:      api.ServiceCAConfigMapName,
-					ReadOnly:  true,
-					MountPath: "/var/service-ca",
-				},
-				{
-					Name:      api.DefaultIngressCertConfigMapName,
-					ReadOnly:  true,
-					MountPath: "/var/default-ingress-cert",
-				},
-			},
-		},
-		{name: "Test console volumes Mounts with TrustedCA",
-			args: args{
-				vc: append(defaultVolumeConfig(), trustedCAVolume()),
-			},
-			want: []corev1.VolumeMount{
-				{
-					Name:      api.ConsoleServingCertName,
-					ReadOnly:  true,
-					MountPath: "/var/serving-cert",
-				},
-				{
-					Name:      ConsoleOauthConfigName,
-					ReadOnly:  true,
-					MountPath: "/var/oauth-config",
-				},
-				{
-					Name:      api.OpenShiftConsoleConfigMapName,
-					ReadOnly:  true,
-					MountPath: "/var/console-config",
-				},
-				{
-					Name:      api.ServiceCAConfigMapName,
-					ReadOnly:  true,
-					MountPath: "/var/service-ca",
-				},
-				{
-					Name:      api.DefaultIngressCertConfigMapName,
-					ReadOnly:  true,
-					MountPath: "/var/default-ingress-cert",
-				},
-				{
-					Name:      api.TrustedCAConfigMapName,
-					ReadOnly:  true,
-					MountPath: api.TrustedCABundleMountDir,
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(consoleVolumeMounts(tt.args.vc), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
