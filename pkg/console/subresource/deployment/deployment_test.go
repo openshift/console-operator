@@ -407,7 +407,7 @@ func TestDefaultDeployment(t *testing.T) {
 					},
 						Spec: corev1.PodSpec{
 							ServiceAccountName: "console",
-							// we want to deploy on master nodes
+							// we do not want to deploy on master nodes
 							NodeSelector: map[string]string{},
 							Affinity:     consoleDeploymentAffinity,
 							// toleration is a taint override. we can and should be scheduled on a master node.
