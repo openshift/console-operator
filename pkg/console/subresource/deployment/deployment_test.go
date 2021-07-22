@@ -163,6 +163,7 @@ func TestDefaultDeployment(t *testing.T) {
 
 	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
 	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
+	infrastructureConfigExternalTopologyMode := infrastructureConfigWithTopology(configv1.ExternalTopologyMode)
 
 	rollingUpdateParamsForSingleReplica := rollingUpdateParams(infrastructureConfigSingleReplica)
 	rollingUpdateParamsForHighAvail := rollingUpdateParams(infrastructureConfigHighlyAvailable)
@@ -362,6 +363,69 @@ func TestDefaultDeployment(t *testing.T) {
 					Strategy: appsv1.DeploymentStrategy{
 						Type:          appsv1.RollingUpdateDeploymentStrategyType,
 						RollingUpdate: rollingUpdateParamsForSingleReplica,
+					},
+					MinReadySeconds:         0,
+					RevisionHistoryLimit:    nil,
+					Paused:                  false,
+					ProgressDeadlineSeconds: nil,
+				},
+				Status: appsv1.DeploymentStatus{},
+			},
+		},
+		{
+			name: "Test Infrastructure Config ExternalTopologyMode",
+			args: args{
+				config: consoleOperatorConfig,
+				cm:     consoleConfig,
+				ca:     &corev1.ConfigMap{},
+				dica: &corev1.ConfigMap{
+					Data: map[string]string{"ca-bundle.crt": "test"},
+				},
+				tca: trustedCAConfigMapEmpty,
+				sec: &corev1.Secret{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Data:       nil,
+					StringData: nil,
+					Type:       "",
+				},
+				proxy:          proxyConfig,
+				infrastructure: infrastructureConfigExternalTopologyMode,
+			},
+			want: &appsv1.Deployment{
+				TypeMeta:   metav1.TypeMeta{},
+				ObjectMeta: consoleDeploymentObjectMeta,
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &defaultReplicaCount,
+					Selector: &metav1.LabelSelector{
+						MatchLabels: labels,
+					},
+					Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{
+						Name:        api.OpenShiftConsoleName,
+						Labels:      labels,
+						Annotations: consoleDeploymentTemplateAnnotations,
+					},
+						Spec: corev1.PodSpec{
+							ServiceAccountName: "console",
+							// we want to deploy on master nodes
+							NodeSelector: map[string]string{},
+							Affinity:     consoleDeploymentAffinity,
+							// toleration is a taint override. we can and should be scheduled on a master node.
+							Tolerations:                   consoleDeploymentTolerations,
+							PriorityClassName:             "system-cluster-critical",
+							RestartPolicy:                 corev1.RestartPolicyAlways,
+							SchedulerName:                 corev1.DefaultSchedulerName,
+							TerminationGracePeriodSeconds: &gracePeriod,
+							SecurityContext:               &corev1.PodSecurityContext{},
+							Containers: []corev1.Container{
+								consoleContainer(consoleOperatorConfig, defaultVolumeConfig(), proxyConfig),
+							},
+							Volumes: consoleVolumes(defaultVolumeConfig()),
+						},
+					},
+					Strategy: appsv1.DeploymentStrategy{
+						Type:          appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: rollingUpdateParamsForHighAvail,
 					},
 					MinReadySeconds:         0,
 					RevisionHistoryLimit:    nil,
