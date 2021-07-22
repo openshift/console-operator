@@ -29,8 +29,8 @@ import (
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
-	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
+	"github.com/openshift/library-go/pkg/route/routeapihelpers"
 
 	// console-operator
 	"github.com/openshift/console-operator/pkg/api"
@@ -49,8 +49,6 @@ type RouteSyncController struct {
 	routeClient          routeclientv1.RoutesGetter
 	configMapClient      coreclientv1.ConfigMapsGetter
 	secretClient         coreclientv1.SecretsGetter
-	// events
-	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
 
 func NewRouteSyncController(
@@ -72,7 +70,6 @@ func NewRouteSyncController(
 	routeInformer routesinformersv1.RouteInformer,
 	// events
 	recorder events.Recorder,
-	resourceSyncer resourcesynccontroller.ResourceSyncer,
 ) factory.Controller {
 	ctrl := &RouteSyncController{
 		routeName:            routeName,
@@ -83,8 +80,6 @@ func NewRouteSyncController(
 		routeClient:          routev1Client,
 		configMapClient:      configMapClient,
 		secretClient:         secretClient,
-		// events
-		resourceSyncer: resourceSyncer,
 	}
 
 	configMapInformer := coreInformer.ConfigMaps()
@@ -179,12 +174,12 @@ func (c *RouteSyncController) SyncDefaultRoute(ctx context.Context, routeConfig 
 
 	requiredDefaultRoute := routeConfig.DefaultRoute(customTLSCert)
 
-	defaultRoute, _, defaultRouteError := routesub.ApplyRoute(c.routeClient, controllerContext.Recorder(), requiredDefaultRoute)
+	defaultRoute, _, defaultRouteError := routesub.ApplyRoute(c.routeClient, requiredDefaultRoute)
 	if defaultRouteError != nil {
 		return nil, "FailedDefaultRouteApply", defaultRouteError
 	}
 
-	if _, defaultRouteError = routesub.GetCanonicalHost(defaultRoute); defaultRouteError != nil {
+	if _, _, defaultRouteError = routeapihelpers.IngressURI(defaultRoute, defaultRoute.Spec.Host); defaultRouteError != nil {
 		return nil, "FailedAdmitDefaultRoute", defaultRouteError
 	}
 
@@ -219,12 +214,12 @@ func (c *RouteSyncController) SyncCustomRoute(ctx context.Context, routeConfig *
 	}
 
 	requiredCustomRoute := routeConfig.CustomRoute(customTLSCert, c.routeName)
-	customRoute, _, customRouteError := routesub.ApplyRoute(c.routeClient, controllerContext.Recorder(), requiredCustomRoute)
+	customRoute, _, customRouteError := routesub.ApplyRoute(c.routeClient, requiredCustomRoute)
 	if customRouteError != nil {
 		return nil, "FailedCustomRouteApply", customRouteError
 	}
 
-	if _, customRouteError = routesub.GetCanonicalHost(customRoute); customRouteError != nil {
+	if _, _, customRouteError = routeapihelpers.IngressURI(customRoute, customRoute.Spec.Host); customRouteError != nil {
 		return nil, "FailedAdmitCustomRoute", customRouteError
 	}
 
@@ -353,7 +348,8 @@ func privateKeyVerifier(customKey []byte) error {
 }
 
 func (c *RouteSyncController) CheckRouteHealth(ctx context.Context, route *routev1.Route) (string, error) {
-	if !routesub.IsAdmitted(route) {
+	url, _, err := routeapihelpers.IngressURI(route, route.Spec.Host)
+	if err != nil {
 		return "RouteNotAdmitted", fmt.Errorf("console route is not admitted")
 	}
 
@@ -363,11 +359,7 @@ func (c *RouteSyncController) CheckRouteHealth(ctx context.Context, route *route
 	}
 	client := clientWithCA(caPool)
 
-	if len(route.Spec.Host) == 0 {
-		return "RouteHostError", fmt.Errorf("route does not have host specified")
-	}
-	url := "https://" + route.Spec.Host + "/health"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
 	if err != nil {
 		return "FailedRequest", fmt.Errorf("failed to build request to route (%s): %v", url, err)
 	}

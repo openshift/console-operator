@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	// kube
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,13 +14,11 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	routeclient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
-	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
 
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/assets"
-	customerrors "github.com/openshift/console-operator/pkg/console/errors"
 )
 
 const (
@@ -165,7 +162,7 @@ func GetDefaultRouteHost(routeName string, ingressConfig *configv1.Ingress) stri
 	return fmt.Sprintf("%s-%s.%s", routeName, api.OpenShiftConsoleNamespace, ingressConfig.Spec.Domain)
 }
 
-func ApplyRoute(client routeclient.RoutesGetter, recorder events.Recorder, required *routev1.Route) (*routev1.Route, bool, error) {
+func ApplyRoute(client routeclient.RoutesGetter, required *routev1.Route) (*routev1.Route, bool, error) {
 	existing, err := client.Routes(required.Namespace).Get(context.TODO(), required.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		requiredCopy := required.DeepCopy()
@@ -200,41 +197,4 @@ func setTLS(tlsConfig *CustomTLSCert, route *routev1.Route) {
 
 func GetCustomRouteName(routeName string) string {
 	return fmt.Sprintf("%s-custom", routeName)
-}
-
-func GetCanonicalHost(route *routev1.Route) (string, error) {
-	for _, ingress := range route.Status.Ingress {
-		if ingress.RouterName != defaultIngressController {
-			klog.V(4).Infof("ignoring route %q ingress '%v'", route.ObjectMeta.Name, ingress.RouterName)
-			continue
-		}
-		// ingress must be admitted before it is useful to us
-		if !isIngressAdmitted(ingress) {
-			klog.V(4).Infof("route %q ingress '%v' not admitted", route.ObjectMeta.Name, ingress.RouterName)
-			continue
-		}
-		klog.V(4).Infof("route %q ingress '%v' found and admitted, host: %v", route.ObjectMeta.Name, defaultIngressController, ingress.Host)
-		return ingress.Host, nil
-	}
-	klog.V(4).Infof("route %q ingress not yet ready for console", route.ObjectMeta.Name)
-	return "", customerrors.NewSyncError(fmt.Sprintf("route %q is not available at canonical host %s", route.ObjectMeta.Name, route.Status.Ingress))
-}
-
-func IsAdmitted(route *routev1.Route) bool {
-	for _, ingress := range route.Status.Ingress {
-		if isIngressAdmitted(ingress) {
-			return true
-		}
-	}
-	return false
-}
-
-func isIngressAdmitted(ingress routev1.RouteIngress) bool {
-	admitted := false
-	for _, condition := range ingress.Conditions {
-		if condition.Type == routev1.RouteAdmitted && condition.Status == corev1.ConditionTrue {
-			admitted = true
-		}
-	}
-	return admitted
 }

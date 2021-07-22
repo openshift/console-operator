@@ -33,7 +33,6 @@ func TestDefaultConfigMap(t *testing.T) {
 		operatorConfig           *operatorv1.Console
 		consoleConfig            *configv1.Console
 		managedConfig            *corev1.ConfigMap
-		monitoringSharedConfig   *corev1.ConfigMap
 		infrastructureConfig     *configv1.Infrastructure
 		rt                       *routev1.Route
 		useDefaultCAFile         bool
@@ -48,10 +47,9 @@ func TestDefaultConfigMap(t *testing.T) {
 		{
 			name: "Test default configmap, no customization",
 			args: args{
-				operatorConfig:         &operatorv1.Console{},
-				consoleConfig:          &configv1.Console{},
-				managedConfig:          &corev1.ConfigMap{},
-				monitoringSharedConfig: &corev1.ConfigMap{},
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -99,10 +97,9 @@ providers: {}
 		{
 			name: "Test configmap with default-ingress-cert",
 			args: args{
-				operatorConfig:         &operatorv1.Console{},
-				consoleConfig:          &configv1.Console{},
-				managedConfig:          &corev1.ConfigMap{},
-				monitoringSharedConfig: &corev1.ConfigMap{},
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -161,7 +158,6 @@ customization:
 `,
 					},
 				},
-				monitoringSharedConfig: &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -229,7 +225,6 @@ customization:
 `,
 					},
 				},
-				monitoringSharedConfig: &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -302,7 +297,6 @@ customization:
 `,
 					},
 				},
-				monitoringSharedConfig: &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -377,7 +371,6 @@ customization:
 `,
 					},
 				},
-				monitoringSharedConfig: &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -424,69 +417,6 @@ providers:
 			},
 		},
 		{
-			name: "Test operator config with monitoring URLs",
-			args: args{
-				operatorConfig: &operatorv1.Console{},
-				consoleConfig:  &configv1.Console{},
-				managedConfig:  &corev1.ConfigMap{},
-				monitoringSharedConfig: &corev1.ConfigMap{
-					Data: map[string]string{
-						"alertmanagerPublicURL": "https://alertmanager.url.com",
-						"grafanaPublicURL":      "https://grafana.url.com",
-						"prometheusPublicURL":   "https://prometheus.url.com",
-						"thanosPublicURL":       "https://thanos.url.com",
-					},
-				},
-				infrastructureConfig: &configv1.Infrastructure{
-					Status: configv1.InfrastructureStatus{
-						APIServerURL: mockAPIServer,
-					},
-				},
-				rt: &routev1.Route{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: api.OpenShiftConsoleName,
-					},
-					Spec: routev1.RouteSpec{
-						Host: host,
-					},
-				},
-				useDefaultCAFile:         true,
-				inactivityTimeoutSeconds: 0,
-			},
-			want: &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        api.OpenShiftConsoleConfigMapName,
-					Namespace:   api.OpenShiftConsoleNamespace,
-					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
-					Annotations: map[string]string{},
-				},
-				Data: map[string]string{configKey: `kind: ConsoleConfig
-apiVersion: console.openshift.io/v1
-auth:
-  clientID: console
-  clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-clusterInfo:
-  consoleBaseAddress: https://` + host + `
-  masterPublicURL: ` + mockAPIServer + `
-monitoringInfo:
-  alertmanagerPublicURL: https://alertmanager.url.com
-  grafanaPublicURL: https://grafana.url.com
-  prometheusPublicURL: https://prometheus.url.com
-  thanosPublicURL: https://thanos.url.com
-customization:
-  branding: ` + DEFAULT_BRAND + `
-  documentationBaseURL: ` + DEFAULT_DOC_URL + `
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-providers: {}
-`,
-				},
-			},
-		},
-		{
 			name: "Test operator config with custom route hostname",
 			args: args{
 				operatorConfig: &operatorv1.Console{
@@ -496,9 +426,8 @@ providers: {}
 						},
 					},
 				},
-				consoleConfig:          &configv1.Console{},
-				managedConfig:          &corev1.ConfigMap{},
-				monitoringSharedConfig: &corev1.ConfigMap{},
+				consoleConfig: &configv1.Console{},
+				managedConfig: &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -547,10 +476,9 @@ providers: {}
 		{
 			name: "Test operator config, with inactivityTimeoutSeconds set",
 			args: args{
-				operatorConfig:         &operatorv1.Console{},
-				consoleConfig:          &configv1.Console{},
-				managedConfig:          &corev1.ConfigMap{},
-				monitoringSharedConfig: &corev1.ConfigMap{},
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -599,10 +527,9 @@ providers: {}
 		{
 			name: "Test operator config, with enabledPlugins set",
 			args: args{
-				operatorConfig:         &operatorv1.Console{},
-				consoleConfig:          &configv1.Console{},
-				managedConfig:          &corev1.ConfigMap{},
-				monitoringSharedConfig: &corev1.ConfigMap{},
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -661,7 +588,6 @@ plugins:
 				tt.args.operatorConfig,
 				tt.args.consoleConfig,
 				tt.args.managedConfig,
-				tt.args.monitoringSharedConfig,
 				tt.args.infrastructureConfig,
 				tt.args.rt,
 				tt.args.useDefaultCAFile,

@@ -8,6 +8,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	appsclientv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	"k8s.io/klog/v2"
 
@@ -67,6 +68,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	withAffinity(deployment, infrastructureConfig)
 	withVolumes(deployment, trustedCAConfigMap, canMountCustomLogo)
 	withContainers(deployment, operatorConfig, proxyConfig)
+	withStrategy(deployment, infrastructureConfig)
 	util.AddOwnerRef(deployment, util.OwnerRefFrom(operatorConfig))
 	return deployment
 }
@@ -120,11 +122,16 @@ func withContainers(deployment *appsv1.Deployment, operatorConfig *operatorv1.Co
 	deployment.Spec.Template.Spec.Containers[0].Image = util.GetImageEnv("CONSOLE_IMAGE")
 }
 
+func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
+	deployment.Spec.Strategy.RollingUpdate = rollingUpdateParams(infrastructureConfig)
+}
+
 func DefaultDownloadsDeployment(operatorConfig *operatorv1.Console, infrastructureConfig *configv1.Infrastructure) *appsv1.Deployment {
 	downloadsDeployment := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/downloads-deployment.yaml"))
 	withDownloadsReplicas(downloadsDeployment, infrastructureConfig)
 	withDownloadsAffinity(downloadsDeployment, infrastructureConfig)
 	withDownloadsContainers(downloadsDeployment)
+	withStrategy(downloadsDeployment, infrastructureConfig)
 	util.AddOwnerRef(downloadsDeployment, util.OwnerRefFrom(operatorConfig))
 	return downloadsDeployment
 }
@@ -169,21 +176,50 @@ func LogDeploymentAnnotationChanges(client appsclientv1.DeploymentsGetter, updat
 	}
 }
 
+func rollingUpdateParams(infrastructureConfig *configv1.Infrastructure) *appsv1.RollingUpdateDeployment {
+	if infrastructureConfig.Status.InfrastructureTopology == configv1.SingleReplicaTopologyMode {
+		return &appsv1.RollingUpdateDeployment{}
+	}
+	return &appsv1.RollingUpdateDeployment{
+		MaxSurge: &intstr.IntOrString{
+			IntVal: int32(3),
+		},
+		MaxUnavailable: &intstr.IntOrString{
+			IntVal: int32(1),
+		},
+	}
+}
+
 func consolePodAffinity(infrastructureConfig *configv1.Infrastructure) *corev1.Affinity {
 	if infrastructureConfig.Status.ControlPlaneTopology == configv1.SingleReplicaTopologyMode {
 		return &corev1.Affinity{}
 	}
 	return &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-				Weight: 100,
-				PodAffinityTerm: corev1.PodAffinityTerm{
-					LabelSelector: &metav1.LabelSelector{
-						MatchLabels: util.SharedLabels(),
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+				LabelSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "component",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"ui"},
+						},
 					},
-					TopologyKey: "topology.kubernetes.io/zone",
 				},
-			}},
+				TopologyKey: "kubernetes.io/hostname",
+			}, {
+				LabelSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "component",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"ui"},
+						},
+					},
+				},
+				TopologyKey: "topology.kubernetes.io/zone",
+			},
+			},
 		},
 	}
 }
@@ -195,15 +231,30 @@ func downloadsPodAffinity(infrastructureConfig *configv1.Infrastructure) *corev1
 	}
 	return &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-				Weight: 100,
-				PodAffinityTerm: corev1.PodAffinityTerm{
-					LabelSelector: &metav1.LabelSelector{
-						MatchLabels: util.SharedLabels(),
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+				LabelSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "component",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"downloads"},
+						},
 					},
-					TopologyKey: "topology.kubernetes.io/zone",
 				},
-			}},
+				TopologyKey: "kubernetes.io/hostname",
+			}, {
+				LabelSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "component",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"downloads"},
+						},
+					},
+				},
+				TopologyKey: "topology.kubernetes.io/zone",
+			},
+			},
 		},
 	}
 }

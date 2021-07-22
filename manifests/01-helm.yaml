@@ -6,8 +6,8 @@ metadata:
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
     release.openshift.io/create-only: "true"
-  name: redhat-helm-repo
+  name: openshift-helm-charts
 spec:
-  name: Red Hat Helm Charts
+  name: OpenShift Helm Charts
   connectionConfig:
-    url: https://redhat-developer.github.io/redhat-helm-charts
+    url: https://charts.openshift.io

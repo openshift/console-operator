@@ -101,6 +101,8 @@ spec:
     matchLabels:
       app: console
       component: ui
+  strategy:
+    type: RollingUpdate
   template:
     metadata:
       name: console
@@ -204,6 +206,8 @@ spec:
     matchLabels:
       app: console
       component: downloads
+  strategy:
+    type: RollingUpdate
   template:
     metadata:
       name: downloads

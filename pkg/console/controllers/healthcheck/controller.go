@@ -25,8 +25,8 @@ import (
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
-	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
+	"github.com/openshift/library-go/pkg/route/routeapihelpers"
 
 	// console-operator
 	"github.com/openshift/console-operator/pkg/api"
@@ -42,8 +42,6 @@ type HealthCheckController struct {
 	ingressClient        configclientv1.IngressInterface
 	routeClient          routeclientv1.RoutesGetter
 	configMapClient      coreclientv1.ConfigMapsGetter
-	// events
-	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
 
 func NewHealthCheckController(
@@ -60,7 +58,6 @@ func NewHealthCheckController(
 	routeInformer routesinformersv1.RouteInformer,
 	// events
 	recorder events.Recorder,
-	resourceSyncer resourcesynccontroller.ResourceSyncer,
 ) factory.Controller {
 	ctrl := &HealthCheckController{
 		operatorClient:       operatorClient,
@@ -68,8 +65,6 @@ func NewHealthCheckController(
 		ingressClient:        configClient.Ingresses(),
 		routeClient:          routev1Client,
 		configMapClient:      configMapClient,
-		// events
-		resourceSyncer: resourceSyncer,
 	}
 
 	configMapInformer := coreInformer.ConfigMaps()
@@ -126,12 +121,14 @@ func (c *HealthCheckController) Sync(ctx context.Context, controllerContext fact
 
 	routeHealthCheckErrReason, routeHealthCheckErr := c.CheckRouteHealth(ctx, updatedOperatorConfig, activeRoute)
 	statusHandler.AddCondition(status.HandleDegraded("RouteHealth", routeHealthCheckErrReason, routeHealthCheckErr))
+	statusHandler.AddCondition(status.HandleAvailable("RouteHealth", routeHealthCheckErrReason, routeHealthCheckErr))
 
 	return statusHandler.FlushAndReturn(routeHealthCheckErr)
 }
 
 func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorConfig *operatorsv1.Console, route *routev1.Route) (string, error) {
-	if !routesub.IsAdmitted(route) {
+	url, _, err := routeapihelpers.IngressURI(route, route.Spec.Host)
+	if err != nil {
 		return "RouteNotAdmitted", fmt.Errorf("console route is not admitted")
 	}
 
@@ -141,11 +138,7 @@ func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorCo
 	}
 	client := clientWithCA(caPool)
 
-	if len(route.Spec.Host) == 0 {
-		return "RouteHostError", fmt.Errorf("route does not have host specified")
-	}
-	url := "https://" + route.Spec.Host + "/health"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
 	if err != nil {
 		return "FailedRequest", fmt.Errorf("failed to build request to route (%s): %v", url, err)
 	}

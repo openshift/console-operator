@@ -11,15 +11,14 @@ package consoleserver
 
 // Config is the top-level console server cli configuration.
 type Config struct {
-	APIVersion     string `yaml:"apiVersion"`
-	Kind           string `yaml:"kind"`
-	ServingInfo    `yaml:"servingInfo"`
-	ClusterInfo    `yaml:"clusterInfo"`
-	Auth           `yaml:"auth"`
-	Customization  `yaml:"customization"`
-	Providers      `yaml:"providers"`
-	MonitoringInfo `yaml:"monitoringInfo,omitempty"`
-	Plugins        map[string]string `yaml:"plugins,omitempty"`
+	APIVersion    string `yaml:"apiVersion"`
+	Kind          string `yaml:"kind"`
+	ServingInfo   `yaml:"servingInfo"`
+	ClusterInfo   `yaml:"clusterInfo"`
+	Auth          `yaml:"auth"`
+	Customization `yaml:"customization"`
+	Providers     `yaml:"providers"`
+	Plugins       map[string]string `yaml:"plugins,omitempty"`
 }
 
 // ServingInfo holds configuration for serving HTTP.
@@ -45,14 +44,6 @@ type ClusterInfo struct {
 	ConsoleBaseAddress string `yaml:"consoleBaseAddress,omitempty"`
 	ConsoleBasePath    string `yaml:"consoleBasePath,omitempty"`
 	MasterPublicURL    string `yaml:"masterPublicURL,omitempty"`
-}
-
-// Monitoring holds URLs for monitoring related services
-type MonitoringInfo struct {
-	AlertmanagerPublicURL string `yaml:"alertmanagerPublicURL,omitempty"`
-	GrafanaPublicURL      string `yaml:"grafanaPublicURL,omitempty"`
-	PrometheusPublicURL   string `yaml:"prometheusPublicURL,omitempty"`
-	ThanosPublicURL       string `yaml:"thanosPublicURL,omitempty"`
 }
 
 // Auth holds configuration for authenticating with OpenShift. The auth method is assumed to be "openshift".

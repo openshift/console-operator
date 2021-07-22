@@ -12,6 +12,8 @@ spec:
     matchLabels:
       app: console
       component: downloads
+  strategy:
+    type: RollingUpdate
   template:
     metadata:
       name: downloads
