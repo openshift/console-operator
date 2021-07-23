@@ -63,17 +63,74 @@ type volumeConfig struct {
 
 func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, defaultIngressCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure, canMountCustomLogo bool) *appsv1.Deployment {
 	deployment := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/console-deployment.yaml"))
-	withAnnotations(deployment, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig)
 	withReplicas(deployment, infrastructureConfig)
 	withAffinity(deployment, infrastructureConfig, "ui")
-	withVolumes(deployment, trustedCAConfigMap, canMountCustomLogo)
-	withContainerImage(deployment, operatorConfig, proxyConfig)
 	withStrategy(deployment, infrastructureConfig)
+	withConsoleAnnotations(deployment, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig)
+	withConsoleVolumes(deployment, trustedCAConfigMap, canMountCustomLogo)
+	withConsoleContainerImage(deployment, operatorConfig, proxyConfig)
+	withConsoleNodeSelector(deployment, infrastructureConfig)
 	util.AddOwnerRef(deployment, util.OwnerRefFrom(operatorConfig))
 	return deployment
 }
 
-func withAnnotations(deployment *appsv1.Deployment, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, defaultIngressCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure) {
+func DefaultDownloadsDeployment(operatorConfig *operatorv1.Console, infrastructureConfig *configv1.Infrastructure) *appsv1.Deployment {
+	downloadsDeployment := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/downloads-deployment.yaml"))
+	withReplicas(downloadsDeployment, infrastructureConfig)
+	withAffinity(downloadsDeployment, infrastructureConfig, "downloads")
+	withStrategy(downloadsDeployment, infrastructureConfig)
+	withDownloadsContainerImage(downloadsDeployment)
+	util.AddOwnerRef(downloadsDeployment, util.OwnerRefFrom(operatorConfig))
+	return downloadsDeployment
+}
+
+func withReplicas(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
+	replicas := int32(SingleNodeConsoleReplicas)
+	if infrastructureConfig.Status.InfrastructureTopology != configv1.SingleReplicaTopologyMode {
+		replicas = int32(DefaultConsoleReplicas)
+	}
+	deployment.Spec.Replicas = &replicas
+}
+
+func withAffinity(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure, component string) {
+	affinity := &corev1.Affinity{}
+	if infrastructureConfig.Status.ControlPlaneTopology != configv1.SingleReplicaTopologyMode {
+		affinity = &corev1.Affinity{
+			PodAntiAffinity: &corev1.PodAntiAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      "component",
+								Operator: metav1.LabelSelectorOpIn,
+								Values:   []string{component},
+							},
+						},
+					},
+					TopologyKey: "kubernetes.io/hostname",
+				}},
+			},
+		}
+	}
+	deployment.Spec.Template.Spec.Affinity = affinity
+}
+
+func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
+	rollingUpdateParams := &appsv1.RollingUpdateDeployment{}
+	if infrastructureConfig.Status.InfrastructureTopology != configv1.SingleReplicaTopologyMode {
+		rollingUpdateParams = &appsv1.RollingUpdateDeployment{
+			MaxSurge: &intstr.IntOrString{
+				IntVal: int32(3),
+			},
+			MaxUnavailable: &intstr.IntOrString{
+				IntVal: int32(1),
+			},
+		}
+	}
+	deployment.Spec.Strategy.RollingUpdate = rollingUpdateParams
+}
+
+func withConsoleAnnotations(deployment *appsv1.Deployment, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, defaultIngressCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure) {
 	deployment.ObjectMeta.Annotations = map[string]string{
 		configMapResourceVersionAnnotation:                   cm.GetResourceVersion(),
 		serviceCAConfigMapResourceVersionAnnotation:          serviceCAConfigMap.GetResourceVersion(),
@@ -91,54 +148,7 @@ func withAnnotations(deployment *appsv1.Deployment, cm *corev1.ConfigMap, servic
 	deployment.Spec.Template.ObjectMeta.Annotations = podAnnotations
 }
 
-func withReplicas(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
-	var replicas int32
-	if infrastructureConfig.Status.InfrastructureTopology == configv1.SingleReplicaTopologyMode {
-		replicas = int32(SingleNodeConsoleReplicas)
-	} else {
-		replicas = int32(DefaultConsoleReplicas)
-	}
-	deployment.Spec.Replicas = &replicas
-}
-
-func withAffinity(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure, component string) {
-	var affinity *corev1.Affinity
-	if infrastructureConfig.Status.ControlPlaneTopology == configv1.SingleReplicaTopologyMode {
-		affinity = &corev1.Affinity{}
-	} else {
-		affinity = &corev1.Affinity{
-			PodAntiAffinity: &corev1.PodAntiAffinity{
-				RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
-					LabelSelector: &metav1.LabelSelector{
-						MatchExpressions: []metav1.LabelSelectorRequirement{
-							{
-								Key:      "component",
-								Operator: metav1.LabelSelectorOpIn,
-								Values:   []string{component},
-							},
-						},
-					},
-					TopologyKey: "kubernetes.io/hostname",
-				}, {
-					LabelSelector: &metav1.LabelSelector{
-						MatchExpressions: []metav1.LabelSelectorRequirement{
-							{
-								Key:      "component",
-								Operator: metav1.LabelSelectorOpIn,
-								Values:   []string{component},
-							},
-						},
-					},
-					TopologyKey: "topology.kubernetes.io/zone",
-				},
-				},
-			},
-		}
-	}
-	deployment.Spec.Template.Spec.Affinity = affinity
-}
-
-func withVolumes(deployment *appsv1.Deployment, trustedCAConfigMap *corev1.ConfigMap, canMountCustomLogo bool) {
+func withConsoleVolumes(deployment *appsv1.Deployment, trustedCAConfigMap *corev1.ConfigMap, canMountCustomLogo bool) {
 	volumeConfig := defaultVolumeConfig()
 
 	caBundle, caBundleExists := trustedCAConfigMap.Data["ca-bundle.crt"]
@@ -195,7 +205,7 @@ func withVolumes(deployment *appsv1.Deployment, trustedCAConfigMap *corev1.Confi
 	deployment.Spec.Template.Spec.Volumes = vols
 }
 
-func withContainerImage(deployment *appsv1.Deployment, operatorConfig *operatorv1.Console, proxyConfig *configv1.Proxy) {
+func withConsoleContainerImage(deployment *appsv1.Deployment, operatorConfig *operatorv1.Console, proxyConfig *configv1.Proxy) {
 	commands := deployment.Spec.Template.Spec.Containers[0].Command
 	commands = withLogLevelFlag(operatorConfig.Spec.LogLevel, commands)
 	commands = withStatusPageFlag(operatorConfig.Spec.Providers, commands)
@@ -204,31 +214,15 @@ func withContainerImage(deployment *appsv1.Deployment, operatorConfig *operatorv
 	deployment.Spec.Template.Spec.Containers[0].Image = util.GetImageEnv("CONSOLE_IMAGE")
 }
 
-func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
-	var rollingUpdateParams *appsv1.RollingUpdateDeployment
-	if infrastructureConfig.Status.InfrastructureTopology == configv1.SingleReplicaTopologyMode {
-		rollingUpdateParams = &appsv1.RollingUpdateDeployment{}
-	} else {
-		rollingUpdateParams = &appsv1.RollingUpdateDeployment{
-			MaxSurge: &intstr.IntOrString{
-				IntVal: int32(3),
-			},
-			MaxUnavailable: &intstr.IntOrString{
-				IntVal: int32(1),
-			},
-		}
-	}
-	deployment.Spec.Strategy.RollingUpdate = rollingUpdateParams
-}
+func withConsoleNodeSelector(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
+	nodeSelector := deployment.Spec.Template.Spec.NodeSelector
 
-func DefaultDownloadsDeployment(operatorConfig *operatorv1.Console, infrastructureConfig *configv1.Infrastructure) *appsv1.Deployment {
-	downloadsDeployment := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/downloads-deployment.yaml"))
-	withReplicas(downloadsDeployment, infrastructureConfig)
-	withAffinity(downloadsDeployment, infrastructureConfig, "downloads")
-	withDownloadsContainerImage(downloadsDeployment)
-	withStrategy(downloadsDeployment, infrastructureConfig)
-	util.AddOwnerRef(downloadsDeployment, util.OwnerRefFrom(operatorConfig))
-	return downloadsDeployment
+	// If running with an externalized control plane, remove the master node selector
+	if infrastructureConfig.Status.ControlPlaneTopology == configv1.ExternalTopologyMode {
+		nodeSelector = map[string]string{}
+	}
+
+	deployment.Spec.Template.Spec.NodeSelector = nodeSelector
 }
 
 func withDownloadsContainerImage(downloadsDeployment *appsv1.Deployment) {

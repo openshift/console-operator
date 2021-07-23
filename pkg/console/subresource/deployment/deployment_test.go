@@ -151,19 +151,7 @@ func TestDefaultDeployment(t *testing.T) {
 					},
 				},
 				TopologyKey: "kubernetes.io/hostname",
-			}, {
-				LabelSelector: &metav1.LabelSelector{
-					MatchExpressions: []metav1.LabelSelectorRequirement{
-						{
-							Key:      "component",
-							Operator: metav1.LabelSelectorOpIn,
-							Values:   []string{"ui"},
-						},
-					},
-				},
-				TopologyKey: "topology.kubernetes.io/zone",
-			},
-			},
+			}},
 		},
 	}
 
@@ -184,13 +172,14 @@ func TestDefaultDeployment(t *testing.T) {
 
 	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
 	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
+	infrastructureConfigExternalTopologyMode := infrastructureConfigWithTopology(configv1.ExternalTopologyMode)
 
 	consoleDeploymentTemplate := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/console-deployment.yaml"))
-	withContainerImage(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
-	withVolumes(consoleDeploymentTemplate, trustedCAConfigMapEmpty, false)
+	withConsoleContainerImage(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
+	withConsoleVolumes(consoleDeploymentTemplate, trustedCAConfigMapEmpty, false)
 	consoleDeploymentContainer := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumes := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
-	withVolumes(consoleDeploymentTemplate, trustedCAConfigMapSet, false)
+	withConsoleVolumes(consoleDeploymentTemplate, trustedCAConfigMapSet, false)
 	consoleDeploymentContainerTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumesTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 
@@ -421,6 +410,79 @@ func TestDefaultDeployment(t *testing.T) {
 				Status: appsv1.DeploymentStatus{},
 			},
 		},
+		{
+			name: "Test Infrastructure Config ExternalTopologyMode",
+			args: args{
+				config: consoleOperatorConfig,
+				cm:     consoleConfig,
+				ca:     &corev1.ConfigMap{},
+				dica: &corev1.ConfigMap{
+					Data: map[string]string{"ca-bundle.crt": "test"},
+				},
+				tca: trustedCAConfigMapEmpty,
+				sec: &corev1.Secret{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Data:       nil,
+					StringData: nil,
+					Type:       "",
+				},
+				proxy:          proxyConfig,
+				infrastructure: infrastructureConfigExternalTopologyMode,
+			},
+			want: &appsv1.Deployment{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "apps/v1",
+				},
+				ObjectMeta: consoleDeploymentObjectMeta,
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &defaultReplicaCount,
+					Selector: &metav1.LabelSelector{
+						MatchLabels: labels,
+					},
+					Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{
+						Name:        api.OpenShiftConsoleName,
+						Labels:      labels,
+						Annotations: consoleDeploymentTemplateAnnotations,
+					},
+						Spec: corev1.PodSpec{
+							ServiceAccountName: "console",
+							// we do not want to deploy on master nodes
+							NodeSelector: map[string]string{},
+							Affinity:     consoleDeploymentAffinity,
+							// toleration is a taint override. we can and should be scheduled on a master node.
+							Tolerations:                   consoleDeploymentTolerations,
+							PriorityClassName:             "system-cluster-critical",
+							RestartPolicy:                 corev1.RestartPolicyAlways,
+							SchedulerName:                 corev1.DefaultSchedulerName,
+							TerminationGracePeriodSeconds: &gracePeriod,
+							SecurityContext:               &corev1.PodSecurityContext{},
+							Containers: []corev1.Container{
+								consoleDeploymentContainer,
+							},
+							Volumes: consoleDeploymentVolumes,
+						},
+					},
+					Strategy: appsv1.DeploymentStrategy{
+						Type: appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: &appsv1.RollingUpdateDeployment{
+							MaxSurge: &intstr.IntOrString{
+								IntVal: int32(3),
+							},
+							MaxUnavailable: &intstr.IntOrString{
+								IntVal: int32(1),
+							},
+						},
+					},
+					MinReadySeconds:         0,
+					RevisionHistoryLimit:    nil,
+					Paused:                  false,
+					ProgressDeadlineSeconds: nil,
+				},
+				Status: appsv1.DeploymentStatus{},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -431,7 +493,7 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 }
 
-func TestWithAnnotations(t *testing.T) {
+func TestWithConsoleAnnotations(t *testing.T) {
 	type args struct {
 		deployment                  *appsv1.Deployment
 		cm                          *corev1.ConfigMap
@@ -555,7 +617,7 @@ func TestWithAnnotations(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withAnnotations(tt.args.deployment, tt.args.cm, tt.args.serviceCAConfigMap, tt.args.defaultIngressCertConfigMap, tt.args.trustedCAConfigMap, tt.args.sec, tt.args.proxyConfig, tt.args.infrastructureConfig)
+			withConsoleAnnotations(tt.args.deployment, tt.args.cm, tt.args.serviceCAConfigMap, tt.args.defaultIngressCertConfigMap, tt.args.trustedCAConfigMap, tt.args.sec, tt.args.proxyConfig, tt.args.infrastructureConfig)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
 			}
@@ -681,19 +743,7 @@ func TestWithAffinity(t *testing.T) {
 											},
 										},
 										TopologyKey: "kubernetes.io/hostname",
-									}, {
-										LabelSelector: &metav1.LabelSelector{
-											MatchExpressions: []metav1.LabelSelectorRequirement{
-												{
-													Key:      "component",
-													Operator: metav1.LabelSelectorOpIn,
-													Values:   []string{"foobar"},
-												},
-											},
-										},
-										TopologyKey: "topology.kubernetes.io/zone",
-									},
-									},
+									}},
 								},
 							},
 						},
@@ -712,7 +762,7 @@ func TestWithAffinity(t *testing.T) {
 	}
 }
 
-func TestWithVolumes(t *testing.T) {
+func TestWithConsoleVolumes(t *testing.T) {
 	type args struct {
 		deployment         *appsv1.Deployment
 		trustedCAConfigMap *corev1.ConfigMap
@@ -1003,7 +1053,7 @@ func TestWithVolumes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withVolumes(tt.args.deployment, tt.args.trustedCAConfigMap, tt.args.canMountCustomLogo)
+			withConsoleVolumes(tt.args.deployment, tt.args.trustedCAConfigMap, tt.args.canMountCustomLogo)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
 			}
@@ -1011,7 +1061,7 @@ func TestWithVolumes(t *testing.T) {
 	}
 }
 
-func TestWithContainerImage(t *testing.T) {
+func TestWithConsoleContainerImage(t *testing.T) {
 	type args struct {
 		deployment     *appsv1.Deployment
 		operatorConfig *operatorsv1.Console
@@ -1088,7 +1138,7 @@ func TestWithContainerImage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withContainerImage(tt.args.deployment, tt.args.operatorConfig, tt.args.proxyConfig)
+			withConsoleContainerImage(tt.args.deployment, tt.args.operatorConfig, tt.args.proxyConfig)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
 			}
@@ -1152,6 +1202,67 @@ func TestWithStrategy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			withStrategy(tt.args.deployment, tt.args.infrastructureConfig)
+			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestWithConsoleNodeSelector(t *testing.T) {
+	type args struct {
+		deployment           *appsv1.Deployment
+		infrastructureConfig *configv1.Infrastructure
+	}
+
+	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
+	infrastructureConfigExternalTopology := infrastructureConfigSingleReplica
+	infrastructureConfigExternalTopology.Status.ControlPlaneTopology = configv1.ExternalTopologyMode
+	defaultDeployment := appsv1.Deployment{
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					NodeSelector: map[string]string{
+						"foo": "bar",
+					},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want *appsv1.Deployment
+	}{
+		{
+			name: "Test default topology mode",
+			args: args{
+				deployment:           &defaultDeployment,
+				infrastructureConfig: infrastructureConfigSingleReplica,
+			},
+			want: &defaultDeployment,
+		},
+		{
+			name: "Test external topology mode",
+			args: args{
+				deployment:           &defaultDeployment,
+				infrastructureConfig: infrastructureConfigExternalTopology,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							NodeSelector: map[string]string{},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withConsoleNodeSelector(tt.args.deployment, tt.args.infrastructureConfig)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
 			}
@@ -1282,7 +1393,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 			},
 		},
 	}
-	downloadsDeploymentPodSpecHighAvail := downloadsDeploymentPodSpecSingleReplica
+	downloadsDeploymentPodSpecHighAvail := downloadsDeploymentPodSpecSingleReplica.DeepCopy()
 	downloadsDeploymentPodSpecHighAvail.Affinity = &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
@@ -1296,19 +1407,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 					},
 				},
 				TopologyKey: "kubernetes.io/hostname",
-			}, {
-				LabelSelector: &metav1.LabelSelector{
-					MatchExpressions: []metav1.LabelSelectorRequirement{
-						{
-							Key:      "component",
-							Operator: metav1.LabelSelectorOpIn,
-							Values:   []string{"downloads"},
-						},
-					},
-				},
-				TopologyKey: "topology.kubernetes.io/zone",
-			},
-			},
+			}},
 		},
 	}
 
@@ -1388,7 +1487,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 								workloadManagementAnnotation: workloadManagementAnnotationValue,
 							},
 						},
-						Spec: downloadsDeploymentPodSpecHighAvail,
+						Spec: *downloadsDeploymentPodSpecHighAvail,
 					},
 				},
 				Status: appsv1.DeploymentStatus{},
