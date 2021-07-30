@@ -113,6 +113,13 @@ rules:
   - web-terminal
   verbs:
   - get
+- apiGroups:
+  - operators.coreos.com
+  resources:
+  - operators
+  verbs:
+  - get
+  - list
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
