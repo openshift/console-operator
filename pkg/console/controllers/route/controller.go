@@ -92,7 +92,7 @@ func NewRouteSyncController(
 			operatorConfigInformer.Informer(),
 			configV1Informers.Ingresses().Informer(),
 		).WithFilteredEventsInformers( // service
-		util.NamesFilter(api.TrustedCAConfigMapName, api.DefaultIngressCertConfigMapName),
+		util.NamesFilter(api.TrustedCAConfigMapName, api.OAuthServingCertConfigMapName),
 		configMapInformer.Informer(),
 	).WithInformers(
 		secretInformer.Informer(),
@@ -385,7 +385,7 @@ func (c *RouteSyncController) getCA(ctx context.Context, tls *routev1.TLSConfig)
 		}
 	}
 
-	for _, cmName := range []string{api.TrustedCAConfigMapName, api.DefaultIngressCertConfigMapName} {
+	for _, cmName := range []string{api.TrustedCAConfigMapName, api.OAuthServingCertConfigMapName} {
 		cm, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, cmName, metav1.GetOptions{})
 		if err != nil {
 			klog.V(4).Infof("failed to GET configmap %s / %s ", api.OpenShiftConsoleNamespace, cmName)

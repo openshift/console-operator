@@ -50,7 +50,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					DefaultIngressCert(false).
+					OAuthServingCert(false).
 					Config()
 			},
 			output: Config{
@@ -69,7 +69,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: defaultIngressCertFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 					LogoutRedirect:      "https://foobar.com/logout",
 				},
 				Customization: Customization{},
@@ -83,7 +83,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					DefaultIngressCert(false).
+					OAuthServingCert(false).
 					Config()
 			},
 			output: Config{
@@ -102,7 +102,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: defaultIngressCertFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 					LogoutRedirect:      "https://foobar.com/logout",
 				},
 				Customization: Customization{},
@@ -435,7 +435,7 @@ providers: {}
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					DefaultIngressCert(false).
+					OAuthServingCert(false).
 					ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
@@ -450,7 +450,7 @@ clusterInfo:
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/default-ingress-cert/ca-bundle.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
   logoutRedirect: https://foobar.com/logout
 customization: {}
 providers: {}
@@ -632,7 +632,7 @@ providers: {}
 						"plugin1": "plugin1_url",
 						"plugin2": "plugin2_url",
 					}).
-					DefaultIngressCert(true)
+					OAuthServingCert(true)
 				return b.ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1

@@ -400,12 +400,12 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 // startResourceSyncing should start syncing process of all secrets and configmaps that need to be synced.
 func startStaticResourceSyncing(resourceSyncer *resourcesynccontroller.ResourceSyncController) error {
-	// sync: 'default-ingress-cert' configmap
+	// sync: 'oauth-serving-cert' configmap
 	// from: 'openshift-config-managed' namespace
 	// to:   'openshift-console' namespace
 	return resourceSyncer.SyncConfigMap(
-		resourcesynccontroller.ResourceLocation{Name: api.DefaultIngressCertConfigMapName, Namespace: api.OpenShiftConsoleNamespace},
-		resourcesynccontroller.ResourceLocation{Name: api.DefaultIngressCertConfigMapName, Namespace: api.OpenShiftConfigManagedNamespace},
+		resourcesynccontroller.ResourceLocation{Name: api.OAuthServingCertConfigMapName, Namespace: api.OpenShiftConsoleNamespace},
+		resourcesynccontroller.ResourceLocation{Name: api.OAuthServingCertConfigMapName, Namespace: api.OpenShiftConfigManagedNamespace},
 	)
 }
 

@@ -95,7 +95,7 @@ providers: {}
 			},
 		},
 		{
-			name: "Test configmap with default-ingress-cert",
+			name: "Test configmap with oauth-serving-cert",
 			args: args{
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
@@ -128,7 +128,7 @@ apiVersion: console.openshift.io/v1
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/default-ingress-cert/ca-bundle.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
@@ -456,7 +456,7 @@ apiVersion: console.openshift.io/v1
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/default-ingress-cert/ca-bundle.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 clusterInfo:
   consoleBaseAddress: https://` + customHostname + `
   masterPublicURL: ` + mockAPIServer + `

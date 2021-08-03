@@ -50,7 +50,7 @@ func DefaultConfigMap(
 		LogoutURL(defaultLogoutURL).
 		Brand(DEFAULT_BRAND).
 		DocURL(DEFAULT_DOC_URL).
-		DefaultIngressCert(useDefaultCAFile).
+		OAuthServingCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
 		ConfigYAML()
@@ -65,7 +65,7 @@ func DefaultConfigMap(
 		LogoutURL(consoleConfig.Spec.Authentication.LogoutRedirect).
 		Brand(operatorConfig.Spec.Customization.Brand).
 		DocURL(operatorConfig.Spec.Customization.DocumentationBaseURL).
-		DefaultIngressCert(useDefaultCAFile).
+		OAuthServingCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
 		Plugins(pluginsEndpoingMap).
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
