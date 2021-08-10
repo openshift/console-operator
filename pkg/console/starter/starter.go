@@ -348,6 +348,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 			//
 			// in 4.8 we removed DonwloadsDeploymentSyncDegraded and can remove this in 4.9
 			"DonwloadsDeploymentSyncDegraded",
+			// in 4.9 we replaced DefaultIngressCertValidation with OAuthServingCertValidation and can remove this in 4.10
+			"DefaultIngressCertValidation",
 		},
 		operatorClient,
 		controllerContext.EventRecorder,
