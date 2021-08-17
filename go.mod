@@ -9,6 +9,7 @@ require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-test/deep v1.0.5
 	github.com/google/gofuzz v1.2.0 // indirect
+	github.com/open-cluster-management/api v0.0.0-20210527013639-a6845f2ebcb1
 	github.com/openshift/api v0.0.0-20210729103544-e4a0474d1519
 	github.com/openshift/build-machinery-go v0.0.0-20210712174854-1bb7fd1518d3
 	github.com/openshift/client-go v0.0.0-20210112160336-8889f8b15bd6

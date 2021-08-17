@@ -16,6 +16,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
 )
 
 const (
@@ -38,6 +39,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		useDefaultCAFile         bool
 		inactivityTimeoutSeconds int
 		enabledPlugins           map[string]string
+		managedClusters          []consoleserver.ManagedClusterConfig
 	}
 	tests := []struct {
 		name string
@@ -191,7 +193,7 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
 customization:
-  branding: online 
+  branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
 servingInfo:
   bindAddress: https://[::]:8443
@@ -410,7 +412,7 @@ servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
-providers: 
+providers:
   statuspageID: id-1234
 `,
 				},
@@ -593,6 +595,7 @@ plugins:
 				tt.args.useDefaultCAFile,
 				tt.args.inactivityTimeoutSeconds,
 				tt.args.enabledPlugins,
+				tt.args.managedClusters,
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below

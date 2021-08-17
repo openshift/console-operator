@@ -17,3 +17,10 @@ func NamesFilter(names ...string) factory.EventFilterFunc {
 		return false
 	}
 }
+
+func ExcludeName(name string) factory.EventFilterFunc {
+	return func(obj interface{}) bool {
+		metaObj := obj.(metav1.Object)
+		return metaObj.GetName() != name
+	}
+}

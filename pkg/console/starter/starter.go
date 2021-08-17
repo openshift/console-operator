@@ -49,6 +49,9 @@ import (
 	// consolev1client "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
 	consoleinformers "github.com/openshift/client-go/console/informers/externalversions"
 
+	clusterclient "github.com/open-cluster-management/api/client/cluster/clientset/versioned"
+	clusterinformers "github.com/open-cluster-management/api/client/cluster/informers/externalversions"
+
 	"github.com/openshift/console-operator/pkg/console/clientwrapper"
 	"github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/library-go/pkg/operator/loglevel"
@@ -86,7 +89,12 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		return err
 	}
 
-	const resync = 10 * time.Minute
+	managedClusterClient, err := clusterclient.NewForConfig(controllerContext.KubeConfig)
+	if err != nil {
+		return err
+	}
+
+	const resync = 30 * time.Second
 
 	tweakListOptionsForOAuth := func(options *metav1.ListOptions) {
 		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OAuthClientName).String()
@@ -139,6 +147,11 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		resync,
 	)
 
+	managedClusterInformers := clusterinformers.NewSharedInformerFactoryWithOptions(
+		managedClusterClient,
+		resync,
+	)
+
 	operatorClient := &operatorclient.OperatorClient{
 		Informers: operatorConfigInformers,
 		Client:    operatorConfigClient.OperatorV1(),
@@ -182,6 +195,10 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleInformers.Console().V1alpha1().ConsolePlugins(),
 		// openshift managed
 		kubeInformersManagedNamespaced.Core().V1(), // Managed ConfigMaps
+		// ManagedClusters
+		managedClusterClient.ClusterV1(),
+		managedClusterInformers.Cluster().V1().ManagedClusters(),
+
 		// event handling
 		versionGetter,
 		recorder,
@@ -369,6 +386,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configInformers,
 		routesInformersNamespaced,
 		oauthInformers,
+		managedClusterInformers,
 	} {
 		informer.Start(ctx.Done())
 	}

@@ -34,6 +34,8 @@ const (
 	TrustedCABundleMountFile                = "tls-ca-bundle.pem"
 	OCCLIDownloadsCustomResourceName        = "oc-cli-downloads"
 	ODOCLIDownloadsCustomResourceName       = "odo-cli-downloads"
+	HubClusterName                          = "local-cluster"
+	ClusterCAConfigMapNameSuffix            = "cluster-ca"
 
 	ConsoleContainerPortName    = "https"
 	ConsoleContainerPort        = 443

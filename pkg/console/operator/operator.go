@@ -16,6 +16,9 @@ import (
 	"k8s.io/klog/v2"
 
 	// openshift
+
+	clusterclientv1 "github.com/open-cluster-management/api/client/cluster/clientset/versioned/typed/cluster/v1"
+	clusterinformersv1 "github.com/open-cluster-management/api/client/cluster/informers/externalversions/cluster/v1"
 	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
@@ -60,9 +63,10 @@ type consoleOperator struct {
 	serviceClient    coreclientv1.ServicesGetter
 	deploymentClient appsclientv1.DeploymentsGetter
 	// openshift
-	routeClient   routeclientv1.RoutesGetter
-	oauthClient   oauthclientv1.OAuthClientsGetter
-	versionGetter status.VersionGetter
+	routeClient          routeclientv1.RoutesGetter
+	oauthClient          oauthclientv1.OAuthClientsGetter
+	managedClusterClient clusterclientv1.ManagedClustersGetter
+	versionGetter        status.VersionGetter
 	// lister
 	consolePluginLister listerv1alpha1.ConsolePluginLister
 
@@ -93,6 +97,9 @@ func NewConsoleOperator(
 	consolePluginInformer consoleinformersv1alpha1.ConsolePluginInformer,
 	// openshift managed
 	managedCoreV1 corev1.Interface,
+	// ManagedClusters
+	managedClusterClient clusterclientv1.ManagedClustersGetter,
+	managedClusterInformers clusterinformersv1.ManagedClusterInformer,
 	// event handling
 	versionGetter status.VersionGetter,
 	recorder events.Recorder,
@@ -114,9 +121,10 @@ func NewConsoleOperator(
 		serviceClient:    corev1Client,
 		deploymentClient: deploymentClient,
 		// openshift
-		routeClient:   routev1Client,
-		oauthClient:   oauthv1Client,
-		versionGetter: versionGetter,
+		routeClient:          routev1Client,
+		oauthClient:          oauthv1Client,
+		managedClusterClient: managedClusterClient,
+		versionGetter:        versionGetter,
 		// plugins
 		consolePluginLister: consolePluginInformer.Lister(),
 
@@ -157,6 +165,9 @@ func NewConsoleOperator(
 	).WithFilteredEventsInformers(
 		util.NamesFilter(deployment.ConsoleOauthConfigName),
 		secretsInformer.Informer(),
+	).WithFilteredEventsInformers(
+		util.ExcludeName(api.HubClusterName),
+		managedClusterInformers.Informer(),
 	).WithSync(c.Sync).
 		ToController("ConsoleOperator", recorder.WithComponentSuffix("console-operator"))
 }

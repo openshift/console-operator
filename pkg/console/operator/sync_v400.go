@@ -34,6 +34,7 @@ import (
 	"github.com/openshift/console-operator/pkg/console/metrics"
 	"github.com/openshift/console-operator/pkg/console/status"
 	configmapsub "github.com/openshift/console-operator/pkg/console/subresource/configmap"
+	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
 	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
 	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
@@ -78,6 +79,10 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(cmErr)
 	}
 
+	clusterCAConfigMaps, clusterCAConfigMapsChanged, clusterCAConfigMapsErrReason, clusterCAConfigMapsErr := co.SyncClusterCAConfigMaps(ctx, set.Operator, controllerContext.Recorder())
+	toUpdate = toUpdate || clusterCAConfigMapsChanged
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ClusterCASync", clusterCAConfigMapsErrReason, clusterCAConfigMapsErr))
+
 	serviceCAConfigMap, serviceCAChanged, serviceCAErrReason, serviceCAErr := co.SyncServiceCAConfigMap(ctx, set.Operator)
 	toUpdate = toUpdate || serviceCAChanged
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ServiceCASync", serviceCAErrReason, serviceCAErr))
@@ -121,7 +126,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(oauthErr)
 	}
 
-	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(ctx, set.Operator, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, set.Proxy, set.Infrastructure, customLogoCanMount, controllerContext.Recorder())
+	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(ctx, set.Operator, cm, clusterCAConfigMaps, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, set.Proxy, set.Infrastructure, customLogoCanMount, controllerContext.Recorder())
 	toUpdate = toUpdate || depChanged
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DeploymentSync", depErrReason, depErr))
 	if depErr != nil {
@@ -236,6 +241,7 @@ func (co *consoleOperator) SyncDeployment(
 	ctx context.Context,
 	operatorConfig *operatorv1.Console,
 	cm *corev1.ConfigMap,
+	clusterCAConfigMaps []*corev1.ConfigMap,
 	serviceCAConfigMap *corev1.ConfigMap,
 	defaultIngressCertConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
@@ -246,7 +252,7 @@ func (co *consoleOperator) SyncDeployment(
 	recorder events.Recorder) (consoleDeployment *appsv1.Deployment, changed bool, reason string, err error) {
 
 	updatedOperatorConfig := operatorConfig.DeepCopy()
-	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig, canMountCustomLogo)
+	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, clusterCAConfigMaps, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig, canMountCustomLogo)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
 	if genChanged {
@@ -341,9 +347,9 @@ func (co *consoleOperator) SyncConfigMap(
 		}
 	}
 
-	pluginsEndpoingMap := co.GetPluginsEndpointMap(operatorConfig.Spec.Plugins)
-
-	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile, inactivityTimeoutSeconds, pluginsEndpoingMap)
+	pluginsEndpointMap := co.GetPluginsEndpointMap(operatorConfig.Spec.Plugins)
+	managedClusters := co.GetMangagedClusters(ctx)
+	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile, inactivityTimeoutSeconds, pluginsEndpointMap, managedClusters)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
 	}
@@ -356,6 +362,41 @@ func (co *consoleOperator) SyncConfigMap(
 		klog.V(4).Infof("%s", cm.Data)
 	}
 	return cm, cmChanged, "ConsoleConfigBuilder", cmErr
+}
+
+func (co *consoleOperator) SyncClusterCAConfigMaps(ctx context.Context, operatorConfig *operatorv1.Console, recorder events.Recorder) ([]*corev1.ConfigMap, bool, string, error) {
+	managedClusters, err := co.managedClusterClient.ManagedClusters().List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("local-cluster!=true")})
+	if err != nil || len(managedClusters.Items) == 0 {
+		return nil, false, "", nil
+	}
+
+	configMaps := []*corev1.ConfigMap{}
+	errorReason := ""
+	modified := false
+	for _, managedCluster := range managedClusters.Items {
+		clusterName := managedCluster.GetName()
+		clientConfigs := managedCluster.Spec.ManagedClusterClientConfigs
+		if clientConfigs == nil || len(clientConfigs) == 0 {
+			klog.V(4).Infoln(fmt.Sprintf("Skippping API server CA ConfigMap for managed cluster %v, no client config found", clusterName))
+			continue
+		}
+		caBundle := clientConfigs[0].CABundle
+		if caBundle == nil {
+			klog.V(4).Infoln(fmt.Sprintf("Skippping API server CA ConfigMap for managed cluster %v, ca bundle not found", clusterName))
+			continue
+		}
+		required := configmapsub.DefaultClusterCAConfigMap(clusterName, caBundle, operatorConfig)
+		configMap, configMapModified, configMapApplyError := resourceapply.ApplyConfigMap(co.configMapClient, recorder, required)
+		modified = configMapModified || modified
+		if configMapApplyError != nil {
+			klog.V(4).Infoln(fmt.Sprintf("Skippping API server CA ConfigMap for managed cluster %v, CA ConfigMap not applied", clusterName))
+			err = configMapApplyError
+			errorReason = "FailedApply"
+			continue
+		}
+		configMaps = append(configMaps, configMap)
+	}
+	return configMaps, modified, errorReason, err
 }
 
 // apply service-ca configmap
@@ -514,6 +555,54 @@ func (co *consoleOperator) GetPluginsEndpointMap(enabledPluginsNames []string) m
 		pluginsEndpointMap[pluginName] = getServiceHostname(plugin)
 	}
 	return pluginsEndpointMap
+}
+
+func (co *consoleOperator) GetMangagedClusters(ctx context.Context) []consoleserver.ManagedClusterConfig {
+	managedClusters, err := co.managedClusterClient.ManagedClusters().List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("local-cluster!=true")})
+	if err != nil {
+		klog.Errorf("Failed to list ManagedClusters: %v", err)
+		return nil
+	}
+
+	if len(managedClusters.Items) == 0 {
+		return nil
+	}
+
+	managedClusterConfigs := []consoleserver.ManagedClusterConfig{}
+	for _, managedCluster := range managedClusters.Items {
+		managedClusterName := managedCluster.GetName()
+		klog.V(4).Infoln(fmt.Sprintf("Building config for  managed cluster: %v", managedClusterName))
+
+		// Check that managed cluster CA ConfigMap has already been synced, if not skip this managed cluster
+		caConfigMap, err := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, fmt.Sprintf("%s-%s", managedClusterName, api.ClusterCAConfigMapNameSuffix), metav1.GetOptions{})
+		if apierrors.IsNotFound(err) || caConfigMap == nil {
+			klog.V(4).Infoln(fmt.Sprintf("Skipping managed cluster %v, no CA file found", managedClusterName))
+			continue
+		}
+
+		clientConfigs := managedCluster.Spec.ManagedClusterClientConfigs
+		if clientConfigs == nil || len(clientConfigs) == 0 {
+			klog.V(4).Infoln(fmt.Sprintf("Skippping  managed cluster %v, no client config found", managedClusterName))
+			continue
+		}
+
+		url := clientConfigs[0].URL
+		if url == "" {
+			klog.V(4).Infoln(fmt.Sprintf("Skipping managed cluster %v, no API server URL defined", managedClusterName))
+			continue
+		}
+
+		managedClusterConfig := consoleserver.ManagedClusterConfig{
+			Name: managedClusterName,
+			APIServer: consoleserver.ManagedClusterAPIServerConfig{
+				URL:    url,
+				CAFile: fmt.Sprintf("/var/managed-clusters/%s/ca.crt", configmapsub.ClusterCAConfigMapName(managedClusterName)),
+			},
+		}
+		managedClusterConfigs = append(managedClusterConfigs, managedClusterConfig)
+	}
+
+	return managedClusterConfigs
 }
 
 func getServiceHostname(plugin *v1alpha1.ConsolePlugin) string {

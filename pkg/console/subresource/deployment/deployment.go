@@ -63,7 +63,7 @@ type volumeConfig struct {
 	mappedKeys  map[string]string
 }
 
-func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, defaultIngressCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure, canMountCustomLogo bool) *appsv1.Deployment {
+func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, clusterCAConfigMaps []*corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, defaultIngressCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure, canMountCustomLogo bool) *appsv1.Deployment {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
@@ -92,6 +92,11 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	}
 	if canMountCustomLogo {
 		volumeConfig = append(volumeConfig, customLogoVolume())
+	}
+	if len(clusterCAConfigMaps) > 0 {
+		for _, clusterCAConfigMap := range clusterCAConfigMaps {
+			volumeConfig = append(volumeConfig, clusterCAVolumeConfig(clusterCAConfigMap))
+		}
 	}
 
 	podAnnotations := map[string]string{
@@ -617,6 +622,16 @@ func customLogoVolume() volumeConfig {
 		isConfigMap: true}
 }
 
+func clusterCAVolumeConfig(configMap *corev1.ConfigMap) volumeConfig {
+	name := configMap.GetName()
+	return volumeConfig{
+		name:        name,
+		path:        fmt.Sprintf("/var/managed-clusters/%s", name),
+		readOnly:    true,
+		isConfigMap: true,
+	}
+}
+
 func downloadsContainerArgs() []string {
 	return []string{"-c", `cat <<EOF >>/tmp/serve.py
 import errno, http.server, os, re, signal, socket, sys, tarfile, tempfile, threading, time, zipfile
@@ -721,7 +736,7 @@ except socket.error as err:
 		addr = ('', 8080)
 		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	else:
-		raise    
+		raise
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sock.bind(addr)
 sock.listen(5)

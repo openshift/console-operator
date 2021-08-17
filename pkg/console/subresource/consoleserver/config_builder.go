@@ -45,6 +45,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	customHostnameRedirectPort int
 	inactivityTimeoutSeconds   int
 	pluginsList                map[string]string
+	managedClusterList         []ManagedClusterConfig
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -126,16 +127,22 @@ func (b *ConsoleServerCLIConfigBuilder) Plugins(plugins map[string]string) *Cons
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) ManagedClusters(managedClusters []ManagedClusterConfig) *ConsoleServerCLIConfigBuilder {
+	b.managedClusterList = managedClusters
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
-		Kind:          "ConsoleConfig",
-		APIVersion:    "console.openshift.io/v1",
-		Auth:          b.auth(),
-		ClusterInfo:   b.clusterInfo(),
-		Customization: b.customization(),
-		ServingInfo:   b.servingInfo(),
-		Providers:     b.providers(),
-		Plugins:       b.plugins(),
+		Kind:                  "ConsoleConfig",
+		APIVersion:            "console.openshift.io/v1",
+		Auth:                  b.auth(),
+		ClusterInfo:           b.clusterInfo(),
+		Customization:         b.customization(),
+		ServingInfo:           b.servingInfo(),
+		Providers:             b.providers(),
+		Plugins:               b.plugins(),
+		ManagedClusterConfigs: b.managedClusters(),
 	}
 }
 
@@ -269,4 +276,8 @@ func (b *ConsoleServerCLIConfigBuilder) providers() Providers {
 
 func (b *ConsoleServerCLIConfigBuilder) plugins() map[string]string {
 	return b.pluginsList
+}
+
+func (b *ConsoleServerCLIConfigBuilder) managedClusters() []ManagedClusterConfig {
+	return b.managedClusterList
 }
