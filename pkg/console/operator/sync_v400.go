@@ -12,6 +12,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
 
 	// openshift
@@ -36,6 +38,7 @@ import (
 	configmapsub "github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
 	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
+	managedclusteractionsub "github.com/openshift/console-operator/pkg/console/subresource/managedclusteraction"
 	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
 	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
@@ -82,6 +85,10 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	clusterCAConfigMaps, clusterCAConfigMapsChanged, clusterCAConfigMapsErrReason, clusterCAConfigMapsErr := co.SyncClusterCAConfigMaps(ctx, set.Operator, controllerContext.Recorder())
 	toUpdate = toUpdate || clusterCAConfigMapsChanged
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ClusterCASync", clusterCAConfigMapsErrReason, clusterCAConfigMapsErr))
+
+	_, managedClusterActionsChanged, managedClusterActionsErrReason, managedClusterActionsErr := co.SyncManagedClusterActions(ctx, set.Operator)
+	toUpdate = toUpdate || managedClusterActionsChanged
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterActionSync", managedClusterActionsErrReason, managedClusterActionsErr))
 
 	serviceCAConfigMap, serviceCAChanged, serviceCAErrReason, serviceCAErr := co.SyncServiceCAConfigMap(ctx, set.Operator)
 	toUpdate = toUpdate || serviceCAChanged
@@ -612,4 +619,28 @@ func getServiceHostname(plugin *v1alpha1.ConsolePlugin) string {
 		Path:   plugin.Spec.Service.BasePath,
 	}
 	return pluginURL.String()
+}
+
+func (co *consoleOperator) SyncManagedClusterActions(ctx context.Context, operatorConfig *operatorv1.Console) ([]*unstructured.Unstructured, bool, string, error) {
+	managedClusters, err := co.managedClusterClient.ManagedClusters().List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("local-cluster!=true")})
+	if err != nil || len(managedClusters.Items) == 0 {
+		return nil, false, "", fmt.Errorf("Failed to list ManagedClusters: %v", err)
+	}
+	errors := []error{}
+	managedClusterActions := []*unstructured.Unstructured{}
+	for _, managedCluster := range managedClusters.Items {
+		mca := managedclusteractionsub.DefaultManagedClusterAction(operatorConfig, managedCluster.Name)
+		gv := schema.GroupVersion{Group: "action.open-cluster-management.io", Version: "v1beta1"}
+		opt := metav1.CreateOptions{}
+		resp, err := co.dynamicClient.Resource(gv.WithResource("managedclusteraction")).Namespace(managedCluster.Namespace).Create(ctx, mca, opt)
+		if err != nil {
+			errors = append(errors, fmt.Errorf("Error syncing managed cluster action for cluster %s: %v", managedCluster.Name, err))
+		} else {
+			managedClusterActions = append(managedClusterActions, resp)
+		}
+	}
+	if len(errors) > 0 {
+		return nil, false, "", fmt.Errorf("One or more errors syncing managed cluster actions: %v", errors)
+	}
+	return managedClusterActions, true, "", nil
 }

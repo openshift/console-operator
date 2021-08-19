@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/client-go/dynamic"
 	corev1 "k8s.io/client-go/informers/core/v1"
 	appsclientv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -66,6 +67,7 @@ type consoleOperator struct {
 	routeClient          routeclientv1.RoutesGetter
 	oauthClient          oauthclientv1.OAuthClientsGetter
 	managedClusterClient clusterclientv1.ManagedClustersGetter
+	dynamicClient        dynamic.Interface
 	versionGetter        status.VersionGetter
 	// lister
 	consolePluginLister listerv1alpha1.ConsolePluginLister
@@ -100,6 +102,7 @@ func NewConsoleOperator(
 	// ManagedClusters
 	managedClusterClient clusterclientv1.ManagedClustersGetter,
 	managedClusterInformers clusterinformersv1.ManagedClusterInformer,
+	dynamicClient dynamic.Interface,
 	// event handling
 	versionGetter status.VersionGetter,
 	recorder events.Recorder,
@@ -124,6 +127,7 @@ func NewConsoleOperator(
 		routeClient:          routev1Client,
 		oauthClient:          oauthv1Client,
 		managedClusterClient: managedClusterClient,
+		dynamicClient:        dynamicClient,
 		versionGetter:        versionGetter,
 		// plugins
 		consolePluginLister: consolePluginInformer.Lister(),

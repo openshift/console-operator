@@ -1,6 +1,8 @@
 // Code generated for package assets by go-bindata DO NOT EDIT. (@generated)
 // sources:
 // bindata/configmaps/console-public-configmap.yaml
+// bindata/crds/console-managed-cluster-action-oauth-create.yaml
+// bindata/crds/console-managed-cluster-view-ingress-cert.yaml
 // bindata/routes/console-custom-route.yaml
 // bindata/routes/console-redirect-route.yaml
 // bindata/routes/console-route.yaml
@@ -82,6 +84,66 @@ func configmapsConsolePublicConfigmapYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "configmaps/console-public-configmap.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _crdsConsoleManagedClusterActionOauthCreateYaml = []byte(`apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: <CR name>
+  namespace: <namespace of managed cluster>
+spec:
+  actionType: Create
+  kube:
+    apiVersion: oauth.openshift.io/v1
+    kind: OAuthClient
+    metadata:
+      name: "$OAUTH_CLIENT_ID"
+    grantMethod: auto
+    secret: "$OAUTH_CLIENT_SECRET"
+    redirectURIs:
+    - http://localhost:9000`)
+
+func crdsConsoleManagedClusterActionOauthCreateYamlBytes() ([]byte, error) {
+	return _crdsConsoleManagedClusterActionOauthCreateYaml, nil
+}
+
+func crdsConsoleManagedClusterActionOauthCreateYaml() (*asset, error) {
+	bytes, err := crdsConsoleManagedClusterActionOauthCreateYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "crds/console-managed-cluster-action-oauth-create.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _crdsConsoleManagedClusterViewIngressCertYaml = []byte(`apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: <CR name>
+  namespace: <namespace of managed cluster>
+spec:
+  scope:
+    kind: ConfigMap
+    version: v1
+    name: default-ingress-cert
+    namespace: openshift-config-managed
+`)
+
+func crdsConsoleManagedClusterViewIngressCertYamlBytes() ([]byte, error) {
+	return _crdsConsoleManagedClusterViewIngressCertYaml, nil
+}
+
+func crdsConsoleManagedClusterViewIngressCertYaml() (*asset, error) {
+	bytes, err := crdsConsoleManagedClusterViewIngressCertYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "crds/console-managed-cluster-view-ingress-cert.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -441,15 +503,17 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"configmaps/console-public-configmap.yaml": configmapsConsolePublicConfigmapYaml,
-	"routes/console-custom-route.yaml":         routesConsoleCustomRouteYaml,
-	"routes/console-redirect-route.yaml":       routesConsoleRedirectRouteYaml,
-	"routes/console-route.yaml":                routesConsoleRouteYaml,
-	"routes/downloads-custom-route.yaml":       routesDownloadsCustomRouteYaml,
-	"routes/downloads-route.yaml":              routesDownloadsRouteYaml,
-	"services/console-redirect-service.yaml":   servicesConsoleRedirectServiceYaml,
-	"services/console-service.yaml":            servicesConsoleServiceYaml,
-	"services/downloads-service.yaml":          servicesDownloadsServiceYaml,
+	"configmaps/console-public-configmap.yaml":              configmapsConsolePublicConfigmapYaml,
+	"crds/console-managed-cluster-action-oauth-create.yaml": crdsConsoleManagedClusterActionOauthCreateYaml,
+	"crds/console-managed-cluster-view-ingress-cert.yaml":   crdsConsoleManagedClusterViewIngressCertYaml,
+	"routes/console-custom-route.yaml":                      routesConsoleCustomRouteYaml,
+	"routes/console-redirect-route.yaml":                    routesConsoleRedirectRouteYaml,
+	"routes/console-route.yaml":                             routesConsoleRouteYaml,
+	"routes/downloads-custom-route.yaml":                    routesDownloadsCustomRouteYaml,
+	"routes/downloads-route.yaml":                           routesDownloadsRouteYaml,
+	"services/console-redirect-service.yaml":                servicesConsoleRedirectServiceYaml,
+	"services/console-service.yaml":                         servicesConsoleServiceYaml,
+	"services/downloads-service.yaml":                       servicesDownloadsServiceYaml,
 }
 
 // AssetDir returns the file names below a certain
@@ -495,6 +559,10 @@ type bintree struct {
 var _bintree = &bintree{nil, map[string]*bintree{
 	"configmaps": {nil, map[string]*bintree{
 		"console-public-configmap.yaml": {configmapsConsolePublicConfigmapYaml, map[string]*bintree{}},
+	}},
+	"crds": {nil, map[string]*bintree{
+		"console-managed-cluster-action-oauth-create.yaml": {crdsConsoleManagedClusterActionOauthCreateYaml, map[string]*bintree{}},
+		"console-managed-cluster-view-ingress-cert.yaml":   {crdsConsoleManagedClusterViewIngressCertYaml, map[string]*bintree{}},
 	}},
 	"routes": {nil, map[string]*bintree{
 		"console-custom-route.yaml":   {routesConsoleCustomRouteYaml, map[string]*bintree{}},

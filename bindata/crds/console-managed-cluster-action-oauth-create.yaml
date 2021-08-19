@@ -1,0 +1,16 @@
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: <CR name>
+  namespace: <namespace of managed cluster>
+spec:
+  actionType: Create
+  kube:
+    apiVersion: oauth.openshift.io/v1
+    kind: OAuthClient
+    metadata:
+      name: "$OAUTH_CLIENT_ID"
+    grantMethod: auto
+    secret: "$OAUTH_CLIENT_SECRET"
+    redirectURIs:
+    - http://localhost:9000
