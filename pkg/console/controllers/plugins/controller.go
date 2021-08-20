@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	migratedPluginsAnnotation = "console.openshift.io/migrated-plugins"
+	MigratedPluginsAnnotation = "console.openshift.io/migrated-plugins"
 )
 
 type PluginsMigrationController struct {
@@ -125,7 +125,7 @@ func (c *PluginsMigrationController) GetAvailablePluginsName() ([]string, error)
 }
 
 func GetMigratedPlugins(operatorConfig *operatorv1.Console) ([]string, error) {
-	migratedPluginsAnnotation, migratedPluginsAnnotationExists := operatorConfig.Annotations[migratedPluginsAnnotation]
+	migratedPluginsAnnotation, migratedPluginsAnnotationExists := operatorConfig.Annotations[MigratedPluginsAnnotation]
 	migratedPluginsArray := []string{}
 	if migratedPluginsAnnotationExists {
 		err := json.Unmarshal([]byte(migratedPluginsAnnotation), &migratedPluginsArray)
@@ -170,7 +170,7 @@ func (c *PluginsMigrationController) UpdateOperatorConfig(
 	if err != nil {
 		return err
 	}
-	updatedOperatorConfig.Annotations[migratedPluginsAnnotation] = string(marshaledPluginsToAnnotate)
+	updatedOperatorConfig.Annotations[MigratedPluginsAnnotation] = string(marshaledPluginsToAnnotate)
 
 	_, err = c.operatorConfigClient.Update(ctx, updatedOperatorConfig, metav1.UpdateOptions{})
 	return err
@@ -183,7 +183,7 @@ func (c *PluginsMigrationController) removeMigratedPlugins(ctx context.Context, 
 	if err != nil {
 		return err
 	}
-	updatedOperatorConfig.Annotations[migratedPluginsAnnotation] = string(marshaledPluginsToAnnotate)
+	updatedOperatorConfig.Annotations[MigratedPluginsAnnotation] = string(marshaledPluginsToAnnotate)
 	_, err = c.operatorConfigClient.Update(ctx, updatedOperatorConfig, metav1.UpdateOptions{})
 	return nil
 }
