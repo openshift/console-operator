@@ -21,6 +21,7 @@ import (
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
 	"github.com/openshift/console-operator/pkg/console/controllers/healthcheck"
+	"github.com/openshift/console-operator/pkg/console/controllers/plugins"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
@@ -309,6 +310,15 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		recorder,
 	)
 
+	pluginMigrationController := plugins.NewPluginsMigrationController(
+		// clients
+		operatorClient,
+		operatorConfigClient.OperatorV1().Consoles(),
+		// plugins
+		consoleInformers.Console().V1alpha1().ConsolePlugins(),
+		recorder,
+	)
+
 	versionRecorder := status.NewVersionGetter()
 	versionRecorder.SetVersion("operator", os.Getenv("RELEASE_VERSION"))
 
@@ -385,6 +395,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleRouteController,
 		downloadsServiceController,
 		downloadsRouteController,
+		pluginMigrationController,
 		consoleOperator,
 		cliDownloadsController,
 		downloadsDeploymentController,

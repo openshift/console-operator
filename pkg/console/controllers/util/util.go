@@ -17,3 +17,13 @@ func NamesFilter(names ...string) factory.EventFilterFunc {
 		return false
 	}
 }
+
+func ContainsString(stringArray []string, str string) bool {
+	for _, v := range stringArray {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
+}
