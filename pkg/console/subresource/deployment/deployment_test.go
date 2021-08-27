@@ -60,14 +60,14 @@ func TestDefaultDeployment(t *testing.T) {
 		DeletionGracePeriodSeconds: nil,
 		Labels:                     labels,
 		Annotations: map[string]string{
-			configMapResourceVersionAnnotation:                   "",
-			secretResourceVersionAnnotation:                      "",
-			defaultIngressCertConfigMapResourceVersionAnnotation: "",
-			serviceCAConfigMapResourceVersionAnnotation:          "",
-			trustedCAConfigMapResourceVersionAnnotation:          "",
-			proxyConfigResourceVersionAnnotation:                 "",
-			infrastructureConfigResourceVersionAnnotation:        "",
-			consoleImageAnnotation:                               "",
+			configMapResourceVersionAnnotation:                 "",
+			secretResourceVersionAnnotation:                    "",
+			oauthServingCertConfigMapResourceVersionAnnotation: "",
+			serviceCAConfigMapResourceVersionAnnotation:        "",
+			trustedCAConfigMapResourceVersionAnnotation:        "",
+			proxyConfigResourceVersionAnnotation:               "",
+			infrastructureConfigResourceVersionAnnotation:      "",
+			consoleImageAnnotation:                             "",
 		},
 		OwnerReferences: nil,
 		Finalizers:      nil,
@@ -118,15 +118,15 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 
 	consoleDeploymentTemplateAnnotations := map[string]string{
-		configMapResourceVersionAnnotation:                   "",
-		secretResourceVersionAnnotation:                      "",
-		defaultIngressCertConfigMapResourceVersionAnnotation: "",
-		serviceCAConfigMapResourceVersionAnnotation:          "",
-		trustedCAConfigMapResourceVersionAnnotation:          "",
-		proxyConfigResourceVersionAnnotation:                 "",
-		infrastructureConfigResourceVersionAnnotation:        "",
-		consoleImageAnnotation:                               "",
-		workloadManagementAnnotation:                         workloadManagementAnnotationValue,
+		configMapResourceVersionAnnotation:                 "",
+		secretResourceVersionAnnotation:                    "",
+		oauthServingCertConfigMapResourceVersionAnnotation: "",
+		serviceCAConfigMapResourceVersionAnnotation:        "",
+		trustedCAConfigMapResourceVersionAnnotation:        "",
+		proxyConfigResourceVersionAnnotation:               "",
+		infrastructureConfigResourceVersionAnnotation:      "",
+		consoleImageAnnotation:                             "",
+		workloadManagementAnnotation:                       workloadManagementAnnotationValue,
 	}
 
 	consoleDeploymentAffinity := &corev1.Affinity{
@@ -850,12 +850,12 @@ func Test_consoleVolumes(t *testing.T) {
 			},
 		},
 	}
-	defaultIngressCert := corev1.Volume{
-		Name: api.DefaultIngressCertConfigMapName,
+	oauthServingCert := corev1.Volume{
+		Name: api.OAuthServingCertConfigMapName,
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: api.DefaultIngressCertConfigMapName,
+					Name: api.OAuthServingCertConfigMapName,
 				},
 				Items:       nil,
 				DefaultMode: nil,
@@ -878,7 +878,7 @@ func Test_consoleVolumes(t *testing.T) {
 				consoleOauthConfig,
 				consoleConfig,
 				serviceCA,
-				defaultIngressCert,
+				oauthServingCert,
 			},
 		},
 		{
@@ -891,7 +891,7 @@ func Test_consoleVolumes(t *testing.T) {
 				consoleOauthConfig,
 				consoleConfig,
 				serviceCA,
-				defaultIngressCert,
+				oauthServingCert,
 				{
 					Name: api.TrustedCAConfigMapName,
 					VolumeSource: corev1.VolumeSource{
@@ -958,9 +958,9 @@ func Test_consoleVolumeMounts(t *testing.T) {
 					MountPath: "/var/service-ca",
 				},
 				{
-					Name:      api.DefaultIngressCertConfigMapName,
+					Name:      api.OAuthServingCertConfigMapName,
 					ReadOnly:  true,
-					MountPath: "/var/default-ingress-cert",
+					MountPath: "/var/oauth-serving-cert",
 				},
 			},
 		},
@@ -990,9 +990,9 @@ func Test_consoleVolumeMounts(t *testing.T) {
 					MountPath: "/var/service-ca",
 				},
 				{
-					Name:      api.DefaultIngressCertConfigMapName,
+					Name:      api.OAuthServingCertConfigMapName,
 					ReadOnly:  true,
-					MountPath: "/var/default-ingress-cert",
+					MountPath: "/var/oauth-serving-cert",
 				},
 				{
 					Name:      api.TrustedCAConfigMapName,

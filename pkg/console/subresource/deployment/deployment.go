@@ -27,16 +27,16 @@ const (
 )
 
 const (
-	configMapResourceVersionAnnotation                   = "console.openshift.io/console-config-version"
-	proxyConfigResourceVersionAnnotation                 = "console.openshift.io/proxy-config-version"
-	infrastructureConfigResourceVersionAnnotation        = "console.openshift.io/infrastructure-config-version"
-	serviceCAConfigMapResourceVersionAnnotation          = "console.openshift.io/service-ca-config-version"
-	defaultIngressCertConfigMapResourceVersionAnnotation = "console.openshift.io/default-ingress-cert-config-version"
-	trustedCAConfigMapResourceVersionAnnotation          = "console.openshift.io/trusted-ca-config-version"
-	secretResourceVersionAnnotation                      = "console.openshift.io/oauth-secret-version"
-	consoleImageAnnotation                               = "console.openshift.io/image"
-	workloadManagementAnnotation                         = "target.workload.openshift.io/management"
-	workloadManagementAnnotationValue                    = `{"effect": "PreferredDuringScheduling"}`
+	configMapResourceVersionAnnotation                 = "console.openshift.io/console-config-version"
+	proxyConfigResourceVersionAnnotation               = "console.openshift.io/proxy-config-version"
+	infrastructureConfigResourceVersionAnnotation      = "console.openshift.io/infrastructure-config-version"
+	serviceCAConfigMapResourceVersionAnnotation        = "console.openshift.io/service-ca-config-version"
+	oauthServingCertConfigMapResourceVersionAnnotation = "console.openshift.io/oauth-serving-cert-config-version"
+	trustedCAConfigMapResourceVersionAnnotation        = "console.openshift.io/trusted-ca-config-version"
+	secretResourceVersionAnnotation                    = "console.openshift.io/oauth-secret-version"
+	consoleImageAnnotation                             = "console.openshift.io/image"
+	workloadManagementAnnotation                       = "target.workload.openshift.io/management"
+	workloadManagementAnnotationValue                  = `{"effect": "PreferredDuringScheduling"}`
 )
 
 var (
@@ -45,7 +45,7 @@ var (
 		proxyConfigResourceVersionAnnotation,
 		infrastructureConfigResourceVersionAnnotation,
 		serviceCAConfigMapResourceVersionAnnotation,
-		defaultIngressCertConfigMapResourceVersionAnnotation,
+		oauthServingCertConfigMapResourceVersionAnnotation,
 		trustedCAConfigMapResourceVersionAnnotation,
 		secretResourceVersionAnnotation,
 		consoleImageAnnotation,
@@ -63,19 +63,19 @@ type volumeConfig struct {
 	mappedKeys  map[string]string
 }
 
-func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, defaultIngressCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure, canMountCustomLogo bool) *appsv1.Deployment {
+func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, oauthServingCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure, canMountCustomLogo bool) *appsv1.Deployment {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
 	deploymentAnnotations := map[string]string{
-		configMapResourceVersionAnnotation:                   cm.GetResourceVersion(),
-		serviceCAConfigMapResourceVersionAnnotation:          serviceCAConfigMap.GetResourceVersion(),
-		defaultIngressCertConfigMapResourceVersionAnnotation: defaultIngressCertConfigMap.GetResourceVersion(),
-		trustedCAConfigMapResourceVersionAnnotation:          trustedCAConfigMap.GetResourceVersion(),
-		proxyConfigResourceVersionAnnotation:                 proxyConfig.GetResourceVersion(),
-		infrastructureConfigResourceVersionAnnotation:        infrastructureConfig.GetResourceVersion(),
-		secretResourceVersionAnnotation:                      sec.GetResourceVersion(),
-		consoleImageAnnotation:                               util.GetImageEnv("CONSOLE_IMAGE"),
+		configMapResourceVersionAnnotation:                 cm.GetResourceVersion(),
+		serviceCAConfigMapResourceVersionAnnotation:        serviceCAConfigMap.GetResourceVersion(),
+		oauthServingCertConfigMapResourceVersionAnnotation: oauthServingCertConfigMap.GetResourceVersion(),
+		trustedCAConfigMapResourceVersionAnnotation:        trustedCAConfigMap.GetResourceVersion(),
+		proxyConfigResourceVersionAnnotation:               proxyConfig.GetResourceVersion(),
+		infrastructureConfigResourceVersionAnnotation:      infrastructureConfig.GetResourceVersion(),
+		secretResourceVersionAnnotation:                    sec.GetResourceVersion(),
+		consoleImageAnnotation:                             util.GetImageEnv("CONSOLE_IMAGE"),
 	}
 
 	// Set any annotations as needed so that `ApplyDeployment` rolls out a
@@ -590,9 +590,9 @@ func defaultVolumeConfig() []volumeConfig {
 			isConfigMap: true,
 		},
 		{
-			name:        api.DefaultIngressCertConfigMapName,
+			name:        api.OAuthServingCertConfigMapName,
 			readOnly:    true,
-			path:        "/var/default-ingress-cert",
+			path:        "/var/oauth-serving-cert",
 			isConfigMap: true,
 		},
 	}

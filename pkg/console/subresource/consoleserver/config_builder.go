@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	clientSecretFilePath       = "/var/oauth-config/clientSecret"
-	defaultIngressCertFilePath = "/var/default-ingress-cert/ca-bundle.crt"
-	oauthEndpointCAFilePath    = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	clientSecretFilePath     = "/var/oauth-config/clientSecret"
+	oauthServingCertFilePath = "/var/oauth-serving-cert/ca-bundle.crt"
+	oauthEndpointCAFilePath  = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 	// serving info
 	certFilePath = "/var/serving-cert/tls.crt"
 	keyFilePath  = "/var/serving-cert/tls.key"
@@ -107,12 +107,12 @@ func (b *ConsoleServerCLIConfigBuilder) StatusPageID(id string) *ConsoleServerCL
 	return b
 }
 
-func (b *ConsoleServerCLIConfigBuilder) DefaultIngressCert(useDefaultDefaultIngressCert bool) *ConsoleServerCLIConfigBuilder {
-	if useDefaultDefaultIngressCert {
+func (b *ConsoleServerCLIConfigBuilder) OAuthServingCert(useDefaultCAFile bool) *ConsoleServerCLIConfigBuilder {
+	if useDefaultCAFile {
 		b.CAFile = oauthEndpointCAFilePath
 		return b
 	}
-	b.CAFile = defaultIngressCertFilePath
+	b.CAFile = oauthServingCertFilePath
 	return b
 }
 
