@@ -14,15 +14,17 @@ require (
 	github.com/openshift/client-go v0.0.0-20210112160336-8889f8b15bd6
 	github.com/openshift/library-go v0.0.0-20210330121117-68dd4a4c9d9e
 	github.com/pkg/profile v1.4.0 // indirect
-	github.com/spf13/cobra v1.1.1
+	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	gopkg.in/yaml.v2 v2.4.0
+	helm.sh/helm/v3 v3.6.3
 	k8s.io/api v0.21.1
-	k8s.io/apiextensions-apiserver v0.21.0 // indirect
 	k8s.io/apimachinery v0.21.1
+	k8s.io/cli-runtime v0.21.0
 	k8s.io/client-go v0.21.0
 	k8s.io/component-base v0.21.0
 	k8s.io/klog/v2 v2.8.0
+	rsc.io/letsencrypt v0.0.3 // indirect
 )
 
 // points to temporary-watch-reduction-patch-1.21 to pick up k/k/pull/101102 - please remove it once the pr merges and a new Z release is cut
