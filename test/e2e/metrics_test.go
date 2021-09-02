@@ -24,7 +24,8 @@ import (
 )
 
 const (
-	consoleURLMetric = "console_url"
+	consoleURLMetric                   = "console_url"
+	helmChartReleaseHealthStatusMetric = "helm_chart_release_health_status"
 )
 
 func setupMetricsEndpointTestCase(t *testing.T) (*framework.ClientSet, *operatorsv1.Console) {
@@ -65,6 +66,12 @@ func TestMetricsEndpoint(t *testing.T) {
 	found := findLineInResponse(t, respString, consoleURLMetric)
 	if !found {
 		t.Fatalf("did not find %s", consoleURLMetric)
+	}
+
+	t.Logf("searching for %s in metrics data...\n", helmChartReleaseHealthStatusMetric)
+	found = findLineInResponse(t, respString, helmChartReleaseHealthStatusMetric)
+	if !found {
+		t.Fatalf("did not find %s", helmChartReleaseHealthStatusMetric)
 	}
 }
 

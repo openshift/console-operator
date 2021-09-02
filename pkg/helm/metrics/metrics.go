@@ -41,13 +41,13 @@ func HandleHelmChartReleaseHealthStatus() {
 		}
 
 		for _, release := range releases {
-			if status := release.Info.Status.String(); status == "deployed" {
-				klog.V(4).Infof("metric helm_chart_release_health_status 1: %s %s %s", release.Name, release.Chart.Metadata.Name, release.Chart.Metadata.Version)
-				helmChartReleaseHealthStatus.WithLabelValues(release.Name, release.Chart.Metadata.Name, release.Chart.Metadata.Version).Set(1)
-			} else {
-				klog.V(4).Infof("metric helm_chart_release_health_status 0: %s %s %s", release.Name, release.Chart.Metadata.Name, release.Chart.Metadata.Version)
-				helmChartReleaseHealthStatus.WithLabelValues(release.Name, release.Chart.Metadata.Name, release.Chart.Metadata.Version).Set(0)
+			releaseStatus := release.Info.Status.String()
+			healthStatus := 1
+			if releaseStatus == "failed" || releaseStatus == "unknown" {
+				healthStatus = 0
 			}
+			klog.V(4).Infof("metric helm_chart_release_health_status %d: %s %s %s", healthStatus, release.Name, release.Chart.Metadata.Name, release.Chart.Metadata.Version)
+			helmChartReleaseHealthStatus.WithLabelValues(release.Name, release.Chart.Metadata.Name, release.Chart.Metadata.Version).Set(float64(healthStatus))
 		}
 	}
 }
