@@ -489,35 +489,18 @@ func downloadsReadinessProbe() *corev1.Probe {
 	return probe
 }
 
-// for the purpose of availability, ready is when we have at least
-// one ready replica
-func IsReady(deployment *appsv1.Deployment) bool {
-	avail := deployment.Status.ReadyReplicas >= 1
+func IsAvailable(deployment *appsv1.Deployment) bool {
+	avail := deployment.Status.AvailableReplicas > 0
 	if !avail {
-		klog.V(4).Infof("deployment is not available, expected replicas: %v, ready replicas: %v", deployment.Spec.Replicas, deployment.Status.ReadyReplicas)
+		klog.V(4).Infof("deployment is not available, expected replicas: %v, available replicas: %v, total replicas: %v", deployment.Spec.Replicas, deployment.Status.AvailableReplicas, deployment.Status.Replicas)
 	}
 	return avail
 }
 
-func IsReadyAndUpdated(deployment *appsv1.Deployment) bool {
-	ready := deployment.Status.Replicas == deployment.Status.ReadyReplicas
-	updated := deployment.Status.Replicas == deployment.Status.UpdatedReplicas
-	if !ready {
-		klog.V(4).Infof("deployment is not ready, expected replicas: %v, ready replicas: %v, total replicas: %v", deployment.Spec.Replicas, deployment.Status.ReadyReplicas, deployment.Status.Replicas)
-	}
-	if !updated {
-		klog.V(4).Infof("deployment is not updated, expected replicas: %v, updated replicas: %v, total replicas: %v", deployment.Spec.Replicas, deployment.Status.UpdatedReplicas, deployment.Status.Replicas)
-	}
-	return ready && updated
-}
-
 func IsAvailableAndUpdated(deployment *appsv1.Deployment) bool {
-	available := deployment.Status.AvailableReplicas > 0
+	available := IsAvailable(deployment)
 	currentGen := deployment.Status.ObservedGeneration >= deployment.Generation
 	updated := deployment.Status.UpdatedReplicas == deployment.Status.Replicas
-	if !available {
-		klog.V(4).Infof("deployment is not available, expected replicas: %v, available replicas: %v, total replicas: %v", deployment.Spec.Replicas, deployment.Status.AvailableReplicas, deployment.Status.Replicas)
-	}
 	if !currentGen {
 		klog.V(4).Infof("deployment is not current, observing generation: %v, generation: %v", deployment.Status.ObservedGeneration, deployment.Generation)
 	}
