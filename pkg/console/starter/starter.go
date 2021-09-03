@@ -261,10 +261,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		operatorConfigClient.OperatorV1().Consoles(),
 		routesClient.RouteV1(),
 		kubeClient.CoreV1(),
-		kubeClient.CoreV1(),
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
-		kubeInformersNamespaced.Core().V1(),                 // `openshift-console` namespace informers
 		kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
 		routesInformersNamespaced.Route().V1().Routes(),
 		// events
@@ -283,10 +281,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		operatorConfigClient.OperatorV1().Consoles(),
 		routesClient.RouteV1(),
 		kubeClient.CoreV1(),
-		kubeClient.CoreV1(),
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
-		kubeInformersNamespaced.Core().V1(),                 // `openshift-console` namespace informers
 		kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
 		routesInformersNamespaced.Route().V1().Routes(),
 		// events
@@ -405,9 +401,20 @@ func startStaticResourceSyncing(resourceSyncer *resourcesynccontroller.ResourceS
 	// sync: 'oauth-serving-cert' configmap
 	// from: 'openshift-config-managed' namespace
 	// to:   'openshift-console' namespace
-	return resourceSyncer.SyncConfigMap(
+	err := resourceSyncer.SyncConfigMap(
 		resourcesynccontroller.ResourceLocation{Name: api.OAuthServingCertConfigMapName, Namespace: api.OpenShiftConsoleNamespace},
 		resourcesynccontroller.ResourceLocation{Name: api.OAuthServingCertConfigMapName, Namespace: api.OpenShiftConfigManagedNamespace},
+	)
+	if err != nil {
+		return err
+	}
+
+	// sync: 'default-ingress-cert' configmap
+	// from: 'openshift-config-managed' namespace
+	// to:   'openshift-console' namespace
+	return resourceSyncer.SyncConfigMap(
+		resourcesynccontroller.ResourceLocation{Name: api.DefaultIngressCertConfigMapName, Namespace: api.OpenShiftConsoleNamespace},
+		resourcesynccontroller.ResourceLocation{Name: api.DefaultIngressCertConfigMapName, Namespace: api.OpenShiftConfigManagedNamespace},
 	)
 }
 

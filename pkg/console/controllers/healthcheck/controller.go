@@ -71,7 +71,7 @@ func NewHealthCheckController(
 
 	return factory.New().
 		WithFilteredEventsInformers( // service
-			util.NamesFilter(api.TrustedCAConfigMapName, api.OAuthServingCertConfigMapName),
+			util.NamesFilter(api.TrustedCAConfigMapName, api.DefaultIngressCertConfigMapName),
 			configMapInformer.Informer(),
 		).WithFilteredEventsInformers( // route
 		util.NamesFilter(api.OpenShiftConsoleRouteName, api.OpenshiftConsoleCustomRouteName),
@@ -164,7 +164,7 @@ func (c *HealthCheckController) getCA(ctx context.Context, tls *routev1.TLSConfi
 		}
 	}
 
-	for _, cmName := range []string{api.TrustedCAConfigMapName, api.OAuthServingCertConfigMapName} {
+	for _, cmName := range []string{api.TrustedCAConfigMapName, api.DefaultIngressCertConfigMapName} {
 		cm, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, cmName, metav1.GetOptions{})
 		if err != nil {
 			klog.V(4).Infof("failed to GET configmap %s / %s ", api.OpenShiftConsoleNamespace, cmName)
