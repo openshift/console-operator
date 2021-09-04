@@ -26,7 +26,7 @@ spec:
         
         1. Click **Samples** to create an application from a code sample.
         
-        1. Click on the **Node.js** card.
+        1. Click on the **Basic NodeJS** card.
         
         1. Scroll down and click **Create**.
 
@@ -35,7 +35,7 @@ spec:
         instructions: |-
           #### To verify the application was successfully created:
           1. Do you see a **sample-app** application?
-          2. Do you see a **nodejs-sample** deployment?
+          2. Do you see a **nodejs-basic** deployment?
         failedTaskHelp: This task isn’t verified yet. Try the task again.
       summary:
         success: You have created a sample application!
@@ -43,10 +43,10 @@ spec:
     - title: View build status
       description: |-
         ### To view the build status of the sample application:
-        1. Hover over the icon on the bottom left quadrant of the **nodejs-sample** deployment to see the build status in a tooltip.
+        1. Hover over the icon on the bottom left quadrant of the **nodejs-basic** deployment to see the build status in a tooltip.
         2. Click on the icon for quick access to the build log.
 
-        You should be able to see the log stream of the **nodejs-sample-1** build on the **Build Details** page.
+        You should be able to see the log stream of the **nodejs-basic-1** build on the **Build Details** page.
       review:
         instructions: |-
           #### To verify the build is complete:
@@ -55,23 +55,31 @@ spec:
       summary:
         success: Your sample app is now built!
         failed: Try the steps again.
-    - title: View the associated Git repo
-      description: |
+    - title: View the associated code
+      description: |-
         ### To view the associated code:
-        1. If you aren't already there, go to the [Topology]{{highlight qs-nav-topology}} page in the navigation.
-        2. The icon on the bottom right quadrant of the **nodejs-sample** deployment represents the Git repo of the associated code.  The icon shown can be for Bitbucket, GitHub, GitLab or generic Git. Click on it to navigate to the associated Git repository.
+        1. In the navigation menu, click [Topology]{{highlight qs-nav-topology}}.
+
+        1. The icon on the bottom right quadrant of the **nodejs-basic** deployment either represents the Git repository of the associated code, OR if the appropriate operators are installed, it will bring up the associated code in your IDE.
+
+        1. If the icon shown is Bitbucket, GitHub, GitLab or generic Git, click it to navigate to the associate Git repository. Otherwise, if the icon shown is CodeReady Workspaces or Eclipse Che, click it to bring up the associated code in your IDE.
+      
       review:
-        instructions: |-
-          #### Verify you can see the code associated with the sample app:
-          Was a new browser tab opened with https://github.com/sclorg/nodejs-ex?
-        failedTaskHelp: This task isn’t verified yet. Try the task again.
+        failedTaskHelp: >- 
+          This task isn’t verified yet. Try the task again.
+        instructions: >-
+          Verify that you can see the code associated with the sample app:
+          
+          - Was a new browser tab opened either to your associated Git repository or to your IDE?
+
       summary:
-        success: You have viewed the associated Git repo.
         failed: Try the steps again.
+        success: You viewed the code associated with the **nodejs-basic** deployment.
+
     - title: View the pod status
       description: |-
         ### To view the pod status:
-        1. Click on the browser tab with OpenShift.  Notice that the **nodejs-sample** deployment has a pod donut imposed on the circle, representing the pod status
+        1. Click on the browser tab with OpenShift.  Notice that the **nodejs-basic** deployment has a pod donut imposed on the circle, representing the pod status.
         2. Hover over the pod donut.
 
         You should now see the pod status in a tooltip.
@@ -86,14 +94,14 @@ spec:
     - title: Run the sample application
       description: |-
         ### To run the sample application:
-        1. The icon on the top right quadrant of the **nodejs-sample** deployment represents the route URL. Click on it to open the URL and run the application.
+        1. The icon on the top right quadrant of the **nodejs-basic** deployment represents the route URL. Click on it to open the URL and run the application.
 
         The application will be run in a new tab.
       review:
         instructions: |-
           #### To verify your sample application is running:
           1. Make sure you are in the new tab.
-          2. Does the page have a **Welcome to your Node.js application on OpenShift** title?
+          2. Does the page have a **Hello from Node.js Starter Application!** title?
         failedTaskHelp: This task isn’t verified yet. Try the task again.
       summary:
         success: You have run your sample app!
