@@ -2,11 +2,9 @@ package route
 
 import (
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
@@ -61,11 +59,9 @@ func NewRouteSyncController(
 	operatorClient v1helpers.OperatorClient,
 	operatorConfigClient operatorclientv1.ConsoleInterface,
 	routev1Client routeclientv1.RoutesGetter,
-	configMapClient coreclientv1.ConfigMapsGetter,
 	secretClient coreclientv1.SecretsGetter,
 	// informers
 	operatorConfigInformer v1.ConsoleInformer,
-	coreInformer coreinformersv1.Interface,
 	secretInformer coreinformersv1.SecretInformer,
 	routeInformer routesinformersv1.RouteInformer,
 	// events
@@ -78,11 +74,9 @@ func NewRouteSyncController(
 		operatorConfigClient: operatorConfigClient,
 		ingressClient:        configClient.Ingresses(),
 		routeClient:          routev1Client,
-		configMapClient:      configMapClient,
 		secretClient:         secretClient,
 	}
 
-	configMapInformer := coreInformer.ConfigMaps()
 	configV1Informers := configInformer.Config().V1()
 
 	return factory.New().
@@ -91,10 +85,7 @@ func NewRouteSyncController(
 			configV1Informers.Consoles().Informer(),
 			operatorConfigInformer.Informer(),
 			configV1Informers.Ingresses().Informer(),
-		).WithFilteredEventsInformers( // service
-		util.NamesFilter(api.TrustedCAConfigMapName, api.OAuthServingCertConfigMapName),
-		configMapInformer.Informer(),
-	).WithInformers(
+		).WithInformers(
 		secretInformer.Informer(),
 	).WithFilteredEventsInformers( // route
 		util.NamesFilter(routeName, routesub.GetCustomRouteName(routeName)),
@@ -345,70 +336,6 @@ func privateKeyVerifier(customKey []byte) error {
 		}
 	}
 	return nil
-}
-
-func (c *RouteSyncController) CheckRouteHealth(ctx context.Context, route *routev1.Route) (string, error) {
-	url, _, err := routeapihelpers.IngressURI(route, route.Spec.Host)
-	if err != nil {
-		return "RouteNotAdmitted", fmt.Errorf("console route is not admitted")
-	}
-
-	caPool, err := c.getCA(ctx, route.Spec.TLS)
-	if err != nil {
-		return "FailedLoadCA", fmt.Errorf("failed to read CA to check route health: %v", err)
-	}
-	client := clientWithCA(caPool)
-
-	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
-	if err != nil {
-		return "FailedRequest", fmt.Errorf("failed to build request to route (%s): %v", url, err)
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "FailedGet", fmt.Errorf("failed to GET route (%s): %v", url, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "StatusError", fmt.Errorf("route not yet available, %s returns '%s'", url, resp.Status)
-	}
-
-	return "", nil
-}
-
-func (c *RouteSyncController) getCA(ctx context.Context, tls *routev1.TLSConfig) (*x509.CertPool, error) {
-	caCertPool := x509.NewCertPool()
-
-	if tls != nil && len(tls.Certificate) != 0 {
-		if ok := caCertPool.AppendCertsFromPEM([]byte(tls.Certificate)); !ok {
-			klog.V(4).Infof("failed to parse custom tls.crt")
-		}
-	}
-
-	for _, cmName := range []string{api.TrustedCAConfigMapName, api.OAuthServingCertConfigMapName} {
-		cm, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, cmName, metav1.GetOptions{})
-		if err != nil {
-			klog.V(4).Infof("failed to GET configmap %s / %s ", api.OpenShiftConsoleNamespace, cmName)
-			return nil, err
-		}
-		if ok := caCertPool.AppendCertsFromPEM([]byte(cm.Data["ca-bundle.crt"])); !ok {
-			klog.V(4).Infof("failed to parse %s ca-bundle.crt", cmName)
-		}
-	}
-
-	return caCertPool, nil
-}
-
-func clientWithCA(caPool *x509.CertPool) *http.Client {
-	return &http.Client{
-		Timeout: 5 * time.Second,
-		Transport: &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			TLSClientConfig: &tls.Config{
-				RootCAs: caPool,
-			},
-		},
-	}
 }
 
 func deprecationMessage(operatorConfig *operatorsv1.Console) string {
