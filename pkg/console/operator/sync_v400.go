@@ -142,8 +142,9 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		}
 		version := os.Getenv("RELEASE_VERSION")
 		if !deploymentsub.IsAvailableAndUpdated(actualDeployment) {
-			return errors.New(fmt.Sprintf("Working toward version %s", version))
+			return errors.New(fmt.Sprintf("Working toward version %s, %v replicas available", version, actualDeployment.Status.AvailableReplicas))
 		}
+
 		if co.versionGetter.GetVersions()["operator"] != version {
 			co.versionGetter.SetVersion("operator", version)
 		}
@@ -152,11 +153,8 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 
 	statusHandler.AddCondition(status.HandleAvailable(func() (prefix string, reason string, err error) {
 		prefix = "Deployment"
-		if !deploymentsub.IsReady(actualDeployment) {
-			return prefix, "InsufficientReplicas", errors.New(fmt.Sprintf("%v pods available for console deployment", actualDeployment.Status.ReadyReplicas))
-		}
-		if !deploymentsub.IsReadyAndUpdated(actualDeployment) {
-			return prefix, "FailedUpdate", errors.New(fmt.Sprintf("%v replicas ready at version %s", actualDeployment.Status.ReadyReplicas, os.Getenv("RELEASE_VERSION")))
+		if !deploymentsub.IsAvailable(actualDeployment) {
+			return prefix, "InsufficientReplicas", errors.New(fmt.Sprintf("%v replicas available for console deployment", actualDeployment.Status.ReadyReplicas))
 		}
 		return prefix, "", nil
 	}()))
