@@ -30,6 +30,7 @@ import (
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
+	consolestatus "github.com/openshift/console-operator/pkg/console/status"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
@@ -253,6 +254,7 @@ func (c *consoleOperator) handleSync(ctx context.Context, controllerContext fact
 func (c *consoleOperator) removeConsole(ctx context.Context, recorder events.Recorder) error {
 	klog.V(2).Info("deleting console resources")
 	defer klog.V(2).Info("finished deleting console resources")
+	statusHandler := consolestatus.NewStatusHandler(c.operatorClient)
 	var errs []error
 	// configmaps
 	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(ctx, configmap.Stub().Name, metav1.DeleteOptions{}))
@@ -273,5 +275,15 @@ func (c *consoleOperator) removeConsole(ctx context.Context, recorder events.Rec
 	_, _, updateConfigErr := resourceapply.ApplyConfigMap(c.configMapClient, recorder, configmap.EmptyPublicConfig())
 	errs = append(errs, updateConfigErr)
 
-	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
+	statusHandler.AddCondition(consolestatus.HandleAvailable("Deployment", "ConsoleOperatorInRemovedState", nil))
+
+	condition := operatorsv1.OperatorCondition{
+		Type:    "DeploymentAvailable",
+		Status:  operatorsv1.ConditionFalse,
+		Reason:  "DeploymentRemoved",
+		Message: "Console Operator is in 'Removed' state",
+	}
+
+	statusHandler.AddCondition(v1helpers.UpdateConditionFn(condition))
+	return statusHandler.FlushAndReturn(utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound))
 }
