@@ -25,15 +25,17 @@ func TestDefaultDeployment(t *testing.T) {
 		gracePeriod            int64 = 40
 	)
 	type args struct {
-		config             *operatorsv1.Console
-		cm                 *corev1.ConfigMap
-		ca                 *corev1.ConfigMap
-		dica               *corev1.ConfigMap
-		tca                *corev1.ConfigMap
-		sec                *corev1.Secret
-		proxy              *configv1.Proxy
-		infrastructure     *configv1.Infrastructure
-		canMountCustomLogo bool
+		config                          *operatorsv1.Console
+		cm                              *corev1.ConfigMap
+		ccas                            *corev1.ConfigMapList
+		ca                              *corev1.ConfigMap
+		dica                            *corev1.ConfigMap
+		tca                             *corev1.ConfigMap
+		sec                             *corev1.Secret
+		proxy                           *configv1.Proxy
+		infrastructure                  *configv1.Infrastructure
+		canMountCustomLogo              bool
+		canMountManagedClusterConfigMap bool
 	}
 
 	consoleOperatorConfig := &operatorsv1.Console{
@@ -178,6 +180,7 @@ func TestDefaultDeployment(t *testing.T) {
 			args: args{
 				config: consoleOperatorConfig,
 				cm:     consoleConfig,
+				ccas:   &corev1.ConfigMapList{},
 				ca:     &corev1.ConfigMap{},
 				dica: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
@@ -245,6 +248,7 @@ func TestDefaultDeployment(t *testing.T) {
 			args: args{
 				config: consoleOperatorConfig,
 				cm:     consoleConfig,
+				ccas:   &corev1.ConfigMapList{},
 				ca:     &corev1.ConfigMap{},
 				dica: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
@@ -311,6 +315,7 @@ func TestDefaultDeployment(t *testing.T) {
 			args: args{
 				config: consoleOperatorConfig,
 				cm:     consoleConfig,
+				ccas:   &corev1.ConfigMapList{},
 				ca:     &corev1.ConfigMap{},
 				dica: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
@@ -377,6 +382,7 @@ func TestDefaultDeployment(t *testing.T) {
 			args: args{
 				config: consoleOperatorConfig,
 				cm:     consoleConfig,
+				ccas:   &corev1.ConfigMapList{},
 				ca:     &corev1.ConfigMap{},
 				dica: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
@@ -438,7 +444,7 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.dica, tt.args.cm, tt.args.tca, tt.args.sec, tt.args.proxy, tt.args.infrastructure, tt.args.canMountCustomLogo), tt.want); diff != nil {
+			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.ccas, tt.args.dica, tt.args.cm, tt.args.tca, tt.args.sec, tt.args.proxy, tt.args.infrastructure, tt.args.canMountCustomLogo, tt.args.canMountManagedClusterConfigMap), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})

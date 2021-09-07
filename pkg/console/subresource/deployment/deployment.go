@@ -63,7 +63,7 @@ type volumeConfig struct {
 	mappedKeys  map[string]string
 }
 
-func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, oauthServingCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure, canMountCustomLogo bool) *appsv1.Deployment {
+func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, apiServerCAConfigMaps *corev1.ConfigMapList, serviceCAConfigMap *corev1.ConfigMap, oauthServingCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure, canMountCustomLogo bool, canMountManagedClusterConfigMap bool) *appsv1.Deployment {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
@@ -92,6 +92,14 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	}
 	if canMountCustomLogo {
 		volumeConfig = append(volumeConfig, customLogoVolume())
+	}
+	if canMountManagedClusterConfigMap {
+		volumeConfig = append(volumeConfig, managedClusterVolumeConfig())
+	}
+	if len(apiServerCAConfigMaps.Items) > 0 {
+		for _, apiServerCAConfigMap := range apiServerCAConfigMaps.Items {
+			volumeConfig = append(volumeConfig, apiServerCAVolumeConfig(apiServerCAConfigMap))
+		}
 	}
 
 	podAnnotations := map[string]string{
@@ -600,6 +608,25 @@ func customLogoVolume() volumeConfig {
 		isConfigMap: true}
 }
 
+func managedClusterVolumeConfig() volumeConfig {
+	return volumeConfig{
+		name:        api.ManagedClusterConfigMapName,
+		path:        api.ManagedClusterConfigMountDir,
+		readOnly:    true,
+		isConfigMap: true,
+	}
+}
+
+func apiServerCAVolumeConfig(configMap corev1.ConfigMap) volumeConfig {
+	name := configMap.GetName()
+	return volumeConfig{
+		name:        name,
+		path:        fmt.Sprintf("%s/%s", api.ManagedClusterAPIServerCAMountDir, name),
+		readOnly:    true,
+		isConfigMap: true,
+	}
+}
+
 func downloadsContainerArgs() []string {
 	return []string{"-c", `cat <<EOF >>/tmp/serve.py
 import errno, http.server, os, re, signal, socket, sys, tarfile, tempfile, threading, time, zipfile
@@ -704,7 +731,7 @@ except socket.error as err:
 		addr = ('', 8080)
 		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	else:
-		raise    
+		raise
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sock.bind(addr)
 sock.listen(5)

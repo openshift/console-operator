@@ -71,10 +71,10 @@ func NewCLIDownloadsSyncController(
 
 	return factory.New().
 		WithFilteredEventsInformers( // configs
-			controllersutil.NamesFilter(api.ConfigResourceName),
+			controllersutil.IncludeNamesFilter(api.ConfigResourceName),
 			operatorConfigInformer.Informer(),
 		).WithFilteredEventsInformers( // console resources
-		controllersutil.NamesFilter(api.OpenShiftConsoleDownloadsRouteName),
+		controllersutil.IncludeNamesFilter(api.OpenShiftConsoleDownloadsRouteName),
 		routeInformer.Informer(),
 	).WithInformers(
 		consoleCLIDownloadsInformers.Informer(),

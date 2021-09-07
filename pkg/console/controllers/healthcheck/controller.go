@@ -71,10 +71,10 @@ func NewHealthCheckController(
 
 	return factory.New().
 		WithFilteredEventsInformers( // service
-			util.NamesFilter(api.TrustedCAConfigMapName, api.DefaultIngressCertConfigMapName),
+			util.IncludeNamesFilter(api.TrustedCAConfigMapName, api.OAuthServingCertConfigMapName),
 			configMapInformer.Informer(),
 		).WithFilteredEventsInformers( // route
-		util.NamesFilter(api.OpenShiftConsoleRouteName, api.OpenshiftConsoleCustomRouteName),
+		util.IncludeNamesFilter(api.OpenShiftConsoleRouteName, api.OpenshiftConsoleCustomRouteName),
 		routeInformer.Informer(),
 	).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
 		ToController("HealthCheckController", recorder.WithComponentSuffix("health-check-controller"))
