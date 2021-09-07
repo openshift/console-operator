@@ -82,6 +82,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -132,6 +133,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -152,6 +154,7 @@ providers: {}
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -190,8 +193,9 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
-  branding: online 
+  branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
 servingInfo:
   bindAddress: https://[::]:8443
@@ -219,6 +223,7 @@ providers: {}
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -257,6 +262,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: ` + string(operatorv1.BrandDedicated) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -291,6 +297,7 @@ providers: {}
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -329,6 +336,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: ` + string(operatorv1.BrandDedicated) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -365,6 +373,7 @@ providers: {}
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -403,6 +412,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: ` + string(operatorv1.BrandDedicated) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -410,7 +420,7 @@ servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
-providers: 
+providers:
   statuspageID: id-1234
 `,
 				},
@@ -460,6 +470,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + customHostname + `
   masterPublicURL: ` + mockAPIServer + `
+managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -512,6 +523,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -566,6 +578,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -739,6 +752,7 @@ func Test_extractYAML(t *testing.T) {
 					},
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -749,6 +763,7 @@ customization:
 			},
 			want: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/

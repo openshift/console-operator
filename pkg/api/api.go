@@ -35,6 +35,14 @@ const (
 	TrustedCABundleMountFile                = "tls-ca-bundle.pem"
 	OCCLIDownloadsCustomResourceName        = "oc-cli-downloads"
 	ODOCLIDownloadsCustomResourceName       = "odo-cli-downloads"
+	HubClusterName                          = "local-cluster"
+	ManagedClusterLabel                     = "managed-cluster"
+	ManagedClusterConfigMapName             = "managed-clusters"
+	ManagedClusterConfigMountDir            = "/var/managed-cluster-config"
+	ManagedClusterConfigKey                 = "managed-clusters.yaml"
+	ManagedClusterAPIServerCAMountDir       = "/var/managed-cluster-certs"
+	ManagedClusterAPIServerCAName           = "managed-cluster-api-server-ca"
+	ManagedClusterAPIServerCAKey            = "ca-bundle.crt"
 
 	ConsoleContainerPortName    = "https"
 	ConsoleContainerPort        = 443

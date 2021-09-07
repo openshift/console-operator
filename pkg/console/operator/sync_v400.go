@@ -78,6 +78,10 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(cmErr)
 	}
 
+	// managed-clusters ConfigMap is managed by another controller and is not required, we don't need to exit the sync loop if it's not present
+	canMountManagedClusterConfig, managedClusterConfigErrReason, managedClusterConfigErr := co.SyncManagedClusterConfigMap(ctx)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterConfigSync", managedClusterConfigErrReason, managedClusterConfigErr))
+
 	serviceCAConfigMap, serviceCAChanged, serviceCAErrReason, serviceCAErr := co.SyncServiceCAConfigMap(ctx, set.Operator)
 	toUpdate = toUpdate || serviceCAChanged
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ServiceCASync", serviceCAErrReason, serviceCAErr))
@@ -121,7 +125,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(oauthErr)
 	}
 
-	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(ctx, set.Operator, cm, serviceCAConfigMap, oauthServingCertConfigMap, trustedCAConfigMap, sec, set.Proxy, set.Infrastructure, customLogoCanMount, controllerContext.Recorder())
+	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(ctx, set.Operator, cm, serviceCAConfigMap, oauthServingCertConfigMap, trustedCAConfigMap, sec, set.Proxy, set.Infrastructure, customLogoCanMount, canMountManagedClusterConfig, controllerContext.Recorder())
 	toUpdate = toUpdate || depChanged
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DeploymentSync", depErrReason, depErr))
 	if depErr != nil {
@@ -241,10 +245,15 @@ func (co *consoleOperator) SyncDeployment(
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
 	canMountCustomLogo bool,
+	canMountManagedClusterConfig bool,
 	recorder events.Recorder) (consoleDeployment *appsv1.Deployment, changed bool, reason string, err error) {
 
 	updatedOperatorConfig := operatorConfig.DeepCopy()
-	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, oauthServingCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig, canMountCustomLogo)
+	apiServerCAConfigMaps, clusterCAConfigMapsErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).List(ctx, metav1.ListOptions{LabelSelector: api.ManagedClusterAPIServerCAName})
+	if clusterCAConfigMapsErr != nil {
+		klog.Warningf("Unable to list managed cluster API server CA bundle ConfigMaps. Multicluster will not be enabled: %v", clusterCAConfigMapsErr)
+	}
+	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, apiServerCAConfigMaps, serviceCAConfigMap, oauthServingCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig, canMountCustomLogo, canMountManagedClusterConfig)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
 	if genChanged {
@@ -339,9 +348,8 @@ func (co *consoleOperator) SyncConfigMap(
 		}
 	}
 
-	pluginsEndpoingMap := co.GetPluginsEndpointMap(operatorConfig.Spec.Plugins)
-
-	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile, inactivityTimeoutSeconds, pluginsEndpoingMap)
+	pluginsEndpointMap := co.GetPluginsEndpointMap(operatorConfig.Spec.Plugins)
+	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile, inactivityTimeoutSeconds, pluginsEndpointMap)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
 	}
@@ -354,6 +362,29 @@ func (co *consoleOperator) SyncConfigMap(
 		klog.V(4).Infof("%s", cm.Data)
 	}
 	return cm, cmChanged, "ConsoleConfigBuilder", cmErr
+}
+
+func (co *consoleOperator) SyncManagedClusterConfigMap(ctx context.Context) (bool, string, error) {
+	managedClusterConfigMap, err := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, api.ManagedClusterConfigMapName, metav1.GetOptions{})
+	// Not degraded if get fails because the config map isn't there
+	if apierrors.IsNotFound(err) {
+		klog.V(4).Infof("%v config map not found, continuing...", api.ManagedClusterConfigMapName)
+		return false, "", nil
+	}
+
+	// Degraded if get fails for any other reason
+	if err != nil {
+		return false, "FailedGet", err
+	}
+
+	// Degraded if managed cluster config map is present but doesn't have the correct data key
+	_, ok := managedClusterConfigMap.Data[api.ManagedClusterConfigKey]
+	if !ok {
+		return false, "MissingManagedClusterConfig", fmt.Errorf("%v ConfigMap is missing %v data key", api.ManagedClusterConfigMapName, api.ManagedClusterConfigKey)
+	}
+
+	// Managed cluster config map is present and can be mounted
+	return true, "", nil
 }
 
 // apply service-ca configmap

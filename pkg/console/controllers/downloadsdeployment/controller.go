@@ -64,8 +64,8 @@ func NewDownloadsDeploymentSyncController(
 		deploymentClient: deploymentClient,
 	}
 
-	configNameFilter := util.NamesFilter(api.ConfigResourceName)
-	downloadsNameFilter := util.NamesFilter(api.OpenShiftConsoleDownloadsDeploymentName)
+	configNameFilter := util.IncludeNamesFilter(api.ConfigResourceName)
+	downloadsNameFilter := util.IncludeNamesFilter(api.OpenShiftConsoleDownloadsDeploymentName)
 
 	return factory.New().
 		WithFilteredEventsInformers( // infrastructure configs
