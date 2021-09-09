@@ -18,7 +18,6 @@ func DefaultManagedClusterView(cr *operatorv1.Console, cn string) *unstructured.
 }
 
 func withManagedClusterInfo(mcv *unstructured.Unstructured, cn string) {
-	unstructured.SetNestedField(mcv.Object, cn, "metadata", "name")
 	unstructured.SetNestedField(mcv.Object, cn, "metadata", "namespace")
 }
 

@@ -1,0 +1,10 @@
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: console-managed-cluster-view-oauth
+  namespace: bflorkie3
+spec:
+  scope:
+    apiVersion: oauth.openshift.io/v1
+    resource: OAuthClient
+    name: oauth-client-id

@@ -18,7 +18,6 @@ func DefaultManagedClusterAction(cr *operatorv1.Console, cn string) *unstructure
 }
 
 func withManagedClusterInfo(mca *unstructured.Unstructured, cn string) {
-	unstructured.SetNestedField(mca.Object, cn, "metadata", "name")
 	unstructured.SetNestedField(mca.Object, cn, "metadata", "namespace")
 }
 

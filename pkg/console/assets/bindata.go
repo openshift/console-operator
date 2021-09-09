@@ -3,6 +3,7 @@
 // bindata/configmaps/console-public-configmap.yaml
 // bindata/crds/console-managed-cluster-action-oauth-create.yaml
 // bindata/crds/console-managed-cluster-view-ingress-cert.yaml
+// bindata/crds/console-managed-cluster-view-oauth.yaml
 // bindata/routes/console-custom-route.yaml
 // bindata/routes/console-redirect-route.yaml
 // bindata/routes/console-route.yaml
@@ -91,19 +92,20 @@ func configmapsConsolePublicConfigmapYaml() (*asset, error) {
 var _crdsConsoleManagedClusterActionOauthCreateYaml = []byte(`apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
 metadata:
-  name: <CR name>
-  namespace: <namespace of managed cluster>
+  name: console-managed-cluster-action-oauth-create
 spec:
   actionType: Create
   kube:
-    apiVersion: oauth.openshift.io/v1
-    kind: OAuthClient
-    metadata:
-      name: "$OAUTH_CLIENT_ID"
-    grantMethod: auto
-    secret: "$OAUTH_CLIENT_SECRET"
-    redirectURIs:
-    - http://localhost:9000`)
+    resource: OAuthClient
+    template:
+      apiVersion: oauth.openshift.io/v1
+      kind: OAuthClient
+      metadata:
+        name: oauth-client-id
+      grantMethod: auto
+      secret: oauth-client-secret
+      redirectURIs:
+      - http://localhost:9000`)
 
 func crdsConsoleManagedClusterActionOauthCreateYamlBytes() ([]byte, error) {
 	return _crdsConsoleManagedClusterActionOauthCreateYaml, nil
@@ -123,8 +125,7 @@ func crdsConsoleManagedClusterActionOauthCreateYaml() (*asset, error) {
 var _crdsConsoleManagedClusterViewIngressCertYaml = []byte(`apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: <CR name>
-  namespace: <namespace of managed cluster>
+  name: console-managed-cluster-view-ingress-cert
 spec:
   scope:
     kind: ConfigMap
@@ -144,6 +145,33 @@ func crdsConsoleManagedClusterViewIngressCertYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "crds/console-managed-cluster-view-ingress-cert.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _crdsConsoleManagedClusterViewOauthYaml = []byte(`apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: console-managed-cluster-view-oauth
+  namespace: bflorkie3
+spec:
+  scope:
+    apiVersion: oauth.openshift.io/v1
+    resource: OAuthClient
+    name: oauth-client-id
+`)
+
+func crdsConsoleManagedClusterViewOauthYamlBytes() ([]byte, error) {
+	return _crdsConsoleManagedClusterViewOauthYaml, nil
+}
+
+func crdsConsoleManagedClusterViewOauthYaml() (*asset, error) {
+	bytes, err := crdsConsoleManagedClusterViewOauthYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "crds/console-managed-cluster-view-oauth.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -506,6 +534,7 @@ var _bindata = map[string]func() (*asset, error){
 	"configmaps/console-public-configmap.yaml":              configmapsConsolePublicConfigmapYaml,
 	"crds/console-managed-cluster-action-oauth-create.yaml": crdsConsoleManagedClusterActionOauthCreateYaml,
 	"crds/console-managed-cluster-view-ingress-cert.yaml":   crdsConsoleManagedClusterViewIngressCertYaml,
+	"crds/console-managed-cluster-view-oauth.yaml":          crdsConsoleManagedClusterViewOauthYaml,
 	"routes/console-custom-route.yaml":                      routesConsoleCustomRouteYaml,
 	"routes/console-redirect-route.yaml":                    routesConsoleRedirectRouteYaml,
 	"routes/console-route.yaml":                             routesConsoleRouteYaml,
@@ -563,6 +592,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 	"crds": {nil, map[string]*bintree{
 		"console-managed-cluster-action-oauth-create.yaml": {crdsConsoleManagedClusterActionOauthCreateYaml, map[string]*bintree{}},
 		"console-managed-cluster-view-ingress-cert.yaml":   {crdsConsoleManagedClusterViewIngressCertYaml, map[string]*bintree{}},
+		"console-managed-cluster-view-oauth.yaml":          {crdsConsoleManagedClusterViewOauthYaml, map[string]*bintree{}},
 	}},
 	"routes": {nil, map[string]*bintree{
 		"console-custom-route.yaml":   {routesConsoleCustomRouteYaml, map[string]*bintree{}},
