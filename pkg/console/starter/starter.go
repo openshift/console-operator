@@ -261,10 +261,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		operatorConfigClient.OperatorV1().Consoles(),
 		routesClient.RouteV1(),
 		kubeClient.CoreV1(),
-		kubeClient.CoreV1(),
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
-		kubeInformersNamespaced.Core().V1(),                 // `openshift-console` namespace informers
 		kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
 		routesInformersNamespaced.Route().V1().Routes(),
 		// events
@@ -283,10 +281,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		operatorConfigClient.OperatorV1().Consoles(),
 		routesClient.RouteV1(),
 		kubeClient.CoreV1(),
-		kubeClient.CoreV1(),
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
-		kubeInformersNamespaced.Core().V1(),                 // `openshift-console` namespace informers
 		kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
 		routesInformersNamespaced.Route().V1().Routes(),
 		// events
@@ -348,6 +344,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 			//
 			// in 4.8 we removed DonwloadsDeploymentSyncDegraded and can remove this in 4.9
 			"DonwloadsDeploymentSyncDegraded",
+			// in 4.9 we replaced DefaultIngressCertValidation with OAuthServingCertValidation and can remove this in 4.10
+			"DefaultIngressCertValidation",
 		},
 		operatorClient,
 		controllerContext.EventRecorder,
@@ -400,6 +398,17 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 // startResourceSyncing should start syncing process of all secrets and configmaps that need to be synced.
 func startStaticResourceSyncing(resourceSyncer *resourcesynccontroller.ResourceSyncController) error {
+	// sync: 'oauth-serving-cert' configmap
+	// from: 'openshift-config-managed' namespace
+	// to:   'openshift-console' namespace
+	err := resourceSyncer.SyncConfigMap(
+		resourcesynccontroller.ResourceLocation{Name: api.OAuthServingCertConfigMapName, Namespace: api.OpenShiftConsoleNamespace},
+		resourcesynccontroller.ResourceLocation{Name: api.OAuthServingCertConfigMapName, Namespace: api.OpenShiftConfigManagedNamespace},
+	)
+	if err != nil {
+		return err
+	}
+
 	// sync: 'default-ingress-cert' configmap
 	// from: 'openshift-config-managed' namespace
 	// to:   'openshift-console' namespace

@@ -21,44 +21,30 @@ work with this repository is to do the following:
 
 ### Cloning the Repo
 
+Rather than ~/go for everything, provide separate gopaths. For this example we will
+use $HOME/gopaths as the root of our projects and consoleoperator as our project directory.
+
+
 ```bash 
-# rather than ~/go for everything, provide separate gopaths
-mkdir $HOME/gopaths
+mkdir -p $HOME/gopaths/consoleoperator
 ``` 
 
-It is fine to have `~/gopaths` next to `~/go` if you have some legacy projects.
-
-Now, create a `dir` under `~gopaths` to hold the project:
+Now get the repository from github.
 
 ```bash 
-mkdir $HOME/gopaths/consoleoperator 
+cd $HOME/gopaths/consoleoperator
+export GOPATH=`pwd`
+go get github.com/openshift/console-operator
 ```
 
-The name of this directory doesn't matter much, but the child directories are 
-important in order to install dependencies and build the project appropriately.
+You may see a message like `package github.com/openshift/console-operator: no Go files in $HOME/gopaths/consoleoperator/src/github.com/openshift/console-operator`
+and you can safely ignore it.
 
-An `src` and `bin` dir is expected:
-
-```bash 
-mkdir $HOME/gopaths/consoleoperator/src
-mkdir $HOME/gopaths/consoleoperator/bin 
-```
-
-Then the familiar path for source code `src/github.com/openshift/console-operator`:
-
+You may now add your fork to the repo as a remote.
 ```bash
-# specifically for this repo
-mkdir -p $HOME/gopaths/consoleoperator/src/github.com/openshift
-cd $HOME/gopaths/consoleoperator/src/github.com/openshift
-
-```
-
-Now clone (or fork, then clone) into this directory:
-
-```bash 
-git clone git@github.com:openshift/console-operator.git 
-# or your fork 
-git clone git@github.com:<your-fork>/console-operator.git
+cd src/github.com/openshift/console-operator/
+git remote rename origin upstream
+git remote add origin {Your fork url}
 ```
 
 ### Gopath

@@ -16,6 +16,7 @@ const (
 	OpenShiftConsolePublicConfigMapName     = "console-public"
 	ServiceCAConfigMapName                  = "service-ca"
 	DefaultIngressCertConfigMapName         = "default-ingress-cert"
+	OAuthServingCertConfigMapName           = "oauth-serving-cert"
 	OpenShiftConsoleDeploymentName          = OpenShiftConsoleName
 	OpenShiftConsoleServiceName             = OpenShiftConsoleName
 	OpenshiftConsoleRedirectServiceName     = "console-redirect"

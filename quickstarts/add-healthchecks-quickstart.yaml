@@ -14,7 +14,7 @@ spec:
   prerequisites: [You completed the "Getting started with a sample" quick start.]
   introduction: |-
     ### This quick start shows you how to add health checks to your sample application.
-    You should have previously created the **sample-app** application and **nodejs-sample** deployment using the **Get started with a sample** quick start. If you haven't, you may be able to follow these tasks with any existing deployment without configured health checks.
+    You should have previously created the **sample-app** application and **nodejs-basic** deployment using the **Get started with a sample** quick start. If you haven't, you may be able to follow these tasks with any existing deployment without configured health checks.
   tasks:
     - title: View the details of your sample application
       description: |-
@@ -26,13 +26,13 @@ spec:
         
         1. In the navigation menu, click [Topology]{{highlight qs-nav-topology}}.
 
-        1. Click on the **nodejs-sample** deployment to view its details.
+        1. Click on the **nodejs-basic** deployment to view its details.
 
         A side panel is displayed containing the details of your sample application.
       review:
         instructions: |-
           #### To verify you are viewing the details of your sample application:
-          Is the side panel titled **nodejs-sample**?
+          Is the side panel titled **nodejs-basic**?
         failedTaskHelp: This task isn’t verified yet. Try the task again.
       summary:
         success: You have viewed the details of your sample app!
@@ -44,7 +44,7 @@ spec:
       review:
         instructions: |-
           #### To verify there are no health checks configured:
-          Do you see an inline alert stating that **nodejs-sample** does not have health checks?
+          Do you see an inline alert stating that **nodejs-basic** does not have health checks?
         failedTaskHelp: This task isn’t verified yet. Try the task again.
       summary:
         success: You have verified that there are no existing health checks!
@@ -52,7 +52,12 @@ spec:
     - title: Add health checks to your sample
       description: |-
         ### To add health checks to your sample:
-        1. Add health checks to your **nodejs-sample** deployment in one of the following ways: (a) On the side panel, click on the **Actions** menu, where you will see an **Add Health Checks** menu item or (b) Click on the **Add Health Checks** link on the inline notification in the side panel.
+        1. Add health checks to your **nodejs-basic** deployment in one of the following ways: 
+
+          a. On the side panel, click on the **Actions** menu, where you will see an **Add Health Checks** menu item or 
+          
+          b. Click on the **Add Health Checks** link on the inline notification in the side panel.
+        
         2. In the Add Health Checks form, click on the **Add Readiness Probe** link.  Leave the default values, and click on the check to add the Readiness Probe.
         3. Click on the **Add Liveness Probe** link.  Leave the default values, and click on the check to add the Liveness Probe.
         4. Click on the **Add Startup Probe** link.  Leave the default values, and click on the check to add the Startup Probe.

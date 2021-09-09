@@ -28,14 +28,14 @@ const (
 )
 
 const (
-	configMapResourceVersionAnnotation                   = "console.openshift.io/console-config-version"
-	proxyConfigResourceVersionAnnotation                 = "console.openshift.io/proxy-config-version"
-	infrastructureConfigResourceVersionAnnotation        = "console.openshift.io/infrastructure-config-version"
-	serviceCAConfigMapResourceVersionAnnotation          = "console.openshift.io/service-ca-config-version"
-	defaultIngressCertConfigMapResourceVersionAnnotation = "console.openshift.io/default-ingress-cert-config-version"
-	trustedCAConfigMapResourceVersionAnnotation          = "console.openshift.io/trusted-ca-config-version"
-	secretResourceVersionAnnotation                      = "console.openshift.io/oauth-secret-version"
-	consoleImageAnnotation                               = "console.openshift.io/image"
+	configMapResourceVersionAnnotation                 = "console.openshift.io/console-config-version"
+	proxyConfigResourceVersionAnnotation               = "console.openshift.io/proxy-config-version"
+	infrastructureConfigResourceVersionAnnotation      = "console.openshift.io/infrastructure-config-version"
+	serviceCAConfigMapResourceVersionAnnotation        = "console.openshift.io/service-ca-config-version"
+	oauthServingCertConfigMapResourceVersionAnnotation = "console.openshift.io/oauth-serving-cert-config-version"
+	trustedCAConfigMapResourceVersionAnnotation        = "console.openshift.io/trusted-ca-config-version"
+	secretResourceVersionAnnotation                    = "console.openshift.io/oauth-secret-version"
+	consoleImageAnnotation                             = "console.openshift.io/image"
 )
 
 var (
@@ -44,7 +44,7 @@ var (
 		proxyConfigResourceVersionAnnotation,
 		infrastructureConfigResourceVersionAnnotation,
 		serviceCAConfigMapResourceVersionAnnotation,
-		defaultIngressCertConfigMapResourceVersionAnnotation,
+		oauthServingCertConfigMapResourceVersionAnnotation,
 		trustedCAConfigMapResourceVersionAnnotation,
 		secretResourceVersionAnnotation,
 		consoleImageAnnotation,
@@ -61,12 +61,12 @@ type volumeConfig struct {
 	mappedKeys  map[string]string
 }
 
-func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, defaultIngressCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure, canMountCustomLogo bool) *appsv1.Deployment {
+func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, oauthServingCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure, canMountCustomLogo bool) *appsv1.Deployment {
 	deployment := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/console-deployment.yaml"))
 	withReplicas(deployment, infrastructureConfig)
 	withAffinity(deployment, infrastructureConfig, "ui")
 	withStrategy(deployment, infrastructureConfig)
-	withConsoleAnnotations(deployment, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig)
+	withConsoleAnnotations(deployment, cm, serviceCAConfigMap, oauthServingCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig)
 	withConsoleVolumes(deployment, trustedCAConfigMap, canMountCustomLogo)
 	withConsoleContainerImage(deployment, operatorConfig, proxyConfig)
 	withConsoleNodeSelector(deployment, infrastructureConfig)
@@ -130,16 +130,16 @@ func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.
 	deployment.Spec.Strategy.RollingUpdate = rollingUpdateParams
 }
 
-func withConsoleAnnotations(deployment *appsv1.Deployment, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, defaultIngressCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure) {
+func withConsoleAnnotations(deployment *appsv1.Deployment, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, oauthServingCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure) {
 	deployment.ObjectMeta.Annotations = map[string]string{
-		configMapResourceVersionAnnotation:                   cm.GetResourceVersion(),
-		serviceCAConfigMapResourceVersionAnnotation:          serviceCAConfigMap.GetResourceVersion(),
-		defaultIngressCertConfigMapResourceVersionAnnotation: defaultIngressCertConfigMap.GetResourceVersion(),
-		trustedCAConfigMapResourceVersionAnnotation:          trustedCAConfigMap.GetResourceVersion(),
-		proxyConfigResourceVersionAnnotation:                 proxyConfig.GetResourceVersion(),
-		infrastructureConfigResourceVersionAnnotation:        infrastructureConfig.GetResourceVersion(),
-		secretResourceVersionAnnotation:                      sec.GetResourceVersion(),
-		consoleImageAnnotation:                               util.GetImageEnv("CONSOLE_IMAGE"),
+		configMapResourceVersionAnnotation:                 cm.GetResourceVersion(),
+		serviceCAConfigMapResourceVersionAnnotation:        serviceCAConfigMap.GetResourceVersion(),
+		oauthServingCertConfigMapResourceVersionAnnotation: oauthServingCertConfigMap.GetResourceVersion(),
+		trustedCAConfigMapResourceVersionAnnotation:        trustedCAConfigMap.GetResourceVersion(),
+		proxyConfigResourceVersionAnnotation:               proxyConfig.GetResourceVersion(),
+		infrastructureConfigResourceVersionAnnotation:      infrastructureConfig.GetResourceVersion(),
+		secretResourceVersionAnnotation:                    sec.GetResourceVersion(),
+		consoleImageAnnotation:                             util.GetImageEnv("CONSOLE_IMAGE"),
 	}
 	podAnnotations := deployment.Spec.Template.ObjectMeta.Annotations
 	for k, v := range deployment.ObjectMeta.Annotations {
@@ -311,35 +311,18 @@ func setEnvironmentVariables(proxyConfig *configv1.Proxy) []corev1.EnvVar {
 	return envVars
 }
 
-// for the purpose of availability, ready is when we have at least
-// one ready replica
-func IsReady(deployment *appsv1.Deployment) bool {
-	avail := deployment.Status.ReadyReplicas >= 1
+func IsAvailable(deployment *appsv1.Deployment) bool {
+	avail := deployment.Status.AvailableReplicas > 0
 	if !avail {
-		klog.V(4).Infof("deployment is not available, expected replicas: %v, ready replicas: %v", deployment.Spec.Replicas, deployment.Status.ReadyReplicas)
+		klog.V(4).Infof("deployment is not available, expected replicas: %v, available replicas: %v, total replicas: %v", deployment.Spec.Replicas, deployment.Status.AvailableReplicas, deployment.Status.Replicas)
 	}
 	return avail
 }
 
-func IsReadyAndUpdated(deployment *appsv1.Deployment) bool {
-	ready := deployment.Status.Replicas == deployment.Status.ReadyReplicas
-	updated := deployment.Status.Replicas == deployment.Status.UpdatedReplicas
-	if !ready {
-		klog.V(4).Infof("deployment is not ready, expected replicas: %v, ready replicas: %v, total replicas: %v", deployment.Spec.Replicas, deployment.Status.ReadyReplicas, deployment.Status.Replicas)
-	}
-	if !updated {
-		klog.V(4).Infof("deployment is not updated, expected replicas: %v, updated replicas: %v, total replicas: %v", deployment.Spec.Replicas, deployment.Status.UpdatedReplicas, deployment.Status.Replicas)
-	}
-	return ready && updated
-}
-
 func IsAvailableAndUpdated(deployment *appsv1.Deployment) bool {
-	available := deployment.Status.AvailableReplicas > 0
+	available := IsAvailable(deployment)
 	currentGen := deployment.Status.ObservedGeneration >= deployment.Generation
 	updated := deployment.Status.UpdatedReplicas == deployment.Status.Replicas
-	if !available {
-		klog.V(4).Infof("deployment is not available, expected replicas: %v, available replicas: %v, total replicas: %v", deployment.Spec.Replicas, deployment.Status.AvailableReplicas, deployment.Status.Replicas)
-	}
 	if !currentGen {
 		klog.V(4).Infof("deployment is not current, observing generation: %v, generation: %v", deployment.Status.ObservedGeneration, deployment.Generation)
 	}
@@ -377,9 +360,9 @@ func defaultVolumeConfig() []volumeConfig {
 			isConfigMap: true,
 		},
 		{
-			name:        api.DefaultIngressCertConfigMapName,
+			name:        api.OAuthServingCertConfigMapName,
 			readOnly:    true,
-			path:        "/var/default-ingress-cert",
+			path:        "/var/oauth-serving-cert",
 			isConfigMap: true,
 		},
 	}

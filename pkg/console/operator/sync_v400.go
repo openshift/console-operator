@@ -101,10 +101,10 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(customLogoError)
 	}
 
-	defaultIngressCertConfigMap, defaultIngressCertErrReason, defaultIngressCertErr := co.ValidateDefaultIngressCertConfigMap(ctx)
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DefaultIngressCertValidation", defaultIngressCertErrReason, defaultIngressCertErr))
-	if defaultIngressCertErr != nil {
-		return statusHandler.FlushAndReturn(defaultIngressCertErr)
+	oauthServingCertConfigMap, oauthServingCertErrReason, oauthServingCertErr := co.ValidateOAuthServingCertConfigMap(ctx)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthServingCertValidation", oauthServingCertErrReason, oauthServingCertErr))
+	if oauthServingCertErr != nil {
+		return statusHandler.FlushAndReturn(oauthServingCertErr)
 	}
 
 	sec, secChanged, secErr := co.SyncSecret(ctx, set.Operator, controllerContext.Recorder())
@@ -121,7 +121,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(oauthErr)
 	}
 
-	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(ctx, set.Operator, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, set.Proxy, set.Infrastructure, customLogoCanMount, controllerContext.Recorder())
+	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(ctx, set.Operator, cm, serviceCAConfigMap, oauthServingCertConfigMap, trustedCAConfigMap, sec, set.Proxy, set.Infrastructure, customLogoCanMount, controllerContext.Recorder())
 	toUpdate = toUpdate || depChanged
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DeploymentSync", depErrReason, depErr))
 	if depErr != nil {
@@ -142,8 +142,9 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		}
 		version := os.Getenv("RELEASE_VERSION")
 		if !deploymentsub.IsAvailableAndUpdated(actualDeployment) {
-			return errors.New(fmt.Sprintf("Working toward version %s", version))
+			return errors.New(fmt.Sprintf("Working toward version %s, %v replicas available", version, actualDeployment.Status.AvailableReplicas))
 		}
+
 		if co.versionGetter.GetVersions()["operator"] != version {
 			co.versionGetter.SetVersion("operator", version)
 		}
@@ -152,11 +153,8 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 
 	statusHandler.AddCondition(status.HandleAvailable(func() (prefix string, reason string, err error) {
 		prefix = "Deployment"
-		if !deploymentsub.IsReady(actualDeployment) {
-			return prefix, "InsufficientReplicas", errors.New(fmt.Sprintf("%v pods available for console deployment", actualDeployment.Status.ReadyReplicas))
-		}
-		if !deploymentsub.IsReadyAndUpdated(actualDeployment) {
-			return prefix, "FailedUpdate", errors.New(fmt.Sprintf("%v replicas ready at version %s", actualDeployment.Status.ReadyReplicas, os.Getenv("RELEASE_VERSION")))
+		if !deploymentsub.IsAvailable(actualDeployment) {
+			return prefix, "InsufficientReplicas", errors.New(fmt.Sprintf("%v replicas available for console deployment", actualDeployment.Status.ReadyReplicas))
 		}
 		return prefix, "", nil
 	}()))
@@ -237,7 +235,7 @@ func (co *consoleOperator) SyncDeployment(
 	operatorConfig *operatorv1.Console,
 	cm *corev1.ConfigMap,
 	serviceCAConfigMap *corev1.ConfigMap,
-	defaultIngressCertConfigMap *corev1.ConfigMap,
+	oauthServingCertConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
 	sec *corev1.Secret,
 	proxyConfig *configv1.Proxy,
@@ -246,7 +244,7 @@ func (co *consoleOperator) SyncDeployment(
 	recorder events.Recorder) (consoleDeployment *appsv1.Deployment, changed bool, reason string, err error) {
 
 	updatedOperatorConfig := operatorConfig.DeepCopy()
-	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, defaultIngressCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig, canMountCustomLogo)
+	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, oauthServingCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig, canMountCustomLogo)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
 	if genChanged {
@@ -319,11 +317,11 @@ func (co *consoleOperator) SyncConfigMap(
 	}
 
 	useDefaultCAFile := false
-	// We are syncing the `default-ingress-cert` configmap from `openshift-config-managed` to `openshift-console`.
-	// `default-ingress-cert` is only published in `openshift-config-managed` in OpenShift 4.4.0 and newer.
-	// If the `default-ingress-cert` configmap in `openshift-console` exists, we should mount that to the console container,
+	// We are syncing the `oauth-serving-cert` configmap from `openshift-config-managed` to `openshift-console`.
+	// `oauth-serving-cert` is only published in `openshift-config-managed` in OpenShift 4.9.0 and newer.
+	// If the `oauth-serving-cert` configmap in `openshift-console` exists, we should mount that to the console container,
 	// otherwise default to `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt`
-	_, rcaErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, api.DefaultIngressCertConfigMapName, metav1.GetOptions{})
+	_, rcaErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, api.OAuthServingCertConfigMapName, metav1.GetOptions{})
 	if rcaErr != nil && apierrors.IsNotFound(rcaErr) {
 		useDefaultCAFile = true
 	}
@@ -434,18 +432,18 @@ func (co *consoleOperator) SyncCustomLogoConfigMap(ctx context.Context, operator
 	return okToMount, reason, err
 }
 
-func (co *consoleOperator) ValidateDefaultIngressCertConfigMap(ctx context.Context) (defaultIngressCert *corev1.ConfigMap, reason string, err error) {
-	defaultIngressCertConfigMap, err := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, api.DefaultIngressCertConfigMapName, metav1.GetOptions{})
+func (co *consoleOperator) ValidateOAuthServingCertConfigMap(ctx context.Context) (oauthServingCert *corev1.ConfigMap, reason string, err error) {
+	oauthServingCertConfigMap, err := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, api.OAuthServingCertConfigMapName, metav1.GetOptions{})
 	if err != nil {
-		klog.V(4).Infoln("default-ingress-cert configmap not found")
-		return nil, "FailedGet", fmt.Errorf("default-ingress-cert configmap not found")
+		klog.V(4).Infoln("oauth-serving-cert configmap not found")
+		return nil, "FailedGet", fmt.Errorf("oauth-serving-cert configmap not found")
 	}
 
-	_, caBundle := defaultIngressCertConfigMap.Data["ca-bundle.crt"]
+	_, caBundle := oauthServingCertConfigMap.Data["ca-bundle.crt"]
 	if !caBundle {
-		return nil, "MissingDefaultIngressCertBundle", fmt.Errorf("default-ingress-cert configmap is missing ca-bundle.crt data")
+		return nil, "MissingOAuthServingCertBundle", fmt.Errorf("oauth-serving-cert configmap is missing ca-bundle.crt data")
 	}
-	return defaultIngressCertConfigMap, "", nil
+	return oauthServingCertConfigMap, "", nil
 }
 
 // on each pass of the operator sync loop, we need to check the

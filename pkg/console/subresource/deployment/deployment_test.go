@@ -69,14 +69,14 @@ func TestDefaultDeployment(t *testing.T) {
 		DeletionGracePeriodSeconds: nil,
 		Labels:                     labels,
 		Annotations: map[string]string{
-			configMapResourceVersionAnnotation:                   "",
-			secretResourceVersionAnnotation:                      "",
-			defaultIngressCertConfigMapResourceVersionAnnotation: "",
-			serviceCAConfigMapResourceVersionAnnotation:          "",
-			trustedCAConfigMapResourceVersionAnnotation:          "",
-			proxyConfigResourceVersionAnnotation:                 "",
-			infrastructureConfigResourceVersionAnnotation:        "",
-			consoleImageAnnotation:                               "",
+			configMapResourceVersionAnnotation:                 "",
+			secretResourceVersionAnnotation:                    "",
+			oauthServingCertConfigMapResourceVersionAnnotation: "",
+			serviceCAConfigMapResourceVersionAnnotation:        "",
+			trustedCAConfigMapResourceVersionAnnotation:        "",
+			proxyConfigResourceVersionAnnotation:               "",
+			infrastructureConfigResourceVersionAnnotation:      "",
+			consoleImageAnnotation:                             "",
 		},
 		OwnerReferences: nil,
 		Finalizers:      nil,
@@ -127,15 +127,15 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 
 	consoleDeploymentTemplateAnnotations := map[string]string{
-		configMapResourceVersionAnnotation:                   "",
-		secretResourceVersionAnnotation:                      "",
-		defaultIngressCertConfigMapResourceVersionAnnotation: "",
-		serviceCAConfigMapResourceVersionAnnotation:          "",
-		trustedCAConfigMapResourceVersionAnnotation:          "",
-		proxyConfigResourceVersionAnnotation:                 "",
-		infrastructureConfigResourceVersionAnnotation:        "",
-		consoleImageAnnotation:                               "",
-		workloadManagementAnnotation:                         workloadManagementAnnotationValue,
+		configMapResourceVersionAnnotation:                 "",
+		secretResourceVersionAnnotation:                    "",
+		oauthServingCertConfigMapResourceVersionAnnotation: "",
+		serviceCAConfigMapResourceVersionAnnotation:        "",
+		trustedCAConfigMapResourceVersionAnnotation:        "",
+		proxyConfigResourceVersionAnnotation:               "",
+		infrastructureConfigResourceVersionAnnotation:      "",
+		consoleImageAnnotation:                             "",
+		workloadManagementAnnotation:                       workloadManagementAnnotationValue,
 	}
 
 	consoleDeploymentAffinity := &corev1.Affinity{
@@ -495,14 +495,14 @@ func TestDefaultDeployment(t *testing.T) {
 
 func TestWithConsoleAnnotations(t *testing.T) {
 	type args struct {
-		deployment                  *appsv1.Deployment
-		cm                          *corev1.ConfigMap
-		serviceCAConfigMap          *corev1.ConfigMap
-		defaultIngressCertConfigMap *corev1.ConfigMap
-		trustedCAConfigMap          *corev1.ConfigMap
-		sec                         *corev1.Secret
-		proxyConfig                 *configv1.Proxy
-		infrastructureConfig        *configv1.Infrastructure
+		deployment                *appsv1.Deployment
+		cm                        *corev1.ConfigMap
+		serviceCAConfigMap        *corev1.ConfigMap
+		oauthServingCertConfigMap *corev1.ConfigMap
+		trustedCAConfigMap        *corev1.ConfigMap
+		sec                       *corev1.Secret
+		proxyConfig               *configv1.Proxy
+		infrastructureConfig      *configv1.Infrastructure
 	}
 
 	consoleConfig := &corev1.ConfigMap{
@@ -535,7 +535,7 @@ func TestWithConsoleAnnotations(t *testing.T) {
 			ResourceVersion: "34343",
 		},
 	}
-	defaultIngressCertConfigMap := &corev1.ConfigMap{
+	oauthServingCertConfigMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			ResourceVersion: "77777",
 		},
@@ -574,40 +574,40 @@ func TestWithConsoleAnnotations(t *testing.T) {
 						},
 					},
 				},
-				cm:                          consoleConfig,
-				serviceCAConfigMap:          serviceCAConfigMap,
-				defaultIngressCertConfigMap: defaultIngressCertConfigMap,
-				trustedCAConfigMap:          trustedCAConfigMap,
-				sec:                         sec,
-				proxyConfig:                 proxyConfig,
-				infrastructureConfig:        infrastructureConfig,
+				cm:                        consoleConfig,
+				serviceCAConfigMap:        serviceCAConfigMap,
+				oauthServingCertConfigMap: oauthServingCertConfigMap,
+				trustedCAConfigMap:        trustedCAConfigMap,
+				sec:                       sec,
+				proxyConfig:               proxyConfig,
+				infrastructureConfig:      infrastructureConfig,
 			},
 			want: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						configMapResourceVersionAnnotation:                   consoleConfig.GetResourceVersion(),
-						serviceCAConfigMapResourceVersionAnnotation:          serviceCAConfigMap.GetResourceVersion(),
-						defaultIngressCertConfigMapResourceVersionAnnotation: defaultIngressCertConfigMap.GetResourceVersion(),
-						trustedCAConfigMapResourceVersionAnnotation:          trustedCAConfigMap.GetResourceVersion(),
-						proxyConfigResourceVersionAnnotation:                 proxyConfig.GetResourceVersion(),
-						infrastructureConfigResourceVersionAnnotation:        infrastructureConfig.GetResourceVersion(),
-						secretResourceVersionAnnotation:                      sec.GetResourceVersion(),
-						consoleImageAnnotation:                               util.GetImageEnv("CONSOLE_IMAGE"),
+						configMapResourceVersionAnnotation:                 consoleConfig.GetResourceVersion(),
+						serviceCAConfigMapResourceVersionAnnotation:        serviceCAConfigMap.GetResourceVersion(),
+						oauthServingCertConfigMapResourceVersionAnnotation: oauthServingCertConfigMap.GetResourceVersion(),
+						trustedCAConfigMapResourceVersionAnnotation:        trustedCAConfigMap.GetResourceVersion(),
+						proxyConfigResourceVersionAnnotation:               proxyConfig.GetResourceVersion(),
+						infrastructureConfigResourceVersionAnnotation:      infrastructureConfig.GetResourceVersion(),
+						secretResourceVersionAnnotation:                    sec.GetResourceVersion(),
+						consoleImageAnnotation:                             util.GetImageEnv("CONSOLE_IMAGE"),
 					},
 				},
 				Spec: appsv1.DeploymentSpec{
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Annotations: map[string]string{
-								workloadManagementAnnotation:                         workloadManagementAnnotationValue,
-								configMapResourceVersionAnnotation:                   consoleConfig.GetResourceVersion(),
-								serviceCAConfigMapResourceVersionAnnotation:          serviceCAConfigMap.GetResourceVersion(),
-								defaultIngressCertConfigMapResourceVersionAnnotation: defaultIngressCertConfigMap.GetResourceVersion(),
-								trustedCAConfigMapResourceVersionAnnotation:          trustedCAConfigMap.GetResourceVersion(),
-								proxyConfigResourceVersionAnnotation:                 proxyConfig.GetResourceVersion(),
-								infrastructureConfigResourceVersionAnnotation:        infrastructureConfig.GetResourceVersion(),
-								secretResourceVersionAnnotation:                      sec.GetResourceVersion(),
-								consoleImageAnnotation:                               util.GetImageEnv("CONSOLE_IMAGE"),
+								workloadManagementAnnotation:                       workloadManagementAnnotationValue,
+								configMapResourceVersionAnnotation:                 consoleConfig.GetResourceVersion(),
+								serviceCAConfigMapResourceVersionAnnotation:        serviceCAConfigMap.GetResourceVersion(),
+								oauthServingCertConfigMapResourceVersionAnnotation: oauthServingCertConfigMap.GetResourceVersion(),
+								trustedCAConfigMapResourceVersionAnnotation:        trustedCAConfigMap.GetResourceVersion(),
+								proxyConfigResourceVersionAnnotation:               proxyConfig.GetResourceVersion(),
+								infrastructureConfigResourceVersionAnnotation:      infrastructureConfig.GetResourceVersion(),
+								secretResourceVersionAnnotation:                    sec.GetResourceVersion(),
+								consoleImageAnnotation:                             util.GetImageEnv("CONSOLE_IMAGE"),
 							},
 						},
 					},
@@ -617,7 +617,7 @@ func TestWithConsoleAnnotations(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withConsoleAnnotations(tt.args.deployment, tt.args.cm, tt.args.serviceCAConfigMap, tt.args.defaultIngressCertConfigMap, tt.args.trustedCAConfigMap, tt.args.sec, tt.args.proxyConfig, tt.args.infrastructureConfig)
+			withConsoleAnnotations(tt.args.deployment, tt.args.cm, tt.args.serviceCAConfigMap, tt.args.oauthServingCertConfigMap, tt.args.trustedCAConfigMap, tt.args.sec, tt.args.proxyConfig, tt.args.infrastructureConfig)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
 			}
@@ -841,12 +841,12 @@ func TestWithConsoleVolumes(t *testing.T) {
 		},
 	}
 
-	defaultIngressCertVolume := corev1.Volume{
-		Name: api.DefaultIngressCertConfigMapName,
+	oauthServingCertVolume := corev1.Volume{
+		Name: api.OAuthServingCertConfigMapName,
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: api.DefaultIngressCertConfigMapName,
+					Name: api.OAuthServingCertConfigMapName,
 				},
 				Items:       nil,
 				DefaultMode: nil,
@@ -894,7 +894,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 		consoleOauthConfigVolume,
 		consoleConfigVolume,
 		serviceCAVolume,
-		defaultIngressCertVolume,
+		oauthServingCertVolume,
 	}
 	trustedVolumes := append(defaultVolumes, trustedCAVolume)
 	customLogoVolumes := append(defaultVolumes, customLogoVolume)
@@ -924,10 +924,10 @@ func TestWithConsoleVolumes(t *testing.T) {
 		MountPath: "/var/service-ca",
 	}
 
-	defaultIngressCertVolumeMount := corev1.VolumeMount{
-		Name:      api.DefaultIngressCertConfigMapName,
+	oauthServingCertVolumeMount := corev1.VolumeMount{
+		Name:      api.OAuthServingCertConfigMapName,
 		ReadOnly:  true,
-		MountPath: "/var/default-ingress-cert",
+		MountPath: "/var/oauth-serving-cert",
 	}
 
 	trustedCAVolumeMount := corev1.VolumeMount{
@@ -947,7 +947,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 		consoleOauthConfigVolumeMount,
 		consoleConfigVolumeMount,
 		serviceCAVolumeMount,
-		defaultIngressCertVolumeMount,
+		oauthServingCertVolumeMount,
 	}
 	trustedVolumeMounts := append(defaultVolumeMounts, trustedCAVolumeMount)
 	customLogoVolumeMounts := append(defaultVolumeMounts, customLogoVolumeMount)
@@ -1603,7 +1603,7 @@ func TestStub(t *testing.T) {
 	}
 }
 
-func TestIsReady(t *testing.T) {
+func TestIsAvailable(t *testing.T) {
 	type args struct {
 		deployment *appsv1.Deployment
 	}
@@ -1613,31 +1613,31 @@ func TestIsReady(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "Test IsReady(): Deployment has one ready replica",
+			name: "Test IsAvailable(): Deployment has one ready replica",
 			args: args{
 				deployment: &appsv1.Deployment{
 					Status: appsv1.DeploymentStatus{
-						ReadyReplicas: 1,
+						AvailableReplicas: 1,
 					},
 				},
 			},
 			want: true,
 		}, {
-			name: "Test IsReady(): Deployment has multiple ready replicas",
+			name: "Test IsAvailable(): Deployment has multiple ready replicas",
 			args: args{
 				deployment: &appsv1.Deployment{
 					Status: appsv1.DeploymentStatus{
-						ReadyReplicas: 5,
+						AvailableReplicas: 5,
 					},
 				},
 			},
 			want: true,
 		}, {
-			name: "Test IsReady(): Deployment has no ready replicas",
+			name: "Test IsAvailable(): Deployment has no ready replicas",
 			args: args{
 				deployment: &appsv1.Deployment{
 					Status: appsv1.DeploymentStatus{
-						ReadyReplicas: 0,
+						AvailableReplicas: 0,
 					},
 				},
 			},
@@ -1646,7 +1646,7 @@ func TestIsReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsReady(tt.args.deployment); got != tt.want {
+			if got := IsAvailable(tt.args.deployment); got != tt.want {
 				t.Errorf("IsReady() = \n%v\n want \n%v", got, tt.want)
 			}
 		})
