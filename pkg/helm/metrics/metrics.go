@@ -29,26 +29,33 @@ func init() {
 func HandleHelmChartReleaseHealthStatus() {
 	defer recoverMetricPanic()
 
-	if actionConfig, err := getActionConfig(); err != nil {
+	actionConfig, err := getActionConfig()
+	if err != nil {
 		klog.Errorf("metric helm_chart_release_health_status unhandled: %v", err)
 		return
-	} else {
-		listAction := action.NewList(actionConfig)
-		releases, err := listAction.Run()
-		if err != nil {
-			klog.Errorf("metric helm_chart_release_health_status unhandled: %v", err)
-			return
-		}
+	}
+	listAction := action.NewList(actionConfig)
+	releases, err := listAction.Run()
+	if err != nil {
+		klog.Errorf("metric helm_chart_release_health_status unhandled: %v", err)
+		return
+	}
 
-		for _, release := range releases {
-			releaseStatus := release.Info.Status.String()
-			healthStatus := 1
-			if releaseStatus == "failed" || releaseStatus == "unknown" {
-				healthStatus = 0
-			}
-			klog.V(4).Infof("metric helm_chart_release_health_status %d: %s %s %s", healthStatus, release.Name, release.Chart.Metadata.Name, release.Chart.Metadata.Version)
-			helmChartReleaseHealthStatus.WithLabelValues(release.Name, release.Chart.Metadata.Name, release.Chart.Metadata.Version).Set(float64(healthStatus))
+	if len(releases) == 0 {
+		// Initialize metrics with value 0
+		// Reference: https://prometheus.io/docs/practices/instrumentation/#avoid-missing-metrics
+		helmChartReleaseHealthStatus.WithLabelValues("", "", "").Set(0)
+		return
+	}
+
+	for _, release := range releases {
+		releaseStatus := release.Info.Status.String()
+		healthStatus := 1
+		if releaseStatus == "failed" || releaseStatus == "unknown" {
+			healthStatus = 0
 		}
+		klog.V(4).Infof("metric helm_chart_release_health_status %d: %s %s %s", healthStatus, release.Name, release.Chart.Metadata.Name, release.Chart.Metadata.Version)
+		helmChartReleaseHealthStatus.WithLabelValues(release.Name, release.Chart.Metadata.Name, release.Chart.Metadata.Version).Set(float64(healthStatus))
 	}
 }
 
