@@ -93,7 +93,10 @@ spec:
                   self.start()
 
                 def run(self):
-                  httpd = http.server.HTTPServer(addr, http.server.SimpleHTTPRequestHandler, False)
+                  server = http.server.SimpleHTTPRequestHandler
+                  server.server_version = "OpenShift Downloads Server"
+                  server.sys_version = ""
+                  httpd = http.server.HTTPServer(addr, server, False)
 
                   # Prevent the HTTP server from re-binding every handler.
                   # https://stackoverflow.com/questions/46210672/
