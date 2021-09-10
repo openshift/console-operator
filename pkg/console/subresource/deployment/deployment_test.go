@@ -915,7 +915,7 @@ func Test_consoleVolumeMounts(t *testing.T) {
 	}
 }
 
-func TestIsReady(t *testing.T) {
+func TestIsAvailable(t *testing.T) {
 	type args struct {
 		deployment *appsv1.Deployment
 	}
@@ -925,31 +925,31 @@ func TestIsReady(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "Test IsReady(): Deployment has one ready replica",
+			name: "Test IsAvailable(): Deployment has one ready replica",
 			args: args{
 				deployment: &appsv1.Deployment{
 					Status: appsv1.DeploymentStatus{
-						ReadyReplicas: 1,
+						AvailableReplicas: 1,
 					},
 				},
 			},
 			want: true,
 		}, {
-			name: "Test IsReady(): Deployment has multiple ready replicas",
+			name: "Test IsAvailable(): Deployment has multiple ready replicas",
 			args: args{
 				deployment: &appsv1.Deployment{
 					Status: appsv1.DeploymentStatus{
-						ReadyReplicas: 5,
+						AvailableReplicas: 5,
 					},
 				},
 			},
 			want: true,
 		}, {
-			name: "Test IsReady(): Deployment has no ready replicas",
+			name: "Test IsAvailable(): Deployment has no ready replicas",
 			args: args{
 				deployment: &appsv1.Deployment{
 					Status: appsv1.DeploymentStatus{
-						ReadyReplicas: 0,
+						AvailableReplicas: 0,
 					},
 				},
 			},
@@ -958,7 +958,7 @@ func TestIsReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsReady(tt.args.deployment); got != tt.want {
+			if got := IsAvailable(tt.args.deployment); got != tt.want {
 				t.Errorf("IsReady() = \n%v\n want \n%v", got, tt.want)
 			}
 		})
