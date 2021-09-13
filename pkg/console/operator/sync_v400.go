@@ -30,8 +30,6 @@ import (
 	"github.com/openshift/library-go/pkg/route/routeapihelpers"
 
 	// operator
-	helmmetrics "github.com/openshift/console-operator/pkg/helm/metrics"
-
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
 	"github.com/openshift/console-operator/pkg/console/metrics"
 	"github.com/openshift/console-operator/pkg/console/status"
@@ -181,6 +179,9 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(consolePublicConfigErr)
 	}
 
+	klog.V(4).Infoln("sync_v400: updating helm metrics")
+	metrics.HandleHelmChartReleaseHealthStatus()
+
 	defer func() {
 		klog.V(4).Infof("sync loop 4.0.0 complete")
 
@@ -220,7 +221,6 @@ func (co *consoleOperator) GetActiveRouteInfo(ctx context.Context, activeRouteNa
 func (co *consoleOperator) SyncConsoleConfig(ctx context.Context, consoleConfig *configv1.Console, consoleURL string) (*configv1.Console, error) {
 	oldURL := consoleConfig.Status.ConsoleURL
 	metrics.HandleConsoleURL(oldURL, consoleURL)
-	helmmetrics.HandleHelmChartReleaseHealthStatus()
 	if oldURL != consoleURL {
 		klog.V(4).Infof("updating console.config.openshift.io with url: %v", consoleURL)
 		updated := consoleConfig.DeepCopy()

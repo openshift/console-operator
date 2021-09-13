@@ -62,29 +62,19 @@ func HandleHelmChartReleaseHealthStatus() {
 // Reference: https://github.com/helm/helm/issues/7430#issuecomment-620489002
 func getActionConfig() (*action.Configuration, error) {
 	actionConfig := new(action.Configuration)
-	var kubeConfig *genericclioptions.ConfigFlags
 	// Create the rest config instance with ServiceAccount values loaded in them
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
 	}
 	// Create the ConfigFlags struct instance with initialized values from ServiceAccount
-	kubeConfig = genericclioptions.NewConfigFlags(false)
-	kubeConfig.APIServer = &config.Host
-	kubeConfig.BearerToken = &config.BearerToken
-	kubeConfig.CAFile = &config.CAFile
+	var configFlags *genericclioptions.ConfigFlags = genericclioptions.NewConfigFlags(false)
+	configFlags.APIServer = &config.Host
+	configFlags.BearerToken = &config.BearerToken
+	configFlags.CAFile = &config.CAFile
 	// Empty string for all namespaces
-	if err := actionConfig.Init(kubeConfig, "", os.Getenv("HELM_DRIVER"), log.Printf); err != nil {
+	if err := actionConfig.Init(configFlags, "", os.Getenv("HELM_DRIVER"), log.Printf); err != nil {
 		return nil, err
 	}
 	return actionConfig, nil
-}
-
-// We will never want to panic our operator because of metric saving.
-// Therefore, we will recover our panics here and error log them
-// for later diagnosis but will never fail the operator.
-func recoverMetricPanic() {
-	if r := recover(); r != nil {
-		klog.Errorf("Recovering from metric function - %v", r)
-	}
 }
