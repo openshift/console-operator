@@ -76,7 +76,7 @@ func NewHealthCheckController(
 		).WithFilteredEventsInformers( // route
 		util.NamesFilter(api.OpenShiftConsoleRouteName, api.OpenshiftConsoleCustomRouteName),
 		routeInformer.Informer(),
-	).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
+	).ResyncEvery(30*time.Second).WithSync(ctrl.Sync).
 		ToController("HealthCheckController", recorder.WithComponentSuffix("health-check-controller"))
 }
 

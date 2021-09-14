@@ -4,6 +4,7 @@ import (
 	// standard lib
 	"context"
 	"fmt"
+	"time"
 
 	// kube
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -78,7 +79,7 @@ func NewCLIDownloadsSyncController(
 		routeInformer.Informer(),
 	).WithInformers(
 		consoleCLIDownloadsInformers.Informer(),
-	).WithSync(ctrl.Sync).
+	).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
 		ToController("ConsoleCLIDownloadsController", recorder.WithComponentSuffix("console-cli-downloads-controller"))
 }
 
