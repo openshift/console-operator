@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -76,7 +77,7 @@ func NewServiceSyncController(
 		).WithFilteredEventsInformers( // console resources
 		util.NamesFilter(serviceName, ctrl.getRedirectServiceName()),
 		serviceInformer.Informer(),
-	).WithSync(ctrl.Sync).
+	).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
 		ToController("ConsoleServiceController", recorder.WithComponentSuffix("console-service-controller"))
 }
 
