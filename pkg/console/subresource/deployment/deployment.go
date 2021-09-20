@@ -83,6 +83,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	meta.Annotations = deploymentAnnotations
 	replicas := Replicas(infrastructureConfig)
 	affinity := consolePodAffinity(infrastructureConfig)
+	rollingUpdateParams := rollingUpdateParams(infrastructureConfig)
 	gracePeriod := int64(40)
 	volumeConfig := defaultVolumeConfig()
 	caBundle, caBundleExists := trustedCAConfigMap.Data["ca-bundle.crt"]
@@ -105,6 +106,10 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
+			},
+			Strategy: appsv1.DeploymentStrategy{
+				Type:          appsv1.RollingUpdateDeploymentStrategyType,
+				RollingUpdate: rollingUpdateParams,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -146,14 +151,18 @@ func DefaultDownloadsDeployment(operatorConfig *operatorv1.Console, infrastructu
 	meta.Name = api.OpenShiftConsoleDownloadsDeploymentName
 	replicas := Replicas(infrastructureConfig)
 	affinity := downloadsPodAffinity(infrastructureConfig)
+	rollingUpdateParams := rollingUpdateParams(infrastructureConfig)
 	gracePeriod := int64(0)
-
 	downloadsDeployment := &appsv1.Deployment{
 		ObjectMeta: meta,
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
+			},
+			Strategy: appsv1.DeploymentStrategy{
+				Type:          appsv1.RollingUpdateDeploymentStrategyType,
+				RollingUpdate: rollingUpdateParams,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -229,6 +238,20 @@ func LogDeploymentAnnotationChanges(client appsclientv1.DeploymentsGetter, updat
 	}
 }
 
+func rollingUpdateParams(infrastructureConfig *configv1.Infrastructure) *appsv1.RollingUpdateDeployment {
+	if infrastructureConfig.Status.InfrastructureTopology == configv1.SingleReplicaTopologyMode {
+		return &appsv1.RollingUpdateDeployment{}
+	}
+	return &appsv1.RollingUpdateDeployment{
+		MaxSurge: &intstr.IntOrString{
+			IntVal: int32(3),
+		},
+		MaxUnavailable: &intstr.IntOrString{
+			IntVal: int32(1),
+		},
+	}
+}
+
 func tolerations() []corev1.Toleration {
 	return []corev1.Toleration{
 		{
@@ -257,14 +280,17 @@ func consolePodAffinity(infrastructureConfig *configv1.Infrastructure) *corev1.A
 	}
 	return &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-				Weight: 100,
-				PodAffinityTerm: corev1.PodAffinityTerm{
-					LabelSelector: &metav1.LabelSelector{
-						MatchLabels: util.SharedLabels(),
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+				LabelSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "component",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"ui"},
+						},
 					},
-					TopologyKey: "topology.kubernetes.io/zone",
 				},
+				TopologyKey: "kubernetes.io/hostname",
 			}},
 		},
 	}
@@ -277,14 +303,17 @@ func downloadsPodAffinity(infrastructureConfig *configv1.Infrastructure) *corev1
 	}
 	return &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-				Weight: 100,
-				PodAffinityTerm: corev1.PodAffinityTerm{
-					LabelSelector: &metav1.LabelSelector{
-						MatchLabels: util.SharedLabels(),
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+				LabelSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "component",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"downloads"},
+						},
 					},
-					TopologyKey: "topology.kubernetes.io/zone",
 				},
+				TopologyKey: "kubernetes.io/hostname",
 			}},
 		},
 	}

@@ -130,16 +130,18 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 
 	consoleDeploymentAffinity := &corev1.Affinity{
-		// spread out across master nodes rather than congregate on one
 		PodAntiAffinity: &corev1.PodAntiAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-				Weight: 100,
-				PodAffinityTerm: corev1.PodAffinityTerm{
-					LabelSelector: &metav1.LabelSelector{
-						MatchLabels: util.SharedLabels(),
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+				LabelSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "component",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"ui"},
+						},
 					},
-					TopologyKey: "topology.kubernetes.io/zone",
 				},
+				TopologyKey: "kubernetes.io/hostname",
 			}},
 		},
 	}
@@ -161,6 +163,9 @@ func TestDefaultDeployment(t *testing.T) {
 
 	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
 	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
+
+	rollingUpdateParamsForSingleReplica := rollingUpdateParams(infrastructureConfigSingleReplica)
+	rollingUpdateParamsForHighAvail := rollingUpdateParams(infrastructureConfigHighlyAvailable)
 
 	tests := []struct {
 		name string
@@ -192,6 +197,7 @@ func TestDefaultDeployment(t *testing.T) {
 				ObjectMeta: consoleDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &defaultReplicaCount,
+
 					Selector: &metav1.LabelSelector{
 						MatchLabels: labels,
 					},
@@ -221,7 +227,10 @@ func TestDefaultDeployment(t *testing.T) {
 							Volumes: consoleVolumes(defaultVolumeConfig()),
 						},
 					},
-					Strategy:                appsv1.DeploymentStrategy{},
+					Strategy: appsv1.DeploymentStrategy{
+						Type:          appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: rollingUpdateParamsForHighAvail,
+					},
 					MinReadySeconds:         0,
 					RevisionHistoryLimit:    nil,
 					Paused:                  false,
@@ -284,7 +293,10 @@ func TestDefaultDeployment(t *testing.T) {
 							Volumes: consoleVolumes(append(defaultVolumeConfig(), trustedCAVolume())),
 						},
 					},
-					Strategy:                appsv1.DeploymentStrategy{},
+					Strategy: appsv1.DeploymentStrategy{
+						Type:          appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: rollingUpdateParamsForHighAvail,
+					},
 					MinReadySeconds:         0,
 					RevisionHistoryLimit:    nil,
 					Paused:                  false,
@@ -347,7 +359,10 @@ func TestDefaultDeployment(t *testing.T) {
 							Volumes: consoleVolumes(defaultVolumeConfig()),
 						},
 					},
-					Strategy:                appsv1.DeploymentStrategy{},
+					Strategy: appsv1.DeploymentStrategy{
+						Type:          appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: rollingUpdateParamsForSingleReplica,
+					},
 					MinReadySeconds:         0,
 					RevisionHistoryLimit:    nil,
 					Paused:                  false,
@@ -447,6 +462,9 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 	downloadsDeploymentPodSpecHighAvail := downloadsDeploymentPodSpecSingleReplica
 	downloadsDeploymentPodSpecHighAvail.Affinity = downloadsPodAffinity(infrastructureConfigHighlyAvailable)
 
+	rollingUpdateParamsForSingleReplica := rollingUpdateParams(infrastructureConfigSingleReplica)
+	rollingUpdateParamsForHighAvail := rollingUpdateParams(infrastructureConfigHighlyAvailable)
+
 	tests := []struct {
 		name string
 		args args
@@ -463,6 +481,10 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				ObjectMeta: downloadsDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &singleNodeReplicaCount,
+					Strategy: appsv1.DeploymentStrategy{
+						Type:          appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: rollingUpdateParamsForSingleReplica,
+					},
 					Selector: &metav1.LabelSelector{
 						MatchLabels: labels,
 					},
@@ -491,6 +513,10 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				ObjectMeta: downloadsDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &defaultReplicaCount,
+					Strategy: appsv1.DeploymentStrategy{
+						Type:          appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: rollingUpdateParamsForHighAvail,
+					},
 					Selector: &metav1.LabelSelector{
 						MatchLabels: labels,
 					},
@@ -585,14 +611,17 @@ func TestConsolePodAffinity(t *testing.T) {
 			},
 			want: &corev1.Affinity{
 				PodAntiAffinity: &corev1.PodAntiAffinity{
-					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-						Weight: 100,
-						PodAffinityTerm: corev1.PodAffinityTerm{
-							LabelSelector: &metav1.LabelSelector{
-								MatchLabels: util.SharedLabels(),
+					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+						LabelSelector: &metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      "component",
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"ui"},
+								},
 							},
-							TopologyKey: "topology.kubernetes.io/zone",
 						},
+						TopologyKey: "kubernetes.io/hostname",
 					}},
 				},
 			},
@@ -607,7 +636,7 @@ func TestConsolePodAffinity(t *testing.T) {
 	}
 }
 
-func TestDownalodsPodAffinity(t *testing.T) {
+func TestDownloadsPodAffinity(t *testing.T) {
 	tests := []struct {
 		name        string
 		infraConfig *configv1.Infrastructure
@@ -635,14 +664,17 @@ func TestDownalodsPodAffinity(t *testing.T) {
 			},
 			want: &corev1.Affinity{
 				PodAntiAffinity: &corev1.PodAntiAffinity{
-					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-						Weight: 100,
-						PodAffinityTerm: corev1.PodAffinityTerm{
-							LabelSelector: &metav1.LabelSelector{
-								MatchLabels: util.SharedLabels(),
+					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+						LabelSelector: &metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      "component",
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"downloads"},
+								},
 							},
-							TopologyKey: "topology.kubernetes.io/zone",
 						},
+						TopologyKey: "kubernetes.io/hostname",
 					}},
 				},
 			},
