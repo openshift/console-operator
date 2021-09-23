@@ -101,3 +101,7 @@ func SetRedirectURI(client *oauthv1.OAuthClient, host string) *oauthv1.OAuthClie
 	client.RedirectURIs = append(client.RedirectURIs, util.HTTPS(host)+"/auth/callback")
 	return client
 }
+
+func GetRedirectURIs(client *oauthv1.OAuthClient) []string {
+	return client.RedirectURIs
+}

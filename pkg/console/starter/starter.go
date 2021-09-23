@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 
@@ -91,6 +92,11 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	}
 
 	managedClusterClient, err := clusterclient.NewForConfig(controllerContext.KubeConfig)
+	if err != nil {
+		return err
+	}
+
+	dynamicClient, err := dynamic.NewForConfig(controllerContext.KubeConfig)
 	if err != nil {
 		return err
 	}
@@ -328,6 +334,9 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		operatorConfigClient.OperatorV1().Consoles(),
 		kubeClient.CoreV1(),
 		managedClusterClient.ClusterV1(),
+		dynamicClient,
+		kubeClient.CoreV1(),
+		oauthClient.OauthV1(),
 		// informers
 		operatorConfigInformers.Operator().V1().Consoles(),
 		managedClusterInformers.Cluster().V1().ManagedClusters(),
