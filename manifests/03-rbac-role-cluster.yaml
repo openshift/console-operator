@@ -88,6 +88,28 @@ rules:
       - get
       - list
       - watch
+  - apiGroups:
+      - action.open-cluster-management.io
+    resources:
+      - managedclusteractions
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
+  - apiGroups:
+      - view.open-cluster-management.io
+    resources:
+      - managedclusterviews
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1

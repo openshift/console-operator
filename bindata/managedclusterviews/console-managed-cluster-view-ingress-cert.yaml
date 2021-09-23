@@ -1,0 +1,10 @@
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: console-managed-cluster-view-ingress-cert
+spec:
+  scope:
+    kind: ConfigMap
+    version: v1
+    name: default-ingress-cert
+    namespace: openshift-config-managed

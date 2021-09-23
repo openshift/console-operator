@@ -10,6 +10,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 
@@ -95,6 +97,11 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		return err
 	}
 
+	dynamicClient, err := dynamic.NewForConfig(controllerContext.KubeConfig)
+	if err != nil {
+		return err
+	}
+
 	const resync = 10 * time.Minute
 
 	tweakListOptionsForOAuth := func(options *metav1.ListOptions) {
@@ -150,6 +157,11 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 	managedClusterInformers := clusterinformers.NewSharedInformerFactoryWithOptions(
 		managedClusterClient,
+		resync,
+	)
+
+	dynamicInformers := dynamicinformer.NewDynamicSharedInformerFactory(
+		dynamicClient,
 		resync,
 	)
 
@@ -328,9 +340,13 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		operatorConfigClient.OperatorV1().Consoles(),
 		kubeClient.CoreV1(),
 		managedClusterClient.ClusterV1(),
+		dynamicClient,
+		kubeClient.CoreV1(),
+		oauthClient.OauthV1(),
 		// informers
 		operatorConfigInformers.Operator().V1().Consoles(),
 		managedClusterInformers.Cluster().V1().ManagedClusters(),
+		dynamicInformers,
 		//events
 		recorder,
 	)
@@ -398,6 +414,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		routesInformersNamespaced,
 		oauthInformers,
 		managedClusterInformers,
+		dynamicInformers,
 	} {
 		informer.Start(ctx.Done())
 	}

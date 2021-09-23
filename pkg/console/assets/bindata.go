@@ -1,8 +1,12 @@
 // Code generated for package assets by go-bindata DO NOT EDIT. (@generated)
 // sources:
+// bindata/configmaps/console-managed-cluster-ingress-cert-configmap.yaml
 // bindata/configmaps/console-public-configmap.yaml
 // bindata/deployments/console-deployment.yaml
 // bindata/deployments/downloads-deployment.yaml
+// bindata/managedclusteractions/console-managed-cluster-action-create-oauth-client.yaml
+// bindata/managedclusterviews/console-managed-cluster-view-ingress-cert.yaml
+// bindata/managedclusterviews/console-managed-cluster-view-oauth-client.yaml
 // bindata/routes/console-custom-route.yaml
 // bindata/routes/console-redirect-route.yaml
 // bindata/routes/console-route.yaml
@@ -62,6 +66,27 @@ func (fi bindataFileInfo) IsDir() bool {
 // Sys return file is sys mode
 func (fi bindataFileInfo) Sys() interface{} {
 	return nil
+}
+
+var _configmapsConsoleManagedClusterIngressCertConfigmapYaml = []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: openshift-config-managed
+`)
+
+func configmapsConsoleManagedClusterIngressCertConfigmapYamlBytes() ([]byte, error) {
+	return _configmapsConsoleManagedClusterIngressCertConfigmapYaml, nil
+}
+
+func configmapsConsoleManagedClusterIngressCertConfigmapYaml() (*asset, error) {
+	bytes, err := configmapsConsoleManagedClusterIngressCertConfigmapYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "configmaps/console-managed-cluster-ingress-cert-configmap.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
 }
 
 var _configmapsConsolePublicConfigmapYaml = []byte(`# This configmap 'console-public' manifest is used to expose the console URL
@@ -398,6 +423,89 @@ func deploymentsDownloadsDeploymentYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "deployments/downloads-deployment.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _managedclusteractionsConsoleManagedClusterActionCreateOauthClientYaml = []byte(`apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: console-managed-cluster-action-oauth-create
+spec:
+  actionType: Create
+  kube:
+    resource: OAuthClient
+    template:
+      apiVersion: oauth.openshift.io/v1
+      kind: OAuthClient
+      metadata:
+        name: console-managed-cluster-oauth-client
+      grantMethod: auto`)
+
+func managedclusteractionsConsoleManagedClusterActionCreateOauthClientYamlBytes() ([]byte, error) {
+	return _managedclusteractionsConsoleManagedClusterActionCreateOauthClientYaml, nil
+}
+
+func managedclusteractionsConsoleManagedClusterActionCreateOauthClientYaml() (*asset, error) {
+	bytes, err := managedclusteractionsConsoleManagedClusterActionCreateOauthClientYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "managedclusteractions/console-managed-cluster-action-create-oauth-client.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _managedclusterviewsConsoleManagedClusterViewIngressCertYaml = []byte(`apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: console-managed-cluster-view-ingress-cert
+spec:
+  scope:
+    kind: ConfigMap
+    version: v1
+    name: default-ingress-cert
+    namespace: openshift-config-managed
+`)
+
+func managedclusterviewsConsoleManagedClusterViewIngressCertYamlBytes() ([]byte, error) {
+	return _managedclusterviewsConsoleManagedClusterViewIngressCertYaml, nil
+}
+
+func managedclusterviewsConsoleManagedClusterViewIngressCertYaml() (*asset, error) {
+	bytes, err := managedclusterviewsConsoleManagedClusterViewIngressCertYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "managedclusterviews/console-managed-cluster-view-ingress-cert.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _managedclusterviewsConsoleManagedClusterViewOauthClientYaml = []byte(`apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: console-managed-cluster-view-oauth
+spec:
+  scope:
+    apiVersion: oauth.openshift.io/v1
+    resource: OAuthClient
+    name: console-managed-cluster-oauth-client
+`)
+
+func managedclusterviewsConsoleManagedClusterViewOauthClientYamlBytes() ([]byte, error) {
+	return _managedclusterviewsConsoleManagedClusterViewOauthClientYaml, nil
+}
+
+func managedclusterviewsConsoleManagedClusterViewOauthClientYaml() (*asset, error) {
+	bytes, err := managedclusterviewsConsoleManagedClusterViewOauthClientYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "managedclusterviews/console-managed-cluster-view-oauth-client.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -757,17 +865,21 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"configmaps/console-public-configmap.yaml": configmapsConsolePublicConfigmapYaml,
-	"deployments/console-deployment.yaml":      deploymentsConsoleDeploymentYaml,
-	"deployments/downloads-deployment.yaml":    deploymentsDownloadsDeploymentYaml,
-	"routes/console-custom-route.yaml":         routesConsoleCustomRouteYaml,
-	"routes/console-redirect-route.yaml":       routesConsoleRedirectRouteYaml,
-	"routes/console-route.yaml":                routesConsoleRouteYaml,
-	"routes/downloads-custom-route.yaml":       routesDownloadsCustomRouteYaml,
-	"routes/downloads-route.yaml":              routesDownloadsRouteYaml,
-	"services/console-redirect-service.yaml":   servicesConsoleRedirectServiceYaml,
-	"services/console-service.yaml":            servicesConsoleServiceYaml,
-	"services/downloads-service.yaml":          servicesDownloadsServiceYaml,
+	"configmaps/console-managed-cluster-ingress-cert-configmap.yaml":                configmapsConsoleManagedClusterIngressCertConfigmapYaml,
+	"configmaps/console-public-configmap.yaml":                                      configmapsConsolePublicConfigmapYaml,
+	"deployments/console-deployment.yaml":                                           deploymentsConsoleDeploymentYaml,
+	"deployments/downloads-deployment.yaml":                                         deploymentsDownloadsDeploymentYaml,
+	"managedclusteractions/console-managed-cluster-action-create-oauth-client.yaml": managedclusteractionsConsoleManagedClusterActionCreateOauthClientYaml,
+	"managedclusterviews/console-managed-cluster-view-ingress-cert.yaml":            managedclusterviewsConsoleManagedClusterViewIngressCertYaml,
+	"managedclusterviews/console-managed-cluster-view-oauth-client.yaml":            managedclusterviewsConsoleManagedClusterViewOauthClientYaml,
+	"routes/console-custom-route.yaml":                                              routesConsoleCustomRouteYaml,
+	"routes/console-redirect-route.yaml":                                            routesConsoleRedirectRouteYaml,
+	"routes/console-route.yaml":                                                     routesConsoleRouteYaml,
+	"routes/downloads-custom-route.yaml":                                            routesDownloadsCustomRouteYaml,
+	"routes/downloads-route.yaml":                                                   routesDownloadsRouteYaml,
+	"services/console-redirect-service.yaml":                                        servicesConsoleRedirectServiceYaml,
+	"services/console-service.yaml":                                                 servicesConsoleServiceYaml,
+	"services/downloads-service.yaml":                                               servicesDownloadsServiceYaml,
 }
 
 // AssetDir returns the file names below a certain
@@ -812,11 +924,19 @@ type bintree struct {
 
 var _bintree = &bintree{nil, map[string]*bintree{
 	"configmaps": {nil, map[string]*bintree{
-		"console-public-configmap.yaml": {configmapsConsolePublicConfigmapYaml, map[string]*bintree{}},
+		"console-managed-cluster-ingress-cert-configmap.yaml": {configmapsConsoleManagedClusterIngressCertConfigmapYaml, map[string]*bintree{}},
+		"console-public-configmap.yaml":                       {configmapsConsolePublicConfigmapYaml, map[string]*bintree{}},
 	}},
 	"deployments": {nil, map[string]*bintree{
 		"console-deployment.yaml":   {deploymentsConsoleDeploymentYaml, map[string]*bintree{}},
 		"downloads-deployment.yaml": {deploymentsDownloadsDeploymentYaml, map[string]*bintree{}},
+	}},
+	"managedclusteractions": {nil, map[string]*bintree{
+		"console-managed-cluster-action-create-oauth-client.yaml": {managedclusteractionsConsoleManagedClusterActionCreateOauthClientYaml, map[string]*bintree{}},
+	}},
+	"managedclusterviews": {nil, map[string]*bintree{
+		"console-managed-cluster-view-ingress-cert.yaml": {managedclusterviewsConsoleManagedClusterViewIngressCertYaml, map[string]*bintree{}},
+		"console-managed-cluster-view-oauth-client.yaml": {managedclusterviewsConsoleManagedClusterViewOauthClientYaml, map[string]*bintree{}},
 	}},
 	"routes": {nil, map[string]*bintree{
 		"console-custom-route.yaml":   {routesConsoleCustomRouteYaml, map[string]*bintree{}},

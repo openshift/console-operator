@@ -17,6 +17,7 @@ const (
 	ServiceCAConfigMapName                  = "service-ca"
 	DefaultIngressCertConfigMapName         = "default-ingress-cert"
 	OAuthServingCertConfigMapName           = "oauth-serving-cert"
+	OAuthConfigMapName                      = "oauth-openshift"
 	OpenShiftConsoleDeploymentName          = OpenShiftConsoleName
 	OpenShiftConsoleServiceName             = OpenShiftConsoleName
 	OpenshiftConsoleRedirectServiceName     = "console-redirect"
@@ -43,6 +44,8 @@ const (
 	ManagedClusterAPIServerCAMountDir       = "/var/managed-cluster-certs"
 	ManagedClusterAPIServerCAName           = "managed-cluster-api-server-ca"
 	ManagedClusterAPIServerCAKey            = "ca-bundle.crt"
+	ManagedClusterIngressCertName           = "managed-cluster-ingress-cert"
+	ManagedClusterIngressCertKey            = "ca-bundle.crt"
 
 	ConsoleContainerPortName    = "https"
 	ConsoleContainerPort        = 443
