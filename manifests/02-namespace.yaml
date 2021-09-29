@@ -10,6 +10,7 @@ metadata:
     workload.openshift.io/allowed: "management"
   labels:
     network.openshift.io/policy-group: "console"
+    openshift.io/cluster-monitoring: "true"
 ---
 apiVersion: v1
 kind: Namespace
