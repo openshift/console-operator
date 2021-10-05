@@ -1,4 +1,4 @@
-package managedcluster
+package managedclusteraction
 
 import (
 	operatorv1 "github.com/openshift/api/operator/v1"
@@ -11,18 +11,18 @@ import (
 	// managedclusterviewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/action/v1beta1"
 )
 
-func DefaultManagedClusterActionOAuthCreate(cr *operatorv1.Console, cn string, sec string, redirects []string) *unstructured.Unstructured {
-	managedClusterAction := ActionOAuthCreateStub(cn)
-	withManagedClusterActionInfo(managedClusterAction, cn, sec, redirects)
+func DefaultCreateOAuthClient(cr *operatorv1.Console, cn string, sec string, redirects []string) *unstructured.Unstructured {
+	managedClusterAction := CreateOAuthClientStub(cn)
+	withInfo(managedClusterAction, cn, sec, redirects)
 	return managedClusterAction
 }
 
-func withManagedClusterActionInfo(mca *unstructured.Unstructured, cn string, sec string, redirects []string) {
+func withInfo(mca *unstructured.Unstructured, cn string, sec string, redirects []string) {
 	unstructured.SetNestedField(mca.Object, cn, "metadata", "namespace")
 	unstructured.SetNestedField(mca.Object, sec, "spec", "kube", "template", "secret")
 	unstructured.SetNestedStringSlice(mca.Object, redirects, "spec", "kube", "template", "redirectURIs")
 }
 
-func ActionOAuthCreateStub(cn string) *unstructured.Unstructured {
-	return util.ReadUnstructuredOrDie(assets.MustAsset("managedcluster/console-managed-cluster-action-oauth-create.yaml"))
+func CreateOAuthClientStub(cn string) *unstructured.Unstructured {
+	return util.ReadUnstructuredOrDie(assets.MustAsset("managedclusteractions/console-managed-cluster-action-create-oauth-client.yaml"))
 }
