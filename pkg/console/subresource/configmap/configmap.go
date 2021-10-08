@@ -2,11 +2,13 @@ package configmap
 
 import (
 	"fmt"
+	"net/url"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 
 	configv1 "github.com/openshift/api/config/v1"
+	"github.com/openshift/api/console/v1alpha1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
@@ -19,6 +21,7 @@ import (
 const (
 	consoleConfigYamlFile = "console-config.yaml"
 	defaultLogoutURL      = ""
+	pluginProxyEndpoint   = "/api/proxy/"
 )
 
 func getApiUrl(infrastructureConfig *configv1.Infrastructure) string {
@@ -43,7 +46,7 @@ func DefaultConfigMap(
 	activeConsoleRoute *routev1.Route,
 	useDefaultCAFile bool,
 	inactivityTimeoutSeconds int,
-	pluginsEndpoingMap map[string]string) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
+	availablePlugins []*v1alpha1.ConsolePlugin) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
 	defaultConfig, err := defaultBuilder.Host(activeConsoleRoute.Spec.Host).
@@ -67,7 +70,8 @@ func DefaultConfigMap(
 		DocURL(operatorConfig.Spec.Customization.DocumentationBaseURL).
 		OAuthServingCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
-		Plugins(pluginsEndpoingMap).
+		Plugins(GetPluginsEndpointMap(availablePlugins)).
+		Proxy(GetPluginsProxyServices(availablePlugins)).
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
 		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).
 		CustomDeveloperCatalog(operatorConfig.Spec.Customization.DeveloperCatalog).
@@ -106,6 +110,51 @@ func DefaultConfigMap(
 	util.AddOwnerRef(configMap, util.OwnerRefFrom(operatorConfig))
 
 	return configMap, willMergeConfigOverrides, nil
+}
+
+func GetPluginsEndpointMap(availablePlugins []*v1alpha1.ConsolePlugin) map[string]string {
+	pluginsEndpointMap := map[string]string{}
+	for _, plugin := range availablePlugins {
+		pluginsEndpointMap[plugin.Name] = getServiceURL(plugin)
+	}
+	return pluginsEndpointMap
+}
+
+func GetPluginsProxyServices(availablePlugins []*v1alpha1.ConsolePlugin) []consoleserver.ProxyService {
+	proxyServices := []consoleserver.ProxyService{}
+	for _, plugin := range availablePlugins {
+		for _, service := range plugin.Spec.Proxy.Services {
+			proxyService := consoleserver.ProxyService{
+				ConsoleAPIPath: getConsoleAPIPath(&service),
+				Endpoint:       getProxyServiceURL(&service),
+				CACertificate:  service.CACertificate,
+				Authorize:      service.Authorize,
+			}
+			proxyServices = append(proxyServices, proxyService)
+		}
+	}
+	return proxyServices
+}
+
+func getConsoleAPIPath(service *v1alpha1.ConsolePluginProxyService) string {
+	return fmt.Sprintf("%snamespace/%s/service/%s/", pluginProxyEndpoint, service.Namespace, fmt.Sprintf("%s:%d", service.Name, service.Port))
+}
+
+func getProxyServiceURL(service *v1alpha1.ConsolePluginProxyService) string {
+	pluginURL := &url.URL{
+		Scheme: "https",
+		Host:   fmt.Sprintf("%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, service.Port),
+	}
+	return pluginURL.String()
+}
+
+func getServiceURL(plugin *v1alpha1.ConsolePlugin) string {
+	pluginURL := &url.URL{
+		Scheme: "https",
+		Host:   fmt.Sprintf("%s.%s.svc.cluster.local:%d", plugin.Spec.Service.Name, plugin.Spec.Service.Namespace, plugin.Spec.Service.Port),
+		Path:   plugin.Spec.Service.BasePath,
+	}
+	return pluginURL.String()
 }
 
 func isCustomRoute(activeRoute *routev1.Route) bool {

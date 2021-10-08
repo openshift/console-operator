@@ -339,9 +339,9 @@ func (co *consoleOperator) SyncConfigMap(
 		}
 	}
 
-	pluginsEndpoingMap := co.GetPluginsEndpointMap(operatorConfig.Spec.Plugins)
+	availablePlugins := co.GetAvailablePlugins(operatorConfig.Spec.Plugins)
 
-	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile, inactivityTimeoutSeconds, pluginsEndpoingMap)
+	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile, inactivityTimeoutSeconds, availablePlugins)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
 	}
@@ -501,24 +501,15 @@ func (co *consoleOperator) ValidateCustomLogo(ctx context.Context, operatorConfi
 	return true, "", nil
 }
 
-func (co *consoleOperator) GetPluginsEndpointMap(enabledPluginsNames []string) map[string]string {
-	pluginsEndpointMap := map[string]string{}
+func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []string) []*v1alpha1.ConsolePlugin {
+	var availablePlugins []*v1alpha1.ConsolePlugin
 	for _, pluginName := range enabledPluginsNames {
 		plugin, err := co.consolePluginLister.Get(pluginName)
 		if err != nil {
 			klog.Errorf("failed to get %q plugin: %v", pluginName, err)
 			continue
 		}
-		pluginsEndpointMap[pluginName] = getServiceHostname(plugin)
+		availablePlugins = append(availablePlugins, plugin)
 	}
-	return pluginsEndpointMap
-}
-
-func getServiceHostname(plugin *v1alpha1.ConsolePlugin) string {
-	pluginURL := &url.URL{
-		Scheme: "https",
-		Host:   fmt.Sprintf("%s.%s.svc.cluster.local:%d", plugin.Spec.Service.Name, plugin.Spec.Service.Namespace, plugin.Spec.Service.Port),
-		Path:   plugin.Spec.Service.BasePath,
-	}
-	return pluginURL.String()
+	return availablePlugins
 }
