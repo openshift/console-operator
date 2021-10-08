@@ -7,6 +7,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 
+	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -31,7 +32,13 @@ func TestDeploymentsReplicas(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}
-	expectedReplicas := deploymentsub.Replicas(infrastructureConfig)
+
+	var expectedReplicas int32
+	if infrastructureConfig.Status.InfrastructureTopology == configv1.SingleReplicaTopologyMode {
+		expectedReplicas = int32(deploymentsub.SingleNodeConsoleReplicas)
+	} else {
+		expectedReplicas = int32(deploymentsub.DefaultConsoleReplicas)
+	}
 
 	consoleDeployment, err := framework.GetConsoleDeployment(client)
 	if err != nil {
