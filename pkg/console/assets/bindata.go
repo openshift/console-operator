@@ -1,5 +1,6 @@
 // Code generated for package assets by go-bindata DO NOT EDIT. (@generated)
 // sources:
+// bindata/configmaps/console-managed-cluster-ingress-cert-configmap.yaml
 // bindata/configmaps/console-public-configmap.yaml
 // bindata/managedclusteractions/console-managed-cluster-action-create-oauth-client.yaml
 // bindata/managedclusterviews/console-managed-cluster-view-ingress-cert.yaml
@@ -63,6 +64,27 @@ func (fi bindataFileInfo) IsDir() bool {
 // Sys return file is sys mode
 func (fi bindataFileInfo) Sys() interface{} {
 	return nil
+}
+
+var _configmapsConsoleManagedClusterIngressCertConfigmapYaml = []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: openshift-config-managed
+`)
+
+func configmapsConsoleManagedClusterIngressCertConfigmapYamlBytes() ([]byte, error) {
+	return _configmapsConsoleManagedClusterIngressCertConfigmapYaml, nil
+}
+
+func configmapsConsoleManagedClusterIngressCertConfigmapYaml() (*asset, error) {
+	bytes, err := configmapsConsoleManagedClusterIngressCertConfigmapYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "configmaps/console-managed-cluster-ingress-cert-configmap.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
 }
 
 var _configmapsConsolePublicConfigmapYaml = []byte(`# This configmap 'console-public' manifest is used to expose the console URL
@@ -527,6 +549,7 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
+	"configmaps/console-managed-cluster-ingress-cert-configmap.yaml":                configmapsConsoleManagedClusterIngressCertConfigmapYaml,
 	"configmaps/console-public-configmap.yaml":                                      configmapsConsolePublicConfigmapYaml,
 	"managedclusteractions/console-managed-cluster-action-create-oauth-client.yaml": managedclusteractionsConsoleManagedClusterActionCreateOauthClientYaml,
 	"managedclusterviews/console-managed-cluster-view-ingress-cert.yaml":            managedclusterviewsConsoleManagedClusterViewIngressCertYaml,
@@ -583,7 +606,8 @@ type bintree struct {
 
 var _bintree = &bintree{nil, map[string]*bintree{
 	"configmaps": {nil, map[string]*bintree{
-		"console-public-configmap.yaml": {configmapsConsolePublicConfigmapYaml, map[string]*bintree{}},
+		"console-managed-cluster-ingress-cert-configmap.yaml": {configmapsConsoleManagedClusterIngressCertConfigmapYaml, map[string]*bintree{}},
+		"console-public-configmap.yaml":                       {configmapsConsolePublicConfigmapYaml, map[string]*bintree{}},
 	}},
 	"managedclusteractions": {nil, map[string]*bintree{
 		"console-managed-cluster-action-create-oauth-client.yaml": {managedclusteractionsConsoleManagedClusterActionCreateOauthClientYaml, map[string]*bintree{}},

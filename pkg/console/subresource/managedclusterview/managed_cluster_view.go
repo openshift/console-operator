@@ -3,8 +3,10 @@ package managedclusterview
 import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	// openshift
+	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/assets"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	// acm - TODO conflicts adding package to go.mod with several dependencies
@@ -50,14 +52,6 @@ func GetStatus(mcv *unstructured.Unstructured) (bool, error) {
 	return true, nil
 }
 
-func GetResult(mcv *unstructured.Unstructured) (map[string]string, error) {
-	result, found, err := unstructured.NestedStringMap(mcv.Object, "status", "result")
-	if err != nil || !found || result == nil {
-		return nil, err
-	}
-	return result, nil
-}
-
 func GetName(mcv *unstructured.Unstructured) (string, error) {
 	name, found, err := unstructured.NestedString(mcv.Object, "metadata", "name")
 	if err != nil || !found || name == "" {
@@ -72,4 +66,20 @@ func GetNamespace(mcv *unstructured.Unstructured) (string, error) {
 		return "", err
 	}
 	return namespace, nil
+}
+
+func GetGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "view.open-cluster-management.io",
+		Version:  "v1beta1",
+		Resource: "managedclusterviews",
+	}
+}
+
+func GetCertBundle(mcv *unstructured.Unstructured) (string, error) {
+	cert, found, err := unstructured.NestedString(mcv.Object, "status", "result", "data", api.ManagedClusterIngressCertKey)
+	if err != nil || !found || cert == "" {
+		return "", err
+	}
+	return cert, nil
 }

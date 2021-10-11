@@ -3,6 +3,7 @@ package managedclusteraction
 import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	// openshift
 	"github.com/openshift/console-operator/pkg/console/assets"
@@ -25,4 +26,20 @@ func withInfo(mca *unstructured.Unstructured, cn string, sec string, redirects [
 
 func CreateOAuthClientStub(cn string) *unstructured.Unstructured {
 	return util.ReadUnstructuredOrDie(assets.MustAsset("managedclusteractions/console-managed-cluster-action-create-oauth-client.yaml"))
+}
+
+func GetName(mca *unstructured.Unstructured) (string, error) {
+	name, found, err := unstructured.NestedString(mca.Object, "metadata", "name")
+	if err != nil || !found || name == "" {
+		return "", err
+	}
+	return name, nil
+}
+
+func GetGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    "action.open-cluster-management.io",
+		Version:  "v1beta1",
+		Resource: "managedclusteractions",
+	}
 }

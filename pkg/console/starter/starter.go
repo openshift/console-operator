@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 
@@ -156,6 +157,11 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 	managedClusterInformers := clusterinformers.NewSharedInformerFactoryWithOptions(
 		managedClusterClient,
+		resync,
+	)
+
+	dynamicInformers := dynamicinformer.NewDynamicSharedInformerFactory(
+		dynamicClient,
 		resync,
 	)
 
@@ -340,6 +346,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// informers
 		operatorConfigInformers.Operator().V1().Consoles(),
 		managedClusterInformers.Cluster().V1().ManagedClusters(),
+		dynamicInformers,
 		//events
 		recorder,
 	)
@@ -407,6 +414,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		routesInformersNamespaced,
 		oauthInformers,
 		managedClusterInformers,
+		dynamicInformers,
 	} {
 		informer.Start(ctx.Done())
 	}

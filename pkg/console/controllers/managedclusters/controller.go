@@ -10,8 +10,8 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/dynamic/dynamicinformer"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/klog/v2"
 
@@ -71,6 +71,7 @@ func NewManagedClusterController(
 	// informers
 	operatorConfigInformer v1.ConsoleInformer,
 	managedClusterInformers clusterinformersv1.ManagedClusterInformer,
+	dynamicInformers dynamicinformer.DynamicSharedInformerFactory,
 
 	// events
 	recorder events.Recorder,
@@ -95,6 +96,10 @@ func NewManagedClusterController(
 		).WithFilteredEventsInformers(
 		util.ExcludeNamesFilter(api.HubClusterName),
 		managedClusterInformers.Informer(),
+	).WithInformers(
+		dynamicInformers.ForResource(managedclusteractionsub.GetGVR()).Informer(),
+	).WithInformers(
+		dynamicInformers.ForResource(managedclusterviewsub.GetGVR()).Informer(),
 	).WithSync(ctrl.Sync).
 		ToController("ManagedClusterController", recorder.WithComponentSuffix("managed-cluster-controller"))
 }
@@ -148,8 +153,12 @@ func (c *ManagedClusterController) Sync(ctx context.Context, controllerContext f
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterActionCreateOAuthClientSync", managedClusterActionCreateOAuthClientErrReason, managedClusterActionCreateOAuthClientErr))
 
 	// Create managed cluster views for ingress cert
-	_, managedClusterViewIngressCertErr, managedClusterViewIngressCertErrReason := c.SyncManagedClusterViewIngressCert(ctx, operatorConfig)
+	managedClusterViewsIngressCert, managedClusterViewIngressCertErr, managedClusterViewIngressCertErrReason := c.SyncManagedClusterViewIngressCert(ctx, operatorConfig)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterViewIngressCertSync", managedClusterViewIngressCertErrReason, managedClusterViewIngressCertErr))
+
+	// Create config maps for each managed cluster ingress cert bundle
+	managedClusterIngressCertSyncErr, managedClusterIngressCertSyncErrReason := c.SyncManagedClusterIngressCertConfigMap(managedClusterViewsIngressCert, ctx, operatorConfig, controllerContext.Recorder())
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterIngressCertConfigMapSync", managedClusterIngressCertSyncErrReason, managedClusterIngressCertSyncErr))
 
 	// Create  manged cluster config map
 	configSyncErr, configSyncErrReason := c.SyncManagedClusterConfigMap(managedClusterClientConfigs, ctx, operatorConfig, controllerContext.Recorder())
@@ -279,11 +288,7 @@ func (c *ManagedClusterController) SyncManagedClusterViewOAuthClient(ctx context
 	managedClusterOAuthClientViews := []*unstructured.Unstructured{}
 	for _, managedCluster := range managedClusters.Items {
 		mcvOAuth := managedclusterviewsub.DefaultViewOAuthClient(operatorConfig, managedCluster.Name)
-		gvr := schema.GroupVersionResource{
-			Group:    "view.open-cluster-management.io",
-			Version:  "v1beta1",
-			Resource: "managedclusterviews",
-		}
+		gvr := managedclusterviewsub.GetGVR()
 
 		oAuthResp, oAuthErr := c.dynamicClient.Resource(gvr).Namespace(managedCluster.Name).Create(ctx, mcvOAuth, metav1.CreateOptions{})
 		if oAuthErr != nil && apierrors.IsAlreadyExists(oAuthErr) {
@@ -336,17 +341,18 @@ func (c *ManagedClusterController) SyncManagedClusterActionCreateOAuthClient(ctx
 	redirects := oauthsub.GetRedirectURIs(oauthClient)
 	for _, managedClusterName := range managedClusterList {
 		mca := managedclusteractionsub.DefaultCreateOAuthClient(operatorConfig, managedClusterName, secretString, redirects)
-		gvr := schema.GroupVersionResource{
-			Group:    "action.open-cluster-management.io",
-			Version:  "v1beta1",
-			Resource: "managedclusteractions",
-		}
+		gvr := managedclusteractionsub.GetGVR()
 		opt := metav1.CreateOptions{}
-		resp, err := c.dynamicClient.Resource(gvr).Namespace(managedClusterName).Create(ctx, mca, opt)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("Error syncing managed cluster action for oauth client for cluster %s: %v", managedClusterName, err))
+		oAuthCreateResp, oAuthCreateErr := c.dynamicClient.Resource(gvr).Namespace(managedClusterName).Create(ctx, mca, opt)
+		if oAuthCreateErr != nil && apierrors.IsAlreadyExists(oAuthCreateErr) {
+			mcaOAuthName, _ := managedclusteractionsub.GetName(mca)
+			oAuthCreateResp, oAuthCreateErr = c.dynamicClient.Resource(gvr).Namespace(managedClusterName).Get(ctx, mcaOAuthName, metav1.GetOptions{})
+		}
+
+		if oAuthCreateErr != nil {
+			errs = append(errs, fmt.Sprintf("Error syncing managed cluster action for oauth client for cluster %s: %v", managedClusterName, oAuthCreateErr))
 		} else {
-			managedClusterActionCreateOAuthClients = append(managedClusterActionCreateOAuthClients, resp)
+			managedClusterActionCreateOAuthClients = append(managedClusterActionCreateOAuthClients, oAuthCreateResp)
 		}
 	}
 
@@ -371,11 +377,7 @@ func (c *ManagedClusterController) SyncManagedClusterViewIngressCert(ctx context
 	managedClusterIngressCertViews := []*unstructured.Unstructured{}
 	for _, managedCluster := range managedClusters.Items {
 		mcvIngress := managedclusterviewsub.DefaultViewIngressCert(operatorConfig, managedCluster.Name)
-		gvr := schema.GroupVersionResource{
-			Group:    "view.open-cluster-management.io",
-			Version:  "v1beta1",
-			Resource: "managedclusterviews",
-		}
+		gvr := managedclusterviewsub.GetGVR()
 
 		ingressResp, ingressErr := c.dynamicClient.Resource(gvr).Namespace(managedCluster.Name).Create(ctx, mcvIngress, metav1.CreateOptions{})
 		if ingressErr != nil && apierrors.IsAlreadyExists(ingressErr) {
@@ -395,6 +397,27 @@ func (c *ManagedClusterController) SyncManagedClusterViewIngressCert(ctx context
 	}
 
 	return managedClusterIngressCertViews, nil, ""
+}
+
+func (c *ManagedClusterController) SyncManagedClusterIngressCertConfigMap(managedClusterIngressCertViews []*unstructured.Unstructured, ctx context.Context, operatorConfig *operatorv1.Console, recorder events.Recorder) (error, string) {
+	errs := []string{}
+	for _, mcvIngress := range managedClusterIngressCertViews {
+		clusterName, _ := managedclusterviewsub.GetNamespace(mcvIngress)
+		certBundle, _ := managedclusterviewsub.GetCertBundle(mcvIngress)
+		required := configmapsub.DefaultManagedClusterIngressCertConfigMap(clusterName, certBundle, operatorConfig)
+		_, _, configMapApplyError := resourceapply.ApplyConfigMap(c.configMapClient, recorder, required)
+		if configMapApplyError != nil {
+			klog.V(4).Infoln(fmt.Sprintf("Skipping Ingress certificate ConfigMap sync for managed cluster %v, Error applying ConfigMap", clusterName))
+			errs = append(errs, configMapApplyError.Error())
+			continue
+		}
+	}
+
+	if len(errs) > 0 {
+		return errors.New(strings.Join(errs, "\n")), "ManagedClusterIngressCertConfigMapSyncError"
+	}
+
+	return nil, ""
 }
 
 func (c *ManagedClusterController) removeManagedClusters(ctx context.Context) error {
