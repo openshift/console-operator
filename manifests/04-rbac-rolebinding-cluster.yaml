@@ -98,7 +98,7 @@ metadata:
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
 roleRef:
-  # for protected endpoints like /metrics, the operator must perform
+  # for protected endpoints like /metrics, the console backend must perform
   # authentication (tokenreview) & authorization (subjectaccessreview)
   # which are granted by this ClusterRole
   apiGroup: rbac.authorization.k8s.io
