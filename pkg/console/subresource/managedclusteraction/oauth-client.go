@@ -14,11 +14,11 @@ import (
 
 func DefaultCreateOAuthClient(cr *operatorv1.Console, cn string, sec string, redirects []string) *unstructured.Unstructured {
 	managedClusterAction := CreateOAuthClientStub(cn)
-	withInfo(managedClusterAction, cn, sec, redirects)
+	withDefaultCreateOAuthClientInfo(managedClusterAction, cn, sec, redirects)
 	return managedClusterAction
 }
 
-func withInfo(mca *unstructured.Unstructured, cn string, sec string, redirects []string) {
+func withDefaultCreateOAuthClientInfo(mca *unstructured.Unstructured, cn string, sec string, redirects []string) {
 	unstructured.SetNestedField(mca.Object, cn, "metadata", "namespace")
 	unstructured.SetNestedField(mca.Object, sec, "spec", "kube", "template", "secret")
 	unstructured.SetNestedStringSlice(mca.Object, redirects, "spec", "kube", "template", "redirectURIs")
@@ -36,7 +36,7 @@ func GetName(mca *unstructured.Unstructured) (string, error) {
 	return name, nil
 }
 
-func GetGVR() schema.GroupVersionResource {
+func GetGroupVersionResource() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "action.open-cluster-management.io",
 		Version:  "v1beta1",

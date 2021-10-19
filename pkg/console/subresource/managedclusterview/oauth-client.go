@@ -6,31 +6,21 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	// openshift
-	"github.com/openshift/console-operator/pkg/api"
+
 	"github.com/openshift/console-operator/pkg/console/assets"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	// acm - TODO conflicts adding package to go.mod with several dependencies
 	// managedclusterviewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/action/v1beta1"
 )
 
-func DefaultViewIngressCert(cr *operatorv1.Console, cn string) *unstructured.Unstructured {
-	managedClusterView := ViewIngressCertStub(cn)
-	withInfo(managedClusterView, cn)
-	return managedClusterView
-}
-
 func DefaultViewOAuthClient(cr *operatorv1.Console, cn string) *unstructured.Unstructured {
 	managedClusterView := ViewOAuthClientStub(cn)
-	withInfo(managedClusterView, cn)
+	withDefaultViewOAuthClientInfo(managedClusterView, cn)
 	return managedClusterView
 }
 
-func withInfo(mcv *unstructured.Unstructured, cn string) {
+func withDefaultViewOAuthClientInfo(mcv *unstructured.Unstructured, cn string) {
 	unstructured.SetNestedField(mcv.Object, cn, "metadata", "namespace")
-}
-
-func ViewIngressCertStub(cn string) *unstructured.Unstructured {
-	return util.ReadUnstructuredOrDie(assets.MustAsset("managedclusterviews/console-managed-cluster-view-ingress-cert.yaml"))
 }
 
 func ViewOAuthClientStub(cn string) *unstructured.Unstructured {
@@ -68,18 +58,10 @@ func GetNamespace(mcv *unstructured.Unstructured) (string, error) {
 	return namespace, nil
 }
 
-func GetGVR() schema.GroupVersionResource {
+func GetGroupVersionResource() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "view.open-cluster-management.io",
 		Version:  "v1beta1",
 		Resource: "managedclusterviews",
 	}
-}
-
-func GetCertBundle(mcv *unstructured.Unstructured) (string, error) {
-	cert, found, err := unstructured.NestedString(mcv.Object, "status", "result", "data", api.ManagedClusterIngressCertKey)
-	if err != nil || !found || cert == "" {
-		return "", err
-	}
-	return cert, nil
 }

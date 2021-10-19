@@ -116,6 +116,7 @@ func HTTPS(host string) string {
 	return secured
 }
 
+// TODO remove when we update library-go to a version that includes this
 // borrowed from library-go
 // https://github.com/openshift/library-go/blob/master/pkg/operator/resource/resourceread/unstructured.go
 func ReadUnstructuredOrDie(objBytes []byte) *unstructured.Unstructured {

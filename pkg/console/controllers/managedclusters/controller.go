@@ -97,9 +97,9 @@ func NewManagedClusterController(
 		util.ExcludeNamesFilter(api.HubClusterName),
 		managedClusterInformers.Informer(),
 	).WithInformers(
-		dynamicInformers.ForResource(managedclusteractionsub.GetGVR()).Informer(),
+		dynamicInformers.ForResource(managedclusteractionsub.GetGroupVersionResource()).Informer(),
 	).WithInformers(
-		dynamicInformers.ForResource(managedclusterviewsub.GetGVR()).Informer(),
+		dynamicInformers.ForResource(managedclusterviewsub.GetGroupVersionResource()).Informer(),
 	).WithSync(ctrl.Sync).
 		ToController("ManagedClusterController", recorder.WithComponentSuffix("managed-cluster-controller"))
 }
@@ -125,8 +125,14 @@ func (c *ManagedClusterController) Sync(ctx context.Context, controllerContext f
 
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
+	managedClusters, err := c.listManagedClusters(ctx)
+	// Not found means API is not on the cluster
+	if apierrors.IsNotFound(err) || err != nil {
+		return err
+	}
+
 	// Get a list of ManagedCluster resources, degraded if error is returned
-	managedClusterClientConfigs, managedClusterClientConfigValidationErr, managedClusterClientConfigValidationErrReason := c.ValidateManagedClusterClientConfigs(ctx, operatorConfig, controllerContext.Recorder())
+	managedClusterClientConfigs, managedClusterClientConfigValidationErr, managedClusterClientConfigValidationErrReason := c.ValidateManagedClusterClientConfigs(ctx, operatorConfig, controllerContext.Recorder(), managedClusters)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterValidation", managedClusterClientConfigValidationErrReason, managedClusterClientConfigValidationErr))
 	if managedClusterClientConfigValidationErr != nil {
 		return statusHandler.FlushAndReturn(managedClusterClientConfigValidationErr)
@@ -145,7 +151,7 @@ func (c *ManagedClusterController) Sync(ctx context.Context, controllerContext f
 	}
 
 	// Create managed cluster views for oauth clients
-	managedClusterViewOAuthClients, managedClusterViewOAuthClientErr, managedClusterViewOAuthClientErrReason := c.SyncManagedClusterViewOAuthClient(ctx, operatorConfig)
+	managedClusterViewOAuthClients, managedClusterViewOAuthClientErr, managedClusterViewOAuthClientErrReason := c.SyncManagedClusterViewOAuthClient(ctx, operatorConfig, managedClusters)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterViewOAuthClientSync", managedClusterViewOAuthClientErrReason, managedClusterViewOAuthClientErr))
 
 	// Create managed cluster actions for oauth clients
@@ -153,7 +159,7 @@ func (c *ManagedClusterController) Sync(ctx context.Context, controllerContext f
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterActionCreateOAuthClientSync", managedClusterActionCreateOAuthClientErrReason, managedClusterActionCreateOAuthClientErr))
 
 	// Create managed cluster views for ingress cert
-	managedClusterViewsIngressCert, managedClusterViewIngressCertErr, managedClusterViewIngressCertErrReason := c.SyncManagedClusterViewIngressCert(ctx, operatorConfig)
+	managedClusterViewsIngressCert, managedClusterViewIngressCertErr, managedClusterViewIngressCertErrReason := c.SyncManagedClusterViewIngressCert(ctx, operatorConfig, managedClusters)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterViewIngressCertSync", managedClusterViewIngressCertErrReason, managedClusterViewIngressCertErr))
 
 	// Create config maps for each managed cluster ingress cert bundle
@@ -167,19 +173,7 @@ func (c *ManagedClusterController) Sync(ctx context.Context, controllerContext f
 }
 
 // Return slice of clusterv1.ClientConfigs that have been validated or error and reaons if unable to list ManagedClusters
-func (c *ManagedClusterController) ValidateManagedClusterClientConfigs(ctx context.Context, operatorConfig *operatorv1.Console, recorder events.Recorder) (map[string]*clusterv1.ClientConfig, error, string) {
-	managedClusters, err := c.listManagedClusters(ctx)
-
-	// Not found means API is not on the cluster
-	if apierrors.IsNotFound(err) {
-		return nil, nil, ""
-	}
-
-	// Any other list request failure means operator is degraded
-	if err != nil {
-		return nil, err, "FailedList"
-	}
-
+func (c *ManagedClusterController) ValidateManagedClusterClientConfigs(ctx context.Context, operatorConfig *operatorv1.Console, recorder events.Recorder, managedClusters *clusterv1.ManagedClusterList) (map[string]*clusterv1.ClientConfig, error, string) {
 	validatedClientConfigs := map[string]*clusterv1.ClientConfig{}
 	for _, managedCluster := range managedClusters.Items {
 		clusterName := managedCluster.GetName()
@@ -278,17 +272,12 @@ func (c *ManagedClusterController) SyncManagedClusterConfigMap(clientConfigs map
 	return nil, ""
 }
 
-func (c *ManagedClusterController) SyncManagedClusterViewOAuthClient(ctx context.Context, operatorConfig *operatorv1.Console) ([]*unstructured.Unstructured, error, string) {
-	managedClusters, listErr := c.listManagedClusters(ctx)
-	if listErr != nil || len(managedClusters.Items) == 0 {
-		return nil, listErr, "FailedList"
-	}
-
+func (c *ManagedClusterController) SyncManagedClusterViewOAuthClient(ctx context.Context, operatorConfig *operatorv1.Console, managedClusters *clusterv1.ManagedClusterList) ([]*unstructured.Unstructured, error, string) {
 	errs := []string{}
 	managedClusterOAuthClientViews := []*unstructured.Unstructured{}
 	for _, managedCluster := range managedClusters.Items {
 		mcvOAuth := managedclusterviewsub.DefaultViewOAuthClient(operatorConfig, managedCluster.Name)
-		gvr := managedclusterviewsub.GetGVR()
+		gvr := managedclusterviewsub.GetGroupVersionResource()
 
 		oAuthResp, oAuthErr := c.dynamicClient.Resource(gvr).Namespace(managedCluster.Name).Create(ctx, mcvOAuth, metav1.CreateOptions{})
 		if oAuthErr != nil && apierrors.IsAlreadyExists(oAuthErr) {
@@ -341,7 +330,7 @@ func (c *ManagedClusterController) SyncManagedClusterActionCreateOAuthClient(ctx
 	redirects := oauthsub.GetRedirectURIs(oauthClient)
 	for _, managedClusterName := range managedClusterList {
 		mca := managedclusteractionsub.DefaultCreateOAuthClient(operatorConfig, managedClusterName, secretString, redirects)
-		gvr := managedclusteractionsub.GetGVR()
+		gvr := managedclusteractionsub.GetGroupVersionResource()
 		opt := metav1.CreateOptions{}
 		oAuthCreateResp, oAuthCreateErr := c.dynamicClient.Resource(gvr).Namespace(managedClusterName).Create(ctx, mca, opt)
 		if oAuthCreateErr != nil && apierrors.IsAlreadyExists(oAuthCreateErr) {
@@ -367,17 +356,12 @@ func (c *ManagedClusterController) SyncManagedClusterActionCreateOAuthClient(ctx
 	return managedClusterActionCreateOAuthClients, nil, ""
 }
 
-func (c *ManagedClusterController) SyncManagedClusterViewIngressCert(ctx context.Context, operatorConfig *operatorv1.Console) ([]*unstructured.Unstructured, error, string) {
-	managedClusters, listErr := c.listManagedClusters(ctx)
-	if listErr != nil || len(managedClusters.Items) == 0 {
-		return nil, listErr, "FailedList"
-	}
-
+func (c *ManagedClusterController) SyncManagedClusterViewIngressCert(ctx context.Context, operatorConfig *operatorv1.Console, managedClusters *clusterv1.ManagedClusterList) ([]*unstructured.Unstructured, error, string) {
 	errs := []string{}
 	managedClusterIngressCertViews := []*unstructured.Unstructured{}
 	for _, managedCluster := range managedClusters.Items {
 		mcvIngress := managedclusterviewsub.DefaultViewIngressCert(operatorConfig, managedCluster.Name)
-		gvr := managedclusterviewsub.GetGVR()
+		gvr := managedclusterviewsub.GetGroupVersionResource()
 
 		ingressResp, ingressErr := c.dynamicClient.Resource(gvr).Namespace(managedCluster.Name).Create(ctx, mcvIngress, metav1.CreateOptions{})
 		if ingressErr != nil && apierrors.IsAlreadyExists(ingressErr) {
