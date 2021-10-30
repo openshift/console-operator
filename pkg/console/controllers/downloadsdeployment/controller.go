@@ -3,6 +3,7 @@ package downloadsdeployment
 import (
 	"context"
 	"fmt"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -74,7 +75,7 @@ func NewDownloadsDeploymentSyncController(
 		).WithFilteredEventsInformers( // downloads deployment
 		downloadsNameFilter,
 		deploymentInformer.Informer(),
-	).WithSync(ctrl.Sync).
+	).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
 		ToController("ConsoleDownloadsDeploymentSyncController", recorder.WithComponentSuffix("console-downloads-deployment-controller"))
 }
 

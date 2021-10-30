@@ -90,7 +90,7 @@ func NewRouteSyncController(
 	).WithFilteredEventsInformers( // route
 		util.NamesFilter(routeName, routesub.GetCustomRouteName(routeName)),
 		routeInformer.Informer(),
-	).WithSync(ctrl.Sync).
+	).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
 		ToController(fmt.Sprintf("%sRouteController", strings.Title(routeName)), recorder.WithComponentSuffix(fmt.Sprintf("%s-route-controller", routeName)))
 }
 
