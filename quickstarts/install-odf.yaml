@@ -69,7 +69,7 @@ spec:
 
       6. Follow the on-screen instructions to create the StorageSystem.
       
-      7. Once your StorageSystem’s reaches a **Ready** status, you’re ready to start using storage resources like StorageCluster and BucketClass, and allow ODF to manage your storage.
+      7. Once your StorageSystem reaches a **Ready** status, you’re ready to start using storage resources like StorageCluster and BucketClass, and allow ODF to manage your storage.
     review:
       instructions: |-
         #### Verify that the StorageSystem is created:
