@@ -19,6 +19,18 @@ type Config struct {
 	Customization `yaml:"customization"`
 	Providers     `yaml:"providers"`
 	Plugins       map[string]string `yaml:"plugins,omitempty"`
+	Proxy         Proxy             `yaml:"proxy,omitempty"`
+}
+
+type Proxy struct {
+	Services []ProxyService `yaml:"services,omitempty"`
+}
+
+type ProxyService struct {
+	Endpoint       string `yaml:"endpoint"`
+	ConsoleAPIPath string `yaml:"consoleAPIPath"`
+	CACertificate  string `yaml:"caCertificate"`
+	Authorize      bool   `yaml:"authorize"`
 }
 
 // ServingInfo holds configuration for serving HTTP.

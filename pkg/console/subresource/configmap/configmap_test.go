@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	configv1 "github.com/openshift/api/config/v1"
+	"github.com/openshift/api/console/v1alpha1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
@@ -25,6 +26,23 @@ const (
 	mockConsoleURL     = "https://console-openshift-console.apps.some.cluster.openshift.com"
 	configKey          = "console-config.yaml"
 	mockOperatorDocURL = "https://operator.config/doc/link/"
+	test               = 123
+
+	validCertificate = `-----BEGIN CERTIFICATE-----
+MIICRzCCAfGgAwIBAgIJAIydTIADd+yqMA0GCSqGSIb3DQEBCwUAMH4xCzAJBgNV
+BAYTAkdCMQ8wDQYDVQQIDAZMb25kb24xDzANBgNVBAcMBkxvbmRvbjEYMBYGA1UE
+CgwPR2xvYmFsIFNlY3VyaXR5MRYwFAYDVQQLDA1JVCBEZXBhcnRtZW50MRswGQYD
+VQQDDBJ0ZXN0LWNlcnRpZmljYXRlLTIwIBcNMTcwNDI2MjMyNDU4WhgPMjExNzA0
+MDIyMzI0NThaMH4xCzAJBgNVBAYTAkdCMQ8wDQYDVQQIDAZMb25kb24xDzANBgNV
+BAcMBkxvbmRvbjEYMBYGA1UECgwPR2xvYmFsIFNlY3VyaXR5MRYwFAYDVQQLDA1J
+VCBEZXBhcnRtZW50MRswGQYDVQQDDBJ0ZXN0LWNlcnRpZmljYXRlLTIwXDANBgkq
+hkiG9w0BAQEFAANLADBIAkEAuiRet28DV68Dk4A8eqCaqgXmymamUEjW/DxvIQqH
+3lbhtm8BwSnS9wUAajSLSWiq3fci2RbRgaSPjUrnbOHCLQIDAQABo1AwTjAdBgNV
+HQ4EFgQU0vhI4OPGEOqT+VAWwxdhVvcmgdIwHwYDVR0jBBgwFoAU0vhI4OPGEOqT
++VAWwxdhVvcmgdIwDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQsFAANBALNeJGDe
+nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ
++tW+O/PoE7B3tuY=
+-----END CERTIFICATE-----`
 )
 
 // To manually run these tests: go test -v ./pkg/console/subresource/configmap/...
@@ -37,7 +55,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		rt                       *routev1.Route
 		useDefaultCAFile         bool
 		inactivityTimeoutSeconds int
-		enabledPlugins           map[string]string
+		availablePlugins         []*v1alpha1.ConsolePlugin
 	}
 	tests := []struct {
 		name string
@@ -545,9 +563,9 @@ providers: {}
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
-				enabledPlugins: map[string]string{
-					"plugin1": "plugin1_url",
-					"plugin2": "plugin2_url",
+				availablePlugins: []*v1alpha1.ConsolePlugin{
+					testPlugins("plugin1", "serviceName1", "serviceNamespace1"),
+					testPluginsWithProxy("plugin2", "serviceName2", "serviceNamespace2"),
 				},
 			},
 			want: &corev1.ConfigMap{
@@ -575,8 +593,28 @@ servingInfo:
   keyFile: /var/serving-cert/tls.key
 providers: {}
 plugins:
-  plugin1: plugin1_url
-  plugin2: plugin2_url
+  plugin1: https://serviceName1.serviceNamespace1.svc.cluster.local:8443/
+  plugin2: https://serviceName2.serviceNamespace2.svc.cluster.local:8443/
+proxy:
+  services:
+  - authorize: true
+    caCertificate: '-----BEGIN CERTIFICATE-----` + "\n" + `
+MIICRzCCAfGgAwIBAgIJAIydTIADd+yqMA0GCSqGSIb3DQEBCwUAMH4xCzAJBgNV` + "\n" + `
+BAYTAkdCMQ8wDQYDVQQIDAZMb25kb24xDzANBgNVBAcMBkxvbmRvbjEYMBYGA1UE` + "\n" + `
+CgwPR2xvYmFsIFNlY3VyaXR5MRYwFAYDVQQLDA1JVCBEZXBhcnRtZW50MRswGQYD` + "\n" + `
+VQQDDBJ0ZXN0LWNlcnRpZmljYXRlLTIwIBcNMTcwNDI2MjMyNDU4WhgPMjExNzA0` + "\n" + `
+MDIyMzI0NThaMH4xCzAJBgNVBAYTAkdCMQ8wDQYDVQQIDAZMb25kb24xDzANBgNV` + "\n" + `
+BAcMBkxvbmRvbjEYMBYGA1UECgwPR2xvYmFsIFNlY3VyaXR5MRYwFAYDVQQLDA1J` + "\n" + `
+VCBEZXBhcnRtZW50MRswGQYDVQQDDBJ0ZXN0LWNlcnRpZmljYXRlLTIwXDANBgkq` + "\n" + `
+hkiG9w0BAQEFAANLADBIAkEAuiRet28DV68Dk4A8eqCaqgXmymamUEjW/DxvIQqH` + "\n" + `
+3lbhtm8BwSnS9wUAajSLSWiq3fci2RbRgaSPjUrnbOHCLQIDAQABo1AwTjAdBgNV` + "\n" + `
+HQ4EFgQU0vhI4OPGEOqT+VAWwxdhVvcmgdIwHwYDVR0jBBgwFoAU0vhI4OPGEOqT` + "\n" + `
++VAWwxdhVvcmgdIwDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQsFAANBALNeJGDe` + "\n" + `
+nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
++tW+O/PoE7B3tuY=` + "\n" + `
+-----END CERTIFICATE-----'
+    consoleAPIPath: /api/proxy/namespace/proxy-serviceNamespace2/service/proxy-serviceName2:9991/
+    endpoint: https://proxy-serviceName2.proxy-serviceNamespace2.svc.cluster.local:9991
 `,
 				},
 			},
@@ -592,7 +630,7 @@ plugins:
 				tt.args.rt,
 				tt.args.useDefaultCAFile,
 				tt.args.inactivityTimeoutSeconds,
-				tt.args.enabledPlugins,
+				tt.args.availablePlugins,
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below
@@ -601,7 +639,6 @@ plugins:
 			err := yaml.Unmarshal(exampleBytes, &exampleConfig)
 			if err != nil {
 				t.Error(err)
-				fmt.Printf("%v\n", exampleConfig)
 			}
 
 			// the reason we have to marshall blindly into map[string]interface{}
@@ -633,6 +670,38 @@ plugins:
 			}
 		})
 	}
+}
+
+func testPlugins(pluginName, serviceName, serviceNamespace string) *v1alpha1.ConsolePlugin {
+	return &v1alpha1.ConsolePlugin{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: pluginName,
+		},
+		Spec: v1alpha1.ConsolePluginSpec{
+			Service: v1alpha1.ConsolePluginService{
+				Name:      serviceName,
+				Namespace: serviceNamespace,
+				Port:      8443,
+				BasePath:  "/",
+			},
+		},
+	}
+}
+
+func testPluginsWithProxy(pluginName, serviceName, serviceNamespace string) *v1alpha1.ConsolePlugin {
+	plugin := testPlugins(pluginName, serviceName, serviceNamespace)
+	plugin.Spec.Proxy = v1alpha1.ConsolePluginProxy{
+		Services: []v1alpha1.ConsolePluginProxyService{
+			{
+				Name:          fmt.Sprintf("proxy-%s", serviceName),
+				Namespace:     fmt.Sprintf("proxy-%s", serviceNamespace),
+				Port:          9991,
+				CACertificate: validCertificate,
+				Authorize:     true,
+			},
+		},
+	}
+	return plugin
 }
 
 func TestStub(t *testing.T) {

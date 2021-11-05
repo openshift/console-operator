@@ -45,6 +45,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	customHostnameRedirectPort int
 	inactivityTimeoutSeconds   int
 	pluginsList                map[string]string
+	proxyServices              []ProxyService
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -126,6 +127,11 @@ func (b *ConsoleServerCLIConfigBuilder) Plugins(plugins map[string]string) *Cons
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) Proxy(proxyServices []ProxyService) *ConsoleServerCLIConfigBuilder {
+	b.proxyServices = proxyServices
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
 		Kind:          "ConsoleConfig",
@@ -136,6 +142,7 @@ func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 		ServingInfo:   b.servingInfo(),
 		Providers:     b.providers(),
 		Plugins:       b.plugins(),
+		Proxy:         b.proxy(),
 	}
 }
 
@@ -269,4 +276,10 @@ func (b *ConsoleServerCLIConfigBuilder) providers() Providers {
 
 func (b *ConsoleServerCLIConfigBuilder) plugins() map[string]string {
 	return b.pluginsList
+}
+
+func (b *ConsoleServerCLIConfigBuilder) proxy() Proxy {
+	return Proxy{
+		Services: b.proxyServices,
+	}
 }
