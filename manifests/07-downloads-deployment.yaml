@@ -13,6 +13,11 @@ spec:
     matchLabels:
       app: console
       component: downloads
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 3
   template:
     metadata:
       name: downloads
@@ -20,6 +25,16 @@ spec:
         app: console
         component: downloads
     spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: component
+                    operator: In
+                    values:
+                      - downloads
+              topologyKey: kubernetes.io/hostname
       nodeSelector:
         kubernetes.io/os: "linux"
       tolerations:

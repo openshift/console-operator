@@ -8,12 +8,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
-	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
 func TestDefaultDeployment(t *testing.T) {
@@ -126,14 +126,17 @@ func TestDefaultDeployment(t *testing.T) {
 	consoleDeploymentAffinity := &corev1.Affinity{
 		// spread out across master nodes rather than congregate on one
 		PodAntiAffinity: &corev1.PodAntiAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-				Weight: 100,
-				PodAffinityTerm: corev1.PodAffinityTerm{
-					LabelSelector: &metav1.LabelSelector{
-						MatchLabels: util.SharedLabels(),
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+				LabelSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "component",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{"ui"},
+						},
 					},
-					TopologyKey: "topology.kubernetes.io/zone",
 				},
+				TopologyKey: "kubernetes.io/hostname",
 			}},
 		},
 	}
@@ -210,7 +213,17 @@ func TestDefaultDeployment(t *testing.T) {
 							Volumes: consoleVolumes(defaultVolumeConfig()),
 						},
 					},
-					Strategy:                appsv1.DeploymentStrategy{},
+					Strategy: appsv1.DeploymentStrategy{
+						Type: appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: &appsv1.RollingUpdateDeployment{
+							MaxSurge: &intstr.IntOrString{
+								IntVal: int32(3),
+							},
+							MaxUnavailable: &intstr.IntOrString{
+								IntVal: int32(1),
+							},
+						},
+					},
 					MinReadySeconds:         0,
 					RevisionHistoryLimit:    nil,
 					Paused:                  false,
@@ -272,7 +285,17 @@ func TestDefaultDeployment(t *testing.T) {
 							Volumes: consoleVolumes(append(defaultVolumeConfig(), trustedCAVolume())),
 						},
 					},
-					Strategy:                appsv1.DeploymentStrategy{},
+					Strategy: appsv1.DeploymentStrategy{
+						Type: appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: &appsv1.RollingUpdateDeployment{
+							MaxSurge: &intstr.IntOrString{
+								IntVal: int32(3),
+							},
+							MaxUnavailable: &intstr.IntOrString{
+								IntVal: int32(1),
+							},
+						},
+					},
 					MinReadySeconds:         0,
 					RevisionHistoryLimit:    nil,
 					Paused:                  false,

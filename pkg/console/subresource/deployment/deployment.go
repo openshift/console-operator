@@ -93,6 +93,17 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},
+			Strategy: appsv1.DeploymentStrategy{
+				Type: appsv1.RollingUpdateDeploymentStrategyType,
+				RollingUpdate: &appsv1.RollingUpdateDeployment{
+					MaxSurge: &intstr.IntOrString{
+						IntVal: int32(3),
+					},
+					MaxUnavailable: &intstr.IntOrString{
+						IntVal: int32(1),
+					},
+				},
+			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleName,
@@ -107,16 +118,18 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 						"node-role.kubernetes.io/master": "",
 					},
 					Affinity: &corev1.Affinity{
-						// spread out across master nodes rather than congregate on one
 						PodAntiAffinity: &corev1.PodAntiAffinity{
-							PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-								Weight: 100,
-								PodAffinityTerm: corev1.PodAffinityTerm{
-									LabelSelector: &metav1.LabelSelector{
-										MatchLabels: util.SharedLabels(),
+							RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+								LabelSelector: &metav1.LabelSelector{
+									MatchExpressions: []metav1.LabelSelectorRequirement{
+										{
+											Key:      "component",
+											Operator: metav1.LabelSelectorOpIn,
+											Values:   []string{"ui"},
+										},
 									},
-									TopologyKey: "topology.kubernetes.io/zone",
 								},
+								TopologyKey: "kubernetes.io/hostname",
 							}},
 						},
 					},
