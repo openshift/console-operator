@@ -34,15 +34,17 @@ func TestDefaultDeployment(t *testing.T) {
 		tolerationSeconds      int64 = 120
 	)
 	type args struct {
-		config             *operatorsv1.Console
-		cm                 *corev1.ConfigMap
-		ca                 *corev1.ConfigMap
-		dica               *corev1.ConfigMap
-		tca                *corev1.ConfigMap
-		sec                *corev1.Secret
-		proxy              *configv1.Proxy
-		infrastructure     *configv1.Infrastructure
-		canMountCustomLogo bool
+		config                          *operatorsv1.Console
+		cm                              *corev1.ConfigMap
+		ccas                            *corev1.ConfigMapList
+		ca                              *corev1.ConfigMap
+		dica                            *corev1.ConfigMap
+		tca                             *corev1.ConfigMap
+		sec                             *corev1.Secret
+		proxy                           *configv1.Proxy
+		infrastructure                  *configv1.Infrastructure
+		canMountCustomLogo              bool
+		canMountManagedClusterConfigMap bool
 	}
 
 	consoleOperatorConfig := &operatorsv1.Console{
@@ -176,10 +178,10 @@ func TestDefaultDeployment(t *testing.T) {
 
 	consoleDeploymentTemplate := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/console-deployment.yaml"))
 	withConsoleContainerImage(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
-	withConsoleVolumes(consoleDeploymentTemplate, trustedCAConfigMapEmpty, false)
+	withConsoleVolumes(consoleDeploymentTemplate, trustedCAConfigMapEmpty, &corev1.ConfigMapList{}, false, false)
 	consoleDeploymentContainer := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumes := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
-	withConsoleVolumes(consoleDeploymentTemplate, trustedCAConfigMapSet, false)
+	withConsoleVolumes(consoleDeploymentTemplate, trustedCAConfigMapSet, &corev1.ConfigMapList{}, false, false)
 	consoleDeploymentContainerTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumesTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 
@@ -193,6 +195,7 @@ func TestDefaultDeployment(t *testing.T) {
 			args: args{
 				config: consoleOperatorConfig,
 				cm:     consoleConfig,
+				ccas:   &corev1.ConfigMapList{},
 				ca:     &corev1.ConfigMap{},
 				dica: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
@@ -270,6 +273,7 @@ func TestDefaultDeployment(t *testing.T) {
 			args: args{
 				config: consoleOperatorConfig,
 				cm:     consoleConfig,
+				ccas:   &corev1.ConfigMapList{},
 				ca:     &corev1.ConfigMap{},
 				dica: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
@@ -346,6 +350,7 @@ func TestDefaultDeployment(t *testing.T) {
 			args: args{
 				config: consoleOperatorConfig,
 				cm:     consoleConfig,
+				ccas:   &corev1.ConfigMapList{},
 				ca:     &corev1.ConfigMap{},
 				dica: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
@@ -415,6 +420,7 @@ func TestDefaultDeployment(t *testing.T) {
 			args: args{
 				config: consoleOperatorConfig,
 				cm:     consoleConfig,
+				ccas:   &corev1.ConfigMapList{},
 				ca:     &corev1.ConfigMap{},
 				dica: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
@@ -486,7 +492,7 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.dica, tt.args.cm, tt.args.tca, tt.args.sec, tt.args.proxy, tt.args.infrastructure, tt.args.canMountCustomLogo), tt.want); diff != nil {
+			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.ccas, tt.args.dica, tt.args.cm, tt.args.tca, tt.args.sec, tt.args.proxy, tt.args.infrastructure, tt.args.canMountCustomLogo, tt.args.canMountManagedClusterConfigMap), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
@@ -1053,7 +1059,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withConsoleVolumes(tt.args.deployment, tt.args.trustedCAConfigMap, tt.args.canMountCustomLogo)
+			withConsoleVolumes(tt.args.deployment, tt.args.trustedCAConfigMap, &corev1.ConfigMapList{}, tt.args.canMountCustomLogo, false)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
 			}

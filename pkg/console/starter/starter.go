@@ -10,6 +10,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 
@@ -21,6 +23,7 @@ import (
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
 	"github.com/openshift/console-operator/pkg/console/controllers/healthcheck"
+	managedcluster "github.com/openshift/console-operator/pkg/console/controllers/managedclusters"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
@@ -48,6 +51,9 @@ import (
 	consolev1client "github.com/openshift/client-go/console/clientset/versioned"
 	// consolev1client "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
 	consoleinformers "github.com/openshift/client-go/console/informers/externalversions"
+
+	clusterclient "github.com/open-cluster-management/api/client/cluster/clientset/versioned"
+	clusterinformers "github.com/open-cluster-management/api/client/cluster/informers/externalversions"
 
 	"github.com/openshift/console-operator/pkg/console/clientwrapper"
 	"github.com/openshift/console-operator/pkg/console/operator"
@@ -82,6 +88,16 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	}
 
 	oauthClient, err := authclient.NewForConfig(controllerContext.ProtoKubeConfig)
+	if err != nil {
+		return err
+	}
+
+	managedClusterClient, err := clusterclient.NewForConfig(controllerContext.KubeConfig)
+	if err != nil {
+		return err
+	}
+
+	dynamicClient, err := dynamic.NewForConfig(controllerContext.KubeConfig)
 	if err != nil {
 		return err
 	}
@@ -136,6 +152,16 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 	consoleInformers := consoleinformers.NewSharedInformerFactory(
 		consoleClient,
+		resync,
+	)
+
+	managedClusterInformers := clusterinformers.NewSharedInformerFactoryWithOptions(
+		managedClusterClient,
+		resync,
+	)
+
+	dynamicInformers := dynamicinformer.NewDynamicSharedInformerFactory(
+		dynamicClient,
 		resync,
 	)
 
@@ -305,6 +331,26 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		recorder,
 	)
 
+	managedClusterController := managedcluster.NewManagedClusterController(
+		// top level config
+		configClient.ConfigV1(),
+		configInformers,
+		// clients
+		operatorClient,
+		operatorConfigClient.OperatorV1().Consoles(),
+		kubeClient.CoreV1(),
+		managedClusterClient.ClusterV1(),
+		dynamicClient,
+		kubeClient.CoreV1(),
+		oauthClient.OauthV1(),
+		// informers
+		operatorConfigInformers.Operator().V1().Consoles(),
+		managedClusterInformers.Cluster().V1().ManagedClusters(),
+		dynamicInformers,
+		//events
+		recorder,
+	)
+
 	versionRecorder := status.NewVersionGetter()
 	versionRecorder.SetVersion("operator", os.Getenv("RELEASE_VERSION"))
 
@@ -367,6 +413,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configInformers,
 		routesInformersNamespaced,
 		oauthInformers,
+		managedClusterInformers,
+		dynamicInformers,
 	} {
 		informer.Start(ctx.Done())
 	}
@@ -383,6 +431,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleRouteController,
 		downloadsServiceController,
 		downloadsRouteController,
+		managedClusterController,
 		consoleOperator,
 		cliDownloadsController,
 		downloadsDeploymentController,

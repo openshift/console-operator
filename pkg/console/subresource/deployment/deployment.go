@@ -61,13 +61,13 @@ type volumeConfig struct {
 	mappedKeys  map[string]string
 }
 
-func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, oauthServingCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure, canMountCustomLogo bool) *appsv1.Deployment {
+func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, apiServerCAConfigMaps *corev1.ConfigMapList, serviceCAConfigMap *corev1.ConfigMap, oauthServingCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure, canMountCustomLogo bool, canMountManagedClusterConfigMap bool) *appsv1.Deployment {
 	deployment := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/console-deployment.yaml"))
 	withReplicas(deployment, infrastructureConfig)
 	withAffinity(deployment, infrastructureConfig, "ui")
 	withStrategy(deployment, infrastructureConfig)
 	withConsoleAnnotations(deployment, cm, serviceCAConfigMap, oauthServingCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig)
-	withConsoleVolumes(deployment, trustedCAConfigMap, canMountCustomLogo)
+	withConsoleVolumes(deployment, trustedCAConfigMap, apiServerCAConfigMaps, canMountCustomLogo, canMountManagedClusterConfigMap)
 	withConsoleContainerImage(deployment, operatorConfig, proxyConfig)
 	withConsoleNodeSelector(deployment, infrastructureConfig)
 	util.AddOwnerRef(deployment, util.OwnerRefFrom(operatorConfig))
@@ -148,7 +148,7 @@ func withConsoleAnnotations(deployment *appsv1.Deployment, cm *corev1.ConfigMap,
 	deployment.Spec.Template.ObjectMeta.Annotations = podAnnotations
 }
 
-func withConsoleVolumes(deployment *appsv1.Deployment, trustedCAConfigMap *corev1.ConfigMap, canMountCustomLogo bool) {
+func withConsoleVolumes(deployment *appsv1.Deployment, trustedCAConfigMap *corev1.ConfigMap, apiServerCAConfigMaps *corev1.ConfigMapList, canMountCustomLogo bool, canMountManagedClusterConfigMap bool) {
 	volumeConfig := defaultVolumeConfig()
 
 	caBundle, caBundleExists := trustedCAConfigMap.Data["ca-bundle.crt"]
@@ -157,6 +157,14 @@ func withConsoleVolumes(deployment *appsv1.Deployment, trustedCAConfigMap *corev
 	}
 	if canMountCustomLogo {
 		volumeConfig = append(volumeConfig, customLogoVolume())
+	}
+	if canMountManagedClusterConfigMap {
+		volumeConfig = append(volumeConfig, managedClusterVolumeConfig())
+	}
+	if len(apiServerCAConfigMaps.Items) > 0 {
+		for _, apiServerCAConfigMap := range apiServerCAConfigMaps.Items {
+			volumeConfig = append(volumeConfig, apiServerCAVolumeConfig(apiServerCAConfigMap))
+		}
 	}
 
 	volMountList := make([]corev1.VolumeMount, len(volumeConfig))
@@ -385,4 +393,23 @@ func customLogoVolume() volumeConfig {
 		name:        api.OpenShiftCustomLogoConfigMapName,
 		path:        "/var/logo/",
 		isConfigMap: true}
+}
+
+func managedClusterVolumeConfig() volumeConfig {
+	return volumeConfig{
+		name:        api.ManagedClusterConfigMapName,
+		path:        api.ManagedClusterConfigMountDir,
+		readOnly:    true,
+		isConfigMap: true,
+	}
+}
+
+func apiServerCAVolumeConfig(configMap corev1.ConfigMap) volumeConfig {
+	name := configMap.GetName()
+	return volumeConfig{
+		name:        name,
+		path:        fmt.Sprintf("%s/%s", api.ManagedClusterAPIServerCAMountDir, name),
+		readOnly:    true,
+		isConfigMap: true,
+	}
 }

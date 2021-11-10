@@ -17,6 +17,7 @@ const (
 	ServiceCAConfigMapName                  = "service-ca"
 	DefaultIngressCertConfigMapName         = "default-ingress-cert"
 	OAuthServingCertConfigMapName           = "oauth-serving-cert"
+	OAuthConfigMapName                      = "oauth-openshift"
 	OpenShiftConsoleDeploymentName          = OpenShiftConsoleName
 	OpenShiftConsoleServiceName             = OpenShiftConsoleName
 	OpenshiftConsoleRedirectServiceName     = "console-redirect"
@@ -35,6 +36,16 @@ const (
 	TrustedCABundleMountFile                = "tls-ca-bundle.pem"
 	OCCLIDownloadsCustomResourceName        = "oc-cli-downloads"
 	ODOCLIDownloadsCustomResourceName       = "odo-cli-downloads"
+	HubClusterName                          = "local-cluster"
+	ManagedClusterLabel                     = "managed-cluster"
+	ManagedClusterConfigMapName             = "managed-clusters"
+	ManagedClusterConfigMountDir            = "/var/managed-cluster-config"
+	ManagedClusterConfigKey                 = "managed-clusters.yaml"
+	ManagedClusterAPIServerCAMountDir       = "/var/managed-cluster-certs"
+	ManagedClusterAPIServerCAName           = "managed-cluster-api-server-ca"
+	ManagedClusterAPIServerCAKey            = "ca-bundle.crt"
+	ManagedClusterIngressCertName           = "managed-cluster-ingress-cert"
+	ManagedClusterIngressCertKey            = "ca-bundle.crt"
 
 	ConsoleContainerPortName    = "https"
 	ConsoleContainerPort        = 443

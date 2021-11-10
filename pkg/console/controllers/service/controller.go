@@ -71,11 +71,11 @@ func NewServiceSyncController(
 
 	return factory.New().
 		WithFilteredEventsInformers( // configs
-			util.NamesFilter(api.ConfigResourceName),
+			util.IncludeNamesFilter(api.ConfigResourceName),
 			operatorConfigInformer.Informer(),
 			configV1Informers.Ingresses().Informer(),
 		).WithFilteredEventsInformers( // console resources
-		util.NamesFilter(serviceName, ctrl.getRedirectServiceName()),
+		util.IncludeNamesFilter(serviceName, ctrl.getRedirectServiceName()),
 		serviceInformer.Informer(),
 	).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
 		ToController("ConsoleServiceController", recorder.WithComponentSuffix("console-service-controller"))

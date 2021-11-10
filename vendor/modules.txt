@@ -98,6 +98,21 @@ github.com/modern-go/concurrent
 github.com/modern-go/reflect2
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 github.com/munnerz/goautoneg
+# github.com/open-cluster-management/api v0.0.0-20210527013639-a6845f2ebcb1
+## explicit
+github.com/open-cluster-management/api/client/cluster/clientset/versioned
+github.com/open-cluster-management/api/client/cluster/clientset/versioned/scheme
+github.com/open-cluster-management/api/client/cluster/clientset/versioned/typed/cluster/v1
+github.com/open-cluster-management/api/client/cluster/clientset/versioned/typed/cluster/v1alpha1
+github.com/open-cluster-management/api/client/cluster/informers/externalversions
+github.com/open-cluster-management/api/client/cluster/informers/externalversions/cluster
+github.com/open-cluster-management/api/client/cluster/informers/externalversions/cluster/v1
+github.com/open-cluster-management/api/client/cluster/informers/externalversions/cluster/v1alpha1
+github.com/open-cluster-management/api/client/cluster/informers/externalversions/internalinterfaces
+github.com/open-cluster-management/api/client/cluster/listers/cluster/v1
+github.com/open-cluster-management/api/client/cluster/listers/cluster/v1alpha1
+github.com/open-cluster-management/api/cluster/v1
+github.com/open-cluster-management/api/cluster/v1alpha1
 # github.com/openshift/api v0.0.0-20210729103544-e4a0474d1519
 ## explicit
 github.com/openshift/api
@@ -716,6 +731,8 @@ k8s.io/client-go/applyconfigurations/storage/v1beta1
 k8s.io/client-go/discovery
 k8s.io/client-go/discovery/fake
 k8s.io/client-go/dynamic
+k8s.io/client-go/dynamic/dynamicinformer
+k8s.io/client-go/dynamic/dynamiclister
 k8s.io/client-go/informers
 k8s.io/client-go/informers/admissionregistration
 k8s.io/client-go/informers/admissionregistration/v1
