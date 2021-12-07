@@ -110,6 +110,14 @@ rules:
       - create
       - update
       - delete
+  - apiGroups:
+      - cluster.open-cluster-management.io
+    resources:
+      - managedclusters
+    verbs:
+      - get
+      - list
+      - watch
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -160,3 +168,36 @@ rules:
     verbs:
       - get
       - list
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: console-operator-tech-preview-only
+  annotations:
+    release.openshift.io/feature-gate: "TechPreviewNoUpgrade"
+    include.release.openshift.io/ibm-cloud-managed: "true"
+    include.release.openshift.io/self-managed-high-availability: "true"
+    include.release.openshift.io/single-node-developer: "true"
+rules:
+  - apiGroups:
+      - action.open-cluster-management.io
+    resources:
+      - managedclusteractions
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
+  - apiGroups:
+      - view.open-cluster-management.io
+    resources:
+      - managedclusterviews
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
