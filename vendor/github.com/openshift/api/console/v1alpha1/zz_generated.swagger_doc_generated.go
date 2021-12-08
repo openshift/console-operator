@@ -27,10 +27,32 @@ func (ConsolePluginList) SwaggerDoc() map[string]string {
 	return map_ConsolePluginList
 }
 
+var map_ConsolePluginProxy = map[string]string{
+	"":         "ConsolePluginProxy holds information on various service types to which console's backend will proxy the plugin's requests.",
+	"services": "services is a list of in-cluster Services that the plugin will connect to. The Service must use HTTPS. Console backend exposes following endpoint in order to proxy the communication between plugin and the Service:\n\n/api/proxy/namespace/<service-namespace>/service/<service-name>:<port-number>/<request-path>?<optional-query-parameters>\n\nRequest example path:\n\n/api/proxy/namespace/helm/service/helm-charts:8443/releases?limit=10",
+}
+
+func (ConsolePluginProxy) SwaggerDoc() map[string]string {
+	return map_ConsolePluginProxy
+}
+
+var map_ConsolePluginProxyService = map[string]string{
+	"":              "ConsolePluginProxyService holds information on service to which console's backend will proxy the plugin's requests.",
+	"name":          "name of Service that the plugin needs to connect to.",
+	"namespace":     "namespace of Service that the plugin needs to connect to",
+	"port":          "port on which the Service that the plugin needs to connect to is listening on.",
+	"caCertificate": "caCertificate provides the cert authority certificate contents, in case the proxied service is using custom service CA. By default service CA bundle is used. ",
+	"authorize":     "authorize indicates if the proxied request will logged-in user's OpenShift access token in the \"Authorization\" request header:\n\nAuthorization: Bearer sha256~kV46hPnEYhCWFnB85r5NrprAxggzgb6GOeLbgcKNsH0\n\nBy default the access token is not part of the proxied request.",
+}
+
+func (ConsolePluginProxyService) SwaggerDoc() map[string]string {
+	return map_ConsolePluginProxyService
+}
+
 var map_ConsolePluginService = map[string]string{
 	"":          "ConsolePluginService holds information on service that is serving console dynamic plugin assets.",
-	"name":      "name of Service that is serving the plugin.",
-	"namespace": "namespace of Service that is serving the plugin.",
+	"name":      "name of Service that is serving the plugin assets.",
+	"namespace": "namespace of Service that is serving the plugin assets.",
 	"port":      "port on which the Service that is serving the plugin is listening to.",
 	"basePath":  "basePath is the path to the plugin's assets. The primary asset it the manifest file called `plugin-manifest.json`, which is a JSON document that contains metadata about the plugin and the extensions.",
 }
@@ -41,8 +63,9 @@ func (ConsolePluginService) SwaggerDoc() map[string]string {
 
 var map_ConsolePluginSpec = map[string]string{
 	"":            "ConsolePluginSpec is the desired plugin configuration.",
-	"displayName": "displayName is the display name of the plugin.",
+	"displayName": "displayName is the display name of the plugin. displayName is the display name of the plugin.",
 	"service":     "service is a Kubernetes Service that exposes the plugin using a deployment with an HTTP server. The Service must use HTTPS and service serving certificate. The console backend will proxy the plugins assets from the Service using the service CA bundle.",
+	"proxy":       "proxy is a list of services that the plugin needs to connect to.",
 }
 
 func (ConsolePluginSpec) SwaggerDoc() map[string]string {

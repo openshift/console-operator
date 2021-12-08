@@ -69,7 +69,7 @@ spec:
           #### Verify that health checks are now configured:
           Is the inline notification gone?
         failedTaskHelp:
-          This task isn’t verified yet. Try the task again, or [read more](https://docs.openshift.com/container-platform/4.6/applications/application-health.html#odc-adding-health-checks)
+          This task isn’t verified yet. Try the task again, or [read more](https://access.redhat.com/documentation/en-us/openshift_container_platform/4.9/html/building_applications/application-health#odc-adding-health-checks)
           about this topic.
       summary:
         success: You have added health checks to your sample app!

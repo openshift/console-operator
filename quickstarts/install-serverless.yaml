@@ -65,7 +65,7 @@ spec:
           for use**?
         failedTaskHelp: >-
           This task is incomplete. Try the task again, or [read
-          more](https://docs.openshift.com/container-platform/4.6/serverless/installing_serverless/installing-openshift-serverless.html)
+          more](https://access.redhat.com/documentation/en-us/openshift_container_platform/4.9/html/serverless/administration-guide#install-serverless-operator)
           about this topic.
       summary:
         success: >-
@@ -113,7 +113,7 @@ spec:
 
         failedTaskHelp: >-
           This task isn’t verified yet. Try the task again, or [read
-          more](https://docs.openshift.com/container-platform/4.6/serverless/installing_serverless/installing-knative-serving.html)
+          more](https://access.redhat.com/documentation/en-us/openshift_container_platform/4.9/html/serverless/administration-guide#installing-knative-serving)
           about this topic.
       summary:
         success: You just created an instance of the Knative Service resource.
@@ -156,7 +156,7 @@ spec:
           **Note**: If the condition types have a status of **False**, wait a few minutes to allow the Knative Eventing resources creation process to complete. You can check the status in the **Resources** tab.
         failedTaskHelp: >-
           This task isn’t verified yet. Try the task again, or [read
-          more](https://docs.openshift.com/container-platform/4.6/serverless/installing_serverless/installing-knative-eventing.html)
+          more](https://access.redhat.com/documentation/en-us/openshift_container_platform/4.9/html/serverless/administration-guide#installing-knative-eventing)
           about this topic.
       summary:
         success: You just created an instance of the Knative Eventing resource.

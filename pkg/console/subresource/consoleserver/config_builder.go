@@ -45,6 +45,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	customHostnameRedirectPort int
 	inactivityTimeoutSeconds   int
 	pluginsList                map[string]string
+	proxyServices              []ProxyService
 	managedClusterConfigFile   string
 }
 
@@ -132,6 +133,11 @@ func (b *ConsoleServerCLIConfigBuilder) ManagedClusterConfigFile(file string) *C
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) Proxy(proxyServices []ProxyService) *ConsoleServerCLIConfigBuilder {
+	b.proxyServices = proxyServices
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
 		Kind:                     "ConsoleConfig",
@@ -142,6 +148,7 @@ func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 		ServingInfo:              b.servingInfo(),
 		Providers:                b.providers(),
 		Plugins:                  b.plugins(),
+		Proxy:                    b.proxy(),
 		ManagedClusterConfigFile: b.managedClusterConfigFile,
 	}
 }
@@ -276,4 +283,10 @@ func (b *ConsoleServerCLIConfigBuilder) providers() Providers {
 
 func (b *ConsoleServerCLIConfigBuilder) plugins() map[string]string {
 	return b.pluginsList
+}
+
+func (b *ConsoleServerCLIConfigBuilder) proxy() Proxy {
+	return Proxy{
+		Services: b.proxyServices,
+	}
 }
