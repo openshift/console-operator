@@ -30,14 +30,15 @@ const (
 // To manually run these tests: go test -v ./pkg/console/subresource/configmap/...
 func TestDefaultConfigMap(t *testing.T) {
 	type args struct {
-		operatorConfig           *operatorv1.Console
-		consoleConfig            *configv1.Console
-		managedConfig            *corev1.ConfigMap
-		infrastructureConfig     *configv1.Infrastructure
-		rt                       *routev1.Route
-		useDefaultCAFile         bool
-		inactivityTimeoutSeconds int
-		enabledPlugins           map[string]string
+		operatorConfig               *operatorv1.Console
+		consoleConfig                *configv1.Console
+		managedConfig                *corev1.ConfigMap
+		infrastructureConfig         *configv1.Infrastructure
+		rt                           *routev1.Route
+		useDefaultCAFile             bool
+		inactivityTimeoutSeconds     int
+		enabledPlugins               map[string]string
+		canMountManagedClusterConfig bool
 	}
 	tests := []struct {
 		name string
@@ -63,8 +64,9 @@ func TestDefaultConfigMap(t *testing.T) {
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
-				inactivityTimeoutSeconds: 0,
+				useDefaultCAFile:             true,
+				inactivityTimeoutSeconds:     0,
+				canMountManagedClusterConfig: true,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -114,8 +116,9 @@ providers: {}
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         false,
-				inactivityTimeoutSeconds: 0,
+				useDefaultCAFile:             false,
+				inactivityTimeoutSeconds:     0,
+				canMountManagedClusterConfig: true,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -174,8 +177,9 @@ customization:
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
-				inactivityTimeoutSeconds: 0,
+				useDefaultCAFile:             true,
+				inactivityTimeoutSeconds:     0,
+				canMountManagedClusterConfig: true,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -243,8 +247,9 @@ customization:
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
-				inactivityTimeoutSeconds: 0,
+				useDefaultCAFile:             true,
+				inactivityTimeoutSeconds:     0,
+				canMountManagedClusterConfig: true,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -317,8 +322,9 @@ customization:
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
-				inactivityTimeoutSeconds: 0,
+				useDefaultCAFile:             true,
+				inactivityTimeoutSeconds:     0,
+				canMountManagedClusterConfig: true,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -393,8 +399,9 @@ customization:
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
-				inactivityTimeoutSeconds: 0,
+				useDefaultCAFile:             true,
+				inactivityTimeoutSeconds:     0,
+				canMountManagedClusterConfig: true,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -451,8 +458,9 @@ providers:
 						Host: customHostname,
 					},
 				},
-				useDefaultCAFile:         false,
-				inactivityTimeoutSeconds: 0,
+				useDefaultCAFile:             false,
+				inactivityTimeoutSeconds:     0,
+				canMountManagedClusterConfig: true,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -503,8 +511,9 @@ providers: {}
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
-				inactivityTimeoutSeconds: 60,
+				useDefaultCAFile:             true,
+				inactivityTimeoutSeconds:     60,
+				canMountManagedClusterConfig: true,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -561,6 +570,7 @@ providers: {}
 					"plugin1": "plugin1_url",
 					"plugin2": "plugin2_url",
 				},
+				canMountManagedClusterConfig: true,
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -594,6 +604,57 @@ plugins:
 				},
 			},
 		},
+		{
+			name: "Test canMountManagedClusterConfig set to false",
+			args: args{
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL: mockAPIServer,
+					},
+				},
+				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
+					Spec: routev1.RouteSpec{
+						Host: host,
+					},
+				},
+				useDefaultCAFile:             true,
+				inactivityTimeoutSeconds:     0,
+				canMountManagedClusterConfig: false,
+			},
+			want: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+customization:
+  branding: ` + DEFAULT_BRAND + `
+  documentationBaseURL: ` + DEFAULT_DOC_URL + `
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: {}
+`,
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -606,6 +667,7 @@ plugins:
 				tt.args.useDefaultCAFile,
 				tt.args.inactivityTimeoutSeconds,
 				tt.args.enabledPlugins,
+				tt.args.canMountManagedClusterConfig,
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below

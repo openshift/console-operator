@@ -1,4 +1,4 @@
-package managedclusterview
+package managedcluster
 
 import (
 	operatorv1 "github.com/openshift/api/operator/v1"

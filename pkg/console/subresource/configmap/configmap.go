@@ -43,7 +43,13 @@ func DefaultConfigMap(
 	activeConsoleRoute *routev1.Route,
 	useDefaultCAFile bool,
 	inactivityTimeoutSeconds int,
-	pluginsEndpoingMap map[string]string) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
+	pluginsEndpoingMap map[string]string,
+	canMountManagedClusterConfig bool) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
+
+	managedClusterConfigFile := ""
+	if canMountManagedClusterConfig {
+		managedClusterConfigFile = fmt.Sprintf("%s/%s", api.ManagedClusterConfigMountDir, api.ManagedClusterConfigKey)
+	}
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
 	defaultConfig, err := defaultBuilder.Host(activeConsoleRoute.Spec.Host).
@@ -53,7 +59,7 @@ func DefaultConfigMap(
 		OAuthServingCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
-		ManagedClusterConfigFile(fmt.Sprintf("%v/%v", api.ManagedClusterConfigMountDir, api.ManagedClusterConfigKey)).
+		ManagedClusterConfigFile(managedClusterConfigFile).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate default console-config config: %v", err)

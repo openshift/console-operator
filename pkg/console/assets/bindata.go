@@ -71,7 +71,7 @@ func (fi bindataFileInfo) Sys() interface{} {
 var _configmapsConsoleManagedClusterIngressCertConfigmapYaml = []byte(`apiVersion: v1
 kind: ConfigMap
 metadata:
-  namespace: openshift-config-managed
+  namespace: openshift-console
 `)
 
 func configmapsConsoleManagedClusterIngressCertConfigmapYamlBytes() ([]byte, error) {

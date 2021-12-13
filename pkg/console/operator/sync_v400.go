@@ -71,16 +71,16 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(routeErr)
 	}
 
-	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(ctx, set.Operator, set.Console, set.Infrastructure, set.OAuth, route, controllerContext.Recorder())
+	// managed-clusters ConfigMap is managed by another controller and is not required, we don't need to exit the sync loop if it's not present
+	canMountManagedClusterConfig, managedClusterConfigErrReason, managedClusterConfigErr := co.SyncManagedClusterConfigMap(ctx)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterConfigSync", managedClusterConfigErrReason, managedClusterConfigErr))
+
+	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(ctx, set.Operator, set.Console, set.Infrastructure, set.OAuth, route, canMountManagedClusterConfig, controllerContext.Recorder())
 	toUpdate = toUpdate || cmChanged
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
 	if cmErr != nil {
 		return statusHandler.FlushAndReturn(cmErr)
 	}
-
-	// managed-clusters ConfigMap is managed by another controller and is not required, we don't need to exit the sync loop if it's not present
-	canMountManagedClusterConfig, managedClusterConfigErrReason, managedClusterConfigErr := co.SyncManagedClusterConfigMap(ctx)
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterConfigSync", managedClusterConfigErrReason, managedClusterConfigErr))
 
 	serviceCAConfigMap, serviceCAChanged, serviceCAErrReason, serviceCAErr := co.SyncServiceCAConfigMap(ctx, set.Operator)
 	toUpdate = toUpdate || serviceCAChanged
@@ -317,6 +317,7 @@ func (co *consoleOperator) SyncConfigMap(
 	infrastructureConfig *configv1.Infrastructure,
 	oauthConfig *configv1.OAuth,
 	activeConsoleRoute *routev1.Route,
+	canMountManagedClusterConfig bool,
 	recorder events.Recorder,
 ) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
 
@@ -349,7 +350,7 @@ func (co *consoleOperator) SyncConfigMap(
 	}
 
 	pluginsEndpointMap := co.GetPluginsEndpointMap(operatorConfig.Spec.Plugins)
-	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile, inactivityTimeoutSeconds, pluginsEndpointMap)
+	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile, inactivityTimeoutSeconds, pluginsEndpointMap, canMountManagedClusterConfig)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
 	}
@@ -380,7 +381,7 @@ func (co *consoleOperator) SyncManagedClusterConfigMap(ctx context.Context) (boo
 	// Degraded if managed cluster config map is present but doesn't have the correct data key
 	_, ok := managedClusterConfigMap.Data[api.ManagedClusterConfigKey]
 	if !ok {
-		return false, "MissingManagedClusterConfig", fmt.Errorf("%v ConfigMap is missing %v data key", api.ManagedClusterConfigMapName, api.ManagedClusterConfigKey)
+		return false, "MissingManagedClusterConfig", fmt.Errorf("%s ConfigMap is missing %s data key", api.ManagedClusterConfigMapName, api.ManagedClusterConfigKey)
 	}
 
 	// Managed cluster config map is present and can be mounted

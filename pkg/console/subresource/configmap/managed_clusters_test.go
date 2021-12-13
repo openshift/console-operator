@@ -20,7 +20,7 @@ var (
 			URL:    "test-url",
 			CAFile: "/var/api/ca",
 		},
-		Oauth: consoleserver.ManagedClusterOAuthConfig{
+		OAuth: consoleserver.ManagedClusterOAuthConfig{
 			ClientID:     "test-client-id",
 			ClientSecret: "test-client-secret",
 			CAFile:       "/var/oauth/ca",

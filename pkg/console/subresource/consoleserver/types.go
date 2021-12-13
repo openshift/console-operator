@@ -143,5 +143,5 @@ type ManagedClusterOAuthConfig struct {
 type ManagedClusterConfig struct {
 	Name      string                        `json:"name" yaml:"name"` // ManagedCluster name, provided through ACM
 	APIServer ManagedClusterAPIServerConfig `json:"apiServer" yaml:"apiServer"`
-	Oauth     ManagedClusterOAuthConfig     `json:"oauth" yaml:"oauth"`
+	OAuth     ManagedClusterOAuthConfig     `json:"oauth" yaml:"oauth"`
 }
