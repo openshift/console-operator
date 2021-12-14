@@ -2,6 +2,7 @@ package status
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 
@@ -119,7 +120,7 @@ func (c *StatusHandler) AddConditions(newStatusFuncs []v1helpers.UpdateStatusFun
 }
 
 func (c *StatusHandler) FlushAndReturn(returnErr error) error {
-	if _, _, updateErr := v1helpers.UpdateStatus(c.client, c.statusFuncs...); updateErr != nil {
+	if _, _, updateErr := v1helpers.UpdateStatus(context.TODO(), c.client, c.statusFuncs...); updateErr != nil {
 		return updateErr
 	}
 	return returnErr

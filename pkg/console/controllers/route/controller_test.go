@@ -168,7 +168,7 @@ func TestValidateCustomCertSecret(t *testing.T) {
 			},
 			want: want{
 				customTLSCert: nil,
-				err:           fmt.Errorf("failed to verify custom certificate PEM: asn1: syntax error: data truncated"),
+				err:           fmt.Errorf("failed to verify custom certificate PEM: x509: malformed certificate"),
 			},
 		},
 		{

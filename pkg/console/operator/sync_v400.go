@@ -170,7 +170,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(consoleConfigErr)
 	}
 
-	_, _, consolePublicConfigErr := co.SyncConsolePublicConfig(consoleURL.String(), controllerContext.Recorder())
+	_, _, consolePublicConfigErr := co.SyncConsolePublicConfig(ctx, consoleURL.String(), controllerContext.Recorder())
 	statusHandler.AddCondition(status.HandleDegraded("ConsolePublicConfigMap", "FailedApply", consolePublicConfigErr))
 	if consolePublicConfigErr != nil {
 		klog.Errorf("could not update public console config status: %v", consolePublicConfigErr)
@@ -225,9 +225,9 @@ func (co *consoleOperator) SyncConsoleConfig(ctx context.Context, consoleConfig 
 	return consoleConfig, nil
 }
 
-func (co *consoleOperator) SyncConsolePublicConfig(consoleURL string, recorder events.Recorder) (*corev1.ConfigMap, bool, error) {
+func (co *consoleOperator) SyncConsolePublicConfig(ctx context.Context, consoleURL string, recorder events.Recorder) (*corev1.ConfigMap, bool, error) {
 	requiredConfigMap := configmapsub.DefaultPublicConfig(consoleURL)
-	return resourceapply.ApplyConfigMap(co.configMapClient, recorder, requiredConfigMap)
+	return resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, requiredConfigMap)
 }
 
 func (co *consoleOperator) SyncDeployment(
@@ -253,6 +253,7 @@ func (co *consoleOperator) SyncDeployment(
 	deploymentsub.LogDeploymentAnnotationChanges(co.deploymentClient, requiredDeployment, ctx)
 
 	deployment, deploymentChanged, applyDepErr := resourceapply.ApplyDeployment(
+		ctx,
 		co.deploymentClient,
 		recorder,
 		requiredDeployment,
@@ -289,7 +290,7 @@ func (co *consoleOperator) SyncOAuthClient(
 func (co *consoleOperator) SyncSecret(ctx context.Context, operatorConfig *operatorv1.Console, recorder events.Recorder) (*corev1.Secret, bool, error) {
 	secret, err := co.secretsClient.Secrets(api.TargetNamespace).Get(ctx, secretsub.Stub().Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) == "" {
-		return resourceapply.ApplySecret(co.secretsClient, recorder, secretsub.DefaultSecret(operatorConfig, crypto.Random256BitsString()))
+		return resourceapply.ApplySecret(ctx, co.secretsClient, recorder, secretsub.DefaultSecret(operatorConfig, crypto.Random256BitsString()))
 	}
 	// any error should be returned & kill the sync loop
 	if err != nil {
@@ -345,7 +346,7 @@ func (co *consoleOperator) SyncConfigMap(
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
 	}
-	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(co.configMapClient, recorder, defaultConfigmap)
+	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, defaultConfigmap)
 	if cmErr != nil {
 		return nil, false, "FailedApply", cmErr
 	}

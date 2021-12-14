@@ -270,7 +270,7 @@ func (c *consoleOperator) removeConsole(ctx context.Context, recorder events.Rec
 	// NOTE: CVO controls the deployment for downloads, console-operator cannot delete it.
 	errs = append(errs, c.deploymentClient.Deployments(api.TargetNamespace).Delete(ctx, deployment.Stub().Name, metav1.DeleteOptions{}))
 	// clear the console URL from the public config map in openshift-config-managed
-	_, _, updateConfigErr := resourceapply.ApplyConfigMap(c.configMapClient, recorder, configmap.EmptyPublicConfig())
+	_, _, updateConfigErr := resourceapply.ApplyConfigMap(ctx, c.configMapClient, recorder, configmap.EmptyPublicConfig())
 	errs = append(errs, updateConfigErr)
 
 	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
