@@ -153,6 +153,7 @@ func PlatformBasedOCConsoleCLIDownloads(host, cliDownloadsName string) *v1.Conso
 		{"Mac for x86_64", "amd64/mac", "oc.zip"},
 		{"Windows for x86_64", "amd64/windows", "oc.zip"},
 		{"Linux for ARM 64", "arm64/linux", "oc.tar"},
+		{"Mac for ARM 64", "arm64/mac", "oc.zip"},
 		{"Linux for IBM Power, little endian", "ppc64le/linux", "oc.tar"},
 		{"Linux for IBM Z", "s390x/linux", "oc.tar"},
 	}

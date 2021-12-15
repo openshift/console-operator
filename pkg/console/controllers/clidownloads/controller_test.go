@@ -56,13 +56,22 @@ func TestGetPlatformURL(t *testing.T) {
 			want: "https://www.example.com/s390x/linux/oc.tar",
 		},
 		{
-			name: "Test assembling mac specific URL",
+			name: "Test assembling mac x86_64 specific URL",
 			args: args{
 				baseURL:     "https://www.example.com/amd64",
 				platform:    "mac",
 				archiveType: "oc.zip",
 			},
 			want: "https://www.example.com/amd64/mac/oc.zip",
+		},
+		{
+			name: "Test assembling mac arm64 specific URL",
+			args: args{
+				baseURL:     "https://www.example.com/arm64",
+				platform:    "mac",
+				archiveType: "oc.zip",
+			},
+			want: "https://www.example.com/arm64/mac/oc.zip",
 		},
 		{
 			name: "Test assembling windows 64-bit specific URL",
@@ -126,6 +135,10 @@ The oc binary offers the same capabilities as the kubectl binary, but it is furt
 						{
 							Href: "https://www.example.com/arm64/linux/oc.tar",
 							Text: "Download oc for Linux for ARM 64",
+						},
+						{
+							Href: "https://www.example.com/arm64/mac/oc.zip",
+							Text: "Download oc for Mac for ARM 64",
 						},
 						{
 							Href: "https://www.example.com/ppc64le/linux/oc.tar",
