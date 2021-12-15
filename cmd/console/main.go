@@ -30,6 +30,7 @@ func main() {
 	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 
 	logs.InitLogs()
+	logs.AddFlags(pflag.CommandLine)
 	defer logs.FlushLogs()
 
 	// build a new cobra command
