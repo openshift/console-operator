@@ -289,7 +289,6 @@ github.com/sirupsen/logrus
 ## explicit
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
-## explicit
 github.com/spf13/pflag
 # go.etcd.io/etcd/api/v3 v3.5.0
 go.etcd.io/etcd/api/v3/authpb
@@ -1041,6 +1040,7 @@ k8s.io/client-go/util/retry
 k8s.io/client-go/util/workqueue
 # k8s.io/component-base v0.23.0
 ## explicit
+k8s.io/component-base/cli
 k8s.io/component-base/cli/flag
 k8s.io/component-base/config
 k8s.io/component-base/config/v1alpha1
