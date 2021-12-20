@@ -38,3 +38,11 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - config.openshift.io
+  resources:
+  - infrastructures
+  verbs:
+  - get
+  - list
+  - watch
