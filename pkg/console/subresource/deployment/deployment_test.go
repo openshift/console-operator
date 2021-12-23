@@ -1357,7 +1357,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 					ContainerPort: api.DownloadsPort,
 				}},
 				ReadinessProbe: &corev1.Probe{
-					Handler: corev1.Handler{
+					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
 							Path:   "/",
 							Port:   intstr.FromInt(api.DownloadsPort),
@@ -1370,7 +1370,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 					FailureThreshold: 3,
 				},
 				LivenessProbe: &corev1.Probe{
-					Handler: corev1.Handler{
+					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
 							Path:   "/",
 							Port:   intstr.FromInt(api.DownloadsPort),
