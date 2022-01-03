@@ -49,7 +49,7 @@ func patchAndCheckConfigMap(t *testing.T, client *framework.ClientSet, isOperato
 
 func patchAndCheckService(t *testing.T, client *framework.ClientSet, isOperatorManaged bool) error {
 	t.Logf("patching Annotation on the console Service")
-	service, err := client.Core.Services(consoleapi.OpenShiftConsoleNamespace).Patch(context.TODO(), consoleapi.OpenShiftConsoleServiceName, types.MergePatchType, []byte(`{"metadata": {"annotations": {"service.alpha.openshift.io/serving-cert-secret-name": "test"}}}`), metav1.PatchOptions{})
+	service, err := client.Core.Services(consoleapi.OpenShiftConsoleNamespace).Patch(context.TODO(), consoleapi.OpenShiftConsoleServiceName, types.MergePatchType, []byte(`{"metadata": {"annotations": {"service.beta.openshift.io/serving-cert-secret-name": "test"}}}`), metav1.PatchOptions{})
 	if err != nil {
 		return err
 	}
