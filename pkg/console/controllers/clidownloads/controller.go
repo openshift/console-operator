@@ -198,7 +198,7 @@ odo abstracts away complex Kubernetes and OpenShift concepts, thus allowing deve
 			DisplayName: "odo - Developer-focused CLI for OpenShift",
 			Links: []v1.CLIDownloadLink{
 				{
-					Href: "https://mirror.openshift.com/pub/openshift-v4/clients/odo/latest/",
+					Href: "https://developers.redhat.com/content-gateway/rest/mirror/pub/openshift-v4/clients/odo/latest",
 					Text: "Download odo",
 				},
 			},
