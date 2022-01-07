@@ -2,8 +2,6 @@ package route
 
 import (
 	"context"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"strings"
 	"time"
@@ -190,6 +188,12 @@ func (c *RouteSyncController) SyncCustomRoute(ctx context.Context, routeConfig *
 		return nil, "", nil
 	}
 
+	// Check if the custom route hostname is not same as the default one.
+	// If it is, dont create a custom route but rather update the default one.
+	if routeConfig.HostnameMatch() {
+		return nil, "", nil
+	}
+
 	if configErr := c.ValidateCustomRouteConfig(ctx, routeConfig); configErr != nil {
 		return nil, "InvalidCustomRouteConfig", configErr
 	}
@@ -247,11 +251,6 @@ func (c *RouteSyncController) GetDefaultRouteTLSSecret(ctx context.Context, rout
 }
 
 func (c *RouteSyncController) ValidateCustomRouteConfig(ctx context.Context, routeConfig *routesub.RouteConfig) error {
-	// Check if the custom route hostname is not same as the default one
-	if routeConfig.HostnameMatch() {
-		return fmt.Errorf("custom route hostname is duplicate of the default route hostname")
-	}
-
 	// Check if the custom hostname has cluster domain suffix, which indicates
 	// if a secret that contains TLS certificate and key needs to exist in the
 	// `openshift-config` namespace and referenced in  the operator config.
@@ -278,64 +277,7 @@ func ValidateCustomCertSecret(customCertSecret *corev1.Secret) (*routesub.Custom
 		return nil, fmt.Errorf("custom cert secret is not in %q type, instead uses %q type", corev1.SecretTypeTLS, customCertSecret.Type)
 	}
 
-	customTLS := &routesub.CustomTLSCert{}
-	cert, certExist := customCertSecret.Data["tls.crt"]
-	if !certExist {
-		return nil, fmt.Errorf("custom cert secret data doesn't contain 'tls.crt' entry")
-	}
-
-	certificateVerifyErr := certificateVerifier(cert)
-	if certificateVerifyErr != nil {
-		return nil, fmt.Errorf("failed to verify custom certificate PEM: " + certificateVerifyErr.Error())
-	}
-	customTLS.Certificate = string(cert)
-
-	key, keyExist := customCertSecret.Data["tls.key"]
-	if !keyExist {
-		return nil, fmt.Errorf("custom cert secret data doesn't contain 'tls.key' entry")
-	}
-
-	privateKeyVerifyErr := privateKeyVerifier(key)
-	if privateKeyVerifyErr != nil {
-		return nil, fmt.Errorf("failed to verify custom key PEM: " + privateKeyVerifyErr.Error())
-	}
-	customTLS.Key = string(key)
-
-	return customTLS, nil
-}
-
-func certificateVerifier(customCert []byte) error {
-	block, _ := pem.Decode([]byte(customCert))
-	if block == nil {
-		return fmt.Errorf("failed to decode certificate PEM")
-	}
-	certificate, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return err
-	}
-	now := time.Now()
-	if now.After(certificate.NotAfter) {
-		return fmt.Errorf("custom TLS certificate is expired")
-	}
-	if now.Before(certificate.NotBefore) {
-		return fmt.Errorf("custom TLS certificate is not valid yet")
-	}
-	return nil
-}
-
-func privateKeyVerifier(customKey []byte) error {
-	block, _ := pem.Decode([]byte(customKey))
-	if block == nil {
-		return fmt.Errorf("failed to decode key PEM")
-	}
-	if _, err := x509.ParsePKCS8PrivateKey(block.Bytes); err != nil {
-		if _, err = x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
-			if _, err = x509.ParseECPrivateKey(block.Bytes); err != nil {
-				return fmt.Errorf("block %s is not valid key PEM", block.Type)
-			}
-		}
-	}
-	return nil
+	return routesub.GetCustomTLS(customCertSecret)
 }
 
 func deprecationMessage(operatorConfig *operatorsv1.Console) string {
