@@ -11,7 +11,7 @@ import (
 
 const (
 	// See https://github.com/openshift/service-serving-cert-signer
-	injectCABundleAnnotation = "service.alpha.openshift.io/inject-cabundle"
+	injectCABundleAnnotation = "service.beta.openshift.io/inject-cabundle"
 )
 
 // DefaultServiceCAConfigMap creates a config map that holds the service CA bundle.

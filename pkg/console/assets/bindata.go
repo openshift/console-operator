@@ -602,7 +602,7 @@ metadata:
   labels:
     app: console
   annotations:
-    service.alpha.openshift.io/serving-cert-secret-name: console-serving-cert
+    service.beta.openshift.io/serving-cert-secret-name: console-serving-cert
 spec:
   ports:
     - name: custom-route-redirect
@@ -641,7 +641,7 @@ metadata:
   labels:
     app: console
   annotations:
-    service.alpha.openshift.io/serving-cert-secret-name: console-serving-cert
+    service.beta.openshift.io/serving-cert-secret-name: console-serving-cert
 spec:
   ports:
     - name: https
