@@ -613,7 +613,7 @@ HQ4EFgQU0vhI4OPGEOqT+VAWwxdhVvcmgdIwHwYDVR0jBBgwFoAU0vhI4OPGEOqT` + "\n" + `
 nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 +tW+O/PoE7B3tuY=` + "\n" + `
 -----END CERTIFICATE-----'
-    consoleAPIPath: /api/proxy/namespace/proxy-serviceNamespace2/service/proxy-serviceName2:9991/
+    consoleAPIPath: /api/proxy/plugin2/test-alias/
     endpoint: https://proxy-serviceName2.proxy-serviceNamespace2.svc.cluster.local:9991
 `,
 				},
@@ -690,17 +690,20 @@ func testPlugins(pluginName, serviceName, serviceNamespace string) *v1alpha1.Con
 
 func testPluginsWithProxy(pluginName, serviceName, serviceNamespace string) *v1alpha1.ConsolePlugin {
 	plugin := testPlugins(pluginName, serviceName, serviceNamespace)
-	plugin.Spec.Proxy = v1alpha1.ConsolePluginProxy{
-		Services: []v1alpha1.ConsolePluginProxyService{
-			{
-				Name:          fmt.Sprintf("proxy-%s", serviceName),
-				Namespace:     fmt.Sprintf("proxy-%s", serviceNamespace),
-				Port:          9991,
-				CACertificate: validCertificate,
-				Authorize:     true,
+	plugin.Spec.Proxy = []v1alpha1.ConsolePluginProxy{
+		{
+			Alias:         "test-alias",
+			Type:          v1alpha1.ProxyTypeService,
+			CACertificate: validCertificate,
+			Authorize:     true,
+			Service: v1alpha1.ConsolePluginProxyServiceConfig{
+				Name:      fmt.Sprintf("proxy-%s", serviceName),
+				Namespace: fmt.Sprintf("proxy-%s", serviceNamespace),
+				Port:      9991,
 			},
 		},
 	}
+
 	return plugin
 }
 

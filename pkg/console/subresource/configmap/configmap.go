@@ -123,24 +123,26 @@ func GetPluginsEndpointMap(availablePlugins []*v1alpha1.ConsolePlugin) map[strin
 func GetPluginsProxyServices(availablePlugins []*v1alpha1.ConsolePlugin) []consoleserver.ProxyService {
 	proxyServices := []consoleserver.ProxyService{}
 	for _, plugin := range availablePlugins {
-		for _, service := range plugin.Spec.Proxy.Services {
-			proxyService := consoleserver.ProxyService{
-				ConsoleAPIPath: getConsoleAPIPath(&service),
-				Endpoint:       getProxyServiceURL(&service),
-				CACertificate:  service.CACertificate,
-				Authorize:      service.Authorize,
+		for _, proxy := range plugin.Spec.Proxy {
+			if proxy.Type == v1alpha1.ProxyTypeService {
+				proxyService := consoleserver.ProxyService{
+					ConsoleAPIPath: getConsoleAPIPath(plugin.Name, &proxy),
+					Endpoint:       getProxyServiceURL(&proxy.Service),
+					CACertificate:  proxy.CACertificate,
+					Authorize:      proxy.Authorize,
+				}
+				proxyServices = append(proxyServices, proxyService)
 			}
-			proxyServices = append(proxyServices, proxyService)
 		}
 	}
 	return proxyServices
 }
 
-func getConsoleAPIPath(service *v1alpha1.ConsolePluginProxyService) string {
-	return fmt.Sprintf("%snamespace/%s/service/%s/", pluginProxyEndpoint, service.Namespace, fmt.Sprintf("%s:%d", service.Name, service.Port))
+func getConsoleAPIPath(pluginName string, service *v1alpha1.ConsolePluginProxy) string {
+	return fmt.Sprintf("%s%s/%s/", pluginProxyEndpoint, pluginName, service.Alias)
 }
 
-func getProxyServiceURL(service *v1alpha1.ConsolePluginProxyService) string {
+func getProxyServiceURL(service *v1alpha1.ConsolePluginProxyServiceConfig) string {
 	pluginURL := &url.URL{
 		Scheme: "https",
 		Host:   fmt.Sprintf("%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, service.Port),
