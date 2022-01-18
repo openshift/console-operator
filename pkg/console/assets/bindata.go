@@ -1,6 +1,6 @@
 // Code generated for package assets by go-bindata DO NOT EDIT. (@generated)
 // sources:
-// bindata/configmaps/console-managed-cluster-ingress-cert-configmap.yaml
+// bindata/configmaps/console-configmap.yaml
 // bindata/configmaps/console-public-configmap.yaml
 // bindata/deployments/console-deployment.yaml
 // bindata/deployments/downloads-deployment.yaml
@@ -68,23 +68,26 @@ func (fi bindataFileInfo) Sys() interface{} {
 	return nil
 }
 
-var _configmapsConsoleManagedClusterIngressCertConfigmapYaml = []byte(`apiVersion: v1
+var _configmapsConsoleConfigmapYaml = []byte(`apiVersion: v1
 kind: ConfigMap
 metadata:
   namespace: openshift-console
+  labels:
+    app: "console"
+  annotations: {}
 `)
 
-func configmapsConsoleManagedClusterIngressCertConfigmapYamlBytes() ([]byte, error) {
-	return _configmapsConsoleManagedClusterIngressCertConfigmapYaml, nil
+func configmapsConsoleConfigmapYamlBytes() ([]byte, error) {
+	return _configmapsConsoleConfigmapYaml, nil
 }
 
-func configmapsConsoleManagedClusterIngressCertConfigmapYaml() (*asset, error) {
-	bytes, err := configmapsConsoleManagedClusterIngressCertConfigmapYamlBytes()
+func configmapsConsoleConfigmapYaml() (*asset, error) {
+	bytes, err := configmapsConsoleConfigmapYamlBytes()
 	if err != nil {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "configmaps/console-managed-cluster-ingress-cert-configmap.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	info := bindataFileInfo{name: "configmaps/console-configmap.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -858,21 +861,21 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"configmaps/console-managed-cluster-ingress-cert-configmap.yaml": configmapsConsoleManagedClusterIngressCertConfigmapYaml,
-	"configmaps/console-public-configmap.yaml":                       configmapsConsolePublicConfigmapYaml,
-	"deployments/console-deployment.yaml":                            deploymentsConsoleDeploymentYaml,
-	"deployments/downloads-deployment.yaml":                          deploymentsDownloadsDeploymentYaml,
-	"managedclusteractions/console-create-oauth-client.yaml":         managedclusteractionsConsoleCreateOauthClientYaml,
-	"managedclusterviews/console-oauth-client.yaml":                  managedclusterviewsConsoleOauthClientYaml,
-	"managedclusterviews/console-oauth-server-cert.yaml":             managedclusterviewsConsoleOauthServerCertYaml,
-	"routes/console-custom-route.yaml":                               routesConsoleCustomRouteYaml,
-	"routes/console-redirect-route.yaml":                             routesConsoleRedirectRouteYaml,
-	"routes/console-route.yaml":                                      routesConsoleRouteYaml,
-	"routes/downloads-custom-route.yaml":                             routesDownloadsCustomRouteYaml,
-	"routes/downloads-route.yaml":                                    routesDownloadsRouteYaml,
-	"services/console-redirect-service.yaml":                         servicesConsoleRedirectServiceYaml,
-	"services/console-service.yaml":                                  servicesConsoleServiceYaml,
-	"services/downloads-service.yaml":                                servicesDownloadsServiceYaml,
+	"configmaps/console-configmap.yaml":                      configmapsConsoleConfigmapYaml,
+	"configmaps/console-public-configmap.yaml":               configmapsConsolePublicConfigmapYaml,
+	"deployments/console-deployment.yaml":                    deploymentsConsoleDeploymentYaml,
+	"deployments/downloads-deployment.yaml":                  deploymentsDownloadsDeploymentYaml,
+	"managedclusteractions/console-create-oauth-client.yaml": managedclusteractionsConsoleCreateOauthClientYaml,
+	"managedclusterviews/console-oauth-client.yaml":          managedclusterviewsConsoleOauthClientYaml,
+	"managedclusterviews/console-oauth-server-cert.yaml":     managedclusterviewsConsoleOauthServerCertYaml,
+	"routes/console-custom-route.yaml":                       routesConsoleCustomRouteYaml,
+	"routes/console-redirect-route.yaml":                     routesConsoleRedirectRouteYaml,
+	"routes/console-route.yaml":                              routesConsoleRouteYaml,
+	"routes/downloads-custom-route.yaml":                     routesDownloadsCustomRouteYaml,
+	"routes/downloads-route.yaml":                            routesDownloadsRouteYaml,
+	"services/console-redirect-service.yaml":                 servicesConsoleRedirectServiceYaml,
+	"services/console-service.yaml":                          servicesConsoleServiceYaml,
+	"services/downloads-service.yaml":                        servicesDownloadsServiceYaml,
 }
 
 // AssetDir returns the file names below a certain
@@ -917,8 +920,8 @@ type bintree struct {
 
 var _bintree = &bintree{nil, map[string]*bintree{
 	"configmaps": {nil, map[string]*bintree{
-		"console-managed-cluster-ingress-cert-configmap.yaml": {configmapsConsoleManagedClusterIngressCertConfigmapYaml, map[string]*bintree{}},
-		"console-public-configmap.yaml":                       {configmapsConsolePublicConfigmapYaml, map[string]*bintree{}},
+		"console-configmap.yaml":        {configmapsConsoleConfigmapYaml, map[string]*bintree{}},
+		"console-public-configmap.yaml": {configmapsConsolePublicConfigmapYaml, map[string]*bintree{}},
 	}},
 	"deployments": {nil, map[string]*bintree{
 		"console-deployment.yaml":   {deploymentsConsoleDeploymentYaml, map[string]*bintree{}},

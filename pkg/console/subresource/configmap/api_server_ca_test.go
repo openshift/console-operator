@@ -36,6 +36,10 @@ func TestDefaultAPIServerCAConfigMap(t *testing.T) {
 				},
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:                       APIServerCAConfigMapName("test-cluster"),
 					Namespace:                  api.OpenShiftConsoleNamespace,
@@ -79,7 +83,10 @@ func TestAPIServerCAStub(t *testing.T) {
 				clusterName: "test-cluster",
 			},
 			want: &corev1.ConfigMap{
-				TypeMeta: metav1.TypeMeta{},
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:                       APIServerCAConfigMapName("test-cluster"),
 					Namespace:                  api.OpenShiftConsoleNamespace,

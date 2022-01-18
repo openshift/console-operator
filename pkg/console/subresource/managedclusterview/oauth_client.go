@@ -12,12 +12,15 @@ import (
 	// managedclusterviewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/action/v1beta1"
 )
 
-func DefaultOAuthClientView(cn string) *unstructured.Unstructured {
+func DefaultOAuthClientView(cn string) (*unstructured.Unstructured, error) {
 	mcv := OAuthClientViewStub()
-	unstructured.SetNestedField(mcv.Object, api.OAuthClientManagedClusterViewName, "metadata", "name")
-	unstructured.SetNestedField(mcv.Object, cn, "metadata", "namespace")
-	unstructured.SetNestedStringMap(mcv.Object, util.LabelsForManagedClusterResources(cn), "metadata", "labels")
-	return mcv
+	err := unstructured.SetNestedField(mcv.Object, api.OAuthClientManagedClusterViewName, "metadata", "name")
+	err = unstructured.SetNestedField(mcv.Object, cn, "metadata", "namespace")
+	err = unstructured.SetNestedStringMap(mcv.Object, util.LabelsForManagedClusterResources(cn), "metadata", "labels")
+	if err != nil {
+		return nil, err
+	}
+	return mcv, nil
 }
 
 func OAuthClientViewStub() *unstructured.Unstructured {

@@ -145,7 +145,6 @@ rules:
       - list
       - watch
       - create
-      - update
       - delete
   - apiGroups:
       - view.open-cluster-management.io
@@ -156,5 +155,4 @@ rules:
       - list
       - watch
       - create
-      - update
       - delete

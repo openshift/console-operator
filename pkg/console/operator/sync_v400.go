@@ -423,7 +423,7 @@ func (co *consoleOperator) GetManagedClusterConfigMap(ctx context.Context) (*cor
 	managedClusterConfigMap, err := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, api.ManagedClusterConfigMapName, metav1.GetOptions{})
 	// Not degraded if get fails because the config map isn't there
 	if apierrors.IsNotFound(err) {
-		klog.V(4).Infof("%v config map not found, continuing...", api.ManagedClusterConfigMapName)
+		klog.V(4).Infof("%s ConfigMap not found, continuing...", api.ManagedClusterConfigMapName)
 		return nil, "", nil
 	}
 

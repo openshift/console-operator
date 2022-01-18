@@ -11,15 +11,18 @@ import (
 	// managedclusterviewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/action/v1beta1"
 )
 
-func DefaultCreateOAuthClientAction(cn string, sec string, redirects []string) *unstructured.Unstructured {
+func DefaultCreateOAuthClientAction(cn string, sec string, redirects []string) (*unstructured.Unstructured, error) {
 	mca := CreateOAuthClientStub(cn)
-	unstructured.SetNestedField(mca.Object, api.CreateOAuthClientManagedClusterActionName, "metadata", "name")
-	unstructured.SetNestedField(mca.Object, cn, "metadata", "namespace")
-	unstructured.SetNestedStringMap(mca.Object, util.LabelsForManagedClusterResources(cn), "metadata", "labels")
-	unstructured.SetNestedField(mca.Object, sec, "spec", "kube", "template", "secret")
-	unstructured.SetNestedField(mca.Object, api.ManagedClusterOAuthClientName, "spec", "kube", "template", "metadata", "name")
-	unstructured.SetNestedStringSlice(mca.Object, redirects, "spec", "kube", "template", "redirectURIs")
-	return mca
+	err := unstructured.SetNestedField(mca.Object, api.CreateOAuthClientManagedClusterActionName, "metadata", "name")
+	err = unstructured.SetNestedField(mca.Object, cn, "metadata", "namespace")
+	err = unstructured.SetNestedStringMap(mca.Object, util.LabelsForManagedClusterResources(cn), "metadata", "labels")
+	err = unstructured.SetNestedField(mca.Object, sec, "spec", "kube", "template", "secret")
+	err = unstructured.SetNestedField(mca.Object, api.ManagedClusterOAuthClientName, "spec", "kube", "template", "metadata", "name")
+	err = unstructured.SetNestedStringSlice(mca.Object, redirects, "spec", "kube", "template", "redirectURIs")
+	if err != nil {
+		return nil, err
+	}
+	return mca, nil
 }
 
 func CreateOAuthClientStub(cn string) *unstructured.Unstructured {

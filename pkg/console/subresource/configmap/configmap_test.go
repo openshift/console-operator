@@ -69,6 +69,10 @@ func TestDefaultConfigMap(t *testing.T) {
 				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -120,6 +124,10 @@ providers: {}
 				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -179,6 +187,10 @@ customization:
 				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -247,6 +259,10 @@ customization:
 				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -320,6 +336,10 @@ customization:
 				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -395,6 +415,10 @@ customization:
 				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -453,6 +477,10 @@ providers:
 				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -505,6 +533,10 @@ providers: {}
 				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -557,6 +589,10 @@ providers: {}
 				managedClusterConfigFile: "test",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -613,6 +649,10 @@ managedClusterConfigFile: 'test'
 				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -706,6 +746,10 @@ func TestStub(t *testing.T) {
 		{
 			name: "Testing Stub function configmap",
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,

@@ -12,12 +12,15 @@ import (
 	// managedclusterviewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/action/v1beta1"
 )
 
-func DefaultOAuthServerCertView(cr *operatorv1.Console, cn string) *unstructured.Unstructured {
+func DefaultOAuthServerCertView(cr *operatorv1.Console, cn string) (*unstructured.Unstructured, error) {
 	mcv := OAuthServerCertViewStub(cn)
-	unstructured.SetNestedField(mcv.Object, api.OAuthServerCertManagedClusterViewName, "metadata", "name")
-	unstructured.SetNestedField(mcv.Object, cn, "metadata", "namespace")
-	unstructured.SetNestedStringMap(mcv.Object, util.LabelsForManagedClusterResources(cn), "metadata", "labels")
-	return mcv
+	err := unstructured.SetNestedField(mcv.Object, api.OAuthServerCertManagedClusterViewName, "metadata", "name")
+	err = unstructured.SetNestedField(mcv.Object, cn, "metadata", "namespace")
+	err = unstructured.SetNestedStringMap(mcv.Object, util.LabelsForManagedClusterResources(cn), "metadata", "labels")
+	if err != nil {
+		return nil, err
+	}
+	return mcv, nil
 }
 
 func OAuthServerCertViewStub(cn string) *unstructured.Unstructured {

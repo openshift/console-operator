@@ -27,13 +27,10 @@ func DefaultAPIServerCAConfigMap(clusterName string, caBundle []byte, cr *operat
 }
 
 func APIServerCAConfigMapStub(clusterName string) *corev1.ConfigMap {
-	meta := util.SharedMeta()
-	meta.Name = APIServerCAConfigMapName(clusterName)
-	meta.Labels = util.LabelsForManagedClusterResources(clusterName)
-	meta.Labels[api.ManagedClusterAPIServerCertName] = ""
-	configMap := &corev1.ConfigMap{
-		ObjectMeta: meta,
-	}
+	configMap := ConsoleConfigMapStub()
+	configMap.Name = APIServerCAConfigMapName(clusterName)
+	configMap.Labels = util.LabelsForManagedClusterResources(clusterName)
+	configMap.Labels[api.ManagedClusterAPIServerCertName] = ""
 	return configMap
 }
 

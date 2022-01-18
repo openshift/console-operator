@@ -59,6 +59,10 @@ func TestDefaultManagedClustersConfigMap(t *testing.T) {
 				},
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:                       api.ManagedClusterConfigMapName,
 					Namespace:                  api.OpenShiftConsoleNamespace,
@@ -96,7 +100,10 @@ func TestManagedClusterStub(t *testing.T) {
 		{
 			name: "Test stubbing managed clusters config map",
 			want: &corev1.ConfigMap{
-				TypeMeta: metav1.TypeMeta{},
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:                       api.ManagedClusterConfigMapName,
 					Namespace:                  api.OpenShiftConsoleNamespace,
