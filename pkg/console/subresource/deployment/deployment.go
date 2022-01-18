@@ -61,13 +61,26 @@ type volumeConfig struct {
 	mappedKeys  map[string]string
 }
 
-func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, apiServerCAConfigMaps *corev1.ConfigMapList, serviceCAConfigMap *corev1.ConfigMap, oauthServingCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure, canMountCustomLogo bool, canMountManagedClusterConfigMap bool) *appsv1.Deployment {
+func DefaultDeployment(
+	operatorConfig *operatorv1.Console,
+	cm *corev1.ConfigMap,
+	apiServerCertConfigMaps *corev1.ConfigMapList,
+	managedClusterOAuthServerCertConfigMaps *corev1.ConfigMapList,
+	serviceCAConfigMap *corev1.ConfigMap,
+	localOAuthServingCertConfigMap *corev1.ConfigMap,
+	trustedCAConfigMap *corev1.ConfigMap,
+	managedClusterConfigMap *corev1.ConfigMap,
+	sec *corev1.Secret,
+	proxyConfig *configv1.Proxy,
+	infrastructureConfig *configv1.Infrastructure,
+	canMountCustomLogo bool,
+) *appsv1.Deployment {
 	deployment := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/console-deployment.yaml"))
 	withReplicas(deployment, infrastructureConfig)
 	withAffinity(deployment, infrastructureConfig, "ui")
 	withStrategy(deployment, infrastructureConfig)
-	withConsoleAnnotations(deployment, cm, serviceCAConfigMap, oauthServingCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig)
-	withConsoleVolumes(deployment, trustedCAConfigMap, apiServerCAConfigMaps, canMountCustomLogo, canMountManagedClusterConfigMap)
+	withConsoleAnnotations(deployment, cm, serviceCAConfigMap, localOAuthServingCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig)
+	withConsoleVolumes(deployment, apiServerCertConfigMaps, managedClusterOAuthServerCertConfigMaps, trustedCAConfigMap, managedClusterConfigMap, canMountCustomLogo)
 	withConsoleContainerImage(deployment, operatorConfig, proxyConfig)
 	withConsoleNodeSelector(deployment, infrastructureConfig)
 	util.AddOwnerRef(deployment, util.OwnerRefFrom(operatorConfig))
@@ -148,22 +161,33 @@ func withConsoleAnnotations(deployment *appsv1.Deployment, cm *corev1.ConfigMap,
 	deployment.Spec.Template.ObjectMeta.Annotations = podAnnotations
 }
 
-func withConsoleVolumes(deployment *appsv1.Deployment, trustedCAConfigMap *corev1.ConfigMap, apiServerCAConfigMaps *corev1.ConfigMapList, canMountCustomLogo bool, canMountManagedClusterConfigMap bool) {
+func withConsoleVolumes(
+	deployment *appsv1.Deployment,
+	apiServerCertConfigMaps *corev1.ConfigMapList,
+	oAuthServerCertConfigMaps *corev1.ConfigMapList,
+	trustedCAConfigMap *corev1.ConfigMap,
+	managedClusterConfigMap *corev1.ConfigMap,
+	canMountCustomLogo bool) {
 	volumeConfig := defaultVolumeConfig()
 
 	caBundle, caBundleExists := trustedCAConfigMap.Data["ca-bundle.crt"]
 	if caBundleExists && caBundle != "" {
 		volumeConfig = append(volumeConfig, trustedCAVolume())
 	}
+	if managedClusterConfigMap != nil {
+		volumeConfig = append(volumeConfig, managedClusterVolumeConfig())
+	}
 	if canMountCustomLogo {
 		volumeConfig = append(volumeConfig, customLogoVolume())
 	}
-	if canMountManagedClusterConfigMap {
-		volumeConfig = append(volumeConfig, managedClusterVolumeConfig())
+	if len(apiServerCertConfigMaps.Items) > 0 {
+		for _, apiServerCertConfigMap := range apiServerCertConfigMaps.Items {
+			volumeConfig = append(volumeConfig, apiServerCertVolumeConfig(apiServerCertConfigMap))
+		}
 	}
-	if len(apiServerCAConfigMaps.Items) > 0 {
-		for _, apiServerCAConfigMap := range apiServerCAConfigMaps.Items {
-			volumeConfig = append(volumeConfig, apiServerCAVolumeConfig(apiServerCAConfigMap))
+	if len(oAuthServerCertConfigMaps.Items) > 0 {
+		for _, oAuthServerCertConfigMap := range oAuthServerCertConfigMaps.Items {
+			volumeConfig = append(volumeConfig, oAuthServerCertVolumeConfig(oAuthServerCertConfigMap))
 		}
 	}
 
@@ -404,11 +428,21 @@ func managedClusterVolumeConfig() volumeConfig {
 	}
 }
 
-func apiServerCAVolumeConfig(configMap corev1.ConfigMap) volumeConfig {
+func apiServerCertVolumeConfig(configMap corev1.ConfigMap) volumeConfig {
 	name := configMap.GetName()
 	return volumeConfig{
 		name:        name,
-		path:        fmt.Sprintf("%s/%s", api.ManagedClusterAPIServerCAMountDir, name),
+		path:        fmt.Sprintf("%s/%s", api.ManagedClusterAPIServerCertMountDir, name),
+		readOnly:    true,
+		isConfigMap: true,
+	}
+}
+
+func oAuthServerCertVolumeConfig(configMap corev1.ConfigMap) volumeConfig {
+	name := configMap.GetName()
+	return volumeConfig{
+		name:        name,
+		path:        fmt.Sprintf("%s/%s", api.ManagedClusterOAuthServerCertMountDir, name),
 		readOnly:    true,
 		isConfigMap: true,
 	}

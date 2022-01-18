@@ -12,22 +12,20 @@ import (
 	// managedclusterviewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/action/v1beta1"
 )
 
-func DefaultViewIngressCert(cr *operatorv1.Console, cn string) *unstructured.Unstructured {
-	managedClusterView := ViewIngressCertStub(cn)
-	withDefaultViewIngressCertInfo(managedClusterView, cn)
-	return managedClusterView
-}
-
-func withDefaultViewIngressCertInfo(mcv *unstructured.Unstructured, cn string) {
+func DefaultOAuthServerCertView(cr *operatorv1.Console, cn string) *unstructured.Unstructured {
+	mcv := OAuthServerCertViewStub(cn)
+	unstructured.SetNestedField(mcv.Object, api.OAuthServerCertManagedClusterViewName, "metadata", "name")
 	unstructured.SetNestedField(mcv.Object, cn, "metadata", "namespace")
+	unstructured.SetNestedStringMap(mcv.Object, util.LabelsForManagedClusterResources(cn), "metadata", "labels")
+	return mcv
 }
 
-func ViewIngressCertStub(cn string) *unstructured.Unstructured {
-	return util.ReadUnstructuredOrDie(assets.MustAsset("managedclusterviews/console-managed-cluster-view-ingress-cert.yaml"))
+func OAuthServerCertViewStub(cn string) *unstructured.Unstructured {
+	return util.ReadUnstructuredOrDie(assets.MustAsset("managedclusterviews/console-oauth-server-cert.yaml"))
 }
 
 func GetCertBundle(mcv *unstructured.Unstructured) (string, error) {
-	cert, found, err := unstructured.NestedString(mcv.Object, "status", "result", "data", api.ManagedClusterIngressCertKey)
+	cert, found, err := unstructured.NestedString(mcv.Object, "status", "result", "data", "ca-bundle.crt")
 	if err != nil || !found || cert == "" {
 		return "", err
 	}

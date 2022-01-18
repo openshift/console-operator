@@ -48,6 +48,12 @@ func LabelsForDownloads() map[string]string {
 	}
 }
 
+func LabelsForManagedClusterResources(managedClusterName string) map[string]string {
+	labels := SharedLabels()
+	labels[api.ManagedClusterLabel] = managedClusterName
+	return labels
+}
+
 func SharedMeta() metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Name:        api.OpenShiftConsoleName,

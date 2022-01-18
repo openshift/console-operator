@@ -1,7 +1,5 @@
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
-metadata:
-  name: console-managed-cluster-action-oauth-create
 spec:
   actionType: Create
   kube:
@@ -9,6 +7,4 @@ spec:
     template:
       apiVersion: oauth.openshift.io/v1
       kind: OAuthClient
-      metadata:
-        name: console-managed-cluster-oauth-client
       grantMethod: auto

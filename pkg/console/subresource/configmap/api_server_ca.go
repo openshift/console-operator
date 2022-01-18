@@ -18,7 +18,7 @@ func DefaultAPIServerCAConfigMap(clusterName string, caBundle []byte, cr *operat
 
 	if caBundle != nil {
 		configMap.Data = map[string]string{
-			"ca.crt": string(caBundle),
+			api.ManagedClusterAPIServerCertKey: string(caBundle),
 		}
 	}
 
@@ -29,11 +29,8 @@ func DefaultAPIServerCAConfigMap(clusterName string, caBundle []byte, cr *operat
 func APIServerCAConfigMapStub(clusterName string) *corev1.ConfigMap {
 	meta := util.SharedMeta()
 	meta.Name = APIServerCAConfigMapName(clusterName)
-	meta.Labels = map[string]string{
-		api.ManagedClusterAPIServerCAName: "",
-		api.ManagedClusterLabel:           clusterName,
-		"app":                             "console",
-	}
+	meta.Labels = util.LabelsForManagedClusterResources(clusterName)
+	meta.Labels[api.ManagedClusterAPIServerCertName] = ""
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: meta,
 	}
@@ -41,5 +38,9 @@ func APIServerCAConfigMapStub(clusterName string) *corev1.ConfigMap {
 }
 
 func APIServerCAConfigMapName(clusterName string) string {
-	return fmt.Sprintf("%s-%s", clusterName, api.ManagedClusterAPIServerCAName)
+	return fmt.Sprintf("%s-%s", clusterName, api.ManagedClusterAPIServerCertName)
+}
+
+func APIServerCAFileMountPath(clusterName string) string {
+	return fmt.Sprintf("%s/%s/%s", api.ManagedClusterAPIServerCertMountDir, APIServerCAConfigMapName(clusterName), api.ManagedClusterAPIServerCertKey)
 }

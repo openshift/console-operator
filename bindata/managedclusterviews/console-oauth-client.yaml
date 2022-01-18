@@ -1,7 +1,5 @@
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
-metadata:
-  name: console-managed-cluster-view-oauth
 spec:
   scope:
     apiVersion: oauth.openshift.io/v1

@@ -1,30 +1,27 @@
 package managedclusterview
 
 import (
-	operatorv1 "github.com/openshift/api/operator/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	// openshift
 
+	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/assets"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	// acm - TODO conflicts adding package to go.mod with several dependencies
 	// managedclusterviewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/action/v1beta1"
 )
 
-func DefaultViewOAuthClient(cr *operatorv1.Console, cn string) *unstructured.Unstructured {
-	managedClusterView := ViewOAuthClientStub(cn)
-	withDefaultViewOAuthClientInfo(managedClusterView, cn)
-	return managedClusterView
-}
-
-func withDefaultViewOAuthClientInfo(mcv *unstructured.Unstructured, cn string) {
+func DefaultOAuthClientView(cn string) *unstructured.Unstructured {
+	mcv := OAuthClientViewStub()
+	unstructured.SetNestedField(mcv.Object, api.OAuthClientManagedClusterViewName, "metadata", "name")
 	unstructured.SetNestedField(mcv.Object, cn, "metadata", "namespace")
+	unstructured.SetNestedStringMap(mcv.Object, util.LabelsForManagedClusterResources(cn), "metadata", "labels")
+	return mcv
 }
 
-func ViewOAuthClientStub(cn string) *unstructured.Unstructured {
-	return util.ReadUnstructuredOrDie(assets.MustAsset("managedclusterviews/console-managed-cluster-view-oauth-client.yaml"))
+func OAuthClientViewStub() *unstructured.Unstructured {
+	return util.ReadUnstructuredOrDie(assets.MustAsset("managedclusterviews/console-oauth-client.yaml"))
 }
 
 func GetStatus(mcv *unstructured.Unstructured) (bool, error) {
@@ -52,16 +49,16 @@ func GetName(mcv *unstructured.Unstructured) (string, error) {
 
 func GetNamespace(mcv *unstructured.Unstructured) (string, error) {
 	namespace, found, err := unstructured.NestedString(mcv.Object, "metadata", "namespace")
-	if err != nil || !found || namespace == "" {
+	if err != nil || !found {
 		return "", err
 	}
 	return namespace, nil
 }
 
-func GetGroupVersionResource() schema.GroupVersionResource {
-	return schema.GroupVersionResource{
-		Group:    "view.open-cluster-management.io",
-		Version:  "v1beta1",
-		Resource: "managedclusterviews",
+func GetOAuthClientSecret(mcv *unstructured.Unstructured) (string, error) {
+	secret, found, err := unstructured.NestedString(mcv.Object, "status", "result", "secret")
+	if err != nil || !found {
+		return "", err
 	}
+	return secret, nil
 }

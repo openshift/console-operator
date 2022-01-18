@@ -43,7 +43,9 @@ func DefaultConfigMap(
 	activeConsoleRoute *routev1.Route,
 	useDefaultCAFile bool,
 	inactivityTimeoutSeconds int,
-	pluginsEndpoingMap map[string]string) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
+	pluginsEndpointMap map[string]string,
+	managedClusterConfigFile string,
+) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
 	defaultConfig, err := defaultBuilder.Host(activeConsoleRoute.Spec.Host).
@@ -53,7 +55,6 @@ func DefaultConfigMap(
 		OAuthServingCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
-		ManagedClusterConfigFile(fmt.Sprintf("%v/%v", api.ManagedClusterConfigMountDir, api.ManagedClusterConfigKey)).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate default console-config config: %v", err)
@@ -68,7 +69,7 @@ func DefaultConfigMap(
 		DocURL(operatorConfig.Spec.Customization.DocumentationBaseURL).
 		OAuthServingCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
-		Plugins(pluginsEndpoingMap).
+		Plugins(pluginsEndpointMap).
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
 		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).
 		CustomDeveloperCatalog(operatorConfig.Spec.Customization.DeveloperCatalog).
@@ -78,6 +79,7 @@ func DefaultConfigMap(
 		AddPage(operatorConfig.Spec.Customization.AddPage).
 		StatusPageID(statusPageId(operatorConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
+		ManagedClusterConfigFile(managedClusterConfigFile).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate user defined console-config config: %v", err)

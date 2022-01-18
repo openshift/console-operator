@@ -49,7 +49,6 @@ import (
 	routesinformers "github.com/openshift/client-go/route/informers/externalversions"
 
 	consolev1client "github.com/openshift/client-go/console/clientset/versioned"
-	// consolev1client "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
 	consoleinformers "github.com/openshift/client-go/console/informers/externalversions"
 
 	clusterclient "github.com/open-cluster-management/api/client/cluster/clientset/versioned"

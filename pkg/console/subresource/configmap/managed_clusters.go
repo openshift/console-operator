@@ -30,10 +30,7 @@ func DefaultManagedClustersConfigMap(operatorConfig *operatorv1.Console, managed
 func ManagedClustersConfigMapStub() *corev1.ConfigMap {
 	meta := util.SharedMeta()
 	meta.Name = api.ManagedClusterConfigMapName
-	meta.Labels = map[string]string{
-		"app":                   "console",
-		api.ManagedClusterLabel: "",
-	}
+	meta.Labels = util.LabelsForManagedClusterResources("")
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: meta,
 	}

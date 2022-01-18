@@ -38,6 +38,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		useDefaultCAFile         bool
 		inactivityTimeoutSeconds int
 		enabledPlugins           map[string]string
+		managedClusterConfigFile string
 	}
 	tests := []struct {
 		name string
@@ -65,6 +66,7 @@ func TestDefaultConfigMap(t *testing.T) {
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -82,7 +84,6 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
-managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -116,6 +117,7 @@ providers: {}
 				},
 				useDefaultCAFile:         false,
 				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -133,7 +135,6 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
-managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -154,7 +155,6 @@ providers: {}
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
-managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -176,6 +176,7 @@ customization:
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -193,7 +194,6 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
-managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -223,7 +223,6 @@ providers: {}
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
-managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -245,6 +244,7 @@ customization:
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -262,7 +262,6 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
-managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: ` + string(operatorv1.BrandDedicated) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -297,7 +296,6 @@ providers: {}
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
-managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -319,6 +317,7 @@ customization:
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -336,7 +335,6 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
-managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: ` + string(operatorv1.BrandDedicated) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -373,7 +371,6 @@ providers: {}
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
-managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -395,6 +392,7 @@ customization:
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -412,7 +410,6 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
-managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: ` + string(operatorv1.BrandDedicated) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -453,6 +450,7 @@ providers:
 				},
 				useDefaultCAFile:         false,
 				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -470,7 +468,6 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + customHostname + `
   masterPublicURL: ` + mockAPIServer + `
-managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -505,6 +502,7 @@ providers: {}
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 60,
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -523,7 +521,6 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
-managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -532,6 +529,58 @@ servingInfo:
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
 providers: {}
+`,
+				},
+			},
+		},
+		{
+			name: "Test operator config, with managedClusterConfigFile set",
+			args: args{
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL: mockAPIServer,
+					},
+				},
+				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
+					Spec: routev1.RouteSpec{
+						Host: host,
+					},
+				},
+				useDefaultCAFile:         true,
+				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "test",
+			},
+			want: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+customization:
+  branding: ` + DEFAULT_BRAND + `
+  documentationBaseURL: ` + DEFAULT_DOC_URL + `
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: {}
+managedClusterConfigFile: 'test'
 `,
 				},
 			},
@@ -561,6 +610,7 @@ providers: {}
 					"plugin1": "plugin1_url",
 					"plugin2": "plugin2_url",
 				},
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -578,7 +628,6 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
-managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -606,6 +655,7 @@ plugins:
 				tt.args.useDefaultCAFile,
 				tt.args.inactivityTimeoutSeconds,
 				tt.args.enabledPlugins,
+				tt.args.managedClusterConfigFile,
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below
@@ -752,7 +802,6 @@ func Test_extractYAML(t *testing.T) {
 					},
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
-managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -763,7 +812,6 @@ customization:
 			},
 			want: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
-managedClusterConfigFile: /var/managed-cluster-config/managed-clusters.yaml
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
