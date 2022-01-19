@@ -11,7 +11,7 @@ require (
 	github.com/go-test/deep v1.0.5
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/openshift/api v0.0.0-20210105115604-44119421ec6b
-	github.com/openshift/build-machinery-go v0.0.0-20200917070002-f171684f77ab
+	github.com/openshift/build-machinery-go v0.0.0-20211221163156-70201ca58bc0
 	github.com/openshift/client-go v0.0.0-20210112160336-8889f8b15bd6
 	github.com/openshift/library-go v0.0.0-20201123212217-43f358922ea0
 	github.com/pkg/profile v1.4.0 // indirect
