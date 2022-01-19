@@ -277,7 +277,7 @@ func (co *consoleOperator) SyncDeployment(
 	}
 
 	oAuthServerCertConfigMaps, oAuthServerCertConfigMapsErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).List(ctx, metav1.ListOptions{LabelSelector: api.ManagedClusterOAuthServerCertName})
-	if apiServerCertConfigMapsErr != nil {
+	if oAuthServerCertConfigMaps != nil {
 		klog.Warningf("Unable to list managed cluster OAuth server cert ConfigMaps. Multicluster will not be enabled: %v", oAuthServerCertConfigMapsErr)
 	}
 	requiredDeployment := deploymentsub.DefaultDeployment(

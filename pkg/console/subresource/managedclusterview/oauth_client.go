@@ -2,6 +2,7 @@ package managedclusterview
 
 import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
 	// openshift
 
@@ -14,11 +15,13 @@ import (
 
 func DefaultOAuthClientView(cn string) (*unstructured.Unstructured, error) {
 	mcv := OAuthClientViewStub()
-	err := unstructured.SetNestedField(mcv.Object, api.OAuthClientManagedClusterViewName, "metadata", "name")
-	err = unstructured.SetNestedField(mcv.Object, cn, "metadata", "namespace")
-	err = unstructured.SetNestedStringMap(mcv.Object, util.LabelsForManagedClusterResources(cn), "metadata", "labels")
-	if err != nil {
-		return nil, err
+	var errors []error
+	errors = append(errors, unstructured.SetNestedField(mcv.Object, api.OAuthClientManagedClusterViewName, "metadata", "name"))
+	errors = append(errors, unstructured.SetNestedField(mcv.Object, cn, "metadata", "namespace"))
+	errors = append(errors, unstructured.SetNestedStringMap(mcv.Object, util.LabelsForManagedClusterResources(cn), "metadata", "labels"))
+	aggregateErrors := utilerrors.NewAggregate(errors)
+	if aggregateErrors != nil {
+		return nil, aggregateErrors
 	}
 	return mcv, nil
 }
@@ -43,25 +46,16 @@ func GetStatus(mcv *unstructured.Unstructured) (bool, error) {
 }
 
 func GetName(mcv *unstructured.Unstructured) (string, error) {
-	name, found, err := unstructured.NestedString(mcv.Object, "metadata", "name")
-	if err != nil || !found || name == "" {
-		return "", err
-	}
-	return name, nil
+	name, _, err := unstructured.NestedString(mcv.Object, "metadata", "name")
+	return name, err
 }
 
 func GetNamespace(mcv *unstructured.Unstructured) (string, error) {
-	namespace, found, err := unstructured.NestedString(mcv.Object, "metadata", "namespace")
-	if err != nil || !found {
-		return "", err
-	}
-	return namespace, nil
+	namespace, _, err := unstructured.NestedString(mcv.Object, "metadata", "namespace")
+	return namespace, err
 }
 
 func GetOAuthClientSecret(mcv *unstructured.Unstructured) (string, error) {
-	secret, found, err := unstructured.NestedString(mcv.Object, "status", "result", "secret")
-	if err != nil || !found {
-		return "", err
-	}
-	return secret, nil
+	secret, _, err := unstructured.NestedString(mcv.Object, "status", "result", "secret")
+	return secret, err
 }

@@ -2,6 +2,7 @@ package managedclusteraction
 
 import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
 	// openshift
 	"github.com/openshift/console-operator/pkg/api"
@@ -13,14 +14,16 @@ import (
 
 func DefaultCreateOAuthClientAction(cn string, sec string, redirects []string) (*unstructured.Unstructured, error) {
 	mca := CreateOAuthClientStub(cn)
-	err := unstructured.SetNestedField(mca.Object, api.CreateOAuthClientManagedClusterActionName, "metadata", "name")
-	err = unstructured.SetNestedField(mca.Object, cn, "metadata", "namespace")
-	err = unstructured.SetNestedStringMap(mca.Object, util.LabelsForManagedClusterResources(cn), "metadata", "labels")
-	err = unstructured.SetNestedField(mca.Object, sec, "spec", "kube", "template", "secret")
-	err = unstructured.SetNestedField(mca.Object, api.ManagedClusterOAuthClientName, "spec", "kube", "template", "metadata", "name")
-	err = unstructured.SetNestedStringSlice(mca.Object, redirects, "spec", "kube", "template", "redirectURIs")
-	if err != nil {
-		return nil, err
+	var errors []error
+	errors = append(errors, unstructured.SetNestedField(mca.Object, api.CreateOAuthClientManagedClusterActionName, "metadata", "name"))
+	errors = append(errors, unstructured.SetNestedField(mca.Object, cn, "metadata", "namespace"))
+	errors = append(errors, unstructured.SetNestedStringMap(mca.Object, util.LabelsForManagedClusterResources(cn), "metadata", "labels"))
+	errors = append(errors, unstructured.SetNestedField(mca.Object, sec, "spec", "kube", "template", "secret"))
+	errors = append(errors, unstructured.SetNestedField(mca.Object, api.ManagedClusterOAuthClientName, "spec", "kube", "template", "metadata", "name"))
+	errors = append(errors, unstructured.SetNestedStringSlice(mca.Object, redirects, "spec", "kube", "template", "redirectURIs"))
+	aggregateError := utilerrors.NewAggregate(errors)
+	if aggregateError != nil {
+		return nil, aggregateError
 	}
 	return mca, nil
 }

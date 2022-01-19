@@ -13,11 +13,8 @@ import (
 
 func DefaultManagedClusterOAuthServerCertConfigMap(clusterName string, caBundle string, cr *operatorv1.Console) *corev1.ConfigMap {
 	configMap := ManagedClusterOAuthServerCertConfigMapStub(clusterName)
-
-	if caBundle != "" {
-		configMap.Data = map[string]string{
-			api.ManagedClusterOAuthServerCertKey: caBundle,
-		}
+	configMap.Data = map[string]string{
+		api.ManagedClusterOAuthServerCertKey: caBundle,
 	}
 
 	util.AddOwnerRef(configMap, util.OwnerRefFrom(cr))

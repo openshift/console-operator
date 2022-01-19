@@ -3,6 +3,7 @@ package managedclusterview
 import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
 	// openshift
 	"github.com/openshift/console-operator/pkg/api"
@@ -14,11 +15,13 @@ import (
 
 func DefaultOAuthServerCertView(cr *operatorv1.Console, cn string) (*unstructured.Unstructured, error) {
 	mcv := OAuthServerCertViewStub(cn)
-	err := unstructured.SetNestedField(mcv.Object, api.OAuthServerCertManagedClusterViewName, "metadata", "name")
-	err = unstructured.SetNestedField(mcv.Object, cn, "metadata", "namespace")
-	err = unstructured.SetNestedStringMap(mcv.Object, util.LabelsForManagedClusterResources(cn), "metadata", "labels")
-	if err != nil {
-		return nil, err
+	var errors []error
+	errors = append(errors, unstructured.SetNestedField(mcv.Object, api.OAuthServerCertManagedClusterViewName, "metadata", "name"))
+	errors = append(errors, unstructured.SetNestedField(mcv.Object, cn, "metadata", "namespace"))
+	errors = append(errors, unstructured.SetNestedStringMap(mcv.Object, util.LabelsForManagedClusterResources(cn), "metadata", "labels"))
+	aggregateError := utilerrors.NewAggregate(errors)
+	if aggregateError != nil {
+		return nil, aggregateError
 	}
 	return mcv, nil
 }
