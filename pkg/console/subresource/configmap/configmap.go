@@ -21,7 +21,7 @@ import (
 const (
 	consoleConfigYamlFile = "console-config.yaml"
 	defaultLogoutURL      = ""
-	pluginProxyEndpoint   = "/api/proxy/"
+	pluginProxyEndpoint   = "/api/proxy/plugin/"
 )
 
 func getApiUrl(infrastructureConfig *configv1.Infrastructure) string {

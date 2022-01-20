@@ -564,8 +564,8 @@ providers: {}
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
 				availablePlugins: []*v1alpha1.ConsolePlugin{
-					testPlugins("plugin1", "serviceName1", "serviceNamespace1"),
-					testPluginsWithProxy("plugin2", "serviceName2", "serviceNamespace2"),
+					testPlugins("pluginName1", "serviceName1", "serviceNamespace1"),
+					testPluginsWithProxy("pluginName2", "serviceName2", "serviceNamespace2"),
 				},
 			},
 			want: &corev1.ConfigMap{
@@ -593,8 +593,8 @@ servingInfo:
   keyFile: /var/serving-cert/tls.key
 providers: {}
 plugins:
-  plugin1: https://serviceName1.serviceNamespace1.svc.cluster.local:8443/
-  plugin2: https://serviceName2.serviceNamespace2.svc.cluster.local:8443/
+  pluginName1: https://serviceName1.serviceNamespace1.svc.cluster.local:8443/
+  pluginName2: https://serviceName2.serviceNamespace2.svc.cluster.local:8443/
 proxy:
   services:
   - authorize: true
@@ -613,7 +613,7 @@ HQ4EFgQU0vhI4OPGEOqT+VAWwxdhVvcmgdIwHwYDVR0jBBgwFoAU0vhI4OPGEOqT` + "\n" + `
 nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 +tW+O/PoE7B3tuY=` + "\n" + `
 -----END CERTIFICATE-----'
-    consoleAPIPath: /api/proxy/plugin2/test-alias/
+    consoleAPIPath: /api/proxy/plugin/pluginName2/test-alias/
     endpoint: https://proxy-serviceName2.proxy-serviceNamespace2.svc.cluster.local:9991
 `,
 				},
