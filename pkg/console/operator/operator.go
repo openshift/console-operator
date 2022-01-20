@@ -128,8 +128,8 @@ func NewConsoleOperator(
 	managedConfigMapInformer := managedCoreV1.ConfigMaps()
 	serviceInformer := coreV1.Services()
 	configV1Informers := configInformer.Config().V1()
-	configNameFilter := util.NamesFilter(api.ConfigResourceName)
-	targetNameFilter := util.NamesFilter(api.OpenShiftConsoleName)
+	configNameFilter := util.IncludeNamesFilter(api.ConfigResourceName)
+	targetNameFilter := util.IncludeNamesFilter(api.OpenShiftConsoleName)
 
 	return factory.New().
 		WithFilteredEventsInformers( // configs
@@ -149,13 +149,13 @@ func NewConsoleOperator(
 	).WithInformers(
 		consolePluginInformer.Informer(),
 	).WithFilteredEventsInformers(
-		util.NamesFilter(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName, api.OpenShiftCustomLogoConfigMapName, api.TrustedCAConfigMapName),
+		util.LabelFilter(map[string]string{"app": "console"}),
 		configMapInformer.Informer(),
 	).WithFilteredEventsInformers(
-		util.NamesFilter(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName),
+		util.IncludeNamesFilter(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName),
 		managedConfigMapInformer.Informer(),
 	).WithFilteredEventsInformers(
-		util.NamesFilter(deployment.ConsoleOauthConfigName),
+		util.IncludeNamesFilter(deployment.ConsoleOauthConfigName),
 		secretsInformer.Informer(),
 	).ResyncEvery(time.Minute).WithSync(c.Sync).
 		ToController("ConsoleOperator", recorder.WithComponentSuffix("console-operator"))

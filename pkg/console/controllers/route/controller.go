@@ -79,14 +79,14 @@ func NewRouteSyncController(
 
 	return factory.New().
 		WithFilteredEventsInformers( // configs
-			util.NamesFilter(api.ConfigResourceName),
+			util.IncludeNamesFilter(api.ConfigResourceName),
 			configV1Informers.Consoles().Informer(),
 			operatorConfigInformer.Informer(),
 			configV1Informers.Ingresses().Informer(),
 		).WithInformers(
 		secretInformer.Informer(),
 	).WithFilteredEventsInformers( // route
-		util.NamesFilter(routeName, routesub.GetCustomRouteName(routeName)),
+		util.IncludeNamesFilter(routeName, routesub.GetCustomRouteName(routeName)),
 		routeInformer.Informer(),
 	).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
 		ToController(fmt.Sprintf("%sRouteController", strings.Title(routeName)), recorder.WithComponentSuffix(fmt.Sprintf("%s-route-controller", routeName)))

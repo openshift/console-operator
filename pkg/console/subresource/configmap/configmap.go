@@ -46,7 +46,9 @@ func DefaultConfigMap(
 	activeConsoleRoute *routev1.Route,
 	useDefaultCAFile bool,
 	inactivityTimeoutSeconds int,
-	availablePlugins []*v1alpha1.ConsolePlugin) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
+	availablePlugins []*v1alpha1.ConsolePlugin,
+	managedClusterConfigFile string,
+) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
 	defaultConfig, err := defaultBuilder.Host(activeConsoleRoute.Spec.Host).
@@ -81,6 +83,7 @@ func DefaultConfigMap(
 		AddPage(operatorConfig.Spec.Customization.AddPage).
 		StatusPageID(statusPageId(operatorConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
+		ManagedClusterConfigFile(managedClusterConfigFile).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate user defined console-config config: %v", err)
@@ -177,12 +180,13 @@ func EmptyPublicConfig() *corev1.ConfigMap {
 	return config
 }
 
+func ConsoleConfigMapStub() *corev1.ConfigMap {
+	return resourceread.ReadConfigMapV1OrDie(assets.MustAsset("configmaps/console-configmap.yaml"))
+}
+
 func Stub() *corev1.ConfigMap {
-	meta := util.SharedMeta()
-	meta.Name = api.OpenShiftConsoleConfigMapName
-	configMap := &corev1.ConfigMap{
-		ObjectMeta: meta,
-	}
+	configMap := ConsoleConfigMapStub()
+	configMap.Name = api.OpenShiftConsoleConfigMapName
 	return configMap
 }
 

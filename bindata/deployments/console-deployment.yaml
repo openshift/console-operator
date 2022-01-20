@@ -23,7 +23,7 @@ spec:
         target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
     spec:
       nodeSelector:
-        node-role.kubernetes.io/master: ''
+        node-role.kubernetes.io/master: ""
       restartPolicy: Always
       serviceAccountName: console
       schedulerName: default-scheduler
@@ -49,13 +49,13 @@ spec:
               exec:
                 command:
                   - sleep
-                  - '25'
+                  - "25"
           name: console
           command:
             - /opt/bridge/bin/bridge
-            - '--public-dir=/opt/bridge/static'
-            - '--config=/var/console-config/console-config.yaml'
-            - '--service-ca-file=/var/service-ca/service-ca.crt'
+            - "--public-dir=/opt/bridge/static"
+            - "--config=/var/console-config/console-config.yaml"
+            - "--service-ca-file=/var/service-ca/service-ca.crt"
           livenessProbe:
             httpGet:
               path: /health

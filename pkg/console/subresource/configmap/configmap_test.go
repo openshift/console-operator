@@ -56,6 +56,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		useDefaultCAFile         bool
 		inactivityTimeoutSeconds int
 		availablePlugins         []*v1alpha1.ConsolePlugin
+		managedClusterConfigFile string
 	}
 	tests := []struct {
 		name string
@@ -83,8 +84,13 @@ func TestDefaultConfigMap(t *testing.T) {
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -133,8 +139,13 @@ providers: {}
 				},
 				useDefaultCAFile:         false,
 				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -191,8 +202,13 @@ customization:
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -209,7 +225,7 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
 customization:
-  branding: online 
+  branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
 servingInfo:
   bindAddress: https://[::]:8443
@@ -258,8 +274,13 @@ customization:
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -330,8 +351,13 @@ customization:
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -404,8 +430,13 @@ customization:
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -428,7 +459,7 @@ servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
-providers: 
+providers:
   statuspageID: id-1234
 `,
 				},
@@ -461,8 +492,13 @@ providers:
 				},
 				useDefaultCAFile:         false,
 				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -512,8 +548,13 @@ providers: {}
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 60,
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -543,6 +584,62 @@ providers: {}
 			},
 		},
 		{
+			name: "Test operator config, with managedClusterConfigFile set",
+			args: args{
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL: mockAPIServer,
+					},
+				},
+				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
+					Spec: routev1.RouteSpec{
+						Host: host,
+					},
+				},
+				useDefaultCAFile:         true,
+				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "test",
+			},
+			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+customization:
+  branding: ` + DEFAULT_BRAND + `
+  documentationBaseURL: ` + DEFAULT_DOC_URL + `
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: {}
+managedClusterConfigFile: 'test'
+`,
+				},
+			},
+		},
+		{
 			name: "Test operator config, with enabledPlugins set",
 			args: args{
 				operatorConfig: &operatorv1.Console{},
@@ -567,8 +664,13 @@ providers: {}
 					testPlugins("pluginName1", "serviceName1", "serviceNamespace1"),
 					testPluginsWithProxy("pluginName2", "serviceName2", "serviceNamespace2"),
 				},
+				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,
@@ -631,6 +733,7 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 				tt.args.useDefaultCAFile,
 				tt.args.inactivityTimeoutSeconds,
 				tt.args.availablePlugins,
+				tt.args.managedClusterConfigFile,
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below
@@ -715,6 +818,10 @@ func TestStub(t *testing.T) {
 		{
 			name: "Testing Stub function configmap",
 			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        api.OpenShiftConsoleConfigMapName,
 					Namespace:   api.OpenShiftConsoleNamespace,

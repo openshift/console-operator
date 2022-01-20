@@ -28,9 +28,9 @@ roleRef:
   name: console-extensions-reader
   apiGroup: rbac.authorization.k8s.io
 subjects:
-- kind: Group
-  name: system:authenticated
-  apiGroup: rbac.authorization.k8s.io
+  - kind: Group
+    name: system:authenticated
+    apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -83,7 +83,7 @@ metadata:
 subjects:
   - kind: Group
     apiGroup: rbac.authorization.k8s.io
-    name: 'system:authenticated'
+    name: "system:authenticated"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -108,3 +108,21 @@ subjects:
   - kind: ServiceAccount
     name: console
     namespace: openshift-console
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: console-operator-tech-preview-only
+  annotations:
+    release.openshift.io/feature-gate: "TechPreviewNoUpgrade"
+    include.release.openshift.io/ibm-cloud-managed: "true"
+    include.release.openshift.io/self-managed-high-availability: "true"
+    include.release.openshift.io/single-node-developer: "true"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: console-operator-tech-preview-only
+subjects:
+  - kind: ServiceAccount
+    name: console-operator
+    namespace: openshift-console-operator

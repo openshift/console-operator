@@ -46,6 +46,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	inactivityTimeoutSeconds   int
 	pluginsList                map[string]string
 	proxyServices              []ProxyService
+	managedClusterConfigFile   string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -132,17 +133,23 @@ func (b *ConsoleServerCLIConfigBuilder) Proxy(proxyServices []ProxyService) *Con
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) ManagedClusterConfigFile(file string) *ConsoleServerCLIConfigBuilder {
+	b.managedClusterConfigFile = file
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
-		Kind:          "ConsoleConfig",
-		APIVersion:    "console.openshift.io/v1",
-		Auth:          b.auth(),
-		ClusterInfo:   b.clusterInfo(),
-		Customization: b.customization(),
-		ServingInfo:   b.servingInfo(),
-		Providers:     b.providers(),
-		Plugins:       b.plugins(),
-		Proxy:         b.proxy(),
+		Kind:                     "ConsoleConfig",
+		APIVersion:               "console.openshift.io/v1",
+		Auth:                     b.auth(),
+		ClusterInfo:              b.clusterInfo(),
+		Customization:            b.customization(),
+		ServingInfo:              b.servingInfo(),
+		Providers:                b.providers(),
+		Plugins:                  b.plugins(),
+		Proxy:                    b.proxy(),
+		ManagedClusterConfigFile: b.managedClusterConfigFile,
 	}
 }
 
