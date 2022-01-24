@@ -75,6 +75,18 @@ func (tc *testCaseConfig) checkCustomRouteWasRemoved(t *testing.T, client *frame
 	}
 }
 
+func (tc *testCaseConfig) checkRouteCustomTLSWasSet(t *testing.T, client *framework.ClientSet) {
+	for _, routeTestConfig := range tc.RouteTestConfigs {
+		checkCustomTLSWasSet(t, client, routeTestConfig.DefaultRouteName, routeTestConfig.CustomTLSSecretName)
+	}
+}
+
+func (tc *testCaseConfig) checkRouteCustomTLSWasUnset(t *testing.T, client *framework.ClientSet) {
+	for _, routeTestConfig := range tc.RouteTestConfigs {
+		checkCustomTLSWasUnset(t, client, routeTestConfig.DefaultRouteName)
+	}
+}
+
 func setupCustomURLTestCase(t *testing.T, testCaseConfig *testCaseConfig) (*framework.ClientSet, *operatorsv1.Console) {
 	client, operatorConfig := framework.StandardSetup(t)
 	if testCaseConfig != nil {
@@ -133,6 +145,27 @@ func TestIngressConsoleComponentRouteWithTLS(t *testing.T) {
 	testConfig.checkCustomRouteWasCreated(t, client)
 	unsetIngressConfigComponentRoute(t, client)
 	testConfig.checkCustomRouteWasRemoved(t, client)
+}
+
+// Tests default route hostname set on the Ingress config with only custom TLS
+func TestIngressConsoleComponentRouteWithCustomTLS(t *testing.T) {
+	testConfig := &testCaseConfig{
+		RouteTestConfigs: []routeTestConfig{
+			{
+				DefaultRouteName:          api.OpenShiftConsoleRouteName,
+				CustomRouteName:           api.OpenShiftConsoleRouteName,
+				CustomRouteHostnamePrefix: api.OpenShiftConsoleRouteName,
+				CustomTLSSecretName:       consoleRouteCustomTLSSecretName,
+				LegacySetup:               false,
+			},
+		},
+	}
+	client, _ := setupCustomURLTestCase(t, testConfig)
+	defer cleanupCustomURLTestCase(t, client)
+
+	testConfig.checkRouteCustomTLSWasSet(t, client)
+	unsetIngressConfigComponentRoute(t, client)
+	testConfig.checkRouteCustomTLSWasUnset(t, client)
 }
 
 func TestIngressDownloadsComponentRoute(t *testing.T) {
@@ -269,6 +302,26 @@ func TestLegacyCustomURLWithTLS(t *testing.T) {
 	testConfig.checkCustomRouteWasRemoved(t, client)
 }
 
+func TestLegacyConsoleComponentRouteWithCustomTLS(t *testing.T) {
+	testConfig := &testCaseConfig{
+		RouteTestConfigs: []routeTestConfig{
+			{
+				DefaultRouteName:          api.OpenShiftConsoleRouteName,
+				CustomRouteName:           api.OpenShiftConsoleRouteName,
+				CustomRouteHostnamePrefix: api.OpenShiftConsoleRouteName,
+				CustomTLSSecretName:       consoleRouteCustomTLSSecretName,
+				LegacySetup:               true,
+			},
+		},
+	}
+	client, _ := setupCustomURLTestCase(t, testConfig)
+	defer cleanupCustomURLTestCase(t, client)
+
+	testConfig.checkRouteCustomTLSWasSet(t, client)
+	unsetOperatorConfigRoute(t, client)
+	testConfig.checkRouteCustomTLSWasUnset(t, client)
+}
+
 func TestLegacyCustomURLWithIngressConsoleComponentRoute(t *testing.T) {
 	testConfig := &testCaseConfig{
 		RouteTestConfigs: []routeTestConfig{
@@ -327,6 +380,51 @@ func checkCustomRouteWasRemoved(t *testing.T, client *framework.ClientSet, route
 		if err != nil {
 			return true, err
 		}
+		return false, nil
+	})
+	if err != nil {
+		t.Errorf("error: %s", err)
+	}
+}
+
+func checkCustomTLSWasSet(t *testing.T, client *framework.ClientSet, routeName string, customSecretName string) {
+	route := &routev1.Route{}
+	customSecret, err := client.Core.Secrets(api.OpenShiftConfigNamespace).Get(context.TODO(), customSecretName, v1.GetOptions{})
+	if err != nil {
+		t.Fatalf("could not get custom TLS secret, %v", err)
+	}
+	err = wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
+		route, err = client.Routes.Routes(api.OpenShiftConsoleNamespace).Get(context.TODO(), routeName, v1.GetOptions{})
+		if err != nil {
+			return true, err
+		}
+
+		customTLS, err := routesub.GetCustomTLS(customSecret)
+		if err != nil {
+			return true, err
+		}
+
+		if route.Spec.TLS.Certificate == customTLS.Certificate && route.Spec.TLS.Key == customTLS.Key {
+			return true, nil
+		}
+
+		return false, nil
+	})
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
+}
+
+func checkCustomTLSWasUnset(t *testing.T, client *framework.ClientSet, routeName string) {
+	err := wait.Poll(1*time.Second, 20*time.Second, func() (stop bool, err error) {
+		route, err := client.Routes.Routes(api.OpenShiftConsoleNamespace).Get(context.TODO(), routeName, v1.GetOptions{})
+		if err != nil {
+			return true, err
+		}
+		if len(route.Spec.TLS.Certificate) == 0 && len(route.Spec.TLS.Key) == 0 {
+			return true, nil
+		}
+
 		return false, nil
 	})
 	if err != nil {
