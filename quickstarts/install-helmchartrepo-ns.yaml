@@ -46,25 +46,19 @@ spec:
         1. Click the **Resources dropdown** menu and select
         **ProjectHelmChartRepository**.
 
-        1. Click **Create Project Helm Chart Repository** to bring up the YAML
+        1. Click **Create ProjectHelmChartRepository** to bring up the YAML
         editor.
 
         1. Replace the contents of the YAML editor with:
 
             ```
             apiVersion: helm.openshift.io/v1beta1
-
             kind: ProjectHelmChartRepository
-
             metadata:
-
               name: my-helm-chart-repo
-
             spec:
-
               connectionConfig:
                 url: 'https://raw.githubusercontent.com/Azure-Samples/helm-charts/master/docs'
-
               name: My Helm Chart Repo
 
             ```
@@ -85,7 +79,7 @@ spec:
           1. On the **+Add** page, click **Helm Chart** in the **Developer
           Catalog** tile. 
 
-          1. Do you see **My Helm Chart Repo** as an available catalog in the
+          1. Do you see **My Helm Chart Repo** in the
           **Chart Repositories** filter?
           
       summary:
