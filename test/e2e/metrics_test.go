@@ -52,6 +52,8 @@ func cleanUpMetricsEndpointTestCase(t *testing.T, client *framework.ClientSet) {
 // 	oc exec -it console-operator-<pod-id> /bin/bash
 // 	curl --insecure -H "Authorization: Bearer <token>  https://localhost:8443/metrics | grep console_url
 func TestMetricsEndpoint(t *testing.T) {
+	// TODO Fix this flaky test case - https://bugzilla.redhat.com/show_bug.cgi?id=2046497
+	t.Skip("Skipping TestMetricsEndpoint case. See https://bugzilla.redhat.com/show_bug.cgi?id=2046497")
 	client, _ := setupMetricsEndpointTestCase(t)
 	defer cleanUpMetricsEndpointTestCase(t, client)
 
