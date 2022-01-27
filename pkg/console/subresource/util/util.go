@@ -8,7 +8,9 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog/v2"
 
 	operatorv1 "github.com/openshift/api/operator/v1"
@@ -44,6 +46,12 @@ func LabelsForDownloads() map[string]string {
 		"app":       api.OpenShiftConsoleName,
 		"component": api.DownloadsResourceName,
 	}
+}
+
+func LabelsForManagedClusterResources(managedClusterName string) map[string]string {
+	labels := SharedLabels()
+	labels[api.ManagedClusterLabel] = managedClusterName
+	return labels
 }
 
 func SharedMeta() metav1.ObjectMeta {
@@ -112,4 +120,15 @@ func HTTPS(host string) string {
 	}
 	secured := fmt.Sprintf("%s%s", protocol, host)
 	return secured
+}
+
+// TODO remove when we update library-go to a version that includes this
+// borrowed from library-go
+// https://github.com/openshift/library-go/blob/master/pkg/operator/resource/resourceread/unstructured.go
+func ReadUnstructuredOrDie(objBytes []byte) *unstructured.Unstructured {
+	udi, _, err := scheme.Codecs.UniversalDecoder().Decode(objBytes, nil, &unstructured.Unstructured{})
+	if err != nil {
+		panic(err)
+	}
+	return udi.(*unstructured.Unstructured)
 }

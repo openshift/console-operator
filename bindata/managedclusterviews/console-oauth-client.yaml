@@ -1,0 +1,7 @@
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+spec:
+  scope:
+    apiVersion: oauth.openshift.io/v1
+    resource: OAuthClient
+    name: console-managed-cluster-oauth-client

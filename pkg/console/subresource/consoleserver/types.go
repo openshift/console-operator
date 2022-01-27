@@ -11,15 +11,16 @@ package consoleserver
 
 // Config is the top-level console server cli configuration.
 type Config struct {
-	APIVersion    string `yaml:"apiVersion"`
-	Kind          string `yaml:"kind"`
-	ServingInfo   `yaml:"servingInfo"`
-	ClusterInfo   `yaml:"clusterInfo"`
-	Auth          `yaml:"auth"`
-	Customization `yaml:"customization"`
-	Providers     `yaml:"providers"`
-	Plugins       map[string]string `yaml:"plugins,omitempty"`
-	Proxy         Proxy             `yaml:"proxy,omitempty"`
+	APIVersion               string `yaml:"apiVersion"`
+	Kind                     string `yaml:"kind"`
+	ServingInfo              `yaml:"servingInfo"`
+	ClusterInfo              `yaml:"clusterInfo"`
+	Auth                     `yaml:"auth"`
+	Customization            `yaml:"customization"`
+	Providers                `yaml:"providers"`
+	Plugins                  map[string]string `yaml:"plugins,omitempty"`
+	Proxy                    Proxy             `yaml:"proxy,omitempty"`
+	ManagedClusterConfigFile string            `yaml:"managedClusterConfigFile,omitempty"`
 }
 
 type Proxy struct {
@@ -135,4 +136,24 @@ type HelmChartRepo struct {
 
 type Helm struct {
 	ChartRepo HelmChartRepo `yaml:"chartRepository"`
+}
+
+// ManagedClusterAPIServerConfig enables proxying managed cluster API server requests
+type ManagedClusterAPIServerConfig struct {
+	URL    string `json:"url" yaml:"url"`
+	CAFile string `json:"caFile" yaml:"caFile"`
+}
+
+// ManagedClusterOauthConfig enables proxying managed cluster auth
+type ManagedClusterOAuthConfig struct {
+	ClientID     string `json:"clientID" yaml:"clientID"`
+	ClientSecret string `json:"clientSecret" yaml:"clientSecret"`
+	CAFile       string `json:"caFile" yaml:"caFile"`
+}
+
+// ManagedClusterConfig enables proxying to an ACM managed cluster
+type ManagedClusterConfig struct {
+	Name      string                        `json:"name" yaml:"name"` // ManagedCluster name, provided through ACM
+	APIServer ManagedClusterAPIServerConfig `json:"apiServer" yaml:"apiServer"`
+	Oauth     ManagedClusterOAuthConfig     `json:"oauth" yaml:"oauth"`
 }

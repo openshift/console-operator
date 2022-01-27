@@ -5,8 +5,13 @@ metadata:
   name: version
 spec:
   overrides:
-  - kind: Deployment
-    name: console-operator
-    namespace: openshift-console-operator
-    unmanaged: true
-    group: apps/v1
+    - kind: Deployment
+      name: console-operator
+      namespace: openshift-console-operator
+      unmanaged: true
+      group: apps
+    - kind: ClusterRole
+      name: console-operator
+      namespace: ""
+      unmanaged: true
+      group: rbac.authorization.k8s.io
