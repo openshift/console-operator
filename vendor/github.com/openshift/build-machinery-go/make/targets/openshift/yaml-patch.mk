@@ -1,3 +1,5 @@
+ifndef _YAML_PATCH_MK_
+_YAML_PATCH_MK_ := defined
 self_dir :=$(dir $(lastword $(MAKEFILE_LIST)))
 
 YAML_PATCH ?=$(PERMANENT_TMP_GOPATH)/bin/yaml-patch
@@ -8,7 +10,7 @@ ensure-yaml-patch:
 ifeq "" "$(wildcard $(YAML_PATCH))"
 	$(info Installing yaml-patch into '$(YAML_PATCH)')
 	mkdir -p '$(yaml_patch_dir)'
-	curl -s -f -L https://github.com/krishicks/yaml-patch/releases/download/v0.0.10/yaml_patch_$(GOHOSTOS) -o '$(YAML_PATCH)'
+	curl -s -f -L https://github.com/pivotal-cf/yaml-patch/releases/download/v0.0.11/yaml_patch_$(GOHOSTOS) -o '$(YAML_PATCH)'
 	chmod +x '$(YAML_PATCH)';
 else
 	$(info Using existing yaml-patch from "$(YAML_PATCH)")
@@ -30,3 +32,4 @@ include $(addprefix $(self_dir), \
 	../../lib/golang.mk \
 	../../lib/tmp.mk \
 )
+endif
