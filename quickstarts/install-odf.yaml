@@ -15,6 +15,17 @@ spec:
     **Red Hat OpenShift® Data Foundation** is persistent software-defined storage integrated with and optimized for Red Hat OpenShift Container Platform. 
     
       Dynamic, stateful, and highly available container-native storage can be provisioned and de-provisioned on demand as an integral part of the OpenShift administrator console.
+  accessReviewResources:
+  - group: operators.coreos.com
+    resource: operatorgroups
+    verb: list
+  - group: packages.operators.coreos.com
+    resource: packagemanifests
+    verb: list
+  - group: operators.coreos.com
+    resource: subscriptions
+    verb: create
+    namespace: openshift-storage
   tasks:
   - title: Install OpenShift Data Foundation
     description: |- 
