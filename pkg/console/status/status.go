@@ -54,6 +54,12 @@ func HandleAvailable(typePrefix string, reason string, err error) v1helpers.Upda
 	return v1helpers.UpdateConditionFn(condition)
 }
 
+func HandleUpgradable(typePrefix string, reason string, err error) v1helpers.UpdateStatusFunc {
+	conditionType := typePrefix + operatorsv1.OperatorStatusTypeUpgradeable
+	condition := handleCondition(conditionType, reason, err)
+	return v1helpers.UpdateConditionFn(condition)
+}
+
 // HandleProgressingOrDegraded exists until we remove type SyncError
 // If isSyncError
 // - Type suffix will be set to Progressing
@@ -91,7 +97,7 @@ func handleCondition(conditionTypeWithSuffix string, reason string, err error) o
 
 // Available is an inversion of the other conditions
 func setConditionValue(conditionType string, err error) operatorsv1.ConditionStatus {
-	if strings.HasSuffix(conditionType, operatorsv1.OperatorStatusTypeAvailable) {
+	if strings.HasSuffix(conditionType, operatorsv1.OperatorStatusTypeAvailable) || strings.HasSuffix(conditionType, operatorsv1.OperatorStatusTypeUpgradeable) {
 		if err != nil {
 			return operatorsv1.ConditionFalse
 		}

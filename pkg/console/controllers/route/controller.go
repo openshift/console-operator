@@ -128,12 +128,14 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 	// route into inaccessible state.
 	_, customRouteErrReason, customRouteErr := c.SyncCustomRoute(ctx, routeConfig, controllerContext)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("CustomRouteSync", customRouteErrReason, customRouteErr))
+	statusHandler.AddCondition(status.HandleUpgradable("CustomRouteSync", customRouteErrReason, customRouteErr))
 	if customRouteErr != nil {
 		return statusHandler.FlushAndReturn(customRouteErr)
 	}
 
 	_, defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(ctx, routeConfig, controllerContext)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DefaultRouteSync", defaultRouteErrReason, defaultRouteErr))
+	statusHandler.AddCondition(status.HandleUpgradable("DefaultRouteSync", defaultRouteErrReason, defaultRouteErr))
 
 	// warn if deprecated configuration of custom domain for 'console' route is set on the console-operator config
 	if (len(operatorConfig.Spec.Route.Hostname) != 0 || len(operatorConfig.Spec.Route.Secret.Name) != 0) && c.routeName == api.OpenShiftConsoleRouteName {

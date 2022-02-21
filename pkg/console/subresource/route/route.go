@@ -18,6 +18,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	routeclient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
+	oscrypto "github.com/openshift/library-go/pkg/crypto"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
 
@@ -206,27 +207,24 @@ func GetCustomTLS(customCertSecret *corev1.Secret) (*CustomTLSCert, error) {
 	if !certExist {
 		return nil, fmt.Errorf("custom cert secret data doesn't contain 'tls.crt' entry")
 	}
-	certificateVerifyErr := certificateVerifier(cert)
+	certificateVerifyErr := serverCertificateVerifier(cert)
 	if certificateVerifyErr != nil {
 		return nil, fmt.Errorf("failed to verify custom certificate PEM: " + certificateVerifyErr.Error())
 	}
-	customTLS.Certificate = string(cert)
-
 	key, keyExist := customCertSecret.Data["tls.key"]
 	if !keyExist {
 		return nil, fmt.Errorf("custom cert secret data doesn't contain 'tls.key' entry")
 	}
-
 	privateKeyVerifyErr := privateKeyVerifier(key)
 	if privateKeyVerifyErr != nil {
 		return nil, fmt.Errorf("failed to verify custom key PEM: " + privateKeyVerifyErr.Error())
 	}
+	customTLS.Certificate = string(cert)
 	customTLS.Key = string(key)
-
 	return customTLS, nil
 }
 
-func certificateVerifier(customCert []byte) error {
+func serverCertificateVerifier(customCert []byte) error {
 	block, _ := pem.Decode([]byte(customCert))
 	if block == nil {
 		return fmt.Errorf("failed to decode certificate PEM")
@@ -241,6 +239,9 @@ func certificateVerifier(customCert []byte) error {
 	}
 	if now.Before(certificate.NotBefore) {
 		return fmt.Errorf("custom TLS certificate is not valid yet")
+	}
+	if !oscrypto.CertHasSAN(certificate) {
+		return fmt.Errorf("custom TLS certificate has no SAN")
 	}
 	return nil
 }
