@@ -121,7 +121,7 @@ func (c *DownloadsDeploymentSyncController) SyncDownloadsDeployment(ctx context.
 	updatedOperatorConfig := operatorConfig.DeepCopy()
 	requiredDownloadsDeployment := deploymentsub.DefaultDownloadsDeployment(updatedOperatorConfig, infrastructureConfig)
 
-	return resourceapply.ApplyDeployment(
+	return resourceapply.ApplyDeployment(ctx,
 		c.deploymentClient,
 		controllerContext.Recorder(),
 		requiredDownloadsDeployment,

@@ -3,6 +3,7 @@ package v1helpers
 import (
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -234,6 +235,40 @@ func UpdateStaticPodConditionFn(cond operatorv1.OperatorCondition) UpdateStaticP
 	}
 }
 
+// EnsureFinalizer adds a new finalizer to the operator CR, if it does not exists. No-op otherwise.
+// The finalizer name is computed from the controller name and operator name ($OPERATOR_NAME or os.Args[0])
+// It re-tries on conflicts.
+func EnsureFinalizer(client OperatorClientWithFinalizers, controllerName string) error {
+	finalizer := getFinalizerName(controllerName)
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		return client.EnsureFinalizer(finalizer)
+	})
+	return err
+}
+
+// RemoveFinalizer removes a finalizer from the operator CR, if it is there. No-op otherwise.
+// The finalizer name is computed from the controller name and operator name ($OPERATOR_NAME or os.Args[0])
+// It re-tries on conflicts.
+func RemoveFinalizer(client OperatorClientWithFinalizers, controllerName string) error {
+	finalizer := getFinalizerName(controllerName)
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		return client.RemoveFinalizer(finalizer)
+	})
+	return err
+}
+
+// getFinalizerName computes a nice finalizer name from controllerName and the operator name ($OPERATOR_NAME or os.Args[0]).
+func getFinalizerName(controllerName string) string {
+	return fmt.Sprintf("%s.operator.openshift.io/%s", getOperatorName(), controllerName)
+}
+
+func getOperatorName() string {
+	if name := os.Getenv("OPERATOR_NAME"); name != "" {
+		return name
+	}
+	return os.Args[0]
+}
+
 type aggregate []error
 
 var _ utilerrors.Aggregate = aggregate{}
@@ -341,6 +376,45 @@ func InjectObservedProxyIntoContainers(podSpec *corev1.PodSpec, containerNames [
 		for i := range podSpec.Containers {
 			if podSpec.Containers[i].Name == containerName {
 				podSpec.Containers[i].Env = append(podSpec.Containers[i].Env, proxyEnvVars...)
+			}
+		}
+	}
+
+	return nil
+}
+
+func InjectTrustedCAIntoContainers(podSpec *corev1.PodSpec, configMapName string, containerNames []string) error {
+	podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
+		Name: "non-standard-root-system-trust-ca-bundle",
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: configMapName,
+				},
+				Items: []corev1.KeyToPath{
+					{Key: "ca-bundle.crt", Path: "tls-ca-bundle.pem"},
+				},
+			},
+		},
+	})
+
+	for _, containerName := range containerNames {
+		for i := range podSpec.InitContainers {
+			if podSpec.InitContainers[i].Name == containerName {
+				podSpec.InitContainers[i].VolumeMounts = append(podSpec.InitContainers[i].VolumeMounts, corev1.VolumeMount{
+					Name:      "non-standard-root-system-trust-ca-bundle",
+					MountPath: "/etc/pki/ca-trust/extracted/pem",
+					ReadOnly:  true,
+				})
+			}
+		}
+		for i := range podSpec.Containers {
+			if podSpec.Containers[i].Name == containerName {
+				podSpec.Containers[i].VolumeMounts = append(podSpec.Containers[i].VolumeMounts, corev1.VolumeMount{
+					Name:      "non-standard-root-system-trust-ca-bundle",
+					MountPath: "/etc/pki/ca-trust/extracted/pem",
+					ReadOnly:  true,
+				})
 			}
 		}
 	}
