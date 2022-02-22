@@ -1,6 +1,7 @@
 package consoleserver
 
 import (
+	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
@@ -34,6 +35,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	brand                      operatorv1.Brand
 	docURL                     string
 	apiServerURL               string
+	controlPlaneToplogy        configv1.TopologyMode
 	statusPageID               string
 	customProductName          string
 	devCatalogCustomization    operatorv1.DeveloperConsoleCatalogCustomization
@@ -67,6 +69,10 @@ func (b *ConsoleServerCLIConfigBuilder) DocURL(docURL string) *ConsoleServerCLIC
 }
 func (b *ConsoleServerCLIConfigBuilder) APIServerURL(apiServerURL string) *ConsoleServerCLIConfigBuilder {
 	b.apiServerURL = apiServerURL
+	return b
+}
+func (b *ConsoleServerCLIConfigBuilder) TopologyMode(topologyMode configv1.TopologyMode) *ConsoleServerCLIConfigBuilder {
+	b.controlPlaneToplogy = topologyMode
 	return b
 }
 func (b *ConsoleServerCLIConfigBuilder) CustomProductName(customProductName string) *ConsoleServerCLIConfigBuilder {
@@ -187,6 +193,9 @@ func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {
 	}
 	if len(b.host) > 0 {
 		conf.ConsoleBaseAddress = util.HTTPS(b.host)
+	}
+	if len(b.controlPlaneToplogy) > 0 {
+		conf.ControlPlaneToplogy = b.controlPlaneToplogy
 	}
 	return conf
 }
