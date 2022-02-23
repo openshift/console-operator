@@ -55,17 +55,17 @@ func TestMetricsEndpoint(t *testing.T) {
 	client, _ := setupMetricsEndpointTestCase(t)
 	defer cleanUpMetricsEndpointTestCase(t, client)
 
-	t.Log("Getting metrics url...\n")
+	t.Log("getting metrics url...")
 	metricsURL := getMetricsURL(t, client)
-	t.Logf("Got metrics url: %s\n", metricsURL)
-	t.Logf("Making /metrics request...\n")
+	t.Logf("got metrics url: %s\n", metricsURL)
+	t.Log("making metrics request...")
 	respString := metricsRequest(t, metricsURL)
-	t.Logf("Searching for %s metric in response...\n", consoleURLMetric)
+	t.Logf("finding %s metric in response...\n", consoleURLMetric)
 	found := findLineInResponse(t, respString, consoleURLMetric)
 	if !found {
-		t.Fatalf("Did not find %s metric\n", consoleURLMetric)
+		t.Fatalf("failed to find %s metric\n", consoleURLMetric)
 	}
-	t.Logf("%s metric found.\n", consoleURLMetric)
+	t.Logf("%s metric found in response.\n", consoleURLMetric)
 }
 
 func findLineInResponse(t *testing.T, haystack, needle string) (found bool) {
@@ -78,7 +78,6 @@ func findLineInResponse(t *testing.T, haystack, needle string) (found bool) {
 		}
 		found := strings.Contains(text, needle)
 		if found {
-			t.Logf("found %s\n", scanner.Text())
 			return true
 		}
 	}
@@ -111,10 +110,8 @@ func metricsRequest(t *testing.T, routeForMetrics string) string {
 	})
 
 	if err != nil {
-		t.Fatalf("Metrics request was unsuccessful after several attempts: %s", err)
+		t.Fatalf("metrics request failed after several attempts: %s", err)
 	}
-
-	// })
 
 	return string(bytes)
 }
@@ -123,7 +120,7 @@ func metricsRequest(t *testing.T, routeForMetrics string) string {
 // oc login -u system:admin
 // so that the config read gives correct data back. this only works if test are run as
 // a cert based user (example: system:admin)
-// If no system:admin or other cert based user is defined in you kubeconfig, you can create one by
+// If no system:admin or other cert based user is defined in your kubeconfig, you can create one by
 // copying the system:admin user from the node-kubeconfigs secret in the openshift-kube-apiserver ns
 // then creating a context for that user, and using that context before running this test.
 func getClientWithCertAuth(t *testing.T) *http.Client {
@@ -138,7 +135,7 @@ func getClientWithCertAuth(t *testing.T) *http.Client {
 	// tlsCert, err := tls.LoadX509KeyPair(config.CertFile, config.KeyFile)
 
 	if err != nil {
-		t.Fatalf("Error, this test must be run while logged in as a user with x509 certs. %s", err)
+		t.Fatalf("error, this test must be run while logged in as a user with x509 certs. %s", err)
 	}
 
 	rootCAs, err := x509.SystemCertPool()
@@ -148,7 +145,7 @@ func getClientWithCertAuth(t *testing.T) *http.Client {
 
 	if err != nil {
 		// not sure if we should panic/die here
-		fmt.Printf("x509 certs err: %v", err)
+		fmt.Printf("x509 certs error: %v", err)
 	}
 
 	// need to add the CAData, the kubeconfig has router certs
