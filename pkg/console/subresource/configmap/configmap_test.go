@@ -71,7 +71,8 @@ func TestDefaultConfigMap(t *testing.T) {
 				managedConfig:  &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
-						APIServerURL: mockAPIServer,
+						APIServerURL:         mockAPIServer,
+						ControlPlaneTopology: configv1.HighlyAvailableTopologyMode,
 					},
 				},
 				rt: &routev1.Route{
@@ -106,6 +107,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+  controlPlaneTopology: HighlyAvailable
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -717,6 +719,63 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 -----END CERTIFICATE-----'
     consoleAPIPath: /api/proxy/plugin/pluginName2/test-alias/
     endpoint: https://proxy-serviceName2.proxy-serviceNamespace2.svc.cluster.local:9991
+`,
+				},
+			},
+		},
+		{
+			name: "Test operator config, with 'External' ControlPlaneTopology",
+			args: args{
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL:         mockAPIServer,
+						ControlPlaneTopology: configv1.ExternalTopologyMode,
+					},
+				},
+				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
+					Spec: routev1.RouteSpec{
+						Host: host,
+					},
+				},
+				useDefaultCAFile:         true,
+				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
+			},
+			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+  controlPlaneTopology: External
+customization:
+  branding: ` + DEFAULT_BRAND + `
+  documentationBaseURL: ` + DEFAULT_DOC_URL + `
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: {}
 `,
 				},
 			},

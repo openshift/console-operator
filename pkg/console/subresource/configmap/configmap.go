@@ -72,6 +72,7 @@ func DefaultConfigMap(
 		DocURL(operatorConfig.Spec.Customization.DocumentationBaseURL).
 		OAuthServingCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
+		TopologyMode(infrastructureConfig.Status.ControlPlaneTopology).
 		Plugins(GetPluginsEndpointMap(availablePlugins)).
 		Proxy(GetPluginsProxyServices(availablePlugins)).
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
