@@ -7,7 +7,7 @@ import (
 	"time"
 
 	// kube
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	corev1 "k8s.io/client-go/informers/core/v1"
@@ -30,6 +30,7 @@ import (
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
+	consolestatus "github.com/openshift/console-operator/pkg/console/status"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
@@ -251,6 +252,8 @@ func (c *consoleOperator) handleSync(ctx context.Context, controllerContext fact
 
 // this may need to move to sync_v400 if versions ever have custom delete logic
 func (c *consoleOperator) removeConsole(ctx context.Context, recorder events.Recorder) error {
+	statusHandler := consolestatus.NewStatusHandler(c.operatorClient)
+
 	klog.V(2).Info("deleting console resources")
 	defer klog.V(2).Info("finished deleting console resources")
 	var errs []error
@@ -273,5 +276,12 @@ func (c *consoleOperator) removeConsole(ctx context.Context, recorder events.Rec
 	_, _, updateConfigErr := resourceapply.ApplyConfigMap(ctx, c.configMapClient, recorder, configmap.EmptyPublicConfig())
 	errs = append(errs, updateConfigErr)
 
-	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
+	// filter out 404 errors, which indicate that resource is already deleted
+	err := utilerrors.FilterOut(utilerrors.NewAggregate(errs), apierrors.IsNotFound)
+
+	statusHandler.AddCondition(consolestatus.HandleAvailable("", "ConsoleRemoved", err))
+	statusHandler.AddCondition(consolestatus.HandleDegraded("", "ConsoleRemoved", err))
+	statusHandler.AddCondition(consolestatus.HandleUpgradable("", "ConsoleRemoved", err))
+
+	return err
 }
