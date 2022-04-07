@@ -2,7 +2,10 @@ package route
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"time"
 
 	// kube
 	corev1 "k8s.io/api/core/v1"
@@ -93,9 +96,16 @@ func NewRouteConfig(operatorConfig *operatorv1.Console, ingressConfig *configv1.
 		customRoute.hostname = operatorConfig.Spec.Route.Hostname
 	}
 
-	// if hostname is not set and secret is, set the secret for the default route
-	if len(customRoute.hostname) == 0 && len(customRoute.secretName) == 0 {
-		defaultRoute.secretName = customRoute.secretName
+	// if hostname for custom route is the same as the hostname for the default route
+	// OR if the custom route hostname is not set:
+	// - if the custom route TLS secret is set and set it for the default route
+	// - unset hostname and TLS secret for the custom route
+	if defaultRoute.hostname == customRoute.hostname || len(customRoute.hostname) == 0 {
+		if len(customRoute.secretName) != 0 {
+			defaultRoute.secretName = customRoute.secretName
+		}
+		customRoute.hostname = ""
+		customRoute.secretName = ""
 	}
 
 	customHostnameSpec := &RouteConfig{
@@ -104,6 +114,7 @@ func NewRouteConfig(operatorConfig *operatorv1.Console, ingressConfig *configv1.
 		domain:       ingressConfig.Spec.Domain,
 		routeName:    routeName,
 	}
+
 	return customHostnameSpec
 }
 
@@ -189,6 +200,66 @@ func ApplyRoute(client routeclient.RoutesGetter, recorder events.Recorder, requi
 	existingCopy.Spec = required.Spec
 	actual, err := client.Routes(required.Namespace).Update(context.TODO(), existingCopy, metav1.UpdateOptions{})
 	return actual, true, err
+}
+
+func GetCustomTLS(customCertSecret *corev1.Secret) (*CustomTLSCert, error) {
+	customTLS := &CustomTLSCert{}
+	cert, certExist := customCertSecret.Data["tls.crt"]
+	if !certExist {
+		return nil, fmt.Errorf("custom cert secret data doesn't contain 'tls.crt' entry")
+	}
+	certificateVerifyErr := certificateVerifier(cert)
+	if certificateVerifyErr != nil {
+		return nil, fmt.Errorf("failed to verify custom certificate PEM: " + certificateVerifyErr.Error())
+	}
+	customTLS.Certificate = string(cert)
+
+	key, keyExist := customCertSecret.Data["tls.key"]
+	if !keyExist {
+		return nil, fmt.Errorf("custom cert secret data doesn't contain 'tls.key' entry")
+	}
+
+	privateKeyVerifyErr := privateKeyVerifier(key)
+	if privateKeyVerifyErr != nil {
+		return nil, fmt.Errorf("failed to verify custom key PEM: " + privateKeyVerifyErr.Error())
+	}
+	customTLS.Key = string(key)
+
+	return customTLS, nil
+}
+
+func certificateVerifier(customCert []byte) error {
+	block, _ := pem.Decode([]byte(customCert))
+	if block == nil {
+		return fmt.Errorf("failed to decode certificate PEM")
+	}
+	certificate, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	if now.After(certificate.NotAfter) {
+		return fmt.Errorf("custom TLS certificate is expired")
+	}
+	if now.Before(certificate.NotBefore) {
+		return fmt.Errorf("custom TLS certificate is not valid yet")
+	}
+	return nil
+}
+
+func privateKeyVerifier(customKey []byte) error {
+	block, _ := pem.Decode([]byte(customKey))
+	if block == nil {
+		return fmt.Errorf("failed to decode key PEM")
+	}
+	if _, err := x509.ParsePKCS8PrivateKey(block.Bytes); err != nil {
+		if _, err = x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
+			if _, err = x509.ParseECPrivateKey(block.Bytes); err != nil {
+				return fmt.Errorf("block %s is not valid key PEM", block.Type)
+			}
+		}
+	}
+	return nil
 }
 
 func setTLS(tlsConfig *CustomTLSCert, route *routev1.Route) {
