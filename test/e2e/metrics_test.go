@@ -91,19 +91,19 @@ func metricsRequest(t *testing.T, routeForMetrics string) string {
 	err := wait.Poll(1*time.Second, 30*time.Second, func() (stop bool, err error) {
 		resp, err := httpClient.Do(req)
 		if err != nil {
-			t.Errorf("http error: %s\n", err)
+			t.Logf("http error: %s\n", err)
 			return false, err
 		}
 
 		if !httpOK(resp) {
-			t.Errorf("http error: %d %s\n", resp.StatusCode, http.StatusText(resp.StatusCode))
+			t.Logf("http error: %d %s\n", resp.StatusCode, http.StatusText(resp.StatusCode))
 			return false, err
 		}
 
 		defer resp.Body.Close()
 		bytes, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
-			t.Errorf("error reading metrics response: %s\n", err)
+			t.Logf("error reading metrics response: %s\n", err)
 			return false, err
 		}
 		return true, nil
