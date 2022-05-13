@@ -26,7 +26,10 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       terminationGracePeriodSeconds: 0
-      securityContext: {}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - resources:
             requests:
@@ -42,6 +45,11 @@ spec:
             successThreshold: 1
             failureThreshold: 3
           name: download-server
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
           command:
             - /bin/sh
           livenessProbe:

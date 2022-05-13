@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	utilpointer "k8s.io/utils/pointer"
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
@@ -244,7 +245,12 @@ func TestDefaultDeployment(t *testing.T) {
 							RestartPolicy:                 corev1.RestartPolicyAlways,
 							SchedulerName:                 corev1.DefaultSchedulerName,
 							TerminationGracePeriodSeconds: &gracePeriod,
-							SecurityContext:               &corev1.PodSecurityContext{},
+							SecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: utilpointer.Bool(true),
+								SeccompProfile: &corev1.SeccompProfile{
+									Type: corev1.SeccompProfileTypeRuntimeDefault,
+								},
+							},
 							Containers: []corev1.Container{
 								consoleDeploymentContainer,
 							},
@@ -322,7 +328,12 @@ func TestDefaultDeployment(t *testing.T) {
 							RestartPolicy:                 corev1.RestartPolicyAlways,
 							SchedulerName:                 corev1.DefaultSchedulerName,
 							TerminationGracePeriodSeconds: &gracePeriod,
-							SecurityContext:               &corev1.PodSecurityContext{},
+							SecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: utilpointer.Bool(true),
+								SeccompProfile: &corev1.SeccompProfile{
+									Type: corev1.SeccompProfileTypeRuntimeDefault,
+								},
+							},
 							Containers: []corev1.Container{
 								consoleDeploymentContainerTrusted,
 							},
@@ -400,7 +411,12 @@ func TestDefaultDeployment(t *testing.T) {
 							RestartPolicy:                 corev1.RestartPolicyAlways,
 							SchedulerName:                 corev1.DefaultSchedulerName,
 							TerminationGracePeriodSeconds: &gracePeriod,
-							SecurityContext:               &corev1.PodSecurityContext{},
+							SecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: utilpointer.Bool(true),
+								SeccompProfile: &corev1.SeccompProfile{
+									Type: corev1.SeccompProfileTypeRuntimeDefault,
+								},
+							},
 							Containers: []corev1.Container{
 								consoleDeploymentContainer,
 							},
@@ -468,7 +484,12 @@ func TestDefaultDeployment(t *testing.T) {
 							RestartPolicy:                 corev1.RestartPolicyAlways,
 							SchedulerName:                 corev1.DefaultSchedulerName,
 							TerminationGracePeriodSeconds: &gracePeriod,
-							SecurityContext:               &corev1.PodSecurityContext{},
+							SecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: utilpointer.Bool(true),
+								SeccompProfile: &corev1.SeccompProfile{
+									Type: corev1.SeccompProfileTypeRuntimeDefault,
+								},
+							},
 							Containers: []corev1.Container{
 								consoleDeploymentContainer,
 							},
@@ -1375,7 +1396,12 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				TolerationSeconds: &tolerationSeconds,
 			},
 		},
-		SecurityContext:               &corev1.PodSecurityContext{},
+		SecurityContext: &corev1.PodSecurityContext{
+			RunAsNonRoot: utilpointer.Bool(true),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+		},
 		PriorityClassName:             "system-cluster-critical",
 		TerminationGracePeriodSeconds: &gracePeriod,
 		Containers: []corev1.Container{
@@ -1423,6 +1449,14 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 					},
 				},
 				Args: downloadsDeploymentTemplate.Spec.Template.Spec.Containers[0].Args,
+				SecurityContext: &corev1.SecurityContext{
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					AllowPrivilegeEscalation: utilpointer.Bool(false),
+				},
 			},
 		},
 	}

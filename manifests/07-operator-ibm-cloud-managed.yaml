@@ -59,6 +59,11 @@ spec:
           requests:
             cpu: 10m
             memory: 100Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /var/run/configmaps/config
@@ -66,6 +71,10 @@ spec:
         - mountPath: /var/run/secrets/serving-cert
           name: serving-cert
       priorityClassName: system-cluster-critical
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: console-operator
       tolerations:
       - effect: NoSchedule

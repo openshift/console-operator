@@ -145,7 +145,10 @@ spec:
       restartPolicy: Always
       serviceAccountName: console
       schedulerName: default-scheduler
-      securityContext: {}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       terminationGracePeriodSeconds: 40
       priorityClassName: system-cluster-critical
       containers:
@@ -169,6 +172,11 @@ spec:
                   - sleep
                   - "25"
           name: console
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
           command:
             - /opt/bridge/bin/bridge
             - "--public-dir=/opt/bridge/static"
@@ -248,7 +256,10 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       terminationGracePeriodSeconds: 0
-      securityContext: {}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - resources:
             requests:
@@ -264,6 +275,11 @@ spec:
             successThreshold: 1
             failureThreshold: 3
           name: download-server
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
           command:
             - /bin/sh
           livenessProbe:
