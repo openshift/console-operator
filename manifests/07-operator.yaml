@@ -19,6 +19,10 @@ spec:
       labels:
         name: console-operator
     spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       nodeSelector:
         node-role.kubernetes.io/master: ""
       tolerations:
@@ -37,6 +41,10 @@ spec:
       serviceAccountName: console-operator
       containers:
       - name: console-operator
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
         terminationMessagePolicy: FallbackToLogsOnError
         image: registry.svc.ci.openshift.org/openshift:console-operator
         ports:

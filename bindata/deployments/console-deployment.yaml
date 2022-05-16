@@ -27,7 +27,10 @@ spec:
       restartPolicy: Always
       serviceAccountName: console
       schedulerName: default-scheduler
-      securityContext: {}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       terminationGracePeriodSeconds: 40
       priorityClassName: system-cluster-critical
       containers:
@@ -51,6 +54,11 @@ spec:
                   - sleep
                   - "25"
           name: console
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
           command:
             - /opt/bridge/bin/bridge
             - "--public-dir=/opt/bridge/static"

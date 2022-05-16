@@ -1096,6 +1096,7 @@ k8s.io/kube-openapi/pkg/util
 k8s.io/kube-openapi/pkg/util/proto
 k8s.io/kube-openapi/pkg/validation/spec
 # k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b
+## explicit
 k8s.io/utils/buffer
 k8s.io/utils/clock
 k8s.io/utils/clock/testing
