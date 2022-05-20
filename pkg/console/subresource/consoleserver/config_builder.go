@@ -49,6 +49,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	pluginsList                map[string]string
 	proxyServices              []ProxyService
 	managedClusterConfigFile   string
+	telemetry                  map[string]string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -144,6 +145,11 @@ func (b *ConsoleServerCLIConfigBuilder) ManagedClusterConfigFile(file string) *C
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) TelemetryConfiguration(telemetry map[string]string) *ConsoleServerCLIConfigBuilder {
+	b.telemetry = telemetry
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
 		Kind:                     "ConsoleConfig",
@@ -156,6 +162,7 @@ func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 		Plugins:                  b.plugins(),
 		Proxy:                    b.proxy(),
 		ManagedClusterConfigFile: b.managedClusterConfigFile,
+		Telemetry:                b.telemetry,
 	}
 }
 
@@ -298,4 +305,8 @@ func (b *ConsoleServerCLIConfigBuilder) proxy() Proxy {
 	return Proxy{
 		Services: b.proxyServices,
 	}
+}
+
+func (b *ConsoleServerCLIConfigBuilder) Telemetry() map[string]string {
+	return b.telemetry
 }

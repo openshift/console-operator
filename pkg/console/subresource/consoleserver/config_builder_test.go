@@ -384,6 +384,38 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Config builder should pass telemetry configuration",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.TelemetryConfiguration(map[string]string{
+					"a-key": "a-value",
+				})
+				return b.Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+				},
+				Customization: Customization{},
+				Providers:     Providers{},
+				Telemetry: map[string]string{
+					"a-key": "a-value",
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -688,6 +720,34 @@ customization:
     - quickStarts0
     - quickStarts1
 providers: {}
+`,
+		},
+		{
+			name: "Config builder should pass telemetry configuration",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.TelemetryConfiguration(map[string]string{
+					"a-key":               "a-value",
+					"a-boolean-as-string": "false",
+				})
+				return b.ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo: {}
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+customization: {}
+providers: {}
+telemetry:
+  a-boolean-as-string: "false"
+  a-key: a-value
 `,
 		},
 	}
