@@ -22,12 +22,14 @@ const (
 	OAuthConfigMapName                        = "oauth-openshift"
 	OpenShiftConsoleDeploymentName            = OpenShiftConsoleName
 	OpenShiftConsoleServiceName               = OpenShiftConsoleName
+	OpenShiftConsolePDBName                   = OpenShiftConsoleName
 	OpenshiftConsoleRedirectServiceName       = "console-redirect"
 	OpenShiftConsoleRouteName                 = OpenShiftConsoleName
 	OpenshiftConsoleCustomRouteName           = "console-custom"
 	DownloadsResourceName                     = "downloads"
 	OpenShiftConsoleDownloadsRouteName        = DownloadsResourceName
 	OpenShiftConsoleDownloadsDeploymentName   = DownloadsResourceName
+	OpenShiftConsoleDownloadsPDBName          = DownloadsResourceName
 	OAuthClientName                           = OpenShiftConsoleName
 	OpenShiftConfigManagedNamespace           = "openshift-config-managed"
 	OpenShiftConfigNamespace                  = "openshift-config"

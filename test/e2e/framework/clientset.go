@@ -6,6 +6,7 @@ import (
 
 	clientappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	clientcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	policyv1client "k8s.io/client-go/kubernetes/typed/policy/v1"
 	restclient "k8s.io/client-go/rest"
 
 	configv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
@@ -33,6 +34,7 @@ type ClientSet struct {
 	Proxy                  configv1.ProxiesGetter
 	Infrastructure         configv1.InfrastructuresGetter
 	Ingress                configv1.IngressesGetter
+	PodDisruptionBudget    policyv1client.PodDisruptionBudgetsGetter
 }
 
 // NewClientset creates a set of Kubernetes clients. The default kubeconfig is
@@ -91,6 +93,13 @@ func NewClientset(kubeconfig *restclient.Config) (*ClientSet, error) {
 	clientset.ConsoleNotification = consoleClient.ConsoleNotifications()
 	clientset.ConsoleYAMLSample = consoleClient.ConsoleYAMLSamples()
 	clientset.ConsolePlugin = consoleClientAlpha1.ConsolePlugins()
+
+	policyClient, err := policyv1client.NewForConfig(kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+
+	clientset.PodDisruptionBudget = policyClient
 
 	return clientset, nil
 }

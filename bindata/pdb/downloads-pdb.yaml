@@ -1,0 +1,11 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: downloads
+  namespace: openshift-console
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: console
+      component: downloads
