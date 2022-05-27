@@ -350,7 +350,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					Plugins(map[string]string{
 						"plugin1": "plugin1_url",
 						"plugin2": "plugin2_url",
-					})
+					}).
+					I18nNamespaces([]string{"plugin__plugin1"})
 				return b.Config()
 			},
 			output: Config{
@@ -382,6 +383,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					"plugin1": "plugin1_url",
 					"plugin2": "plugin2_url",
 				},
+				I18nNamespaces: []string{"plugin__plugin1"},
 			},
 		},
 		{
@@ -664,6 +666,7 @@ providers: {}
 						"plugin1": "plugin1_url",
 						"plugin2": "plugin2_url",
 					}).
+					I18nNamespaces([]string{"plugin__plugin1"}).
 					OAuthServingCert(true)
 				return b.ConfigYAML()
 			},
@@ -689,6 +692,8 @@ providers:
 plugins:
   plugin1: plugin1_url
   plugin2: plugin2_url
+i18nNamespaces:
+- plugin__plugin1
 `,
 		},
 		{

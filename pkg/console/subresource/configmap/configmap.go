@@ -75,8 +75,9 @@ func DefaultConfigMap(
 		OAuthServingCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
 		TopologyMode(infrastructureConfig.Status.ControlPlaneTopology).
-		Plugins(GetPluginsEndpointMap(availablePlugins)).
-		Proxy(GetPluginsProxyServices(availablePlugins)).
+		Plugins(getPluginsEndpointMap(availablePlugins)).
+		I18nNamespaces(pluginsWithI18nNamespace(availablePlugins)).
+		Proxy(getPluginsProxyServices(availablePlugins)).
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
 		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).
 		CustomDeveloperCatalog(operatorConfig.Spec.Customization.DeveloperCatalog).
@@ -119,7 +120,17 @@ func DefaultConfigMap(
 	return configMap, willMergeConfigOverrides, nil
 }
 
-func GetPluginsEndpointMap(availablePlugins []*v1alpha1.ConsolePlugin) map[string]string {
+func pluginsWithI18nNamespace(availablePlugins []*v1alpha1.ConsolePlugin) []string {
+	i18nNamespaces := []string{}
+	for _, plugin := range availablePlugins {
+		if plugin.Annotations[api.PluginI18nAnnotation] == "true" {
+			i18nNamespaces = append(i18nNamespaces, fmt.Sprintf("plugin__%s", plugin.Name))
+		}
+	}
+	return i18nNamespaces
+}
+
+func getPluginsEndpointMap(availablePlugins []*v1alpha1.ConsolePlugin) map[string]string {
 	pluginsEndpointMap := map[string]string{}
 	for _, plugin := range availablePlugins {
 		pluginsEndpointMap[plugin.Name] = getServiceURL(plugin)
@@ -127,7 +138,7 @@ func GetPluginsEndpointMap(availablePlugins []*v1alpha1.ConsolePlugin) map[strin
 	return pluginsEndpointMap
 }
 
-func GetPluginsProxyServices(availablePlugins []*v1alpha1.ConsolePlugin) []consoleserver.ProxyService {
+func getPluginsProxyServices(availablePlugins []*v1alpha1.ConsolePlugin) []consoleserver.ProxyService {
 	proxyServices := []consoleserver.ProxyService{}
 	for _, plugin := range availablePlugins {
 		for _, proxy := range plugin.Spec.Proxy {

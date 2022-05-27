@@ -47,6 +47,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	customHostnameRedirectPort int
 	inactivityTimeoutSeconds   int
 	pluginsList                map[string]string
+	i18nNamespaceList          []string
 	proxyServices              []ProxyService
 	managedClusterConfigFile   string
 	telemetry                  map[string]string
@@ -135,6 +136,11 @@ func (b *ConsoleServerCLIConfigBuilder) Plugins(plugins map[string]string) *Cons
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) I18nNamespaces(i18nNamespaces []string) *ConsoleServerCLIConfigBuilder {
+	b.i18nNamespaceList = i18nNamespaces
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Proxy(proxyServices []ProxyService) *ConsoleServerCLIConfigBuilder {
 	b.proxyServices = proxyServices
 	return b
@@ -160,6 +166,7 @@ func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 		ServingInfo:              b.servingInfo(),
 		Providers:                b.providers(),
 		Plugins:                  b.plugins(),
+		I18nNamespaces:           b.i18nNamespaces(),
 		Proxy:                    b.proxy(),
 		ManagedClusterConfigFile: b.managedClusterConfigFile,
 		Telemetry:                b.telemetry,
@@ -299,6 +306,10 @@ func (b *ConsoleServerCLIConfigBuilder) providers() Providers {
 
 func (b *ConsoleServerCLIConfigBuilder) plugins() map[string]string {
 	return b.pluginsList
+}
+
+func (b *ConsoleServerCLIConfigBuilder) i18nNamespaces() []string {
+	return b.i18nNamespaceList
 }
 
 func (b *ConsoleServerCLIConfigBuilder) proxy() Proxy {

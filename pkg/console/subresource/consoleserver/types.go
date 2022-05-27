@@ -23,6 +23,7 @@ type Config struct {
 	Customization            `yaml:"customization"`
 	Providers                `yaml:"providers"`
 	Plugins                  map[string]string `yaml:"plugins,omitempty"`
+	I18nNamespaces           []string          `yaml:"i18nNamespaces,omitempty"`
 	Proxy                    Proxy             `yaml:"proxy,omitempty"`
 	ManagedClusterConfigFile string            `yaml:"managedClusterConfigFile,omitempty"`
 	Telemetry                map[string]string `yaml:"telemetry,omitempty"`
