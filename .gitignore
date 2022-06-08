@@ -2,6 +2,9 @@
 .idea
 ./deploy
 
+# Build result
+/console
+
 # tools output reports into _output
 _output
 

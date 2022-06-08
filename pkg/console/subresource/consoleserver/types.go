@@ -25,6 +25,7 @@ type Config struct {
 	Plugins                  map[string]string `yaml:"plugins,omitempty"`
 	Proxy                    Proxy             `yaml:"proxy,omitempty"`
 	ManagedClusterConfigFile string            `yaml:"managedClusterConfigFile,omitempty"`
+	Telemetry                map[string]string `yaml:"telemetry,omitempty"`
 }
 
 type Proxy struct {

@@ -3,6 +3,7 @@ package configmap
 import (
 	"fmt"
 	"net/url"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
@@ -19,9 +20,10 @@ import (
 )
 
 const (
-	consoleConfigYamlFile = "console-config.yaml"
-	defaultLogoutURL      = ""
-	pluginProxyEndpoint   = "/api/proxy/plugin/"
+	consoleConfigYamlFile     = "console-config.yaml"
+	defaultLogoutURL          = ""
+	pluginProxyEndpoint       = "/api/proxy/plugin/"
+	telemetryAnnotationPrefix = "telemetry.console.openshift.io/"
 )
 
 func getApiUrl(infrastructureConfig *configv1.Infrastructure) string {
@@ -48,7 +50,7 @@ func DefaultConfigMap(
 	inactivityTimeoutSeconds int,
 	availablePlugins []*v1alpha1.ConsolePlugin,
 	managedClusterConfigFile string,
-) (consoleConfigmap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
+) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
 	defaultConfig, err := defaultBuilder.Host(activeConsoleRoute.Spec.Host).
@@ -85,6 +87,7 @@ func DefaultConfigMap(
 		StatusPageID(statusPageId(operatorConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
 		ManagedClusterConfigFile(managedClusterConfigFile).
+		TelemetryConfiguration(GetTelemetryConfiguration(operatorConfig)).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate user defined console-config config: %v", err)
@@ -140,6 +143,18 @@ func GetPluginsProxyServices(availablePlugins []*v1alpha1.ConsolePlugin) []conso
 		}
 	}
 	return proxyServices
+}
+
+func GetTelemetryConfiguration(operatorConfig *operatorv1.Console) map[string]string {
+	telemetry := make(map[string]string)
+	if len(operatorConfig.Annotations) > 0 {
+		for k, v := range operatorConfig.Annotations {
+			if strings.HasPrefix(k, telemetryAnnotationPrefix) && len(k) > len(telemetryAnnotationPrefix) {
+				telemetry[k[len(telemetryAnnotationPrefix):]] = v
+			}
+		}
+	}
+	return telemetry
 }
 
 func getConsoleAPIPath(pluginName string, service *v1alpha1.ConsolePluginProxy) string {
