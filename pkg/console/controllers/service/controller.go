@@ -114,7 +114,7 @@ func (c *ServiceSyncController) Sync(ctx context.Context, controllerContext fact
 	routeConfig := routesub.NewRouteConfig(updatedOperatorConfig, ingressConfig, c.serviceName)
 
 	requiredSvc := c.getDefaultService()
-	_, _, svcErr := resourceapply.ApplyService(c.serviceClient, controllerContext.Recorder(), requiredSvc)
+	_, _, svcErr := resourceapply.ApplyService(ctx, c.serviceClient, controllerContext.Recorder(), requiredSvc)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ServiceSync", "FailedApply", svcErr))
 	if svcErr != nil {
 		return statusHandler.FlushAndReturn(svcErr)
@@ -137,7 +137,7 @@ func (c *ServiceSyncController) SyncRedirectService(ctx context.Context, routeCo
 		return "", nil
 	}
 	requiredRedirectService := c.getRedirectService()
-	_, _, redirectSvcErr := resourceapply.ApplyService(c.serviceClient, controllerContext.Recorder(), requiredRedirectService)
+	_, _, redirectSvcErr := resourceapply.ApplyService(ctx, c.serviceClient, controllerContext.Recorder(), requiredRedirectService)
 	if redirectSvcErr != nil {
 		return "FailedApply", redirectSvcErr
 	}
