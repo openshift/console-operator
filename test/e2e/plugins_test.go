@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 
+	"github.com/openshift/console-operator/pkg/api"
 	consoleapi "github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
 	"github.com/openshift/console-operator/test/e2e/framework"
@@ -41,13 +42,15 @@ func cleanupPluginsTestCase(t *testing.T, client *framework.ClientSet) {
 // Only plugin that is available on the cluster will be set with his endpoint into the console-config ConfigMap.
 func TestAddPlugins(t *testing.T) {
 	expectedPlugins := map[string]string{availablePluginName: "https://test-plugin-service-name.test-plugin-service-namespace.svc.cluster.local:8443/manifest"}
+	expertedI18nNamespaces := []string{"plugin__test-plugin"}
 	currentPlugins := map[string]string{}
 	client, _ := setupPluginsTestCase(t)
 	defer cleanupPluginsTestCase(t, client)
 
 	plugin := &consolev1alpha.ConsolePlugin{
 		ObjectMeta: v1.ObjectMeta{
-			Name: availablePluginName,
+			Name:        availablePluginName,
+			Annotations: map[string]string{api.PluginI18nAnnotation: "true"},
 		},
 		Spec: consolev1alpha.ConsolePluginSpec{
 			DisplayName: "TestPlugin",
@@ -68,8 +71,11 @@ func TestAddPlugins(t *testing.T) {
 	setOperatorConfigPlugins(t, client, enabledPlugins)
 
 	err = wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
-		currentPlugins = getConsolePluginsField(t, client)
-		if reflect.DeepEqual(expectedPlugins, currentPlugins) {
+		consoleConfig := getConsoleConfig(t, client)
+		if reflect.DeepEqual(expectedPlugins, consoleConfig.Plugins) {
+			return true, nil
+		}
+		if reflect.DeepEqual(expertedI18nNamespaces, consoleConfig.I18nNamespaces) {
 			return true, nil
 		}
 		return false, nil
@@ -102,7 +108,7 @@ func setOperatorConfigPlugins(t *testing.T, client *framework.ClientSet, pluginN
 	}
 }
 
-func getConsolePluginsField(t *testing.T, client *framework.ClientSet) map[string]string {
+func getConsoleConfig(t *testing.T, client *framework.ClientSet) consoleserver.Config {
 	cm, err := framework.GetConsoleConfigMap(client)
 	if err != nil {
 		t.Fatalf("error: %s", err)
@@ -113,5 +119,5 @@ func getConsolePluginsField(t *testing.T, client *framework.ClientSet) map[strin
 		t.Fatalf("could not unmarshal console-config.yaml: %v", err)
 	}
 
-	return consoleConfig.Plugins
+	return consoleConfig
 }

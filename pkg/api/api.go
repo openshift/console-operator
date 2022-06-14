@@ -54,6 +54,8 @@ const (
 	CreateOAuthClientManagedClusterActionName = "console-create-oauth-client"
 	OAuthServerCertManagedClusterViewName     = "console-oauth-server-cert"
 
+	PluginI18nAnnotation = "console.openshift.io/use-i18n"
+
 	ManagedClusterViewAPIGroup     = "view.open-cluster-management.io"
 	ManagedClusterViewAPIVersion   = "v1beta1"
 	ManagedClusterViewResource     = "managedclusterviews"
