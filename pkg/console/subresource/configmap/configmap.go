@@ -44,6 +44,7 @@ func DefaultConfigMap(
 	operatorConfig *operatorv1.Console,
 	consoleConfig *configv1.Console,
 	managedConfig *corev1.ConfigMap,
+	monitoringSharedConfig *corev1.ConfigMap,
 	infrastructureConfig *configv1.Infrastructure,
 	activeConsoleRoute *routev1.Route,
 	useDefaultCAFile bool,
@@ -59,6 +60,7 @@ func DefaultConfigMap(
 		DocURL(DEFAULT_DOC_URL).
 		OAuthServingCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
+		Monitoring(monitoringSharedConfig).
 		InactivityTimeout(inactivityTimeoutSeconds).
 		ReleaseVersion().
 		ConfigYAML()
@@ -76,6 +78,7 @@ func DefaultConfigMap(
 		OAuthServingCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
 		TopologyMode(infrastructureConfig.Status.ControlPlaneTopology).
+		Monitoring(monitoringSharedConfig).
 		Plugins(getPluginsEndpointMap(availablePlugins)).
 		I18nNamespaces(pluginsWithI18nNamespace(availablePlugins)).
 		Proxy(getPluginsProxyServices(availablePlugins)).
