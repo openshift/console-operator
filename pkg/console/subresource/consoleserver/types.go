@@ -64,6 +64,7 @@ type ClusterInfo struct {
 	ConsoleBasePath     string                `yaml:"consoleBasePath,omitempty"`
 	MasterPublicURL     string                `yaml:"masterPublicURL,omitempty"`
 	ControlPlaneToplogy configv1.TopologyMode `yaml:"controlPlaneTopology,omitempty"`
+	ReleaseVersion      string                `yaml:"releaseVersion,omitempty"`
 }
 
 // Auth holds configuration for authenticating with OpenShift. The auth method is assumed to be "openshift".

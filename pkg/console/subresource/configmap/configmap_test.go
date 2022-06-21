@@ -26,6 +26,7 @@ const (
 	mockConsoleURL     = "https://console-openshift-console.apps.some.cluster.openshift.com"
 	configKey          = "console-config.yaml"
 	mockOperatorDocURL = "https://operator.config/doc/link/"
+	testReleaseVersion = "testReleaseVersion"
 	test               = 123
 
 	validCertificate = `-----BEGIN CERTIFICATE-----
@@ -58,6 +59,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		availablePlugins         []*v1alpha1.ConsolePlugin
 		managedClusterConfigFile string
 	}
+	t.Setenv("RELEASE_VERSION", testReleaseVersion)
 	tests := []struct {
 		name string
 		args args
@@ -108,6 +110,7 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   controlPlaneTopology: HighlyAvailable
+  releaseVersion: ` + testReleaseVersion + `
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -163,6 +166,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+  releaseVersion: ` + testReleaseVersion + `
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -226,6 +230,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+  releaseVersion: ` + testReleaseVersion + `
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -298,6 +303,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+  releaseVersion: ` + testReleaseVersion + `
 customization:
   branding: ` + string(operatorv1.BrandDedicated) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -375,6 +381,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+  releaseVersion: ` + testReleaseVersion + `
 customization:
   branding: ` + string(operatorv1.BrandDedicated) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -454,6 +461,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+  releaseVersion: ` + testReleaseVersion + `
 customization:
   branding: ` + string(operatorv1.BrandDedicated) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -516,6 +524,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + customHostname + `
   masterPublicURL: ` + mockAPIServer + `
+  releaseVersion: ` + testReleaseVersion + `
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -573,6 +582,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+  releaseVersion: ` + testReleaseVersion + `
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -628,6 +638,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+  releaseVersion: ` + testReleaseVersion + `
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -690,6 +701,7 @@ auth:
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
+  releaseVersion: ` + testReleaseVersion + `
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -774,6 +786,7 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   controlPlaneTopology: External
+  releaseVersion: ` + testReleaseVersion + `
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `

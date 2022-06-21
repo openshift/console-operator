@@ -60,6 +60,7 @@ func DefaultConfigMap(
 		OAuthServingCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
+		ReleaseVersion().
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate default console-config config: %v", err)
@@ -89,6 +90,7 @@ func DefaultConfigMap(
 		InactivityTimeout(inactivityTimeoutSeconds).
 		ManagedClusterConfigFile(managedClusterConfigFile).
 		TelemetryConfiguration(GetTelemetryConfiguration(operatorConfig)).
+		ReleaseVersion().
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate user defined console-config config: %v", err)
