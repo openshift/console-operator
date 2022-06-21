@@ -13,6 +13,10 @@ spec:
   description: >-
     Enable additional Helm Charts by adding a namespace scoped Helm Chart
     Repository to your project.
+  accessReviewResources:
+    - group: helm.openshift.io
+      resource: projecthelmchartrepositories
+      verb: create
   displayName: Add Helm Chart Repositories to extend the Developer Catalog for your project
   durationMinutes: 5
   icon: >-

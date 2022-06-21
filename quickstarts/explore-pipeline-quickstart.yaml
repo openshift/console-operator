@@ -72,3 +72,7 @@ spec:
     - group: packages.operators.coreos.com
       resource: packagemanifests
       verb: list
+    - group: operators.coreos.com
+      resource: subscriptions
+      verb: create
+      namespace: openshift-storage

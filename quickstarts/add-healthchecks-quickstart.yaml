@@ -12,6 +12,19 @@ spec:
   description: You just created a sample application. Now, let’s add health checks
     to it.
   prerequisites: [You completed the "Getting started with a sample" quick start.]
+  accessReviewResources:
+  - group: apps
+    resource: daemonsets
+    verb: update
+  - group: apps
+    resource: deployments
+    verb: update
+  - group: apps.openshift.io
+    resource: deploymentconfigs
+    verb: update
+  - group: apps
+    resource: statefulsets
+    verb: update
   introduction: |-
     ### This quick start shows you how to add health checks to your sample application.
     You should have previously created the **sample-app** application and **nodejs-basic** deployment using the **Get started with a sample** quick start. If you haven't, you may be able to follow these tasks with any existing deployment without configured health checks.

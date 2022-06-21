@@ -11,6 +11,26 @@ spec:
   durationMinutes: 10
   description: Is this the first time you’ve used OpenShift? Let's start with a simple
     sample app to learn the basics.
+  accessReviewResources:
+  - group: build.openshift.io
+    resource: buildconfigs
+    verb: create
+  - group: image.openshift.io
+    resource: imagestreams
+    verb: create
+  - group: apps
+    resource: deployments
+    verb: create
+  - group: apps.openshift.io
+    resource: deploymentconfigs
+    verb: create
+  - resource: secrets
+    verb: create
+  - group: route.openshift.io
+    resource: routes
+    verb: create
+  - resource: services
+    verb: create
   introduction: '### This Quick Start shows you how to deploy a sample application
     to OpenShift®.'
   tasks:
