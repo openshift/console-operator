@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	policyv1client "k8s.io/client-go/kubernetes/typed/policy/v1"
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
@@ -24,6 +25,7 @@ import (
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
 	"github.com/openshift/console-operator/pkg/console/controllers/healthcheck"
 	managedcluster "github.com/openshift/console-operator/pkg/console/controllers/managedclusters"
+	pdb "github.com/openshift/console-operator/pkg/console/controllers/poddisruptionbudget"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
@@ -396,6 +398,36 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		controllerContext.EventRecorder,
 	)
 
+	// instantiate pdb client
+	policyClient, err := policyv1client.NewForConfig(controllerContext.KubeConfig)
+	if err != nil {
+		return err
+	}
+
+	consolePDBController := pdb.NewPodDisruptionBudgetController(
+		api.OpenShiftConsoleName,
+		// clients
+		operatorClient,
+		operatorConfigClient.OperatorV1().Consoles(),
+		policyClient,
+		// informers
+		kubeInformersNamespaced.Policy().V1().PodDisruptionBudgets(),
+		//events
+		recorder,
+	)
+
+	downloadsPDBController := pdb.NewPodDisruptionBudgetController(
+		api.DownloadsResourceName,
+		// clients
+		operatorClient,
+		operatorConfigClient.OperatorV1().Consoles(),
+		policyClient,
+		// informers
+		kubeInformersNamespaced.Policy().V1().PodDisruptionBudgets(),
+		//events
+		recorder,
+	)
+
 	configUpgradeableController := unsupportedconfigoverridescontroller.NewUnsupportedConfigOverridesController(operatorClient, controllerContext.EventRecorder)
 	logLevelController := loglevel.NewClusterOperatorLoggingController(operatorClient, controllerContext.EventRecorder)
 	managementStateController := managementstatecontroller.NewOperatorManagementStateController(api.ClusterOperatorName, operatorClient, controllerContext.EventRecorder)
@@ -435,6 +467,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		cliDownloadsController,
 		downloadsDeploymentController,
 		consoleRouteHealthCheckController,
+		consolePDBController,
+		downloadsPDBController,
 		staleConditionsController,
 	} {
 		go controller.Run(ctx, 1)

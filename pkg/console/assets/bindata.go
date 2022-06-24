@@ -7,6 +7,8 @@
 // bindata/managedclusteractions/console-create-oauth-client.yaml
 // bindata/managedclusterviews/console-oauth-client.yaml
 // bindata/managedclusterviews/console-oauth-server-cert.yaml
+// bindata/pdb/console-pdb.yaml
+// bindata/pdb/downloads-pdb.yaml
 // bindata/routes/console-custom-route.yaml
 // bindata/routes/console-redirect-route.yaml
 // bindata/routes/console-route.yaml
@@ -518,6 +520,60 @@ func managedclusterviewsConsoleOauthServerCertYaml() (*asset, error) {
 	return a, nil
 }
 
+var _pdbConsolePdbYaml = []byte(`apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: console
+  namespace: openshift-console
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: console
+      component: ui`)
+
+func pdbConsolePdbYamlBytes() ([]byte, error) {
+	return _pdbConsolePdbYaml, nil
+}
+
+func pdbConsolePdbYaml() (*asset, error) {
+	bytes, err := pdbConsolePdbYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "pdb/console-pdb.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _pdbDownloadsPdbYaml = []byte(`apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: downloads
+  namespace: openshift-console
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: console
+      component: downloads`)
+
+func pdbDownloadsPdbYamlBytes() ([]byte, error) {
+	return _pdbDownloadsPdbYaml, nil
+}
+
+func pdbDownloadsPdbYaml() (*asset, error) {
+	bytes, err := pdbDownloadsPdbYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "pdb/downloads-pdb.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _routesConsoleCustomRouteYaml = []byte(`# This route 'console-custom' manifest is used in case a custom console route is set
 # either on the ingress config or console-operator config.
 # The 'console-custom' route will be pointing to the 'console' service. 
@@ -880,6 +936,8 @@ var _bindata = map[string]func() (*asset, error){
 	"managedclusteractions/console-create-oauth-client.yaml": managedclusteractionsConsoleCreateOauthClientYaml,
 	"managedclusterviews/console-oauth-client.yaml":          managedclusterviewsConsoleOauthClientYaml,
 	"managedclusterviews/console-oauth-server-cert.yaml":     managedclusterviewsConsoleOauthServerCertYaml,
+	"pdb/console-pdb.yaml":                                   pdbConsolePdbYaml,
+	"pdb/downloads-pdb.yaml":                                 pdbDownloadsPdbYaml,
 	"routes/console-custom-route.yaml":                       routesConsoleCustomRouteYaml,
 	"routes/console-redirect-route.yaml":                     routesConsoleRedirectRouteYaml,
 	"routes/console-route.yaml":                              routesConsoleRouteYaml,
@@ -945,6 +1003,10 @@ var _bintree = &bintree{nil, map[string]*bintree{
 	"managedclusterviews": {nil, map[string]*bintree{
 		"console-oauth-client.yaml":      {managedclusterviewsConsoleOauthClientYaml, map[string]*bintree{}},
 		"console-oauth-server-cert.yaml": {managedclusterviewsConsoleOauthServerCertYaml, map[string]*bintree{}},
+	}},
+	"pdb": {nil, map[string]*bintree{
+		"console-pdb.yaml":   {pdbConsolePdbYaml, map[string]*bintree{}},
+		"downloads-pdb.yaml": {pdbDownloadsPdbYaml, map[string]*bintree{}},
 	}},
 	"routes": {nil, map[string]*bintree{
 		"console-custom-route.yaml":   {routesConsoleCustomRouteYaml, map[string]*bintree{}},
