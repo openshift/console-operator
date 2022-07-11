@@ -6,6 +6,7 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	appsinformersv1 "k8s.io/client-go/informers/apps/v1"
 	appsclientv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
@@ -130,5 +131,9 @@ func (c *DownloadsDeploymentSyncController) SyncDownloadsDeployment(ctx context.
 }
 
 func (c *DownloadsDeploymentSyncController) removeDownloadsDeployment(ctx context.Context) error {
-	return c.deploymentClient.Deployments(api.OpenShiftConsoleNamespace).Delete(ctx, api.OpenShiftConsoleDownloadsDeploymentName, metav1.DeleteOptions{})
+	err := c.deploymentClient.Deployments(api.OpenShiftConsoleNamespace).Delete(ctx, api.OpenShiftConsoleDownloadsDeploymentName, metav1.DeleteOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	return err
 }
