@@ -742,6 +742,73 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 			},
 		},
 		{
+			name: "Test operator config, with enabledPlugins set, without CA certificate",
+			args: args{
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL: mockAPIServer,
+					},
+				},
+				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
+					Spec: routev1.RouteSpec{
+						Host: host,
+					},
+				},
+				useDefaultCAFile:         true,
+				inactivityTimeoutSeconds: 0,
+				availablePlugins: []*v1alpha1.ConsolePlugin{
+					testPlugins("plugin1", "service1", "service-namespace1"),
+					testPluginsWithProxyNoCA("plugin2", "service2", "service-namespace2"),
+				},
+				managedClusterConfigFile: "",
+			},
+			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+  releaseVersion: ` + testReleaseVersion + `
+customization:
+  branding: ` + DEFAULT_BRAND + `
+  documentationBaseURL: ` + DEFAULT_DOC_URL + `
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: {}
+plugins:
+  plugin1: https://service1.service-namespace1.svc.cluster.local:8443/
+  plugin2: https://service2.service-namespace2.svc.cluster.local:8443/
+proxy:
+  services:
+  - consoleAPIPath: /api/proxy/plugin/plugin2/test-alias/
+    endpoint: https://proxy-service2.proxy-service-namespace2.svc.cluster.local:9991
+`,
+				},
+			},
+		},
+		{
 			name: "Test operator config, with 'External' ControlPlaneTopology",
 			args: args{
 				operatorConfig: &operatorv1.Console{},
@@ -886,6 +953,20 @@ func testPluginsWithProxy(pluginName, serviceName, serviceNamespace string) *v1a
 		},
 	}
 
+	return plugin
+}
+
+func testPluginsWithProxyNoCA(pluginName, serviceName, serviceNamespace string) *v1alpha1.ConsolePlugin {
+	plugin := testPlugins(pluginName, serviceName, serviceNamespace)
+	plugin.Spec.Proxy = []v1alpha1.ConsolePluginProxy{{
+		Alias: "test-alias",
+		Type:  v1alpha1.ProxyTypeService,
+		Service: v1alpha1.ConsolePluginProxyServiceConfig{
+			Name:      fmt.Sprintf("proxy-%s", serviceName),
+			Namespace: fmt.Sprintf("proxy-%s", serviceNamespace),
+			Port:      9991,
+		},
+	}}
 	return plugin
 }
 

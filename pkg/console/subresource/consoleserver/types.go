@@ -36,8 +36,8 @@ type Proxy struct {
 type ProxyService struct {
 	Endpoint       string `yaml:"endpoint"`
 	ConsoleAPIPath string `yaml:"consoleAPIPath"`
-	CACertificate  string `yaml:"caCertificate"`
-	Authorize      bool   `yaml:"authorize"`
+	CACertificate  string `yaml:"caCertificate,omitempty"`
+	Authorize      bool   `yaml:"authorize,omitempty"`
 }
 
 // ServingInfo holds configuration for serving HTTP.
