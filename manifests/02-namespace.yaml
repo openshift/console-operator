@@ -8,6 +8,7 @@ metadata:
     include.release.openshift.io/single-node-developer: "true"
     openshift.io/node-selector: ""
     workload.openshift.io/allowed: "management"
+    capability.openshift.io/name: Console
   labels:
     network.openshift.io/policy-group: "console"
     openshift.io/cluster-monitoring: "true"
@@ -22,6 +23,7 @@ metadata:
     include.release.openshift.io/single-node-developer: "true"
     openshift.io/node-selector: ""
     workload.openshift.io/allowed: "management"
+    capability.openshift.io/name: Console
   labels:
     openshift.io/cluster-monitoring: "true"
 ---
@@ -35,3 +37,4 @@ metadata:
     include.release.openshift.io/single-node-developer: "true"
     openshift.io/node-selector: ""
     workload.openshift.io/allowed: "management"
+    capability.openshift.io/name: Console

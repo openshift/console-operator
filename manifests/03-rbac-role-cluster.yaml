@@ -6,6 +6,7 @@ metadata:
     include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
+    capability.openshift.io/name: Console
 rules:
   - apiGroups:
       - oauth.openshift.io
@@ -84,6 +85,7 @@ metadata:
     include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
+    capability.openshift.io/name: Console
 rules:
   - apiGroups:
       - apiextensions.k8s.io
@@ -117,6 +119,7 @@ metadata:
     include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
+    capability.openshift.io/name: Console
 rules:
   - apiGroups:
       - helm.openshift.io
@@ -135,6 +138,7 @@ metadata:
     include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
+    capability.openshift.io/name: Console
 rules:
   - apiGroups:
       - action.open-cluster-management.io
