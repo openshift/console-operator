@@ -8,6 +8,14 @@ metadata:
     include.release.openshift.io/single-node-developer: "true"
 rules:
   - apiGroups:
+    - ""
+    resources:
+    - nodes
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
       - oauth.openshift.io
     resources:
       - oauthclients

@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 
 	// openshift
@@ -367,6 +368,12 @@ func (co *consoleOperator) SyncConfigMap(
 		return nil, false, "FailedGetManagedConfig", mcErr
 	}
 
+	nodeList, nodeListErr := co.nodeClient.Nodes().List(ctx, metav1.ListOptions{})
+	if nodeListErr != nil {
+		return nil, false, "FailedListNodes", nodeListErr
+	}
+	nodeArchitectures := getNodeArchitectures(nodeList)
+
 	useDefaultCAFile := false
 	// We are syncing the `oauth-serving-cert` configmap from `openshift-config-managed` to `openshift-console`.
 	// `oauth-serving-cert` is only published in `openshift-config-managed` in OpenShift 4.9.0 and newer.
@@ -405,6 +412,7 @@ func (co *consoleOperator) SyncConfigMap(
 		inactivityTimeoutSeconds,
 		availablePlugins,
 		managedClusterConfigFile,
+		nodeArchitectures,
 	)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
@@ -592,4 +600,13 @@ func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []string) []*
 		availablePlugins = append(availablePlugins, plugin)
 	}
 	return availablePlugins
+}
+
+func getNodeArchitectures(nodes *corev1.NodeList) []string {
+	nodeArchitecturesSet := sets.NewString()
+	for _, node := range nodes.Items {
+		nodeArch := node.Labels[api.NodeArchitectureLabel]
+		nodeArchitecturesSet.Insert(nodeArch)
+	}
+	return nodeArchitecturesSet.List()
 }
