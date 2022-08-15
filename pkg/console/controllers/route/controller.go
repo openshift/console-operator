@@ -15,6 +15,7 @@ import (
 	"k8s.io/klog/v2"
 
 	// openshift
+	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
@@ -132,7 +133,7 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 		return statusHandler.FlushAndReturn(customRouteErr)
 	}
 
-	_, defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(ctx, routeConfig, controllerContext)
+	_, defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(ctx, routeConfig, ingressConfig, controllerContext)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DefaultRouteSync", defaultRouteErrReason, defaultRouteErr))
 
 	// warn if deprecated configuration of custom domain for 'console' route is set on the console-operator config
@@ -151,7 +152,7 @@ func (c *RouteSyncController) removeRoute(ctx context.Context, routeName string)
 	return err
 }
 
-func (c *RouteSyncController) SyncDefaultRoute(ctx context.Context, routeConfig *routesub.RouteConfig, controllerContext factory.SyncContext) (*routev1.Route, string, error) {
+func (c *RouteSyncController) SyncDefaultRoute(ctx context.Context, routeConfig *routesub.RouteConfig, ingressConfig *configv1.Ingress, controllerContext factory.SyncContext) (*routev1.Route, string, error) {
 	customTLSSecret, configErr := c.GetDefaultRouteTLSSecret(ctx, routeConfig)
 	if configErr != nil {
 		return nil, "InvalidDefaultRouteConfig", configErr
@@ -161,7 +162,7 @@ func (c *RouteSyncController) SyncDefaultRoute(ctx context.Context, routeConfig 
 		return nil, "InvalidCustomTLSSecret", secretValidationErr
 	}
 
-	requiredDefaultRoute := routeConfig.DefaultRoute(customTLSCert)
+	requiredDefaultRoute := routeConfig.DefaultRoute(customTLSCert, ingressConfig)
 
 	defaultRoute, _, defaultRouteError := routesub.ApplyRoute(c.routeClient, requiredDefaultRoute)
 	if defaultRouteError != nil {
