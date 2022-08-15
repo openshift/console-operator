@@ -71,20 +71,20 @@ func patchAndCheckService(t *testing.T, client *framework.ClientSet, isOperatorM
 }
 
 func patchAndCheckRoute(t *testing.T, client *framework.ClientSet, isOperatorManaged bool) error {
-	t.Logf("patching TargetPort on the console Route")
-	route, err := client.Routes.Routes(consoleapi.OpenShiftConsoleNamespace).Patch(context.TODO(), consoleapi.OpenShiftConsoleRouteName, types.MergePatchType, []byte(`{"spec": {"port": {"targetPort": "http"}}}`), metav1.PatchOptions{})
+	t.Logf("patching Host on the console Route")
+	route, err := client.Routes.Routes(consoleapi.OpenShiftConsoleNamespace).Patch(context.TODO(), consoleapi.OpenShiftConsoleRouteName, types.MergePatchType, []byte(`{"spec": {"host": "test.host"}}`), metav1.PatchOptions{})
 	if err != nil {
 		return err
 	}
-	patchedData := route.Spec.Port.TargetPort
+	patchedData := route.Spec.Host
 
-	t.Logf("polling for patched TargetPort on the console Route")
+	t.Logf("polling for patched Host on the console Route")
 	err = wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
 		route, err = framework.GetConsoleRoute(client)
 		if err != nil {
 			return true, err
 		}
-		newData := route.Spec.Port.TargetPort
+		newData := route.Spec.Host
 		if isOperatorManaged {
 			return !reflect.DeepEqual(patchedData, newData), nil
 		}
