@@ -73,10 +73,10 @@ func cleanupCustomLogoConfigMap(t *testing.T, clientSet *framework.ClientSet, cu
 // TestBrandCustomization() tests that changing the customization values on the operator config
 // will result in the customization being set on the console-config configmap in openshift-console.
 // The test covers following cases, in given order:
-//  - image with binary representation (.png) is set as a custom-logo
-//  - custom-logo gets changed
-//  - image with string representation (.svg) is set as a custom-logo
-//  - custom-logo gets unset
+//   - image with binary representation (.png) is set as a custom-logo
+//   - custom-logo gets changed
+//   - image with string representation (.svg) is set as a custom-logo
+//   - custom-logo gets unset
 func TestCustomBrand(t *testing.T) {
 	// create a configmaps with binary and string image type representation
 	client, operatorConfig := setupCustomBrandTest(t)

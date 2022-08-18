@@ -25,12 +25,17 @@ const (
 //
 // b := ConsoleYamlConfigBuilder{}
 // return the default config value immediately:
-//   b.Config()
-//   b.ConfigYAML()
+//
+//	b.Config()
+//	b.ConfigYAML()
+//
 // set all the values:
-//   b.Host(host).LogoutURL("").Brand("").DocURL("").APIServerURL("").Config()
+//
+//	b.Host(host).LogoutURL("").Brand("").DocURL("").APIServerURL("").Config()
+//
 // set only some values:
-//   b.Host().Brand("").Config()
+//
+//	b.Host().Brand("").Config()
 type ConsoleServerCLIConfigBuilder struct {
 	host                       string
 	logoutRedirectURL          string

@@ -14,7 +14,7 @@ import (
 // GetConfig creates a *rest.Config for talking to a Kubernetes apiserver.
 // Otherwise will assume running in cluster and use the cluster provided kubeconfig.
 //
-// Config precedence
+// # Config precedence
 //
 // * KUBECONFIG environment variable pointing at a file
 //

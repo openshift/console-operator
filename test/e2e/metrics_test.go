@@ -47,10 +47,13 @@ func cleanUpMetricsEndpointTestCase(t *testing.T, client *framework.ClientSet) {
 }
 
 // This test essentially does the following to verify the `console_url` is in the metrics endpoint:
-// 	curl --insecure -H "Authorization: Bearer $(oc whoami --show-token)" $(oc get route metrics --template 'https://{{.spec.host}}/metrics') | grep console_url
+//
+//	curl --insecure -H "Authorization: Bearer $(oc whoami --show-token)" $(oc get route metrics --template 'https://{{.spec.host}}/metrics') | grep console_url
+//
 // alternatively:
-// 	oc exec -it console-operator-<pod-id> /bin/bash
-// 	curl --insecure -H "Authorization: Bearer <token>  https://localhost:8443/metrics | grep console_url
+//
+//	oc exec -it console-operator-<pod-id> /bin/bash
+//	curl --insecure -H "Authorization: Bearer <token>  https://localhost:8443/metrics | grep console_url
 func TestMetricsEndpoint(t *testing.T) {
 	client, _ := setupMetricsEndpointTestCase(t)
 	defer cleanUpMetricsEndpointTestCase(t, client)
