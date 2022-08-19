@@ -152,13 +152,14 @@ func (rc *RouteConfig) GetDomain() string {
 // If custom hostname for the console is set, then the default route
 // should point to the redirect `console-redirect` service and the
 // created custom route should be pointing to the `console` service.
-func (rc *RouteConfig) DefaultRoute(tlsConfig *CustomTLSCert) *routev1.Route {
+func (rc *RouteConfig) DefaultRoute(tlsConfig *CustomTLSCert, ingressConfig *configv1.Ingress) *routev1.Route {
 	route := &routev1.Route{}
 	if rc.IsCustomHostnameSet() && rc.routeName == api.OpenShiftConsoleRouteName {
 		route = resourceread.ReadRouteV1OrDie(assets.MustAsset(fmt.Sprintf("routes/%s-redirect-route.yaml", rc.routeName)))
 	} else {
 		route = resourceread.ReadRouteV1OrDie(assets.MustAsset(fmt.Sprintf("routes/%s-route.yaml", rc.routeName)))
 	}
+	route.Spec.Host = GetDefaultRouteHost(rc.routeName, ingressConfig)
 	setTLS(tlsConfig, route)
 	return route
 }
