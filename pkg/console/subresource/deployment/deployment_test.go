@@ -84,7 +84,6 @@ func TestDefaultDeployment(t *testing.T) {
 		},
 		OwnerReferences: nil,
 		Finalizers:      nil,
-		ClusterName:     "",
 	}
 
 	consoleConfig := &corev1.ConfigMap{
@@ -104,7 +103,6 @@ func TestDefaultDeployment(t *testing.T) {
 			Annotations:                nil,
 			OwnerReferences:            nil,
 			Finalizers:                 nil,
-			ClusterName:                "",
 		},
 		Data:       map[string]string{"console-config.yaml": ""},
 		BinaryData: nil,
@@ -1366,7 +1364,6 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 		Annotations:                map[string]string{},
 		OwnerReferences:            nil,
 		Finalizers:                 nil,
-		ClusterName:                "",
 	}
 
 	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
@@ -1654,7 +1651,6 @@ func TestStub(t *testing.T) {
 					Annotations:                map[string]string{},
 					OwnerReferences:            nil,
 					Finalizers:                 nil,
-					ClusterName:                "",
 				},
 				Spec:   appsv1.DeploymentSpec{},
 				Status: appsv1.DeploymentStatus{},
