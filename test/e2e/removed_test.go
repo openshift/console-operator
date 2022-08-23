@@ -29,4 +29,10 @@ func TestRemoved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	framework.MustManageConsole(t, client)
+	t.Logf("validating that the operator does recreate removed resources when ManagementState:Managed...")
+	framework.ConsoleResourcesAvailable(client)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
