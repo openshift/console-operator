@@ -139,7 +139,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 			},
 		},
 		{
-			name: "Config builder should handle custom dev catalog without categories",
+			name: "Config builder should handle custom dev catalog without categories and disable types",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
 				b.CustomDeveloperCatalog(v1.DeveloperConsoleCatalogCustomization{})
@@ -268,6 +268,39 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 								},
 							},
 						},
+					},
+				},
+				Providers: Providers{},
+			},
+		},
+		{
+			name: "Config builder should handle dev catalog types",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.CustomDeveloperCatalog(v1.DeveloperConsoleCatalogCustomization{
+					Types: v1.DeveloperConsoleCatalogTypesState{State: "Disabled", Disabled: &[]string{"type1", "type2"}},
+				})
+				return b.Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+				},
+				Customization: Customization{
+					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
+						Types: DeveloperConsoleCatalogTypesState{State: "Disabled", Disabled: &[]string{"type1", "type2"}},
 					},
 				},
 				Providers: Providers{},
@@ -599,7 +632,7 @@ providers:
 `,
 		},
 		{
-			name: "Config builder should handle custom dev catalog without categories",
+			name: "Config builder should handle custom dev catalog without categories and disable types",
 			input: func() ([]byte, error) {
 				b := &ConsoleServerCLIConfigBuilder{}
 				b.CustomDeveloperCatalog(v1.DeveloperConsoleCatalogCustomization{})
@@ -703,6 +736,37 @@ customization:
         - quarkus
     - id: notagsorsubcategory
       label: No tags or subcategory
+providers: {}
+`,
+		},
+		{
+			name: "Config builder should handle dev catalog types",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.CustomDeveloperCatalog(v1.DeveloperConsoleCatalogCustomization{
+					Types: v1.DeveloperConsoleCatalogTypesState{State: "Disabled", Disabled: &[]string{"type1", "type2"}},
+				})
+				return b.ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo: {}
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+customization:
+  developerCatalog:
+    categories: null
+    types:
+      state: Disabled
+      disabled:
+      - type1
+      - type2
 providers: {}
 `,
 		},

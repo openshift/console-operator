@@ -346,6 +346,29 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 		}
 	}
 
+	if !reflect.DeepEqual(b.devCatalogCustomization.Types, operatorv1.DeveloperConsoleCatalogTypesState{}) {
+
+		var catalogTypes DeveloperConsoleCatalogTypesState
+		var disabledTypes []string = nil
+		var enabledTypes []string = nil
+
+		if b.devCatalogCustomization.Types.State == "Disabled" && b.devCatalogCustomization.Types.Disabled != nil {
+			disabledTypes = *b.devCatalogCustomization.Types.Disabled
+		}
+
+		if b.devCatalogCustomization.Types.State == "Enabled" && b.devCatalogCustomization.Types.Enabled != nil {
+			enabledTypes = *b.devCatalogCustomization.Types.Enabled
+		}
+		catalogTypes = DeveloperConsoleCatalogTypesState{
+			State:    CatalogTypesState(b.devCatalogCustomization.Types.State),
+			Enabled:  &enabledTypes,
+			Disabled: &disabledTypes,
+		}
+		conf.DeveloperCatalog = &DeveloperConsoleCatalogCustomization{
+			Types: catalogTypes,
+		}
+	}
+
 	if len(b.projectAccess.AvailableClusterRoles) > 0 {
 		conf.ProjectAccess = ProjectAccess{
 			AvailableClusterRoles: b.projectAccess.AvailableClusterRoles,

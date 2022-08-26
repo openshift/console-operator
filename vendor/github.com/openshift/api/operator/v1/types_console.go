@@ -114,7 +114,7 @@ type ConsoleCustomization struct {
 	// SVG format preferred
 	// +optional
 	CustomLogoFile configv1.ConfigMapFileReference `json:"customLogoFile,omitempty"`
-	// developerCatalog allows to configure the shown developer catalog categories.
+	// developerCatalog allows to configure the shown developer catalog categories (filters) and types (sub-catalogs).
 	// +kubebuilder:validation:Optional
 	// +optional
 	DeveloperCatalog DeveloperConsoleCatalogCustomization `json:"developerCatalog,omitempty"`
@@ -148,12 +148,32 @@ type ProjectAccess struct {
 	AvailableClusterRoles []string `json:"availableClusterRoles,omitempty"`
 }
 
+// If sub-catalog type(s) is(are) mentioned in both `enabled` and `disabled` list, the sub-catalog type(s) should be hidden.
+type DeveloperConsoleCatalogTypes struct {
+	// enabled is a list of developer catalog types (sub-catalogs IDs) that will be shown to users.
+	// Types (sub-catalogs) are added via console plugins, the available types (sub-catalog IDs) are available
+	// in the console on the cluster configuration page, or when editing the YAML in the console.
+	// A new type will not be shown to the user until it is added in the enabled list.
+	// If `enabled` list is empty, complete developer catalog should be hidden.
+	// +optional
+	Enabled []string `json:"enabled"`
+	// disabled is a list of developer catalog types (sub-catalogs IDs) that are not shown to users.
+	// Types (sub-catalogs) are added via console plugins, the available types (sub-catalog IDs) are available
+	// in the console on the cluster configuration page, or when editing the YAML in the console.
+	// If all the available sub-catalog types are added in the `disabled` list, complete developer catalog should be hidden.
+	// +optional
+	Disabled []string `json:"disabled,omitempty"`
+}
+
 // DeveloperConsoleCatalogCustomization allow cluster admin to configure developer catalog.
 type DeveloperConsoleCatalogCustomization struct {
 	// categories which are shown in the developer catalog.
 	// +kubebuilder:validation:Optional
 	// +optional
 	Categories []DeveloperConsoleCatalogCategory `json:"categories,omitempty"`
+	// types allows enabling/disabling of sub-catalog types that user can see in the Developer catalog.
+	// +optional
+	Types DeveloperConsoleCatalogTypes `json:"types,omitempty"`
 }
 
 // DeveloperConsoleCatalogCategoryMeta are the key identifiers of a developer catalog category.
