@@ -1,9 +1,13 @@
 package util
 
 import (
+	//k8s
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/klog/v2"
 
+	//github
+	"github.com/blang/semver"
 	"github.com/openshift/library-go/pkg/controller/factory"
 )
 
@@ -36,4 +40,23 @@ func LabelFilter(labels map[string]string) factory.EventFilterFunc {
 		}
 		return true
 	}
+}
+
+// contains checks if a string is present in a slice
+func SliceContains(s []string, value string) bool {
+	for _, v := range s {
+		if v == value {
+			return true
+		}
+	}
+	return false
+}
+
+func IsSupportedVersion(productVersion string) bool {
+	version, err := semver.Parse(productVersion)
+	if err != nil {
+		klog.V(4).Infof("unable to parse %q version", productVersion)
+		return false
+	}
+	return version.Compare(semver.MustParse("4.0.0")) == 1
 }

@@ -60,12 +60,14 @@ const (
 
 	NodeArchitectureLabel = "kubernetes.io/arch"
 
-	ManagedClusterViewAPIGroup     = "view.open-cluster-management.io"
-	ManagedClusterViewAPIVersion   = "v1beta1"
-	ManagedClusterViewResource     = "managedclusterviews"
-	ManagedClusterActionAPIGroup   = "action.open-cluster-management.io"
-	ManagedClusterActionAPIVersion = "v1beta1"
-	ManagedClusterActionResource   = "managedclusteractions"
+	ManagedClusterViewAPIGroup           = "view.open-cluster-management.io"
+	ManagedClusterViewAPIVersion         = "v1beta1"
+	ManagedClusterViewResource           = "managedclusterviews"
+	ManagedClusterActionAPIGroup         = "action.open-cluster-management.io"
+	ManagedClusterActionAPIVersion       = "v1beta1"
+	ManagedClusterActionResource         = "managedclusteractions"
+	ManagedClusterClaimVersionAnnotation = "version.openshift.io"
+	ManagedClusterClaimProductAnnotation = "product.open-cluster-management.io"
 
 	ConsoleContainerPortName    = "https"
 	ConsoleContainerPort        = 443
@@ -90,3 +92,6 @@ var (
 		Resource: ManagedClusterActionResource,
 	}
 )
+
+// List of products we support for managed clusters (under the claims "product.open-cluster-management.io")
+var SupportedClusterProducts = []string{"OpenShift", "ROSA", "ARO", "ROKS", "OpenShiftDedicated"}
