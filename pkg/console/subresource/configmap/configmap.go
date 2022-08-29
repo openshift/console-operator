@@ -91,6 +91,7 @@ func DefaultConfigMap(
 		QuickStarts(operatorConfig.Spec.Customization.QuickStarts).
 		CustomHostnameRedirectPort(isCustomRoute(activeConsoleRoute)).
 		AddPage(operatorConfig.Spec.Customization.AddPage).
+		Perspectives(operatorConfig.Spec.Customization.Perspectives).
 		StatusPageID(statusPageId(operatorConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
 		ManagedClusterConfigFile(managedClusterConfigFile).

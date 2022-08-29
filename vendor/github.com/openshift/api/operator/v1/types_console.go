@@ -1,9 +1,9 @@
 package v1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	configv1 "github.com/openshift/api/config/v1"
+	authorizationv1 "k8s.io/api/authorization/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // +genclient
@@ -132,6 +132,9 @@ type ConsoleCustomization struct {
 	// +kubebuilder:validation:Optional
 	// +optional
 	AddPage AddPage `json:"addPage,omitempty"`
+	// perspectives allows enabling/disabling of perspective(s) that user can see in the Perspective switcher dropdown.
+	// +optional
+	Perspectives []Perspectives `json:"perspectives,omitempty"`
 }
 
 // ProjectAccess contains options for project access roles
@@ -200,6 +203,52 @@ type AddPage struct {
 	// +kubebuilder:validation:MinItems=1
 	// +optional
 	DisabledActions []string `json:"disabledActions,omitempty"`
+}
+
+type PerspectiveState string
+
+// These are valid perspective states. "Enabled" means the perspective is shown.
+// "Disabled" means the Perspective is hidden.
+// "AccessReview" means access review check is required to show or hide a Perspective.
+const (
+	Enabled      PerspectiveState = "Enabled"
+	Disabled     PerspectiveState = "Disabled"
+	AccessReview PerspectiveState = "AccessReview"
+)
+
+// `required` and  `missing` can work together esp. in the case where cluster admin
+// wants to show another perspective to users without specific permissions. If both `required` and `missing`
+// are not specified for `state: AccessReview`, access review check will be ignored and perspective will be enabled.
+type PerspectiveAccessReview struct {
+	// required defines a list of permission checks. The perspective will only be shown when all checks are successful. If no checks are specified then we simply ignore the check even if the state is AccessReview.
+	// +optional
+	Required []authorizationv1.ResourceAttributes `json:"required,omitempty"`
+	// missing defines a list of permission checks. The perspective will only be shown when at least one check fails. If no checks are specified then we simply ignore the check even if the state is AccessReview.
+	// +optional
+	Missing []authorizationv1.ResourceAttributes `json:"missing,omitempty"`
+}
+
+// PerspectiveVisibility defines the criteria to show/hide a perspective
+// +union
+type PerspectiveVisibility struct {
+	// state defines the perspective is enabled or disabled or access review check is required.
+	// +unionDiscriminator
+	// +kubebuilder:validation:Enum:=Enabled;Disabled;AccessReview
+	// +kubebuilder:validation:Required
+	State PerspectiveState `json:"state"`
+	// accessReview defines required and missing access review checks. Empty accessReview will ignore the access review check and display the perspective.
+	// +optional
+	AccessReview *PerspectiveAccessReview `json:"accessReview,omitempty"`
+}
+
+type Perspectives struct {
+	// id defines the id of perspective to disable.
+	// Incorrect or unknown ids will be ignored.
+	// +kubebuilder:validation:Required
+	ID string `json:"id"`
+	// visibility defines the state of perspective along with access review checks if needed for that perspective.
+	// +kubebuilder:validation:Required
+	Visibility PerspectiveVisibility `json:"visibility"`
 }
 
 // Brand is a specific supported brand within the console.

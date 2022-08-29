@@ -7,6 +7,7 @@ import (
 	"github.com/go-test/deep"
 	v1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -333,6 +334,54 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Customization: Customization{
 					QuickStarts: QuickStarts{
 						Disabled: []string{"quick-start0", "quick-start1", "quick-start2"},
+					},
+				},
+				Providers: Providers{},
+			},
+		},
+		{
+			name: "Config builder should handle perspectives",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.Perspectives([]v1.Perspectives{
+					{
+						ID: "perspective1",
+						Visibility: v1.PerspectiveVisibility{
+							State: "AccessReview",
+							AccessReview: &v1.PerspectiveAccessReview{
+								Required: []authorizationv1.ResourceAttributes{{Resource: "namespaces", Verb: "list"}},
+								Missing:  []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}},
+							},
+						},
+					}, {
+						ID: "perspective2",
+						Visibility: v1.PerspectiveVisibility{
+							State: "Disabled",
+						},
+					},
+				})
+				return b.Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+				},
+				Customization: Customization{
+					Perspectives: []Perspectives{
+						{ID: "perspective1", Visibility: PerspectiveVisibility{State: "AccessReview", AccessReview: &PerspectiveAccessReview{Required: []authorizationv1.ResourceAttributes{{Resource: "namespaces", Verb: "list"}}, Missing: []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}}}}},
+						{ID: "perspective2", Visibility: PerspectiveVisibility{State: "Disabled"}},
 					},
 				},
 				Providers: Providers{},
@@ -761,6 +810,68 @@ customization:
     disabled:
     - quickStarts0
     - quickStarts1
+providers: {}
+`,
+		},
+		{
+			name: "Config builder should handle perspectives",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.Perspectives([]v1.Perspectives{
+					{
+						ID: "perspective1",
+						Visibility: v1.PerspectiveVisibility{
+							State: "AccessReview",
+							AccessReview: &v1.PerspectiveAccessReview{
+								Required: []authorizationv1.ResourceAttributes{{Resource: "namespaces", Verb: "list"}},
+								Missing:  []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}},
+							},
+						},
+					}, {
+						ID: "perspective2",
+						Visibility: v1.PerspectiveVisibility{
+							State: "Disabled",
+						},
+					},
+				})
+				return b.ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo: {}
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+customization:
+  perspectives:
+  - id: perspective1
+    visibility:
+      state: AccessReview
+      accessReview:
+        required:
+        - namespace: ""
+          verb: list
+          group: ""
+          version: ""
+          resource: namespaces
+          subresource: ""
+          name: ""
+        missing:
+        - namespace: ""
+          verb: list
+          group: ""
+          version: ""
+          resource: clusterroles
+          subresource: ""
+          name: ""
+  - id: perspective2
+    visibility:
+      state: Disabled
 providers: {}
 `,
 		},
