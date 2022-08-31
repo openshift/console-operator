@@ -1,6 +1,8 @@
 package consoleserver
 
 import (
+	"os"
+
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
@@ -51,6 +53,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	proxyServices              []ProxyService
 	managedClusterConfigFile   string
 	telemetry                  map[string]string
+	releaseVersion             string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -156,6 +159,11 @@ func (b *ConsoleServerCLIConfigBuilder) TelemetryConfiguration(telemetry map[str
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) ReleaseVersion() *ConsoleServerCLIConfigBuilder {
+	b.releaseVersion = os.Getenv("RELEASE_VERSION")
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
 		Kind:                     "ConsoleConfig",
@@ -210,6 +218,9 @@ func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {
 	}
 	if len(b.controlPlaneToplogy) > 0 {
 		conf.ControlPlaneToplogy = b.controlPlaneToplogy
+	}
+	if len(b.releaseVersion) > 0 {
+		conf.ReleaseVersion = b.releaseVersion
 	}
 	return conf
 }
