@@ -2,9 +2,8 @@ package v1
 
 import (
 	v1 "github.com/openshift/api/config/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // +genclient
@@ -101,6 +100,43 @@ type DNSSpec struct {
 	// +optional
 	// +kubebuilder:default=Normal
 	LogLevel DNSLogLevel `json:"logLevel,omitempty"`
+
+	// cache describes the caching configuration that applies to all server blocks listed in the Corefile.
+	// This field allows a cluster admin to optionally configure:
+	// * positiveTTL which is a duration for which positive responses should be cached.
+	// * negativeTTL which is a duration for which negative responses should be cached.
+	// If this is not configured, OpenShift will configure positive and negative caching with a default value that is
+	// subject to change. At the time of writing, the default positiveTTL is 900 seconds and the default negativeTTL is
+	// 30 seconds or as noted in the respective Corefile for your version of OpenShift.
+	// +optional
+	Cache DNSCache `json:"cache,omitempty"`
+}
+
+// DNSCache defines the fields for configuring DNS caching.
+type DNSCache struct {
+	// positiveTTL is optional and specifies the amount of time that a positive response should be cached.
+	//
+	// If configured, it must be a value of 1s (1 second) or greater up to a theoretical maximum of several years.
+	// If not configured, the value will be 0 (zero) and OpenShift will use a default value of 900 seconds unless noted
+	// otherwise in the respective Corefile for your version of OpenShift. The default value of 900 seconds is subject
+	// to change. This field expects an unsigned duration string of decimal numbers, each with optional fraction and a
+	// unit suffix, e.g. "100s", "1m30s". Valid time units are "s", "m", and "h".
+	// +kubebuilder:validation:Pattern=^(0|([0-9]+(\.[0-9]+)?(s|m|h))+)$
+	// +kubebuilder:validation:Type:=string
+	// +optional
+	PositiveTTL metav1.Duration `json:"positiveTTL,omitempty"`
+
+	// negativeTTL is optional and specifies the amount of time that a negative response should be cached.
+	//
+	// If configured, it must be a value of 1s (1 second) or greater up to a theoretical maximum of several years.
+	// If not configured, the value will be 0 (zero) and OpenShift will use a default value of 30 seconds unless noted
+	// otherwise in the respective Corefile for your version of OpenShift. The default value of 30 seconds is subject
+	// to change. This field expects an unsigned duration string of decimal numbers, each with optional fraction and a
+	// unit suffix, e.g. "100s", "1m30s". Valid time units are "s", "m", and "h".
+	// +kubebuilder:validation:Pattern=^(0|([0-9]+(\.[0-9]+)?(s|m|h))+)$
+	// +kubebuilder:validation:Type:=string
+	// +optional
+	NegativeTTL metav1.Duration `json:"negativeTTL,omitempty"`
 }
 
 // +kubebuilder:validation:Enum:=Normal;Debug;Trace
@@ -161,7 +197,8 @@ type DNSTransportConfig struct {
 	// as an empty value but may be useful when a cluster admin wants to be more explicit about the transport,
 	// or wants to switch from "TLS" to "Cleartext" explicitly.
 	// "TLS" - This indicates that DNS queries should be sent over a TLS connection. If Transport is set to TLS,
-	// you MUST also set ServerName.
+	// you MUST also set ServerName. If a port is not included with the upstream IP, port 853 will be tried by default
+	// per RFC 7858 section 3.1; https://datatracker.ietf.org/doc/html/rfc7858#section-3.1.
 	//
 	// +optional
 	// +unionDiscriminator
@@ -185,13 +222,13 @@ type DNSOverTLSConfig struct {
 	ServerName string `json:"serverName"`
 
 	// caBundle references a ConfigMap that must contain either a single
-	// CA Certificate or a CA Bundle (in the case of multiple upstreams signed
-	// by different CAs). This allows cluster administrators to provide their
+	// CA Certificate or a CA Bundle. This allows cluster administrators to provide their
 	// own CA or CA bundle for validating the certificate of upstream resolvers.
 	//
 	// 1. The configmap must contain a `ca-bundle.crt` key.
 	// 2. The value must be a PEM encoded CA certificate or CA bundle.
 	// 3. The administrator must create this configmap in the openshift-config namespace.
+	// 4. The upstream server certificate must contain a Subject Alternative Name (SAN) that matches ServerName.
 	//
 	// +optional
 	CABundle v1.ConfigMapNameReference `json:"caBundle,omitempty"`

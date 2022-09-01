@@ -905,8 +905,9 @@ func (RepositoryDigestMirrors) SwaggerDoc() map[string]string {
 }
 
 var map_ImageDigestMirrorSet = map[string]string{
-	"":     "ImageDigestMirrorSet holds cluster-wide information about how to handle registry mirror rules on using digest pull specification. When multiple policies are defined, the outcome of the behavior is defined on each field.\n\nCompatibility level 1: Stable within a major release for a minimum of 12 months or 3 minor releases (whichever is longer).",
-	"spec": "spec holds user settable values for configuration",
+	"":       "ImageDigestMirrorSet holds cluster-wide information about how to handle registry mirror rules on using digest pull specification. When multiple policies are defined, the outcome of the behavior is defined on each field.\n\nCompatibility level 1: Stable within a major release for a minimum of 12 months or 3 minor releases (whichever is longer).",
+	"spec":   "spec holds user settable values for configuration",
+	"status": "status contains the observed state of the resource.",
 }
 
 func (ImageDigestMirrorSet) SwaggerDoc() map[string]string {
@@ -942,8 +943,9 @@ func (ImageDigestMirrors) SwaggerDoc() map[string]string {
 }
 
 var map_ImageTagMirrorSet = map[string]string{
-	"":     "ImageTagMirrorSet holds cluster-wide information about how to handle registry mirror rules on using tag pull specification. When multiple policies are defined, the outcome of the behavior is defined on each field.\n\nCompatibility level 1: Stable within a major release for a minimum of 12 months or 3 minor releases (whichever is longer).",
-	"spec": "spec holds user settable values for configuration",
+	"":       "ImageTagMirrorSet holds cluster-wide information about how to handle registry mirror rules on using tag pull specification. When multiple policies are defined, the outcome of the behavior is defined on each field.\n\nCompatibility level 1: Stable within a major release for a minimum of 12 months or 3 minor releases (whichever is longer).",
+	"spec":   "spec holds user settable values for configuration",
+	"status": "status contains the observed state of the resource.",
 }
 
 func (ImageTagMirrorSet) SwaggerDoc() map[string]string {
@@ -1076,10 +1078,12 @@ func (BareMetalPlatformSpec) SwaggerDoc() map[string]string {
 }
 
 var map_BareMetalPlatformStatus = map[string]string{
-	"":                    "BareMetalPlatformStatus holds the current status of the BareMetal infrastructure provider. For more information about the network architecture used with the BareMetal platform type, see: https://github.com/openshift/installer/blob/master/docs/design/baremetal/networking-infrastructure.md",
-	"apiServerInternalIP": "apiServerInternalIP is an IP address to contact the Kubernetes API server that can be used by components inside the cluster, like kubelets using the infrastructure rather than Kubernetes networking. It is the IP that the Infrastructure.status.apiServerInternalURI points to. It is the IP for a self-hosted load balancer in front of the API servers.",
-	"ingressIP":           "ingressIP is an external IP which routes to the default ingress controller. The IP is a suitable target of a wildcard DNS record used to resolve default route host names.",
-	"nodeDNSIP":           "nodeDNSIP is the IP address for the internal DNS used by the nodes. Unlike the one managed by the DNS operator, `NodeDNSIP` provides name resolution for the nodes themselves. There is no DNS-as-a-service for BareMetal deployments. In order to minimize necessary changes to the datacenter DNS, a DNS service is hosted as a static pod to serve those hostnames to the nodes in the cluster.",
+	"":                     "BareMetalPlatformStatus holds the current status of the BareMetal infrastructure provider. For more information about the network architecture used with the BareMetal platform type, see: https://github.com/openshift/installer/blob/master/docs/design/baremetal/networking-infrastructure.md",
+	"apiServerInternalIP":  "apiServerInternalIP is an IP address to contact the Kubernetes API server that can be used by components inside the cluster, like kubelets using the infrastructure rather than Kubernetes networking. It is the IP that the Infrastructure.status.apiServerInternalURI points to. It is the IP for a self-hosted load balancer in front of the API servers.\n\nDeprecated: Use APIServerInternalIPs instead.",
+	"apiServerInternalIPs": "apiServerInternalIPs are the IP addresses to contact the Kubernetes API server that can be used by components inside the cluster, like kubelets using the infrastructure rather than Kubernetes networking. These are the IPs for a self-hosted load balancer in front of the API servers. In dual stack clusters this list contains two IPs otherwise only one.",
+	"ingressIP":            "ingressIP is an external IP which routes to the default ingress controller. The IP is a suitable target of a wildcard DNS record used to resolve default route host names.\n\nDeprecated: Use IngressIPs instead.",
+	"ingressIPs":           "ingressIPs are the external IPs which route to the default ingress controller. The IPs are suitable targets of a wildcard DNS record used to resolve default route host names. In dual stack clusters this list contains two IPs otherwise only one.",
+	"nodeDNSIP":            "nodeDNSIP is the IP address for the internal DNS used by the nodes. Unlike the one managed by the DNS operator, `NodeDNSIP` provides name resolution for the nodes themselves. There is no DNS-as-a-service for BareMetal deployments. In order to minimize necessary changes to the datacenter DNS, a DNS service is hosted as a static pod to serve those hostnames to the nodes in the cluster.",
 }
 
 func (BareMetalPlatformStatus) SwaggerDoc() map[string]string {
@@ -1136,6 +1140,7 @@ var map_IBMCloudPlatformStatus = map[string]string{
 	"resourceGroupName": "ResourceGroupName is the Resource Group for new IBMCloud resources created for the cluster.",
 	"providerType":      "ProviderType indicates the type of cluster that was created",
 	"cisInstanceCRN":    "CISInstanceCRN is the CRN of the Cloud Internet Services instance managing the DNS zone for the cluster's base domain",
+	"dnsInstanceCRN":    "DNSInstanceCRN is the CRN of the DNS Services instance managing the DNS zone for the cluster's base domain",
 }
 
 func (IBMCloudPlatformStatus) SwaggerDoc() map[string]string {
@@ -1206,7 +1211,7 @@ func (KubevirtPlatformStatus) SwaggerDoc() map[string]string {
 
 var map_NutanixPlatformSpec = map[string]string{
 	"":              "NutanixPlatformSpec holds the desired state of the Nutanix infrastructure provider. This only includes fields that can be modified in the cluster.",
-	"prismCentral":  "prismCentral holds the endpoint address and port to access the Nutanix Prism Central. When a cluster-wide proxy is installed, this endpoint will not be accessed via the proxy.",
+	"prismCentral":  "prismCentral holds the endpoint address and port to access the Nutanix Prism Central. When a cluster-wide proxy is installed, by default, this endpoint will be accessed via the proxy. Should you wish for communication with this endpoint not to be proxied, please add the endpoint to the proxy spec.noProxy list.",
 	"prismElements": "prismElements holds one or more endpoint address and port data to access the Nutanix Prism Elements (clusters) of the Nutanix Prism Central. Currently we only support one Prism Element (cluster) for an OpenShift cluster, where all the Nutanix resources (VMs, subnets, volumes, etc.) used in the OpenShift cluster are located. In the future, we may support Nutanix resources (VMs, etc.) spread over multiple Prism Elements (clusters) of the Prism Central.",
 }
 
@@ -1215,9 +1220,11 @@ func (NutanixPlatformSpec) SwaggerDoc() map[string]string {
 }
 
 var map_NutanixPlatformStatus = map[string]string{
-	"":                    "NutanixPlatformStatus holds the current status of the Nutanix infrastructure provider.",
-	"apiServerInternalIP": "apiServerInternalIP is an IP address to contact the Kubernetes API server that can be used by components inside the cluster, like kubelets using the infrastructure rather than Kubernetes networking. It is the IP that the Infrastructure.status.apiServerInternalURI points to. It is the IP for a self-hosted load balancer in front of the API servers.",
-	"ingressIP":           "ingressIP is an external IP which routes to the default ingress controller. The IP is a suitable target of a wildcard DNS record used to resolve default route host names.",
+	"":                     "NutanixPlatformStatus holds the current status of the Nutanix infrastructure provider.",
+	"apiServerInternalIP":  "apiServerInternalIP is an IP address to contact the Kubernetes API server that can be used by components inside the cluster, like kubelets using the infrastructure rather than Kubernetes networking. It is the IP that the Infrastructure.status.apiServerInternalURI points to. It is the IP for a self-hosted load balancer in front of the API servers.\n\nDeprecated: Use APIServerInternalIPs instead.",
+	"apiServerInternalIPs": "apiServerInternalIPs are the IP addresses to contact the Kubernetes API server that can be used by components inside the cluster, like kubelets using the infrastructure rather than Kubernetes networking. These are the IPs for a self-hosted load balancer in front of the API servers. In dual stack clusters this list contains two IPs otherwise only one.",
+	"ingressIP":            "ingressIP is an external IP which routes to the default ingress controller. The IP is a suitable target of a wildcard DNS record used to resolve default route host names.\n\nDeprecated: Use IngressIPs instead.",
+	"ingressIPs":           "ingressIPs are the external IPs which route to the default ingress controller. The IPs are suitable targets of a wildcard DNS record used to resolve default route host names. In dual stack clusters this list contains two IPs otherwise only one.",
 }
 
 func (NutanixPlatformStatus) SwaggerDoc() map[string]string {
@@ -1227,7 +1234,7 @@ func (NutanixPlatformStatus) SwaggerDoc() map[string]string {
 var map_NutanixPrismElementEndpoint = map[string]string{
 	"":         "NutanixPrismElementEndpoint holds the name and endpoint data for a Prism Element (cluster)",
 	"name":     "name is the name of the Prism Element (cluster). This value will correspond with the cluster field configured on other resources (eg Machines, PVCs, etc).",
-	"endpoint": "endpoint holds the endpoint address and port data of the Prism Element (cluster). When a cluster-wide proxy is installed, this endpoint will not be accessed via the proxy.",
+	"endpoint": "endpoint holds the endpoint address and port data of the Prism Element (cluster). When a cluster-wide proxy is installed, by default, this endpoint will be accessed via the proxy. Should you wish for communication with this endpoint not to be proxied, please add the endpoint to the proxy spec.noProxy list.",
 }
 
 func (NutanixPrismElementEndpoint) SwaggerDoc() map[string]string {
@@ -1253,11 +1260,13 @@ func (OpenStackPlatformSpec) SwaggerDoc() map[string]string {
 }
 
 var map_OpenStackPlatformStatus = map[string]string{
-	"":                    "OpenStackPlatformStatus holds the current status of the OpenStack infrastructure provider.",
-	"apiServerInternalIP": "apiServerInternalIP is an IP address to contact the Kubernetes API server that can be used by components inside the cluster, like kubelets using the infrastructure rather than Kubernetes networking. It is the IP that the Infrastructure.status.apiServerInternalURI points to. It is the IP for a self-hosted load balancer in front of the API servers.",
-	"cloudName":           "cloudName is the name of the desired OpenStack cloud in the client configuration file (`clouds.yaml`).",
-	"ingressIP":           "ingressIP is an external IP which routes to the default ingress controller. The IP is a suitable target of a wildcard DNS record used to resolve default route host names.",
-	"nodeDNSIP":           "nodeDNSIP is the IP address for the internal DNS used by the nodes. Unlike the one managed by the DNS operator, `NodeDNSIP` provides name resolution for the nodes themselves. There is no DNS-as-a-service for OpenStack deployments. In order to minimize necessary changes to the datacenter DNS, a DNS service is hosted as a static pod to serve those hostnames to the nodes in the cluster.",
+	"":                     "OpenStackPlatformStatus holds the current status of the OpenStack infrastructure provider.",
+	"apiServerInternalIP":  "apiServerInternalIP is an IP address to contact the Kubernetes API server that can be used by components inside the cluster, like kubelets using the infrastructure rather than Kubernetes networking. It is the IP that the Infrastructure.status.apiServerInternalURI points to. It is the IP for a self-hosted load balancer in front of the API servers.\n\nDeprecated: Use APIServerInternalIPs instead.",
+	"apiServerInternalIPs": "apiServerInternalIPs are the IP addresses to contact the Kubernetes API server that can be used by components inside the cluster, like kubelets using the infrastructure rather than Kubernetes networking. These are the IPs for a self-hosted load balancer in front of the API servers. In dual stack clusters this list contains two IPs otherwise only one.",
+	"cloudName":            "cloudName is the name of the desired OpenStack cloud in the client configuration file (`clouds.yaml`).",
+	"ingressIP":            "ingressIP is an external IP which routes to the default ingress controller. The IP is a suitable target of a wildcard DNS record used to resolve default route host names.\n\nDeprecated: Use IngressIPs instead.",
+	"ingressIPs":           "ingressIPs are the external IPs which route to the default ingress controller. The IPs are suitable targets of a wildcard DNS record used to resolve default route host names. In dual stack clusters this list contains two IPs otherwise only one.",
+	"nodeDNSIP":            "nodeDNSIP is the IP address for the internal DNS used by the nodes. Unlike the one managed by the DNS operator, `NodeDNSIP` provides name resolution for the nodes themselves. There is no DNS-as-a-service for OpenStack deployments. In order to minimize necessary changes to the datacenter DNS, a DNS service is hosted as a static pod to serve those hostnames to the nodes in the cluster.",
 }
 
 func (OpenStackPlatformStatus) SwaggerDoc() map[string]string {
@@ -1273,10 +1282,12 @@ func (OvirtPlatformSpec) SwaggerDoc() map[string]string {
 }
 
 var map_OvirtPlatformStatus = map[string]string{
-	"":                    "OvirtPlatformStatus holds the current status of the  oVirt infrastructure provider.",
-	"apiServerInternalIP": "apiServerInternalIP is an IP address to contact the Kubernetes API server that can be used by components inside the cluster, like kubelets using the infrastructure rather than Kubernetes networking. It is the IP that the Infrastructure.status.apiServerInternalURI points to. It is the IP for a self-hosted load balancer in front of the API servers.",
-	"ingressIP":           "ingressIP is an external IP which routes to the default ingress controller. The IP is a suitable target of a wildcard DNS record used to resolve default route host names.",
-	"nodeDNSIP":           "deprecated: as of 4.6, this field is no longer set or honored.  It will be removed in a future release.",
+	"":                     "OvirtPlatformStatus holds the current status of the  oVirt infrastructure provider.",
+	"apiServerInternalIP":  "apiServerInternalIP is an IP address to contact the Kubernetes API server that can be used by components inside the cluster, like kubelets using the infrastructure rather than Kubernetes networking. It is the IP that the Infrastructure.status.apiServerInternalURI points to. It is the IP for a self-hosted load balancer in front of the API servers.\n\nDeprecated: Use APIServerInternalIPs instead.",
+	"apiServerInternalIPs": "apiServerInternalIPs are the IP addresses to contact the Kubernetes API server that can be used by components inside the cluster, like kubelets using the infrastructure rather than Kubernetes networking. These are the IPs for a self-hosted load balancer in front of the API servers. In dual stack clusters this list contains two IPs otherwise only one.",
+	"ingressIP":            "ingressIP is an external IP which routes to the default ingress controller. The IP is a suitable target of a wildcard DNS record used to resolve default route host names.\n\nDeprecated: Use IngressIPs instead.",
+	"ingressIPs":           "ingressIPs are the external IPs which route to the default ingress controller. The IPs are suitable targets of a wildcard DNS record used to resolve default route host names. In dual stack clusters this list contains two IPs otherwise only one.",
+	"nodeDNSIP":            "deprecated: as of 4.6, this field is no longer set or honored.  It will be removed in a future release.",
 }
 
 func (OvirtPlatformStatus) SwaggerDoc() map[string]string {
@@ -1342,6 +1353,7 @@ var map_PowerVSPlatformStatus = map[string]string{
 	"zone":             "zone holds the default zone for the new Power VS resources created by the cluster. Note: Currently only single-zone OCP clusters are supported",
 	"serviceEndpoints": "serviceEndpoints is a list of custom endpoints which will override the default service endpoints of a Power VS service.",
 	"cisInstanceCRN":   "CISInstanceCRN is the CRN of the Cloud Internet Services instance managing the DNS zone for the cluster's base domain",
+	"dnsInstanceCRN":   "DNSInstanceCRN is the CRN of the DNS Services instance managing the DNS zone for the cluster's base domain",
 }
 
 func (PowerVSPlatformStatus) SwaggerDoc() map[string]string {
@@ -1367,10 +1379,12 @@ func (VSpherePlatformSpec) SwaggerDoc() map[string]string {
 }
 
 var map_VSpherePlatformStatus = map[string]string{
-	"":                    "VSpherePlatformStatus holds the current status of the vSphere infrastructure provider.",
-	"apiServerInternalIP": "apiServerInternalIP is an IP address to contact the Kubernetes API server that can be used by components inside the cluster, like kubelets using the infrastructure rather than Kubernetes networking. It is the IP that the Infrastructure.status.apiServerInternalURI points to. It is the IP for a self-hosted load balancer in front of the API servers.",
-	"ingressIP":           "ingressIP is an external IP which routes to the default ingress controller. The IP is a suitable target of a wildcard DNS record used to resolve default route host names.",
-	"nodeDNSIP":           "nodeDNSIP is the IP address for the internal DNS used by the nodes. Unlike the one managed by the DNS operator, `NodeDNSIP` provides name resolution for the nodes themselves. There is no DNS-as-a-service for vSphere deployments. In order to minimize necessary changes to the datacenter DNS, a DNS service is hosted as a static pod to serve those hostnames to the nodes in the cluster.",
+	"":                     "VSpherePlatformStatus holds the current status of the vSphere infrastructure provider.",
+	"apiServerInternalIP":  "apiServerInternalIP is an IP address to contact the Kubernetes API server that can be used by components inside the cluster, like kubelets using the infrastructure rather than Kubernetes networking. It is the IP that the Infrastructure.status.apiServerInternalURI points to. It is the IP for a self-hosted load balancer in front of the API servers.\n\nDeprecated: Use APIServerInternalIPs instead.",
+	"apiServerInternalIPs": "apiServerInternalIPs are the IP addresses to contact the Kubernetes API server that can be used by components inside the cluster, like kubelets using the infrastructure rather than Kubernetes networking. These are the IPs for a self-hosted load balancer in front of the API servers. In dual stack clusters this list contains two IPs otherwise only one.",
+	"ingressIP":            "ingressIP is an external IP which routes to the default ingress controller. The IP is a suitable target of a wildcard DNS record used to resolve default route host names.\n\nDeprecated: Use IngressIPs instead.",
+	"ingressIPs":           "ingressIPs are the external IPs which route to the default ingress controller. The IPs are suitable targets of a wildcard DNS record used to resolve default route host names. In dual stack clusters this list contains two IPs otherwise only one.",
+	"nodeDNSIP":            "nodeDNSIP is the IP address for the internal DNS used by the nodes. Unlike the one managed by the DNS operator, `NodeDNSIP` provides name resolution for the nodes themselves. There is no DNS-as-a-service for vSphere deployments. In order to minimize necessary changes to the datacenter DNS, a DNS service is hosted as a static pod to serve those hostnames to the nodes in the cluster.",
 }
 
 func (VSpherePlatformStatus) SwaggerDoc() map[string]string {
@@ -1571,36 +1585,6 @@ var map_NodeSpec = map[string]string{
 
 func (NodeSpec) SwaggerDoc() map[string]string {
 	return map_NodeSpec
-}
-
-var map_NodeStatus = map[string]string{
-	"workerLatencyProfileStatus": "WorkerLatencyProfileStatus provides the current status of WorkerLatencyProfile",
-}
-
-func (NodeStatus) SwaggerDoc() map[string]string {
-	return map_NodeStatus
-}
-
-var map_WorkerLatencyProfileStatus = map[string]string{
-	"":           "WorkerLatencyProfileStatus provides status information about the WorkerLatencyProfile rollout",
-	"conditions": "conditions describes the state of the WorkerLatencyProfile and related components (Kubelet or Controller Manager or Kube API Server)",
-}
-
-func (WorkerLatencyProfileStatus) SwaggerDoc() map[string]string {
-	return map_WorkerLatencyProfileStatus
-}
-
-var map_WorkerLatencyStatusCondition = map[string]string{
-	"owner":              "Owner specifies the operator that is updating this condition",
-	"type":               "type specifies the aspect reported by this condition.",
-	"status":             "status of the condition, one of True, False, Unknown.",
-	"lastTransitionTime": "lastTransitionTime is the time of the last update to the current status property.",
-	"reason":             "reason is the CamelCase reason for the condition's current status.",
-	"message":            "message provides additional information about the current condition. This is only to be consumed by humans.  It may contain Line Feed characters (U+000A), which should be rendered as new lines.",
-}
-
-func (WorkerLatencyStatusCondition) SwaggerDoc() map[string]string {
-	return map_WorkerLatencyStatusCondition
 }
 
 var map_BasicAuthIdentityProvider = map[string]string{
