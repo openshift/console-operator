@@ -117,14 +117,14 @@ func patchAndCheckConsoleCLIDownloads(t *testing.T, client *framework.ClientSet,
 }
 
 func patchAndCheckPodDisruptionBudget(t *testing.T, client *framework.ClientSet, isOperatorManaged bool, pdbName string) error {
-	t.Logf("patching MaxUnavailable on the console PodDisruptionBudget")
+	t.Logf("patching MaxUnavailable on the %q PodDisruptionBudget", pdbName)
 	pdb, err := client.PodDisruptionBudget.PodDisruptionBudgets(consoleapi.OpenShiftConsoleNamespace).Patch(context.TODO(), pdbName, types.MergePatchType, []byte(`{"spec": { "maxUnavailable": 2}}`), metav1.PatchOptions{})
 	if err != nil {
 		return err
 	}
 	patchedData := pdb.Spec.MaxUnavailable
 
-	t.Logf("polling for patched MaxUnavailable on the console PodDisruptionBudget")
+	t.Logf("polling for patched MaxUnavailable on the %q PodDisruptionBudget", pdbName)
 	err = wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
 		pdb, err = framework.GetConsolePodDisruptionBudget(client, pdbName)
 		if err != nil {
