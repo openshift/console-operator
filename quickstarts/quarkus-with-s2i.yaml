@@ -1,11 +1,12 @@
 ﻿apiVersion: console.openshift.io/v1
 kind: ConsoleQuickStart
 metadata:
+  name: quarkus-with-s2i
   annotations:
     include.release.openshift.io/ibm-cloud-managed: 'true'
     include.release.openshift.io/self-managed-high-availability: 'true'
     include.release.openshift.io/single-node-developer: 'true'
-  name: quarkus-with-s2i
+    capability.openshift.io/name: Console
 spec:
   description: 'Import a Quarkus Application from git, build, and deploy it onto OpenShift.'
   displayName: Get started with Quarkus using s2i
