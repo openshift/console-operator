@@ -59,6 +59,7 @@ type consoleOperator struct {
 	secretsClient    coreclientv1.SecretsGetter
 	configMapClient  coreclientv1.ConfigMapsGetter
 	serviceClient    coreclientv1.ServicesGetter
+	nodeClient       coreclientv1.NodesGetter
 	deploymentClient appsclientv1.DeploymentsGetter
 	// openshift
 	routeClient   routeclientv1.RoutesGetter
@@ -113,6 +114,7 @@ func NewConsoleOperator(
 		secretsClient:    corev1Client,
 		configMapClient:  corev1Client,
 		serviceClient:    corev1Client,
+		nodeClient:       corev1Client,
 		deploymentClient: deploymentClient,
 		// openshift
 		routeClient:   routev1Client,
@@ -128,6 +130,7 @@ func NewConsoleOperator(
 	configMapInformer := coreV1.ConfigMaps()
 	managedConfigMapInformer := managedCoreV1.ConfigMaps()
 	serviceInformer := coreV1.Services()
+	nodeInformer := coreV1.Nodes()
 	configV1Informers := configInformer.Config().V1()
 	configNameFilter := util.IncludeNamesFilter(api.ConfigResourceName)
 	targetNameFilter := util.IncludeNamesFilter(api.OpenShiftConsoleName)
@@ -148,6 +151,7 @@ func NewConsoleOperator(
 		serviceInformer.Informer(),
 		oauthClients.Informer(),
 	).WithInformers(
+		nodeInformer.Informer(),
 		consolePluginInformer.Informer(),
 	).WithFilteredEventsInformers(
 		util.LabelFilter(map[string]string{"app": "console"}),

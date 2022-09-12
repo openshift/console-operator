@@ -25,12 +25,17 @@ const (
 //
 // b := ConsoleYamlConfigBuilder{}
 // return the default config value immediately:
-//   b.Config()
-//   b.ConfigYAML()
+//
+//	b.Config()
+//	b.ConfigYAML()
+//
 // set all the values:
-//   b.Host(host).LogoutURL("").Brand("").DocURL("").APIServerURL("").Config()
+//
+//	b.Host(host).LogoutURL("").Brand("").DocURL("").APIServerURL("").Config()
+//
 // set only some values:
-//   b.Host().Brand("").Config()
+//
+//	b.Host().Brand("").Config()
 type ConsoleServerCLIConfigBuilder struct {
 	host                       string
 	logoutRedirectURL          string
@@ -54,6 +59,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	managedClusterConfigFile   string
 	telemetry                  map[string]string
 	releaseVersion             string
+	nodeArchitectures          []string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -164,6 +170,11 @@ func (b *ConsoleServerCLIConfigBuilder) ReleaseVersion() *ConsoleServerCLIConfig
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) NodesArchitecture(architectures []string) *ConsoleServerCLIConfigBuilder {
+	b.nodeArchitectures = architectures
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
 		Kind:                     "ConsoleConfig",
@@ -221,6 +232,9 @@ func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {
 	}
 	if len(b.releaseVersion) > 0 {
 		conf.ReleaseVersion = b.releaseVersion
+	}
+	if len(b.nodeArchitectures) > 0 {
+		conf.NodeArchitectures = b.nodeArchitectures
 	}
 	return conf
 }

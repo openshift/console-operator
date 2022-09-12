@@ -9,6 +9,14 @@ metadata:
     capability.openshift.io/name: Console
 rules:
   - apiGroups:
+    - ""
+    resources:
+    - nodes
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
       - oauth.openshift.io
     resources:
       - oauthclients

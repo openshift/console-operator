@@ -58,6 +58,8 @@ const (
 
 	PluginI18nAnnotation = "console.openshift.io/use-i18n"
 
+	NodeArchitectureLabel = "kubernetes.io/arch"
+
 	ManagedClusterViewAPIGroup     = "view.open-cluster-management.io"
 	ManagedClusterViewAPIVersion   = "v1beta1"
 	ManagedClusterViewResource     = "managedclusterviews"

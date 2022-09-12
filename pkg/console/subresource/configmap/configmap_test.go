@@ -58,6 +58,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		inactivityTimeoutSeconds int
 		availablePlugins         []*v1alpha1.ConsolePlugin
 		managedClusterConfigFile string
+		nodeArchitectures        []string
 	}
 	t.Setenv("RELEASE_VERSION", testReleaseVersion)
 	tests := []struct {
@@ -209,6 +210,7 @@ customization:
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
 				managedClusterConfigFile: "",
+				nodeArchitectures:        []string{"amd64", "arm64"},
 			},
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -231,6 +233,9 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
+  nodeArchitectures:
+  - amd64
+  - arm64
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -812,6 +817,7 @@ providers: {}
 				tt.args.inactivityTimeoutSeconds,
 				tt.args.availablePlugins,
 				tt.args.managedClusterConfigFile,
+				tt.args.nodeArchitectures,
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below

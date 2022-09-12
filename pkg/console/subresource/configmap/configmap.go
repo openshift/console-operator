@@ -50,6 +50,7 @@ func DefaultConfigMap(
 	inactivityTimeoutSeconds int,
 	availablePlugins []*v1alpha1.ConsolePlugin,
 	managedClusterConfigFile string,
+	nodeArchitectures []string,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
@@ -61,6 +62,7 @@ func DefaultConfigMap(
 		APIServerURL(getApiUrl(infrastructureConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
 		ReleaseVersion().
+		NodesArchitecture(nodeArchitectures).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate default console-config config: %v", err)
@@ -91,6 +93,7 @@ func DefaultConfigMap(
 		ManagedClusterConfigFile(managedClusterConfigFile).
 		TelemetryConfiguration(GetTelemetryConfiguration(operatorConfig)).
 		ReleaseVersion().
+		NodesArchitecture(nodeArchitectures).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate user defined console-config config: %v", err)
