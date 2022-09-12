@@ -10,7 +10,7 @@ require (
 	github.com/go-test/deep v1.0.5
 	github.com/open-cluster-management/api v0.0.0-20210527013639-a6845f2ebcb1
 	github.com/openshift/api v0.0.0-20220824134416-0f86a223d4bc
-	github.com/openshift/build-machinery-go v0.0.0-20211213093930-7e33a7eb4ce3
+	github.com/openshift/build-machinery-go v0.0.0-20220720161851-9b4f0386f6b0
 	github.com/openshift/client-go v0.0.0-20220525160904-9e1acff93e4a
 	github.com/openshift/library-go v0.0.0-20220823205642-e2ef049de560
 	github.com/spf13/cobra v1.4.0
@@ -109,3 +109,5 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
+
+replace github.com/openshift/api => github.com/openshift/api v0.0.0-20220908213719-cce310ad2932
