@@ -10,8 +10,8 @@ require (
 	github.com/go-test/deep v1.0.5
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 	github.com/open-cluster-management/api v0.0.0-20210527013639-a6845f2ebcb1
-	github.com/openshift/api v0.0.0-20220915134421-1265e9925688
-	github.com/openshift/build-machinery-go v0.0.0-20220720161851-9b4f0386f6b0
+	github.com/openshift/api v0.0.0-20220919083921-47068960793f
+	github.com/openshift/build-machinery-go v0.0.0-20220913142420-e25cf57ea46d
 	github.com/openshift/client-go v0.0.0-20220915152853-9dfefb19db2e
 	github.com/openshift/library-go v0.0.0-20220823205642-e2ef049de560
 	github.com/spf13/cobra v1.4.0
@@ -21,8 +21,8 @@ require (
 	k8s.io/apimachinery v0.25.0
 	k8s.io/client-go v0.25.0
 	k8s.io/component-base v0.25.0
-	k8s.io/klog/v2 v2.70.1
-	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed
+	k8s.io/klog/v2 v2.80.1
+	k8s.io/utils v0.0.0-20220823124924-e9cbc92d1a73
 )
 
 require (
@@ -86,10 +86,10 @@ require (
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.19.0 // indirect
 	golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd // indirect
-	golang.org/x/net v0.0.0-20220722155237-a158d28d115b // indirect
+	golang.org/x/net v0.0.0-20220909164309-bea034e7d591 // indirect
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
+	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
@@ -101,16 +101,11 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiserver v0.25.0 // indirect
-	k8s.io/kube-aggregator v0.24.0 // indirect
+	k8s.io/kube-aggregator v0.25.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.32 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/kube-storage-version-migrator v0.0.4 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
-)
-
-replace (
-	github.com/openshift/api => github.com/jhadvig/api v0.0.0-20220909092727-aab1693447da
-	github.com/openshift/client-go => github.com/jhadvig/client-go v0.0.0-20220909094556-07a1d60cb20c
 )

@@ -133,8 +133,10 @@ type ConsoleCustomization struct {
 	// +optional
 	AddPage AddPage `json:"addPage,omitempty"`
 	// perspectives allows enabling/disabling of perspective(s) that user can see in the Perspective switcher dropdown.
+	// +listType=map
+	// +listMapKey=id
 	// +optional
-	Perspectives []Perspectives `json:"perspectives,omitempty"`
+	Perspectives []Perspective `json:"perspectives"`
 }
 
 // ProjectAccess contains options for project access roles
@@ -205,44 +207,48 @@ type AddPage struct {
 	DisabledActions []string `json:"disabledActions,omitempty"`
 }
 
-type PerspectiveState string
-
-// These are valid perspective states. "Enabled" means the perspective is shown.
+// PerspectiveState defines the visibility state of the perspective. "Enabled" means the perspective is shown.
 // "Disabled" means the Perspective is hidden.
 // "AccessReview" means access review check is required to show or hide a Perspective.
+type PerspectiveState string
+
 const (
 	Enabled      PerspectiveState = "Enabled"
 	Disabled     PerspectiveState = "Disabled"
 	AccessReview PerspectiveState = "AccessReview"
 )
 
-// `required` and  `missing` can work together esp. in the case where cluster admin
-// wants to show another perspective to users without specific permissions. If both `required` and `missing`
-// are not specified for `state: AccessReview`, access review check will be ignored and perspective will be enabled.
+// PerspectiveAccessReview defines the visibility of the perspective depending on the access review checks.
+// `required` and  `missing` can work together esp. in the case where the cluster admin
+// wants to show another perspective to users without specific permissions. Out of `required` and `missing` atleast one property should be non-empty.
+// +kubebuilder:validation:MinProperties:=1
 type PerspectiveAccessReview struct {
-	// required defines a list of permission checks. The perspective will only be shown when all checks are successful. If no checks are specified then we simply ignore the check even if the state is AccessReview.
+	// required defines a list of permission checks. The perspective will only be shown when all checks are successful. When omitted, the access review is skipped and the perspective will not be shown unless it is required to do so based on the configuration of the missing access review list.
 	// +optional
-	Required []authorizationv1.ResourceAttributes `json:"required,omitempty"`
-	// missing defines a list of permission checks. The perspective will only be shown when at least one check fails. If no checks are specified then we simply ignore the check even if the state is AccessReview.
+	Required []authorizationv1.ResourceAttributes `json:"required"`
+	// missing defines a list of permission checks. The perspective will only be shown when at least one check fails. When omitted, the access review is skipped and the perspective will not be shown unless it is required to do so based on the configuration of the required access review list.
 	// +optional
-	Missing []authorizationv1.ResourceAttributes `json:"missing,omitempty"`
+	Missing []authorizationv1.ResourceAttributes `json:"missing"`
 }
 
 // PerspectiveVisibility defines the criteria to show/hide a perspective
+// +kubebuilder:validation:XValidation:rule="self.state == 'AccessReview' ?  has(self.accessReview) : !has(self.accessReview)",message="accessReview configuration is required when state is AccessReview, and forbidden otherwise"
 // +union
 type PerspectiveVisibility struct {
 	// state defines the perspective is enabled or disabled or access review check is required.
 	// +unionDiscriminator
-	// +kubebuilder:validation:Enum:=Enabled;Disabled;AccessReview
+	// +kubebuilder:validation:Enum:="Enabled";"Disabled";"AccessReview"
 	// +kubebuilder:validation:Required
 	State PerspectiveState `json:"state"`
-	// accessReview defines required and missing access review checks. Empty accessReview will ignore the access review check and display the perspective.
+	// accessReview defines required and missing access review checks.
 	// +optional
 	AccessReview *PerspectiveAccessReview `json:"accessReview,omitempty"`
 }
 
-type Perspectives struct {
-	// id defines the id of perspective to disable.
+type Perspective struct {
+	// id defines the id of the perspective.
+	// Example: "dev", "admin".
+	// The available perspective ids can be found in the code snippet section next to the yaml editor.
 	// Incorrect or unknown ids will be ignored.
 	// +kubebuilder:validation:Required
 	ID string `json:"id"`

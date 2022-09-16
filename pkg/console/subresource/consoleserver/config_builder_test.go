@@ -343,7 +343,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 			name: "Config builder should handle perspectives",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
-				b.Perspectives([]v1.Perspectives{
+				b.Perspectives([]v1.Perspective{
 					{
 						ID: "perspective1",
 						Visibility: v1.PerspectiveVisibility{
@@ -379,8 +379,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					OAuthEndpointCAFile: oauthEndpointCAFilePath,
 				},
 				Customization: Customization{
-					Perspectives: []Perspectives{
-						{ID: "perspective1", Visibility: PerspectiveVisibility{State: "AccessReview", AccessReview: &PerspectiveAccessReview{Required: []authorizationv1.ResourceAttributes{{Resource: "namespaces", Verb: "list"}}, Missing: []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}}}}},
+					Perspectives: []Perspective{
+						{ID: "perspective1", Visibility: PerspectiveVisibility{State: "AccessReview", AccessReview: &ResourceAttributesAccessReview{Required: []authorizationv1.ResourceAttributes{{Resource: "namespaces", Verb: "list"}}, Missing: []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}}}}},
 						{ID: "perspective2", Visibility: PerspectiveVisibility{State: "Disabled"}},
 					},
 				},
@@ -817,7 +817,7 @@ providers: {}
 			name: "Config builder should handle perspectives",
 			input: func() ([]byte, error) {
 				b := &ConsoleServerCLIConfigBuilder{}
-				b.Perspectives([]v1.Perspectives{
+				b.Perspectives([]v1.Perspective{
 					{
 						ID: "perspective1",
 						Visibility: v1.PerspectiveVisibility{

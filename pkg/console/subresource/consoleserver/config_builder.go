@@ -52,7 +52,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	projectAccess              operatorv1.ProjectAccess
 	quickStarts                operatorv1.QuickStarts
 	addPage                    operatorv1.AddPage
-	perspectives               []operatorv1.Perspectives
+	perspectives               []operatorv1.Perspective
 	customLogoFile             string
 	CAFile                     string
 	monitoring                 map[string]string
@@ -111,7 +111,7 @@ func (b *ConsoleServerCLIConfigBuilder) AddPage(addPage operatorv1.AddPage) *Con
 	b.addPage = addPage
 	return b
 }
-func (b *ConsoleServerCLIConfigBuilder) Perspectives(perspectives []operatorv1.Perspectives) *ConsoleServerCLIConfigBuilder {
+func (b *ConsoleServerCLIConfigBuilder) Perspectives(perspectives []operatorv1.Perspective) *ConsoleServerCLIConfigBuilder {
 	b.perspectives = perspectives
 	return b
 }
@@ -371,12 +371,12 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 			}
 		}
 
-		perspectives := make([]Perspectives, len(b.perspectives))
+		perspectives := make([]Perspective, len(b.perspectives))
 		for perspectiveIndex, perspective := range b.perspectives {
 			var perspectiveVisibility PerspectiveVisibility
-			var accessReview *PerspectiveAccessReview
+			var accessReview *ResourceAttributesAccessReview
 			if !reflect.DeepEqual(perspective.Visibility, PerspectiveVisibility{}) {
-				if perspective.Visibility.State == "AccessReview" && !reflect.DeepEqual(perspective.Visibility.AccessReview, PerspectiveAccessReview{}) {
+				if perspective.Visibility.State == "AccessReview" && !reflect.DeepEqual(perspective.Visibility.AccessReview, ResourceAttributesAccessReview{}) {
 
 					var requiredAccessReviews []authorizationv1.ResourceAttributes = nil
 					var missingAccessReviews []authorizationv1.ResourceAttributes = nil
@@ -393,7 +393,7 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 							missingAccessReviews[missingAccessReviewIndex] = accessReviewMap(missingAccessReview)
 						}
 					}
-					accessReview = &PerspectiveAccessReview{
+					accessReview = &ResourceAttributesAccessReview{
 						Required: requiredAccessReviews,
 						Missing:  missingAccessReviews,
 					}
@@ -407,7 +407,7 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 					}
 				}
 			}
-			perspectives[perspectiveIndex] = Perspectives{
+			perspectives[perspectiveIndex] = Perspective{
 				ID:         perspective.ID,
 				Visibility: perspectiveVisibility,
 			}

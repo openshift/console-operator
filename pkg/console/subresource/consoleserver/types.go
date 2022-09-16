@@ -98,7 +98,7 @@ type Customization struct {
 	// addPage allows customizing actions on the Add page in developer perspective.
 	AddPage AddPage `yaml:"addPage,omitempty"`
 	// perspectives allows enabling/disabling of perspective(s) that user can see in the Perspective switcher dropdown.
-	Perspectives []Perspectives `yaml:"perspectives,omitempty"`
+	Perspectives []Perspective `yaml:"perspectives,omitempty"`
 }
 
 // QuickStarts contains options for quick starts
@@ -150,15 +150,15 @@ type AddPage struct {
 type PerspectiveState string
 
 const (
-	Enabled      PerspectiveState = "Enabled"
-	Disabled     PerspectiveState = "Disabled"
-	AccessReview PerspectiveState = "AccessReview"
+	PerspectiveEnabled      PerspectiveState = "Enabled"
+	PerspectiveDisabled     PerspectiveState = "Disabled"
+	PerspectiveAccessReview PerspectiveState = "AccessReview"
 )
 
-// PerspectiveAccessReview defines the visibility of the perspective depending on the access review checks.
+// ResourceAttributesAccessReview defines the visibility of the perspective depending on the access review checks.
 // `required` and  `missing` can work together esp. in the case where the cluster admin
 // wants to show another perspective to users without specific permissions. Out of `required` and `missing` atleast one property should be non-empty.
-type PerspectiveAccessReview struct {
+type ResourceAttributesAccessReview struct {
 	// required defines a list of permission checks. The perspective will only be shown when all checks are successful. When omitted, the access review is skipped and the perspective will not be shown unless it is required to do so based on the configuration of the missing access review list.
 	Required []authorizationv1.ResourceAttributes `yaml:"required,omitempty"`
 	// missing defines a list of permission checks. The perspective will only be shown when at least one check fails. When omitted, the access review is skipped and the perspective will not be shown unless it is required to do so based on the configuration of the required access review list.
@@ -171,12 +171,11 @@ type PerspectiveVisibility struct {
 	// state is required
 	State PerspectiveState `yaml:"state"`
 	// accessReview defines required and missing access review checks.
-	AccessReview *PerspectiveAccessReview `yaml:"accessReview,omitempty"`
+	AccessReview *ResourceAttributesAccessReview `yaml:"accessReview,omitempty"`
 }
 
-// Perspectives allows enabling/disabling of perspective(s).
-type Perspectives struct {
-	// id defines the id of perspective to disable.
+type Perspective struct {
+	// id defines the id of the perspective.
 	// Example: "dev", "admin".
 	// The available perspective ids can be found in the code snippet section next to the yaml editor.
 	// Incorrect or unknown ids will be ignored.
