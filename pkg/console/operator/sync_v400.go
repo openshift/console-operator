@@ -402,10 +402,17 @@ func (co *consoleOperator) SyncConfigMap(
 	if managedClusterConfigMap != nil {
 		managedClusterConfigFile = fmt.Sprintf("%v/%v", api.ManagedClusterConfigMountDir, api.ManagedClusterConfigKey)
 	}
+
+	monitoringSharedConfig, mscErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(ctx, api.OpenShiftMonitoringConfigMapName, metav1.GetOptions{})
+	if mscErr != nil && !apierrors.IsNotFound(mscErr) {
+		return nil, false, "FailedGetMonitoringSharedConfig", mscErr
+	}
+
 	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(
 		operatorConfig,
 		consoleConfig,
 		managedConfig,
+		monitoringSharedConfig,
 		infrastructureConfig,
 		activeConsoleRoute,
 		useDefaultCAFile,
