@@ -11,6 +11,7 @@ import (
 	"k8s.io/component-base/cli"
 
 	// us
+	"github.com/openshift/console-operator/pkg/cmd/crdconversionwebhook"
 	"github.com/openshift/console-operator/pkg/cmd/operator"
 	"github.com/openshift/console-operator/pkg/cmd/version"
 )
@@ -38,6 +39,7 @@ func NewOperatorCommand() *cobra.Command {
 
 	cmd.AddCommand(operator.NewOperator())
 	cmd.AddCommand(version.NewVersion())
+	cmd.AddCommand(crdconversionwebhook.NewConverter())
 
 	return cmd
 }

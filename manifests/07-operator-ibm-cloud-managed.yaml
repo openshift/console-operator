@@ -70,6 +70,44 @@ spec:
           name: config
         - mountPath: /var/run/secrets/serving-cert
           name: serving-cert
+      - args:
+        - --port=9443
+        - --tls-cert-file=/var/run/secrets/webhook-serving-cert/tls.crt
+        - --tls-private-key-file=/var/run/secrets/webhook-serving-cert/tls.key
+        command:
+        - console
+        - crdconvert
+        image: registry.svc.ci.openshift.org/openshift:console-operator
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /readyz
+            port: 9443
+            scheme: HTTPS
+        name: conversion-webhook-server
+        ports:
+        - containerPort: 9443
+          name: webhook
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 9443
+            scheme: HTTPS
+        resources:
+          requests:
+            cpu: 10m
+            memory: 100Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /var/run/configmaps/config
+          name: config
+        - mountPath: /var/run/secrets/webhook-serving-cert
+          name: webhook-serving-cert
       priorityClassName: system-cluster-critical
       securityContext:
         runAsNonRoot: true
@@ -96,3 +134,7 @@ spec:
         secret:
           optional: true
           secretName: serving-cert
+      - name: webhook-serving-cert
+        secret:
+          optional: true
+          secretName: webhook-serving-cert

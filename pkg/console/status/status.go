@@ -30,12 +30,15 @@ import (
 // the provided err will be used as the detailed message body if it is not nil
 // note that available status is desired to be true, where degraded & progressing are desired to be false
 // example:
-//   c.handleDegraded(operatorConfig, "RouteStatus", "FailedHost", error.New("route is not available at canonical host..."))
+//
+//	c.handleDegraded(operatorConfig, "RouteStatus", "FailedHost", error.New("route is not available at canonical host..."))
+//
 // generates:
 //   - Type RouteStatusDegraded
 //     Status: true
 //     Reason: Failedhost
 //     Message: error string value is used as message
+//
 // all degraded suffix conditions will be aggregated into a final "Degraded" status that will be set on the console ClusterOperator
 func HandleDegraded(typePrefix string, reason string, err error) v1helpers.UpdateStatusFunc {
 	conditionType := typePrefix + operatorsv1.OperatorStatusTypeDegraded
@@ -163,10 +166,11 @@ func NewStatusHandler(client v1helpers.OperatorClient) StatusHandler {
 }
 
 // Outputs the condition as a log message based on the detail of the condition in the form of:
-//   Status.Condition.<Condition>: <Bool>
-//   Status.Condition.<Condition>: <Bool> (<Reason>)
-//   Status.Condition.<Condition>: <Bool> (<Reason>) <Message>
-//   Status.Condition.<Condition>: <Bool> <Message>
+//
+//	Status.Condition.<Condition>: <Bool>
+//	Status.Condition.<Condition>: <Bool> (<Reason>)
+//	Status.Condition.<Condition>: <Bool> (<Reason>) <Message>
+//	Status.Condition.<Condition>: <Bool> <Message>
 func logConditions(conditions []operatorsv1.OperatorCondition) {
 	klog.V(4).Infoln("Operator.Status.Conditions")
 
