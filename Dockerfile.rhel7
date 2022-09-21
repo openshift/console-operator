@@ -4,7 +4,7 @@ COPY . .
 ENV GO_PACKAGE github.com/openshift/console-operator
 RUN go build -ldflags "-X $GO_PACKAGE/pkg/version.versionFromGit=$(git describe --long --tags --abbrev=7 --match 'v[0-9]*')" -tags="ocp" -o console ./cmd/console
 
-FROM registry.ci.openshift.org/ocp/4.10:base
+FROM registry.ci.openshift.org/ocp/4.12:base
 RUN useradd console-operator
 USER console-operator
 COPY --from=builder /go/src/github.com/openshift/console-operator/console /usr/bin/console

@@ -226,6 +226,7 @@ var map_ConsoleCustomization = map[string]string{
 	"projectAccess":        "projectAccess allows customizing the available list of ClusterRoles in the Developer perspective Project access page which can be used by a project admin to specify roles to other users and restrict access within the project. If set, the list will replace the default ClusterRole options.",
 	"quickStarts":          "quickStarts allows customization of available ConsoleQuickStart resources in console.",
 	"addPage":              "addPage allows customizing actions on the Add page in developer perspective.",
+	"perspectives":         "perspectives allows enabling/disabling of perspective(s) that user can see in the Perspective switcher dropdown.",
 }
 
 func (ConsoleCustomization) SwaggerDoc() map[string]string {
@@ -298,6 +299,35 @@ func (DeveloperConsoleCatalogCustomization) SwaggerDoc() map[string]string {
 	return map_DeveloperConsoleCatalogCustomization
 }
 
+var map_Perspective = map[string]string{
+	"id":         "id defines the id of the perspective. Example: \"dev\", \"admin\". The available perspective ids can be found in the code snippet section next to the yaml editor. Incorrect or unknown ids will be ignored.",
+	"visibility": "visibility defines the state of perspective along with access review checks if needed for that perspective.",
+}
+
+func (Perspective) SwaggerDoc() map[string]string {
+	return map_Perspective
+}
+
+var map_PerspectiveAccessReview = map[string]string{
+	"":         "PerspectiveAccessReview defines the visibility of the perspective depending on the access review checks. `required` and  `missing` can work together esp. in the case where the cluster admin wants to show another perspective to users without specific permissions. Out of `required` and `missing` atleast one property should be non-empty.",
+	"required": "required defines a list of permission checks. The perspective will only be shown when all checks are successful. When omitted, the access review is skipped and the perspective will not be shown unless it is required to do so based on the configuration of the missing access review list.",
+	"missing":  "missing defines a list of permission checks. The perspective will only be shown when at least one check fails. When omitted, the access review is skipped and the perspective will not be shown unless it is required to do so based on the configuration of the required access review list.",
+}
+
+func (PerspectiveAccessReview) SwaggerDoc() map[string]string {
+	return map_PerspectiveAccessReview
+}
+
+var map_PerspectiveVisibility = map[string]string{
+	"":             "PerspectiveVisibility defines the criteria to show/hide a perspective",
+	"state":        "state defines the perspective is enabled or disabled or access review check is required.",
+	"accessReview": "accessReview defines required and missing access review checks.",
+}
+
+func (PerspectiveVisibility) SwaggerDoc() map[string]string {
+	return map_PerspectiveVisibility
+}
+
 var map_ProjectAccess = map[string]string{
 	"":                      "ProjectAccess contains options for project access roles",
 	"availableClusterRoles": "availableClusterRoles is the list of ClusterRole names that are assignable to users through the project access tab.",
@@ -325,6 +355,16 @@ func (StatuspageProvider) SwaggerDoc() map[string]string {
 	return map_StatuspageProvider
 }
 
+var map_CSIDriverConfigSpec = map[string]string{
+	"":           "CSIDriverConfigSpec defines configuration spec that can be used to optionally configure a specific CSI Driver.",
+	"driverType": "driverType indicates type of CSI driver for which the driverConfig is being applied to.\n\nValid values are:\n\n* vSphere\n\nAllows configuration of vsphere CSI driver topology.",
+	"vSphere":    "vsphere is used to configure the vsphere CSI driver.",
+}
+
+func (CSIDriverConfigSpec) SwaggerDoc() map[string]string {
+	return map_CSIDriverConfigSpec
+}
+
 var map_ClusterCSIDriver = map[string]string{
 	"":       "ClusterCSIDriver object allows management and configuration of a CSI driver operator installed by default in OpenShift. Name of the object must be name of the CSI driver it operates. See CSIDriverName type for list of allowed values.\n\nCompatibility level 1: Stable within a major release for a minimum of 12 months or 3 minor releases (whichever is longer).",
 	"spec":   "spec holds user settable values for configuration",
@@ -346,6 +386,7 @@ func (ClusterCSIDriverList) SwaggerDoc() map[string]string {
 var map_ClusterCSIDriverSpec = map[string]string{
 	"":                  "ClusterCSIDriverSpec is the desired behavior of CSI driver operator",
 	"storageClassState": "StorageClassState determines if CSI operator should create and manage storage classes. If this field value is empty or Managed - CSI operator will continuously reconcile storage class and create if necessary. If this field value is Unmanaged - CSI operator will not reconcile any previously created storage class. If this field value is Removed - CSI operator will delete the storage class it created previously. When omitted, this means the user has no opinion and the platform chooses a reasonable default, which is subject to change over time. The current default behaviour is Managed.",
+	"driverConfig":      "driverConfig can be used to specify platform specific driver configuration. When omitted, this means no opinion and the platform is left to choose reasonable defaults. These defaults are subject to change over time.",
 }
 
 func (ClusterCSIDriverSpec) SwaggerDoc() map[string]string {
@@ -358,6 +399,15 @@ var map_ClusterCSIDriverStatus = map[string]string{
 
 func (ClusterCSIDriverStatus) SwaggerDoc() map[string]string {
 	return map_ClusterCSIDriverStatus
+}
+
+var map_VSphereCSIDriverConfigSpec = map[string]string{
+	"":                   "VSphereCSIDriverConfigSpec defines properties that can be configured for vsphere CSI driver.",
+	"topologyCategories": "topologyCategories indicates tag categories with which vcenter resources such as hostcluster or datacenter were tagged with. If cluster Infrastructure object has a topology, values specified in Infrastructure object will be used and modifications to topologyCategories will be rejected.",
+}
+
+func (VSphereCSIDriverConfigSpec) SwaggerDoc() map[string]string {
+	return map_VSphereCSIDriverConfigSpec
 }
 
 var map_CSISnapshotController = map[string]string{

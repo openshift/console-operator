@@ -2,12 +2,14 @@ package consoleserver
 
 import (
 	"os"
+	"reflect"
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	"gopkg.in/yaml.v2"
+	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 )
@@ -50,6 +52,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	projectAccess              operatorv1.ProjectAccess
 	quickStarts                operatorv1.QuickStarts
 	addPage                    operatorv1.AddPage
+	perspectives               []operatorv1.Perspective
 	customLogoFile             string
 	CAFile                     string
 	monitoring                 map[string]string
@@ -106,6 +109,10 @@ func (b *ConsoleServerCLIConfigBuilder) QuickStarts(quickStarts operatorv1.Quick
 }
 func (b *ConsoleServerCLIConfigBuilder) AddPage(addPage operatorv1.AddPage) *ConsoleServerCLIConfigBuilder {
 	b.addPage = addPage
+	return b
+}
+func (b *ConsoleServerCLIConfigBuilder) Perspectives(perspectives []operatorv1.Perspective) *ConsoleServerCLIConfigBuilder {
+	b.perspectives = perspectives
 	return b
 }
 func (b *ConsoleServerCLIConfigBuilder) CustomLogoFile(customLogoFile string) *ConsoleServerCLIConfigBuilder {
@@ -353,6 +360,60 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 
 	conf.AddPage = AddPage{
 		DisabledActions: b.addPage.DisabledActions,
+	}
+
+	if b.perspectives != nil {
+		accessReviewMap := func(accessReview authorizationv1.ResourceAttributes) authorizationv1.ResourceAttributes {
+			return authorizationv1.ResourceAttributes{
+				Resource: accessReview.Resource,
+				Verb:     accessReview.Verb,
+				Group:    accessReview.Group,
+			}
+		}
+
+		perspectives := make([]Perspective, len(b.perspectives))
+		for perspectiveIndex, perspective := range b.perspectives {
+			var perspectiveVisibility PerspectiveVisibility
+			var accessReview *ResourceAttributesAccessReview
+			if !reflect.DeepEqual(perspective.Visibility, PerspectiveVisibility{}) {
+				if perspective.Visibility.State == "AccessReview" && !reflect.DeepEqual(perspective.Visibility.AccessReview, ResourceAttributesAccessReview{}) {
+
+					var requiredAccessReviews []authorizationv1.ResourceAttributes = nil
+					var missingAccessReviews []authorizationv1.ResourceAttributes = nil
+					if perspective.Visibility.AccessReview.Required != nil {
+						requiredAccessReviews = make([]authorizationv1.ResourceAttributes, len(perspective.Visibility.AccessReview.Required))
+						for requiredAccessReviewIndex, requiredAccessReview := range perspective.Visibility.AccessReview.Required {
+							requiredAccessReviews[requiredAccessReviewIndex] = accessReviewMap(requiredAccessReview)
+						}
+					}
+
+					if perspective.Visibility.AccessReview.Missing != nil {
+						missingAccessReviews = make([]authorizationv1.ResourceAttributes, len(perspective.Visibility.AccessReview.Missing))
+						for missingAccessReviewIndex, missingAccessReview := range perspective.Visibility.AccessReview.Missing {
+							missingAccessReviews[missingAccessReviewIndex] = accessReviewMap(missingAccessReview)
+						}
+					}
+					accessReview = &ResourceAttributesAccessReview{
+						Required: requiredAccessReviews,
+						Missing:  missingAccessReviews,
+					}
+					perspectiveVisibility = PerspectiveVisibility{
+						State:        PerspectiveState(perspective.Visibility.State),
+						AccessReview: accessReview,
+					}
+				} else {
+					perspectiveVisibility = PerspectiveVisibility{
+						State: PerspectiveState(perspective.Visibility.State),
+					}
+				}
+			}
+			perspectives[perspectiveIndex] = Perspective{
+				ID:         perspective.ID,
+				Visibility: perspectiveVisibility,
+			}
+		}
+
+		conf.Perspectives = perspectives
 	}
 
 	return conf
