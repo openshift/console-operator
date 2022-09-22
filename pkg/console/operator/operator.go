@@ -20,8 +20,8 @@ import (
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
-	consoleinformersv1alpha1 "github.com/openshift/client-go/console/informers/externalversions/console/v1alpha1"
-	listerv1alpha1 "github.com/openshift/client-go/console/listers/console/v1alpha1"
+	consoleinformersv1 "github.com/openshift/client-go/console/informers/externalversions/console/v1"
+	listerv1 "github.com/openshift/client-go/console/listers/console/v1"
 	oauthclientv1 "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
 	oauthinformersv1 "github.com/openshift/client-go/oauth/informers/externalversions/oauth/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
@@ -66,7 +66,7 @@ type consoleOperator struct {
 	oauthClient   oauthclientv1.OAuthClientsGetter
 	versionGetter status.VersionGetter
 	// lister
-	consolePluginLister listerv1alpha1.ConsolePluginLister
+	consolePluginLister listerv1.ConsolePluginLister
 
 	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
@@ -92,7 +92,7 @@ func NewConsoleOperator(
 	oauthv1Client oauthclientv1.OAuthClientsGetter,
 	oauthClients oauthinformersv1.OAuthClientInformer,
 	// plugins
-	consolePluginInformer consoleinformersv1alpha1.ConsolePluginInformer,
+	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
 	// openshift managed
 	managedCoreV1 corev1.Interface,
 	// event handling

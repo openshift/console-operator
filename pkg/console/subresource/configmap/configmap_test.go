@@ -13,7 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	configv1 "github.com/openshift/api/config/v1"
-	"github.com/openshift/api/console/v1alpha1"
+	v1 "github.com/openshift/api/console/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
@@ -57,7 +57,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		rt                       *routev1.Route
 		useDefaultCAFile         bool
 		inactivityTimeoutSeconds int
-		availablePlugins         []*v1alpha1.ConsolePlugin
+		availablePlugins         []*v1.ConsolePlugin
 		managedClusterConfigFile string
 		nodeArchitectures        []string
 	}
@@ -679,11 +679,10 @@ managedClusterConfigFile: 'test'
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
-				availablePlugins: []*v1alpha1.ConsolePlugin{
+				availablePlugins: []*v1.ConsolePlugin{
 					testPlugins("plugin1", "service1", "service-namespace1"),
 					testPluginsWithProxy("plugin2", "service2", "service-namespace2"),
-					testPluginsWithI18nAnnotation("plugin3", "service3", "service-namespace3", "false"),
-					testPluginsWithI18nAnnotation("plugin4", "service4", "service-namespace4", "true"),
+					testPluginsWithI18nPreloadType("plugin3", "service3", "service-namespace3"),
 				},
 				managedClusterConfigFile: "",
 			},
@@ -712,7 +711,7 @@ customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
 i18nNamespaces:
-- plugin__plugin4 
+- plugin__plugin3
 servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
@@ -722,7 +721,6 @@ plugins:
   plugin1: https://service1.service-namespace1.svc.cluster.local:8443/
   plugin2: https://service2.service-namespace2.svc.cluster.local:8443/
   plugin3: https://service3.service-namespace3.svc.cluster.local:8443/
-  plugin4: https://service4.service-namespace4.svc.cluster.local:8443/
 proxy:
   services:
   - authorize: true
@@ -929,38 +927,49 @@ providers: {}
 	}
 }
 
-func testPlugins(pluginName, serviceName, serviceNamespace string) *v1alpha1.ConsolePlugin {
-	return &v1alpha1.ConsolePlugin{
+func testPlugins(pluginName, serviceName, serviceNamespace string) *v1.ConsolePlugin {
+	return &v1.ConsolePlugin{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: pluginName,
 		},
-		Spec: v1alpha1.ConsolePluginSpec{
-			Service: v1alpha1.ConsolePluginService{
-				Name:      serviceName,
-				Namespace: serviceNamespace,
-				Port:      8443,
-				BasePath:  "/",
+		Spec: v1.ConsolePluginSpec{
+			Backend: v1.ConsolePluginBackend{
+				Type: v1.Service,
+				Service: &v1.ConsolePluginService{
+					Name:      serviceName,
+					Namespace: serviceNamespace,
+					Port:      8443,
+					BasePath:  "/",
+				},
 			},
 		},
 	}
 }
 
-func testPluginsWithProxy(pluginName, serviceName, serviceNamespace string) *v1alpha1.ConsolePlugin {
+func testPluginsWithProxy(pluginName, serviceName, serviceNamespace string) *v1.ConsolePlugin {
 	plugin := testPlugins(pluginName, serviceName, serviceNamespace)
-	plugin.Spec.Proxy = []v1alpha1.ConsolePluginProxy{
+	plugin.Spec.Proxy = []v1.ConsolePluginProxy{
 		{
 			Alias:         "test-alias",
-			Type:          v1alpha1.ProxyTypeService,
 			CACertificate: validCertificate,
-			Authorize:     true,
-			Service: v1alpha1.ConsolePluginProxyServiceConfig{
-				Name:      fmt.Sprintf("proxy-%s", serviceName),
-				Namespace: fmt.Sprintf("proxy-%s", serviceNamespace),
-				Port:      9991,
+			Authorization: v1.UserToken,
+			Endpoint: v1.ConsolePluginProxyEndpoint{
+				Type: v1.ProxyTypeService,
+				Service: &v1.ConsolePluginProxyServiceConfig{
+					Name:      fmt.Sprintf("proxy-%s", serviceName),
+					Namespace: fmt.Sprintf("proxy-%s", serviceNamespace),
+					Port:      9991,
+				},
 			},
 		},
 	}
 
+	return plugin
+}
+
+func testPluginsWithI18nPreloadType(pluginName, serviceName, serviceNamespace string) *v1.ConsolePlugin {
+	plugin := testPlugins(pluginName, serviceName, serviceNamespace)
+	plugin.Spec.I18n.LoadType = v1.Preload
 	return plugin
 }
 
@@ -1016,12 +1025,6 @@ func TestTelemetryConfiguration(t *testing.T) {
 			}
 		})
 	}
-}
-
-func testPluginsWithI18nAnnotation(pluginName, serviceName, serviceNamespace, annotationValue string) *v1alpha1.ConsolePlugin {
-	plugin := testPlugins(pluginName, serviceName, serviceNamespace)
-	plugin.SetAnnotations(map[string]string{api.PluginI18nAnnotation: annotationValue})
-	return plugin
 }
 
 func TestStub(t *testing.T) {

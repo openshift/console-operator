@@ -9,7 +9,7 @@ import (
 	"k8s.io/klog/v2"
 
 	configv1 "github.com/openshift/api/config/v1"
-	"github.com/openshift/api/console/v1alpha1"
+	v1 "github.com/openshift/api/console/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
@@ -49,7 +49,7 @@ func DefaultConfigMap(
 	activeConsoleRoute *routev1.Route,
 	useDefaultCAFile bool,
 	inactivityTimeoutSeconds int,
-	availablePlugins []*v1alpha1.ConsolePlugin,
+	availablePlugins []*v1.ConsolePlugin,
 	managedClusterConfigFile string,
 	nodeArchitectures []string,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
@@ -128,36 +128,45 @@ func DefaultConfigMap(
 	return configMap, willMergeConfigOverrides, nil
 }
 
-func pluginsWithI18nNamespace(availablePlugins []*v1alpha1.ConsolePlugin) []string {
+func pluginsWithI18nNamespace(availablePlugins []*v1.ConsolePlugin) []string {
 	i18nNamespaces := []string{}
 	for _, plugin := range availablePlugins {
-		if plugin.Annotations[api.PluginI18nAnnotation] == "true" {
+		if plugin.Spec.I18n.LoadType == v1.Preload {
 			i18nNamespaces = append(i18nNamespaces, fmt.Sprintf("plugin__%s", plugin.Name))
 		}
 	}
 	return i18nNamespaces
 }
 
-func getPluginsEndpointMap(availablePlugins []*v1alpha1.ConsolePlugin) map[string]string {
+func getPluginsEndpointMap(availablePlugins []*v1.ConsolePlugin) map[string]string {
 	pluginsEndpointMap := map[string]string{}
 	for _, plugin := range availablePlugins {
-		pluginsEndpointMap[plugin.Name] = getServiceURL(plugin)
+		switch plugin.Spec.Backend.Type {
+		case v1.Service:
+			pluginsEndpointMap[plugin.Name] = getServiceURL(&plugin.Spec.Backend)
+		default:
+			klog.Errorf("unknown backend type for %q plugin: %q. Currently only %q backend type is supported.", plugin.Name, plugin.Spec.Backend.Type, v1.Service)
+		}
 	}
 	return pluginsEndpointMap
 }
 
-func getPluginsProxyServices(availablePlugins []*v1alpha1.ConsolePlugin) []consoleserver.ProxyService {
+func getPluginsProxyServices(availablePlugins []*v1.ConsolePlugin) []consoleserver.ProxyService {
 	proxyServices := []consoleserver.ProxyService{}
 	for _, plugin := range availablePlugins {
 		for _, proxy := range plugin.Spec.Proxy {
-			if proxy.Type == v1alpha1.ProxyTypeService {
+			// currently we only supprot 'Service' backend type for proxy
+			switch proxy.Endpoint.Type {
+			case v1.ProxyTypeService:
 				proxyService := consoleserver.ProxyService{
 					ConsoleAPIPath: getConsoleAPIPath(plugin.Name, &proxy),
-					Endpoint:       getProxyServiceURL(&proxy.Service),
+					Endpoint:       getProxyServiceURL(proxy.Endpoint.Service),
 					CACertificate:  proxy.CACertificate,
-					Authorize:      proxy.Authorize,
+					Authorize:      getProxyAuthorization(proxy.Authorization),
 				}
 				proxyServices = append(proxyServices, proxyService)
+			default:
+				klog.Errorf("unknown proxy service type for %q plugin: %q. Currently only %q proxy endpoint type is supported.", plugin.Name, proxy.Endpoint.Type, v1.ProxyTypeService)
 			}
 		}
 	}
@@ -176,11 +185,18 @@ func GetTelemetryConfiguration(operatorConfig *operatorv1.Console) map[string]st
 	return telemetry
 }
 
-func getConsoleAPIPath(pluginName string, service *v1alpha1.ConsolePluginProxy) string {
+func getConsoleAPIPath(pluginName string, service *v1.ConsolePluginProxy) string {
 	return fmt.Sprintf("%s%s/%s/", pluginProxyEndpoint, pluginName, service.Alias)
 }
 
-func getProxyServiceURL(service *v1alpha1.ConsolePluginProxyServiceConfig) string {
+func getProxyAuthorization(authorizationType v1.AuthorizationType) bool {
+	if authorizationType == v1.UserToken {
+		return true
+	}
+	return false
+}
+
+func getProxyServiceURL(service *v1.ConsolePluginProxyServiceConfig) string {
 	pluginURL := &url.URL{
 		Scheme: "https",
 		Host:   fmt.Sprintf("%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, service.Port),
@@ -188,11 +204,11 @@ func getProxyServiceURL(service *v1alpha1.ConsolePluginProxyServiceConfig) strin
 	return pluginURL.String()
 }
 
-func getServiceURL(plugin *v1alpha1.ConsolePlugin) string {
+func getServiceURL(pluginBackend *v1.ConsolePluginBackend) string {
 	pluginURL := &url.URL{
 		Scheme: "https",
-		Host:   fmt.Sprintf("%s.%s.svc.cluster.local:%d", plugin.Spec.Service.Name, plugin.Spec.Service.Namespace, plugin.Spec.Service.Port),
-		Path:   plugin.Spec.Service.BasePath,
+		Host:   fmt.Sprintf("%s.%s.svc.cluster.local:%d", pluginBackend.Service.Name, pluginBackend.Service.Namespace, pluginBackend.Service.Port),
+		Path:   pluginBackend.Service.BasePath,
 	}
 	return pluginURL.String()
 }
