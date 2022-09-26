@@ -74,6 +74,61 @@ spec:
 `,
 		},
 		{
+			originalObject: `apiVersion: console.openshift.io/v1alpha1
+kind: ConsolePlugin
+metadata:
+  annotations:
+    console.openshift.io/use-i18n: "false"
+  creationTimestamp: null
+  generation: 1
+  name: console-plugin
+spec:
+  displayName: plugin
+  service:
+    name: console-demo-plugin
+    namespace: console-demo-plugin
+    port: 9001
+    basePath: /
+  proxy:
+  - type: Service
+    alias: thanos-querier
+    authorize: true
+    caCertificate: certContent
+    service:
+      name: thanos-querier
+      namespace: openshift-monitoring
+      port: 9091
+`,
+			wantedObject: `apiVersion: console.openshift.io/v1
+kind: ConsolePlugin
+metadata:
+  creationTimestamp: null
+  generation: 1
+  name: console-plugin
+spec:
+  backend:
+    service:
+      basePath: /
+      name: console-demo-plugin
+      namespace: console-demo-plugin
+      port: 9001
+    type: Service
+  displayName: plugin
+  i18n:
+    loadType: Lazy
+  proxy:
+  - alias: thanos-querier
+    authorization: UserToken
+    caCertificate: certContent
+    endpoint:
+      service:
+        name: thanos-querier
+        namespace: openshift-monitoring
+        port: 9091
+      type: Service
+`,
+		},
+		{
 			originalObject: `apiVersion: console.openshift.io/v1
 kind: ConsolePlugin
 metadata:
@@ -130,7 +185,8 @@ spec:
     namespace: console-demo-plugin
     port: 9001
 `,
-		}}
+		},
+	}
 	for _, tc := range cases {
 		t.Run("ConsolePlugin version convertion test", func(t *testing.T) {
 			unstructuredOriginalObject := getUnstructuredObject(t, tc.originalObject)

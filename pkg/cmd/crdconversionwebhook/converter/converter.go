@@ -151,6 +151,8 @@ func convertPluginV1alpha1ToV1(convertedObject *unstructured.Unstructured) (*uns
 	updatedV1alpha1PluginAnnotations := v1alpha1Plugin.GetAnnotations()
 	if v := updatedV1alpha1PluginAnnotations[api.V1Alpha1PluginI18nAnnotation]; v == "true" {
 		v1Plugin.Spec.I18n.LoadType = v1.Preload
+	} else if v == "false" {
+		v1Plugin.Spec.I18n.LoadType = v1.Lazy
 	}
 	delete(updatedV1alpha1PluginAnnotations, api.V1Alpha1PluginI18nAnnotation)
 	v1Plugin.SetAnnotations(updatedV1alpha1PluginAnnotations)
