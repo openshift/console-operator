@@ -75,10 +75,10 @@ func convertPluginV1ToV1alpha1(convertedObject *unstructured.Unstructured) (*uns
 		annotations := v1Plugin.GetAnnotations()
 		if annotations == nil {
 			annotations = map[string]string{
-				api.PluginI18nAnnotation: "true",
+				api.V1Alpha1PluginI18nAnnotation: "true",
 			}
 		} else {
-			annotations[api.PluginI18nAnnotation] = "true"
+			annotations[api.V1Alpha1PluginI18nAnnotation] = "true"
 		}
 
 		v1alpha1Plugin.SetAnnotations(annotations)
@@ -149,10 +149,10 @@ func convertPluginV1alpha1ToV1(convertedObject *unstructured.Unstructured) (*uns
 
 	// i18n
 	updatedV1alpha1PluginAnnotations := v1alpha1Plugin.GetAnnotations()
-	if v := updatedV1alpha1PluginAnnotations[api.PluginI18nAnnotation]; v == "true" {
+	if v := updatedV1alpha1PluginAnnotations[api.V1Alpha1PluginI18nAnnotation]; v == "true" {
 		v1Plugin.Spec.I18n.LoadType = v1.Preload
 	}
-	delete(updatedV1alpha1PluginAnnotations, api.PluginI18nAnnotation)
+	delete(updatedV1alpha1PluginAnnotations, api.V1Alpha1PluginI18nAnnotation)
 	v1Plugin.SetAnnotations(updatedV1alpha1PluginAnnotations)
 
 	// service -> backend

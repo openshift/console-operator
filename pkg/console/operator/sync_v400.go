@@ -17,7 +17,7 @@ import (
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
-	v1alpha1 "github.com/openshift/api/console/v1alpha1"
+	v1 "github.com/openshift/api/console/v1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -596,8 +596,8 @@ func (co *consoleOperator) ValidateCustomLogo(ctx context.Context, operatorConfi
 	return true, "", nil
 }
 
-func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []string) []*v1alpha1.ConsolePlugin {
-	var availablePlugins []*v1alpha1.ConsolePlugin
+func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []string) []*v1.ConsolePlugin {
+	var availablePlugins []*v1.ConsolePlugin
 	for _, pluginName := range enabledPluginsNames {
 		plugin, err := co.consolePluginLister.Get(pluginName)
 		if err != nil {

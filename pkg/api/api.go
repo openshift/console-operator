@@ -57,7 +57,7 @@ const (
 	CreateOAuthClientManagedClusterActionName = "console-create-oauth-client"
 	OAuthServerCertManagedClusterViewName     = "console-oauth-server-cert"
 
-	PluginI18nAnnotation = "console.openshift.io/use-i18n"
+	V1Alpha1PluginI18nAnnotation = "console.openshift.io/use-i18n"
 
 	NodeArchitectureLabel = "kubernetes.io/arch"
 
