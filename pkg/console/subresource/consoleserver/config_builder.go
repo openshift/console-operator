@@ -2,7 +2,6 @@ package consoleserver
 
 import (
 	"os"
-	"reflect"
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
@@ -318,6 +317,10 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 	}
 
 	if b.devCatalogCustomization.Categories != nil {
+		if conf.DeveloperCatalog == nil {
+			conf.DeveloperCatalog = &DeveloperConsoleCatalogCustomization{}
+		}
+		categories := make([]DeveloperConsoleCatalogCategory, len(b.devCatalogCustomization.Categories))
 		mapMeta := func(meta operatorv1.DeveloperConsoleCatalogCategoryMeta) DeveloperConsoleCatalogCategoryMeta {
 			return DeveloperConsoleCatalogCategoryMeta{
 				ID:    meta.ID,
@@ -326,7 +329,6 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 			}
 		}
 
-		categories := make([]DeveloperConsoleCatalogCategory, len(b.devCatalogCustomization.Categories))
 		for categoryIndex, category := range b.devCatalogCustomization.Categories {
 			var subcategories []DeveloperConsoleCatalogCategoryMeta = nil
 			if category.Subcategories != nil {
@@ -341,31 +343,17 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 			}
 		}
 
-		conf.DeveloperCatalog = &DeveloperConsoleCatalogCustomization{
-			Categories: &categories,
-		}
+		conf.DeveloperCatalog.Categories = &categories
 	}
 
-	if !reflect.DeepEqual(b.devCatalogCustomization.Types, operatorv1.DeveloperConsoleCatalogTypesState{}) {
-
-		var catalogTypes DeveloperConsoleCatalogTypesState
-		var disabledTypes []string = nil
-		var enabledTypes []string = nil
-
-		if b.devCatalogCustomization.Types.State == "Disabled" && b.devCatalogCustomization.Types.Disabled != nil {
-			disabledTypes = *b.devCatalogCustomization.Types.Disabled
+	if (b.devCatalogCustomization.Types != operatorv1.DeveloperConsoleCatalogTypes{} && b.devCatalogCustomization.Types.State != "") {
+		if conf.DeveloperCatalog == nil {
+			conf.DeveloperCatalog = &DeveloperConsoleCatalogCustomization{}
 		}
-
-		if b.devCatalogCustomization.Types.State == "Enabled" && b.devCatalogCustomization.Types.Enabled != nil {
-			enabledTypes = *b.devCatalogCustomization.Types.Enabled
-		}
-		catalogTypes = DeveloperConsoleCatalogTypesState{
+		conf.DeveloperCatalog.Types = DeveloperConsoleCatalogTypes{
 			State:    CatalogTypesState(b.devCatalogCustomization.Types.State),
-			Enabled:  &enabledTypes,
-			Disabled: &disabledTypes,
-		}
-		conf.DeveloperCatalog = &DeveloperConsoleCatalogCustomization{
-			Types: catalogTypes,
+			Enabled:  b.devCatalogCustomization.Types.Enabled,
+			Disabled: b.devCatalogCustomization.Types.Disabled,
 		}
 	}
 
@@ -398,9 +386,8 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 		for perspectiveIndex, perspective := range b.perspectives {
 			var perspectiveVisibility PerspectiveVisibility
 			var accessReview *ResourceAttributesAccessReview
-			if !reflect.DeepEqual(perspective.Visibility, PerspectiveVisibility{}) {
-				if perspective.Visibility.State == "AccessReview" && !reflect.DeepEqual(perspective.Visibility.AccessReview, ResourceAttributesAccessReview{}) {
-
+			if (perspective.Visibility != operatorv1.PerspectiveVisibility{}) {
+				if perspective.Visibility.State == operatorv1.PerspectiveAccessReview && (perspective.Visibility.AccessReview != &operatorv1.ResourceAttributesAccessReview{}) {
 					var requiredAccessReviews []authorizationv1.ResourceAttributes = nil
 					var missingAccessReviews []authorizationv1.ResourceAttributes = nil
 					if perspective.Visibility.AccessReview.Required != nil {

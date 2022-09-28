@@ -157,7 +157,7 @@ github.com/open-cluster-management/api/client/cluster/listers/cluster/v1
 github.com/open-cluster-management/api/client/cluster/listers/cluster/v1alpha1
 github.com/open-cluster-management/api/cluster/v1
 github.com/open-cluster-management/api/cluster/v1alpha1
-# github.com/openshift/api v0.0.0-20220919083921-47068960793f
+# github.com/openshift/api v0.0.0-20220930100508-08a31a5d2264
 ## explicit; go 1.18
 github.com/openshift/api
 github.com/openshift/api/apiserver

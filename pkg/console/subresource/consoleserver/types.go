@@ -119,8 +119,8 @@ const (
 	CatalogTypeDisabled CatalogTypesState = "Disabled"
 )
 
-// DeveloperConsoleCatalogTypesState defines the state of the sub-catalog types.
-type DeveloperConsoleCatalogTypesState struct {
+// DeveloperConsoleCatalogTypes defines the state of the sub-catalog types.
+type DeveloperConsoleCatalogTypes struct {
 	// state defines if a list of catalog types should be enabled or disabled.
 	State CatalogTypesState `yaml:"state,omitempty"`
 	// enabled is a list of developer catalog types (sub-catalogs IDs) that will be shown to users.
@@ -144,7 +144,7 @@ type DeveloperConsoleCatalogCustomization struct {
 	Categories *[]DeveloperConsoleCatalogCategory `yaml:"categories"`
 	// types allows enabling or disabling of sub-catalog types that user can see in the Developer catalog.
 	// When omitted, all the sub-catalog types will be shown.
-	Types DeveloperConsoleCatalogTypesState `yaml:"types,omitempty"`
+	Types DeveloperConsoleCatalogTypes `yaml:"types"`
 }
 
 // DeveloperConsoleCatalogCategoryMeta are the key identifiers of a developer catalog category.
