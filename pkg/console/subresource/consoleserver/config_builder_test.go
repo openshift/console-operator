@@ -139,7 +139,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 			},
 		},
 		{
-			name: "Config builder should handle custom dev catalog without categories",
+			name: "Config builder should handle custom dev catalog without categories and types",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
 				b.CustomDeveloperCatalog(v1.DeveloperConsoleCatalogCustomization{})
@@ -274,6 +274,74 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 			},
 		},
 		{
+			name: "Config builder should handle dev catalog types",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.CustomDeveloperCatalog(v1.DeveloperConsoleCatalogCustomization{
+					Types: v1.DeveloperConsoleCatalogTypes{State: v1.CatalogTypeDisabled, Disabled: &[]string{"type1", "type2"}},
+				})
+				return b.Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+				},
+				Customization: Customization{
+					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
+						Categories: nil,
+						Types:      DeveloperConsoleCatalogTypes{State: CatalogTypeDisabled, Disabled: &[]string{"type1", "type2"}},
+					},
+				},
+				Providers: Providers{},
+			},
+		},
+		{
+			name: "Config builder should handle dev catalog types with empty enabled array",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.CustomDeveloperCatalog(v1.DeveloperConsoleCatalogCustomization{
+					Types: v1.DeveloperConsoleCatalogTypes{State: v1.CatalogTypeEnabled, Enabled: &[]string{}},
+				})
+				return b.Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+				},
+				Customization: Customization{
+					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
+						Categories: nil,
+						Types:      DeveloperConsoleCatalogTypes{State: CatalogTypeEnabled, Enabled: &[]string{}},
+					},
+				},
+				Providers: Providers{},
+			},
+		},
+		{
 			name: "Config builder should handle project access options",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
@@ -347,8 +415,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					{
 						ID: "perspective1",
 						Visibility: v1.PerspectiveVisibility{
-							State: "AccessReview",
-							AccessReview: &v1.PerspectiveAccessReview{
+							State: v1.PerspectiveAccessReview,
+							AccessReview: &v1.ResourceAttributesAccessReview{
 								Required: []authorizationv1.ResourceAttributes{{Resource: "namespaces", Verb: "list"}},
 								Missing:  []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}},
 							},
@@ -356,7 +424,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					}, {
 						ID: "perspective2",
 						Visibility: v1.PerspectiveVisibility{
-							State: "Disabled",
+							State: v1.PerspectiveDisabled,
 						},
 					},
 				})
@@ -380,8 +448,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
-						{ID: "perspective1", Visibility: PerspectiveVisibility{State: "AccessReview", AccessReview: &ResourceAttributesAccessReview{Required: []authorizationv1.ResourceAttributes{{Resource: "namespaces", Verb: "list"}}, Missing: []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}}}}},
-						{ID: "perspective2", Visibility: PerspectiveVisibility{State: "Disabled"}},
+						{ID: "perspective1", Visibility: PerspectiveVisibility{State: PerspectiveAccessReview, AccessReview: &ResourceAttributesAccessReview{Required: []authorizationv1.ResourceAttributes{{Resource: "namespaces", Verb: "list"}}, Missing: []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}}}}},
+						{ID: "perspective2", Visibility: PerspectiveVisibility{State: PerspectiveDisabled}},
 					},
 				},
 				Providers: Providers{},
@@ -599,7 +667,7 @@ providers:
 `,
 		},
 		{
-			name: "Config builder should handle custom dev catalog without categories",
+			name: "Config builder should handle custom dev catalog without categories and types",
 			input: func() ([]byte, error) {
 				b := &ConsoleServerCLIConfigBuilder{}
 				b.CustomDeveloperCatalog(v1.DeveloperConsoleCatalogCustomization{})
@@ -643,6 +711,7 @@ auth:
 customization:
   developerCatalog:
     categories: []
+    types: {}
 providers: {}
 `,
 		},
@@ -703,6 +772,67 @@ customization:
         - quarkus
     - id: notagsorsubcategory
       label: No tags or subcategory
+    types: {}
+providers: {}
+`,
+		},
+		{
+			name: "Config builder should handle dev catalog types",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.CustomDeveloperCatalog(v1.DeveloperConsoleCatalogCustomization{
+					Types: v1.DeveloperConsoleCatalogTypes{State: v1.CatalogTypeDisabled, Disabled: &[]string{"type1", "type2"}},
+				})
+				return b.ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo: {}
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+customization:
+  developerCatalog:
+    categories: null
+    types:
+      state: Disabled
+      disabled:
+      - type1
+      - type2
+providers: {}
+`,
+		},
+		{
+			name: "Config builder should handle dev catalog types with empty enabled array",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.CustomDeveloperCatalog(v1.DeveloperConsoleCatalogCustomization{
+					Types: v1.DeveloperConsoleCatalogTypes{State: v1.CatalogTypeEnabled, Enabled: &[]string{}},
+				})
+				return b.ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo: {}
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+customization:
+  developerCatalog:
+    categories: null
+    types:
+      state: Enabled
+      enabled: []
 providers: {}
 `,
 		},
@@ -821,8 +951,8 @@ providers: {}
 					{
 						ID: "perspective1",
 						Visibility: v1.PerspectiveVisibility{
-							State: "AccessReview",
-							AccessReview: &v1.PerspectiveAccessReview{
+							State: v1.PerspectiveAccessReview,
+							AccessReview: &v1.ResourceAttributesAccessReview{
 								Required: []authorizationv1.ResourceAttributes{{Resource: "namespaces", Verb: "list"}},
 								Missing:  []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}},
 							},
@@ -830,7 +960,7 @@ providers: {}
 					}, {
 						ID: "perspective2",
 						Visibility: v1.PerspectiveVisibility{
-							State: "Disabled",
+							State: v1.PerspectiveDisabled,
 						},
 					},
 				})
