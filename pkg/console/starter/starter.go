@@ -28,6 +28,7 @@ import (
 	pdb "github.com/openshift/console-operator/pkg/console/controllers/poddisruptionbudget"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
+	upgradenotification "github.com/openshift/console-operator/pkg/console/controllers/upgradenotification"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/managementstatecontroller"
@@ -352,6 +353,18 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		recorder,
 	)
 
+	upgradeNotificationController := upgradenotification.NewUpgradeNotificationController(
+		// top level config
+		configClient.ConfigV1(),
+		configInformers,
+		// clients
+		operatorClient,
+		operatorConfigClient.OperatorV1().Consoles(),
+		consoleClient.ConsoleV1().ConsoleNotifications(),
+		//events
+		recorder,
+	)
+
 	versionRecorder := status.NewVersionGetter()
 	versionRecorder.SetVersion("operator", os.Getenv("RELEASE_VERSION"))
 
@@ -469,6 +482,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleRouteHealthCheckController,
 		consolePDBController,
 		downloadsPDBController,
+		upgradeNotificationController,
 		staleConditionsController,
 	} {
 		go controller.Run(ctx, 1)

@@ -26,6 +26,7 @@ rules:
       - infrastructures
       - ingresses
       - proxies
+      - clusterversions
     verbs:
       - get
       - list
