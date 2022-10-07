@@ -226,10 +226,39 @@ func (c *ManagedClusterController) SyncManagedClusterList(ctx context.Context) (
 			continue
 		}
 
+		// Check the claims if version and product are supported
+		validProduct, validVersion := isSupportedCluster(managedCluster.Status.ClusterClaims)
+		// Omit clusters that have unsupported product name defined in api UnsupportedClusterProducts
+		if !validProduct {
+			klog.V(4).Infof("Skipping managed cluster %q, product is unsupported", clusterName)
+			continue
+		}
+
+		// Omit any clusters with version less than ocp 4.0.0
+		if !validVersion {
+			klog.V(4).Infof("Skipping managed cluster %q, versions prior to openshift 4.0.0 are not supported", clusterName)
+			continue
+		}
 		valid = append(valid, managedCluster)
 	}
 
 	return valid, "", nil
+}
+
+func isSupportedCluster(clusterClaims []clusterv1.ManagedClusterClaim) (bool, bool) {
+	isValidProduct := false
+	isValidVersion := false
+	for _, claim := range clusterClaims {
+		if claim.Name == api.ManagedClusterClaimProductAnnotation && util.SliceContains(api.SupportedClusterProducts, claim.Value) {
+			isValidProduct = true
+			continue
+		}
+		if claim.Name == api.ManagedClusterClaimVersionAnnotation && util.IsSupportedVersion(claim.Value) {
+			isValidVersion = true
+			continue
+		}
+	}
+	return isValidProduct, isValidVersion
 }
 
 func (c *ManagedClusterController) SyncOAuthClientManagedClusterViews(ctx context.Context, operatorConfig *operatorv1.Console, managedClusters []clusterv1.ManagedCluster) ([]*unstructured.Unstructured, string, error) {
