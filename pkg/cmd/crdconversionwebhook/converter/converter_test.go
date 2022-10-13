@@ -12,15 +12,17 @@ import (
 
 func TestConverter(t *testing.T) {
 	cases := []struct {
+		testCaseName   string
 		originalObject string
 		wantedObject   string
 	}{
 		{
+			testCaseName: "ConsolePlugin v1alpha1 to v1 conversion",
 			originalObject: `apiVersion: console.openshift.io/v1alpha1
 kind: ConsolePlugin
 metadata:
   annotations:
-    console.openshift.io/test-annotation: "true"
+    console.openshift.io/test-annotation: test
     console.openshift.io/use-i18n: "true"
   creationTimestamp: null
   generation: 1
@@ -46,7 +48,7 @@ spec:
 kind: ConsolePlugin
 metadata:
   annotations:
-    console.openshift.io/test-annotation: "true"
+    console.openshift.io/test-annotation: test
   creationTimestamp: null
   generation: 1
   name: console-plugin
@@ -74,10 +76,12 @@ spec:
 `,
 		},
 		{
+			testCaseName: "ConsolePlugin v1alpha1 to v1 conversion with Lazy i18n loadType",
 			originalObject: `apiVersion: console.openshift.io/v1alpha1
 kind: ConsolePlugin
 metadata:
   annotations:
+    console.openshift.io/test-annotation: test
     console.openshift.io/use-i18n: "false"
   creationTimestamp: null
   generation: 1
@@ -102,6 +106,8 @@ spec:
 			wantedObject: `apiVersion: console.openshift.io/v1
 kind: ConsolePlugin
 metadata:
+  annotations:
+    console.openshift.io/test-annotation: test
   creationTimestamp: null
   generation: 1
   name: console-plugin
@@ -129,11 +135,12 @@ spec:
 `,
 		},
 		{
+			testCaseName: "ConsolePlugin v1 to v1alpha conversion",
 			originalObject: `apiVersion: console.openshift.io/v1
 kind: ConsolePlugin
 metadata:
   annotations:
-    console.openshift.io/test-annotation: "true"
+    console.openshift.io/test-annotation: test
   creationTimestamp: null
   generation: 1
   name: console-plugin
@@ -163,7 +170,7 @@ spec:
 kind: ConsolePlugin
 metadata:
   annotations:
-    console.openshift.io/test-annotation: "true"
+    console.openshift.io/test-annotation: test
     console.openshift.io/use-i18n: "true"
   creationTimestamp: null
   generation: 1
@@ -186,9 +193,65 @@ spec:
     port: 9001
 `,
 		},
-	}
+		{
+			testCaseName: "ConsolePlugin v1 to v1alpha conversion with storing v1 representation in annotation",
+			originalObject: `apiVersion: console.openshift.io/v1
+kind: ConsolePlugin
+metadata:
+  creationTimestamp: null
+  generation: 1
+  name: console-plugin
+spec:
+  backend:
+    service:
+      basePath: /
+      name: console-demo-plugin
+      namespace: console-demo-plugin
+      port: 9001
+    type: Service
+  displayName: plugin
+  i18n:
+    loadType: Lazy
+  proxy:
+  - alias: thanos-querier
+    authorization: UserToken
+    caCertificate: certContent
+    endpoint:
+      service:
+        name: thanos-querier
+        namespace: openshift-monitoring
+        port: 9091
+      type: Service
+`,
+			wantedObject: `apiVersion: console.openshift.io/v1alpha1
+kind: ConsolePlugin
+metadata:
+  annotations:
+    console.openshift.io/use-i18n: "false"
+  creationTimestamp: null
+  generation: 1
+  name: console-plugin
+spec:
+  displayName: plugin
+  proxy:
+  - alias: thanos-querier
+    authorize: true
+    caCertificate: certContent
+    service:
+      name: thanos-querier
+      namespace: openshift-monitoring
+      port: 9091
+    type: Service
+  service:
+    basePath: /
+    name: console-demo-plugin
+    namespace: console-demo-plugin
+    port: 9001
+`,
+		}}
 	for _, tc := range cases {
 		t.Run("ConsolePlugin version convertion test", func(t *testing.T) {
+			t.Logf("Running %q test", tc.testCaseName)
 			unstructuredOriginalObject := getUnstructuredObject(t, tc.originalObject)
 			unstructuredWantedObject := getUnstructuredObject(t, tc.wantedObject)
 
