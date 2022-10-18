@@ -71,18 +71,16 @@ func convertPluginV1ToV1alpha1(convertedObject *unstructured.Unstructured) (*uns
 	v1alpha1Plugin.Spec.DisplayName = v1Plugin.Spec.DisplayName
 
 	// i18n
-	if v1Plugin.Spec.I18n.LoadType == v1.Preload {
-		annotations := v1Plugin.GetAnnotations()
-		if annotations == nil {
-			annotations = map[string]string{
-				api.V1Alpha1PluginI18nAnnotation: "true",
-			}
-		} else {
-			annotations[api.V1Alpha1PluginI18nAnnotation] = "true"
-		}
-
-		v1alpha1Plugin.SetAnnotations(annotations)
+	annotations := v1Plugin.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
 	}
+	if v1Plugin.Spec.I18n.LoadType == v1.Preload {
+		annotations[api.V1Alpha1PluginI18nAnnotation] = "true"
+	} else if v1Plugin.Spec.I18n.LoadType == v1.Lazy {
+		annotations[api.V1Alpha1PluginI18nAnnotation] = "false"
+	}
+	v1alpha1Plugin.SetAnnotations(annotations)
 
 	// backend -> service
 	// we only support backend type 'Service' for now, so it's always true
@@ -151,6 +149,8 @@ func convertPluginV1alpha1ToV1(convertedObject *unstructured.Unstructured) (*uns
 	updatedV1alpha1PluginAnnotations := v1alpha1Plugin.GetAnnotations()
 	if v := updatedV1alpha1PluginAnnotations[api.V1Alpha1PluginI18nAnnotation]; v == "true" {
 		v1Plugin.Spec.I18n.LoadType = v1.Preload
+	} else if v == "false" {
+		v1Plugin.Spec.I18n.LoadType = v1.Lazy
 	}
 	delete(updatedV1alpha1PluginAnnotations, api.V1Alpha1PluginI18nAnnotation)
 	v1Plugin.SetAnnotations(updatedV1alpha1PluginAnnotations)
