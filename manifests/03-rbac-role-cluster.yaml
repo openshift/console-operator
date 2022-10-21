@@ -61,6 +61,7 @@ rules:
       - console.openshift.io
     resources:
       - consoleclidownloads
+      - consolenotifications
     verbs:
       - get
       - list
