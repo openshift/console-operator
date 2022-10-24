@@ -680,7 +680,7 @@ managedClusterConfigFile: 'test'
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
 				availablePlugins: []*v1.ConsolePlugin{
-					testPlugins("plugin1", "service1", "service-namespace1"),
+					testPluginsWithProxy("plugin1", "service1", "service-namespace1"),
 					testPluginsWithProxy("plugin2", "service2", "service-namespace2"),
 					testPluginsWithI18nPreloadType("plugin3", "service3", "service-namespace3"),
 				},
@@ -739,7 +739,25 @@ HQ4EFgQU0vhI4OPGEOqT+VAWwxdhVvcmgdIwHwYDVR0jBBgwFoAU0vhI4OPGEOqT` + "\n" + `
 nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 +tW+O/PoE7B3tuY=` + "\n" + `
 -----END CERTIFICATE-----'
-    consoleAPIPath: /api/proxy/plugin/plugin2/test-alias/
+    consoleAPIPath: /api/proxy/plugin/plugin1/plugin1-alias/
+    endpoint: https://proxy-service1.proxy-service-namespace1.svc.cluster.local:9991
+  - authorize: true
+    caCertificate: '-----BEGIN CERTIFICATE-----` + "\n" + `
+MIICRzCCAfGgAwIBAgIJAIydTIADd+yqMA0GCSqGSIb3DQEBCwUAMH4xCzAJBgNV` + "\n" + `
+BAYTAkdCMQ8wDQYDVQQIDAZMb25kb24xDzANBgNVBAcMBkxvbmRvbjEYMBYGA1UE` + "\n" + `
+CgwPR2xvYmFsIFNlY3VyaXR5MRYwFAYDVQQLDA1JVCBEZXBhcnRtZW50MRswGQYD` + "\n" + `
+VQQDDBJ0ZXN0LWNlcnRpZmljYXRlLTIwIBcNMTcwNDI2MjMyNDU4WhgPMjExNzA0` + "\n" + `
+MDIyMzI0NThaMH4xCzAJBgNVBAYTAkdCMQ8wDQYDVQQIDAZMb25kb24xDzANBgNV` + "\n" + `
+BAcMBkxvbmRvbjEYMBYGA1UECgwPR2xvYmFsIFNlY3VyaXR5MRYwFAYDVQQLDA1J` + "\n" + `
+VCBEZXBhcnRtZW50MRswGQYDVQQDDBJ0ZXN0LWNlcnRpZmljYXRlLTIwXDANBgkq` + "\n" + `
+hkiG9w0BAQEFAANLADBIAkEAuiRet28DV68Dk4A8eqCaqgXmymamUEjW/DxvIQqH` + "\n" + `
+3lbhtm8BwSnS9wUAajSLSWiq3fci2RbRgaSPjUrnbOHCLQIDAQABo1AwTjAdBgNV` + "\n" + `
+HQ4EFgQU0vhI4OPGEOqT+VAWwxdhVvcmgdIwHwYDVR0jBBgwFoAU0vhI4OPGEOqT` + "\n" + `
++VAWwxdhVvcmgdIwDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQsFAANBALNeJGDe` + "\n" + `
+nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
++tW+O/PoE7B3tuY=` + "\n" + `
+-----END CERTIFICATE-----'
+    consoleAPIPath: /api/proxy/plugin/plugin2/plugin2-alias/
     endpoint: https://proxy-service2.proxy-service-namespace2.svc.cluster.local:9991
 `,
 				},
@@ -950,7 +968,7 @@ func testPluginsWithProxy(pluginName, serviceName, serviceNamespace string) *v1.
 	plugin := testPlugins(pluginName, serviceName, serviceNamespace)
 	plugin.Spec.Proxy = []v1.ConsolePluginProxy{
 		{
-			Alias:         "test-alias",
+			Alias:         fmt.Sprintf("%s-alias", pluginName),
 			CACertificate: validCertificate,
 			Authorization: v1.UserToken,
 			Endpoint: v1.ConsolePluginProxyEndpoint{

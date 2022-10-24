@@ -20,7 +20,6 @@ func convertCRD(object *unstructured.Unstructured, toVersion string) (*unstructu
 	if toVersion == fromVersion {
 		return nil, statusErrorWithMessage("conversion from a version to itself should not call the webhook: %s", toVersion)
 	}
-
 	switch object.GetAPIVersion() {
 	case "console.openshift.io/v1alpha1":
 		switch toVersion {
@@ -165,12 +164,12 @@ func convertPluginV1alpha1ToV1(convertedObject *unstructured.Unstructured) (*uns
 	// proxy
 	// v1alpha1 endpoint can only be type 'Service'
 	v1Proxies := []v1.ConsolePluginProxy{}
-	for _, proxy := range v1alpha1Plugin.Spec.Proxy {
+	for i, proxy := range v1alpha1Plugin.Spec.Proxy {
 		v1Proxy := v1.ConsolePluginProxy{
 			Alias:         proxy.Alias,
 			CACertificate: proxy.CACertificate,
 			Endpoint: v1.ConsolePluginProxyEndpoint{
-				Service: (*v1.ConsolePluginProxyServiceConfig)(&proxy.Service),
+				Service: (*v1.ConsolePluginProxyServiceConfig)(&v1alpha1Plugin.Spec.Proxy[i].Service),
 				Type:    v1.ProxyTypeService,
 			},
 		}
