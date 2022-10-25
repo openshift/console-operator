@@ -115,7 +115,7 @@ func (c *UpgradeNotificationController) Sync(ctx context.Context, controllerCont
 		}
 		_, err = c.consoleNotificationClient.Create(ctx, notification, metav1.CreateOptions{})
 		if err != nil && !apierrors.IsAlreadyExists(err) {
-			klog.V(4).Infof("error creating %s consolecotification custom resource: %s", api.UpgradeConsoleNotification, err)
+			klog.V(4).Infof("error creating %s consolenotification custom resource: %s", api.UpgradeConsoleNotification, err)
 			statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConsoleNotificationSync", "FailedCreate", err))
 			return statusHandler.FlushAndReturn(err)
 		}
@@ -123,7 +123,7 @@ func (c *UpgradeNotificationController) Sync(ctx context.Context, controllerCont
 	err = c.removeUpgradeNotification(ctx)
 
 	if err != nil {
-		klog.V(4).Infof("error deleting %s consolecotification custom resource: %s", api.UpgradeConsoleNotification, err)
+		klog.V(4).Infof("error deleting %s consolenotification custom resource: %s", api.UpgradeConsoleNotification, err)
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConsoleNotificationSync", "FailedDelete", err))
 	}
 
