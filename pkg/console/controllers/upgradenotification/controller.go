@@ -63,7 +63,7 @@ func NewUpgradeNotificationController(
 
 	return factory.New().
 		WithFilteredEventsInformers( // configs
-			util.IncludeNamesFilter(api.ConfigResourceName),
+			util.IncludeNamesFilter(api.VersionResourceName),
 			configV1Informers.ClusterVersions().Informer(),
 		).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
 		ToController("ConsoleServiceController", recorder.WithComponentSuffix("console-service-controller"))
@@ -110,25 +110,27 @@ func (c *UpgradeNotificationController) Sync(ctx context.Context, controllerCont
 				Text:            fmt.Sprintf("This cluster is updating from %s to %s", lastUpdate, desiredVersion),
 				Location:        "BannerTop",
 				Color:           "#FFFFFF",
-				BackgroundColor: "#990000",
+				BackgroundColor: "#F0AB00",
 			},
 		}
 		_, err = c.consoleNotificationClient.Create(ctx, notification, metav1.CreateOptions{})
 		if err != nil && !apierrors.IsAlreadyExists(err) {
-			statusHandler.FlushAndReturn(err)
+			klog.V(4).Infof("error creating %s consolecotification custom resource: %s", api.UpgradeConsoleNotification, err)
+			statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConsoleNotificationSync", "FailedCreate", err))
+			return statusHandler.FlushAndReturn(err)
 		}
-	} else {
-		err = c.consoleNotificationClient.Delete(ctx, api.UpgradeConsoleNotification, metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsAlreadyExists(err) {
-			statusHandler.FlushAndReturn(err)
-		}
+	}
+	err = c.removeUpgradeNotification(ctx)
+
+	if err != nil {
+		klog.V(4).Infof("error deleting %s consolecotification custom resource: %s", api.UpgradeConsoleNotification, err)
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConsoleNotificationSync", "FailedDelete", err))
 	}
 
 	return statusHandler.FlushAndReturn(err)
 }
 
 func getClusterVersionCondition(cvo v1.ClusterVersion, conditionStatus v1.ConditionStatus, conditionType v1.ClusterStatusConditionType) bool {
-
 	isConditionFulfilled := false
 	for _, condition := range cvo.Status.Conditions {
 		if condition.Status == conditionStatus && condition.Type == conditionType {

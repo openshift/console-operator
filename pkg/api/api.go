@@ -3,8 +3,9 @@ package api
 import "k8s.io/apimachinery/pkg/runtime/schema"
 
 const (
-	TargetNamespace    = "openshift-console"
-	ConfigResourceName = "cluster"
+	TargetNamespace     = "openshift-console"
+	ConfigResourceName  = "cluster"
+	VersionResourceName = "version"
 )
 
 // consts to maintain existing names of various sub-resources
