@@ -43,6 +43,14 @@ spec:
       name: thanos-querier
       namespace: openshift-monitoring
       port: 9091
+  - type: Service
+    alias: loky-querier
+    authorize: true
+    caCertificate: certContent
+    service:
+      name: loky-querier
+      namespace: openshift-monitoring
+      port: 9092
 `,
 			wantedObject: `apiVersion: console.openshift.io/v1
 kind: ConsolePlugin
@@ -72,6 +80,15 @@ spec:
         name: thanos-querier
         namespace: openshift-monitoring
         port: 9091
+      type: Service
+  - alias: loky-querier
+    authorization: UserToken
+    caCertificate: certContent
+    endpoint:
+      service:
+        name: loky-querier
+        namespace: openshift-monitoring
+        port: 9092
       type: Service
 `,
 		},
@@ -165,6 +182,15 @@ spec:
         namespace: openshift-monitoring
         port: 9091
       type: Service
+  - alias: loky-querier
+    authorization: UserToken
+    caCertificate: certContent
+    endpoint:
+      service:
+        name: loky-querier
+        namespace: openshift-monitoring
+        port: 9092
+      type: Service
 `,
 			wantedObject: `apiVersion: console.openshift.io/v1alpha1
 kind: ConsolePlugin
@@ -185,6 +211,14 @@ spec:
       name: thanos-querier
       namespace: openshift-monitoring
       port: 9091
+    type: Service
+  - alias: loky-querier
+    authorize: true
+    caCertificate: certContent
+    service:
+      name: loky-querier
+      namespace: openshift-monitoring
+      port: 9092
     type: Service
   service:
     basePath: /
@@ -248,7 +282,8 @@ spec:
     namespace: console-demo-plugin
     port: 9001
 `,
-		}}
+		},
+	}
 	for _, tc := range cases {
 		t.Run("ConsolePlugin version convertion test", func(t *testing.T) {
 			t.Logf("Running %q test", tc.testCaseName)
