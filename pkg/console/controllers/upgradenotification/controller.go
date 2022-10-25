@@ -99,7 +99,13 @@ func (c *UpgradeNotificationController) Sync(ctx context.Context, controllerCont
 	isUpdateProgressing := getClusterVersionCondition(*clusterVersionConfig, v1.ConditionTrue, v1.OperatorProgressing)
 
 	if isUpdateProgressing {
-		lastUpdate := clusterVersionConfig.Status.History[0].Version
+		var currentVersion string
+		for _, version := range clusterVersionConfig.Status.History {
+			if version.State == v1.CompletedUpdate {
+				currentVersion = version.Version
+				break
+			}
+		}
 		desiredVersion := clusterVersionConfig.Spec.DesiredUpdate.Version
 
 		notification := &consolev1.ConsoleNotification{
@@ -107,7 +113,7 @@ func (c *UpgradeNotificationController) Sync(ctx context.Context, controllerCont
 				Name: api.UpgradeConsoleNotification,
 			},
 			Spec: consolev1.ConsoleNotificationSpec{
-				Text:            fmt.Sprintf("This cluster is updating from %s to %s", lastUpdate, desiredVersion),
+				Text:            fmt.Sprintf("This cluster is updating from %s to %s", currentVersion, desiredVersion),
 				Location:        "BannerTop",
 				Color:           "#FFFFFF",
 				BackgroundColor: "#F0AB00",
