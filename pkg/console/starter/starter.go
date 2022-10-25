@@ -56,6 +56,9 @@ import (
 	clusterclient "github.com/open-cluster-management/api/client/cluster/clientset/versioned"
 	clusterinformers "github.com/open-cluster-management/api/client/cluster/informers/externalversions"
 
+	olmclient "github.com/operator-framework/operator-lifecycle-manager/pkg/api/client/clientset/versioned"
+	olminformers "github.com/operator-framework/operator-lifecycle-manager/pkg/api/client/informers/externalversions"
+
 	"github.com/openshift/console-operator/pkg/console/clientwrapper"
 	"github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/library-go/pkg/operator/loglevel"
@@ -94,6 +97,11 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	}
 
 	managedClusterClient, err := clusterclient.NewForConfig(controllerContext.KubeConfig)
+	if err != nil {
+		return err
+	}
+
+	olmClient, err := olmclient.NewForConfig(controllerContext.KubeConfig)
 	if err != nil {
 		return err
 	}
@@ -158,6 +166,11 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 	managedClusterInformers := clusterinformers.NewSharedInformerFactoryWithOptions(
 		managedClusterClient,
+		resync,
+	)
+
+	olmInformers := olminformers.NewFilteredOLMConfigInformer(
+		olmClient,
 		resync,
 	)
 
@@ -428,6 +441,25 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		recorder,
 	)
 
+	olmController := olmClient.NewForConfig(
+		// top level config
+		configClient.ConfigV1(),
+		configInformers,
+		// clients
+		operatorClient,
+		operatorConfigClient.OperatorV1().Consoles(),
+		kubeClient.CoreV1(),
+		managedClusterClient.ClusterV1(),
+		dynamicClient,
+		kubeClient.CoreV1(),
+		oauthClient.OauthV1(),
+		// informers
+		olmInformers.Operators().V1(),
+		// dynamicInformers,
+		//events
+		recorder,
+	)
+
 	configUpgradeableController := unsupportedconfigoverridescontroller.NewUnsupportedConfigOverridesController(operatorClient, controllerContext.EventRecorder)
 	logLevelController := loglevel.NewClusterOperatorLoggingController(operatorClient, controllerContext.EventRecorder)
 	managementStateController := managementstatecontroller.NewOperatorManagementStateController(api.ClusterOperatorName, operatorClient, controllerContext.EventRecorder)
@@ -445,6 +477,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		routesInformersNamespaced,
 		oauthInformers,
 		managedClusterInformers,
+		olmInformers,
 		dynamicInformers,
 	} {
 		informer.Start(ctx.Done())
@@ -463,6 +496,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		downloadsServiceController,
 		downloadsRouteController,
 		managedClusterController,
+		olmController,
 		consoleOperator,
 		cliDownloadsController,
 		downloadsDeploymentController,
