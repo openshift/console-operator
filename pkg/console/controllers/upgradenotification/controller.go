@@ -94,15 +94,16 @@ func (c *UpgradeNotificationController) Sync(ctx context.Context, controllerCont
 
 	reason, err := c.syncClusterUpgradeNotification(ctx)
 	if err != nil {
+		fmt.Println("2")
 		klog.V(4).Infof("error syncing %s consolenotification custom resource: %s", api.UpgradeConsoleNotification, err)
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConsoleNotificationSync", reason, err))
 	}
-
+	fmt.Println("3")
 	return statusHandler.FlushAndReturn(err)
 }
 
 func (c *UpgradeNotificationController) syncClusterUpgradeNotification(ctx context.Context) (string, error) {
-	clusterVersionConfig, err := c.clusterVersionLister.Get("version")
+	clusterVersionConfig, err := c.clusterVersionLister.Get(api.VersionResourceName)
 	if err != nil {
 		return "FailedGetClusterVersion", err
 	}
@@ -135,15 +136,18 @@ func (c *UpgradeNotificationController) syncClusterUpgradeNotification(ctx conte
 				BackgroundColor: "#F0AB00",
 			},
 		}
+		fmt.Println("-- CREATE")
 		_, err = c.consoleNotificationClient.Create(ctx, notification, metav1.CreateOptions{})
 		if err != nil && !apierrors.IsAlreadyExists(err) {
 			return "FailedCreate", err
 		}
+	} else {
+		err = c.removeUpgradeNotification(ctx)
+		if err != nil {
+			return "FailedDelete", err
+		}
 	}
-	err = c.removeUpgradeNotification(ctx)
-	if err != nil {
-		return "FailedDelete", err
-	}
+
 	return "", nil
 }
 
