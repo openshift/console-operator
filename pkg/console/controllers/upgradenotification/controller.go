@@ -66,10 +66,11 @@ func NewUpgradeNotificationController(
 			util.IncludeNamesFilter(api.VersionResourceName),
 			configV1Informers.ClusterVersions().Informer(),
 		).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
-		ToController("ConsoleServiceController", recorder.WithComponentSuffix("console-service-controller"))
+		ToController("ClusterUpgradeNotificationController", recorder.WithComponentSuffix("cluster-upgrade-notification-controller"))
 }
 
 func (c *UpgradeNotificationController) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
+	fmt.Println("---------")
 	operatorConfig, err := c.operatorConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -91,9 +92,19 @@ func (c *UpgradeNotificationController) Sync(ctx context.Context, controllerCont
 
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
+	reason, err := c.syncClusterUpgradeNotification(ctx)
+	if err != nil {
+		klog.V(4).Infof("error syncing %s consolenotification custom resource: %s", api.UpgradeConsoleNotification, err)
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConsoleNotificationSync", reason, err))
+	}
+
+	return statusHandler.FlushAndReturn(err)
+}
+
+func (c *UpgradeNotificationController) syncClusterUpgradeNotification(ctx context.Context) (string, error) {
 	clusterVersionConfig, err := c.clusterVersionLister.Get("version")
 	if err != nil {
-		return statusHandler.FlushAndReturn(err)
+		return "FailedGetClusterVersion", err
 	}
 
 	isUpdateProgressing := getClusterVersionCondition(*clusterVersionConfig, v1.ConditionTrue, v1.OperatorProgressing)
@@ -106,7 +117,12 @@ func (c *UpgradeNotificationController) Sync(ctx context.Context, controllerCont
 				break
 			}
 		}
-		desiredVersion := clusterVersionConfig.Spec.DesiredUpdate.Version
+		desiredVersion := clusterVersionConfig.Status.Desired.Version
+
+		if currentVersion == desiredVersion {
+			fmt.Println("-- SAME VERSIONS")
+			return "", nil
+		}
 
 		notification := &consolev1.ConsoleNotification{
 			ObjectMeta: metav1.ObjectMeta{
@@ -121,19 +137,23 @@ func (c *UpgradeNotificationController) Sync(ctx context.Context, controllerCont
 		}
 		_, err = c.consoleNotificationClient.Create(ctx, notification, metav1.CreateOptions{})
 		if err != nil && !apierrors.IsAlreadyExists(err) {
-			klog.V(4).Infof("error creating %s consolenotification custom resource: %s", api.UpgradeConsoleNotification, err)
-			statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConsoleNotificationSync", "FailedCreate", err))
-			return statusHandler.FlushAndReturn(err)
+			return "FailedCreate", err
 		}
 	}
 	err = c.removeUpgradeNotification(ctx)
-
 	if err != nil {
-		klog.V(4).Infof("error deleting %s consolenotification custom resource: %s", api.UpgradeConsoleNotification, err)
-		statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConsoleNotificationSync", "FailedDelete", err))
+		return "FailedDelete", err
 	}
+	return "", nil
+}
 
-	return statusHandler.FlushAndReturn(err)
+func (c *UpgradeNotificationController) removeUpgradeNotification(ctx context.Context) error {
+	err := c.consoleNotificationClient.Delete(ctx, api.UpgradeConsoleNotification, metav1.DeleteOptions{})
+	if !apierrors.IsNotFound(err) {
+		klog.V(4).Infof("error deleting %s consolenotification custom resource: %s", api.UpgradeConsoleNotification, err)
+		return err
+	}
+	return nil
 }
 
 func getClusterVersionCondition(cvo v1.ClusterVersion, conditionStatus v1.ConditionStatus, conditionType v1.ClusterStatusConditionType) bool {
@@ -146,12 +166,4 @@ func getClusterVersionCondition(cvo v1.ClusterVersion, conditionStatus v1.Condit
 	}
 
 	return isConditionFulfilled
-}
-
-func (c *UpgradeNotificationController) removeUpgradeNotification(ctx context.Context) error {
-	err := c.consoleNotificationClient.Delete(ctx, api.UpgradeConsoleNotification, metav1.DeleteOptions{})
-	if apierrors.IsNotFound(err) {
-		return nil
-	}
-	return err
 }
