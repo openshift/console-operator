@@ -9,60 +9,68 @@ metadata:
     include.release.openshift.io/single-node-developer: "true"
     capability.openshift.io/name: Console
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  - events
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - delete
-  - patch
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - deployments
-  - replicasets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - config.openshift.io
-  resources:
-  - infrastructures
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - "coordination.k8s.io"
-  resources:
-  - leases
-  verbs:
-  - get
-  - create
-  - update
-- apiGroups:
-    - console.openshift.io
-  resources:
-    - consolenotifications
-  verbs:
-    - get
-    - list
-    - watch
-    - create
-    - update
-    - delete
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - events
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - replicasets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - config.openshift.io
+    resources:
+      - infrastructures
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "coordination.k8s.io"
+    resources:
+      - leases
+    verbs:
+      - get
+      - create
+      - update
+  - apiGroups:
+      - console.openshift.io
+    resources:
+      - consolenotifications
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
+  - apiGroups:
+      - operators.coreos.com
+    resources:
+      - olmconfigs
+    verbs:
+      - get
+      - list
+      - watch

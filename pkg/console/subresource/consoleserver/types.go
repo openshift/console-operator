@@ -68,6 +68,7 @@ type ClusterInfo struct {
 	ControlPlaneToplogy configv1.TopologyMode `yaml:"controlPlaneTopology,omitempty"`
 	ReleaseVersion      string                `yaml:"releaseVersion,omitempty"`
 	NodeArchitectures   []string              `yaml:"nodeArchitectures,omitempty"`
+	CopiedCSVsDisabled  bool                  `yaml:"copiedCSVsDisabled,omitempty"`
 }
 
 // MonitoringInfo holds configuration for monitoring related services

@@ -12,6 +12,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 
@@ -408,6 +410,11 @@ func (co *consoleOperator) SyncConfigMap(
 		return nil, false, "FailedGetMonitoringSharedConfig", mscErr
 	}
 
+	copiedCSVsDisabled, ccdErr := co.isCopiedCSVsDisabled(ctx)
+	if ccdErr != nil {
+		return nil, false, "FailedGetOLMConfig", ccdErr
+	}
+
 	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(
 		operatorConfig,
 		consoleConfig,
@@ -420,6 +427,7 @@ func (co *consoleOperator) SyncConfigMap(
 		availablePlugins,
 		managedClusterConfigFile,
 		nodeArchitectures,
+		copiedCSVsDisabled,
 	)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
@@ -620,4 +628,17 @@ func getNodeArchitectures(nodes *corev1.NodeList) []string {
 		}
 	}
 	return nodeArchitecturesSet.List()
+}
+
+func (co *consoleOperator) isCopiedCSVsDisabled(ctx context.Context) (bool, error) {
+	olmConfig, err := co.dynamicClient.Resource(schema.GroupVersionResource{Group: api.OLMConfigGroup, Version: api.OLMConfigVersion, Resource: api.OLMConfigResource}).Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		return false, err
+	}
+	copiedCSVsDisabled, found, err := unstructured.NestedBool(olmConfig.Object, "spec", "features", "disableCopiedCSVs")
+	if err != nil || !found {
+		return false, err
+	}
+
+	return copiedCSVsDisabled, nil
 }
