@@ -64,6 +64,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	telemetry                  map[string]string
 	releaseVersion             string
 	nodeArchitectures          []string
+	copiedCSVsDisabled         bool
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -190,6 +191,11 @@ func (b *ConsoleServerCLIConfigBuilder) NodesArchitecture(architectures []string
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) CopiedCSVsDisabled(copiedCSVsDisabled bool) *ConsoleServerCLIConfigBuilder {
+	b.copiedCSVsDisabled = copiedCSVsDisabled
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
 		Kind:                     "ConsoleConfig",
@@ -252,6 +258,7 @@ func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {
 	if len(b.nodeArchitectures) > 0 {
 		conf.NodeArchitectures = b.nodeArchitectures
 	}
+	conf.CopiedCSVsDisabled = b.copiedCSVsDisabled
 	return conf
 }
 

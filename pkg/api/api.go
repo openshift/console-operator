@@ -73,6 +73,10 @@ const (
 	ManagedClusterClaimVersionAnnotation = "version.openshift.io"
 	ManagedClusterClaimProductAnnotation = "product.open-cluster-management.io"
 
+	OLMConfigGroup    = "operators.coreos.com"
+	OLMConfigVersion  = "v1"
+	OLMConfigResource = "olmconfigs"
+
 	ConsoleContainerPortName    = "https"
 	ConsoleContainerPort        = 443
 	ConsoleContainerTargetPort  = 8443
