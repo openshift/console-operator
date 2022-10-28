@@ -54,4 +54,15 @@ rules:
   verbs:
   - get
   - create
-  - update 
+  - update
+- apiGroups:
+    - console.openshift.io
+  resources:
+    - consolenotifications
+  verbs:
+    - get
+    - list
+    - watch
+    - create
+    - update
+    - delete

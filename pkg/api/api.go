@@ -3,8 +3,9 @@ package api
 import "k8s.io/apimachinery/pkg/runtime/schema"
 
 const (
-	TargetNamespace    = "openshift-console"
-	ConfigResourceName = "cluster"
+	TargetNamespace     = "openshift-console"
+	ConfigResourceName  = "cluster"
+	VersionResourceName = "version"
 )
 
 // consts to maintain existing names of various sub-resources
@@ -58,6 +59,8 @@ const (
 	OAuthServerCertManagedClusterViewName     = "console-oauth-server-cert"
 
 	V1Alpha1PluginI18nAnnotation = "console.openshift.io/use-i18n"
+
+	UpgradeConsoleNotification = "cluster-upgrade"
 
 	NodeArchitectureLabel = "kubernetes.io/arch"
 
