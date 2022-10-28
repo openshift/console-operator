@@ -1,9 +1,9 @@
 apiVersion: apiextensions.k8s.io/v1 # Hack because controller-gen complains if we don't have this
-name: "[Stable] ControlPlaneMachineSet (AWS)"
+name: "[Stable] ControlPlaneMachineSet"
 crd: 0000_10_controlplanemachineset.crd.yaml
 tests:
   onCreate:
-  - name: Should reject an AWS platform failure domain without any AWS config
+  - name: Should be able to create a minimal ControlPlaneMachineSet
     initial: |
       apiVersion: machine.openshift.io/v1
       kind: ControlPlaneMachineSet
@@ -22,137 +22,12 @@ tests:
                 machine.openshift.io/cluster-api-cluster: cluster
             spec:
               providerSpec: {}
-            failureDomains:
-              platform: AWS
-    expectedError: "spec.template.machines_v1beta1_machine_openshift_io.failureDomains: Invalid value: \"object\": aws configuration is required when platform is AWS"
-  - name: Should reject an AWS configured failure domain without a platform type
-    initial: |
-      apiVersion: machine.openshift.io/v1
-      kind: ControlPlaneMachineSet
-      spec:
-        selector:
-          matchLabels:
-            machine.openshift.io/cluster-api-machine-role: master
-            machine.openshift.io/cluster-api-machine-type: master
-        template:
-          machineType: machines_v1beta1_machine_openshift_io
-          machines_v1beta1_machine_openshift_io:
-            metadata:
-              labels:
-                machine.openshift.io/cluster-api-machine-role: master
-                machine.openshift.io/cluster-api-machine-type: master
-                machine.openshift.io/cluster-api-cluster: cluster
-            spec:
-              providerSpec: {}
-            failureDomains:
-              aws:
-              - placement:
-                  availabilityZone: foo
-    expectedError: "spec.template.machines_v1beta1_machine_openshift_io.failureDomains.platform: Required value"
-  - name: Should reject an AWS configured failure domain with the wrong platform type
-    initial: |
-      apiVersion: machine.openshift.io/v1
-      kind: ControlPlaneMachineSet
-      spec:
-        selector:
-          matchLabels:
-            machine.openshift.io/cluster-api-machine-role: master
-            machine.openshift.io/cluster-api-machine-type: master
-        template:
-          machineType: machines_v1beta1_machine_openshift_io
-          machines_v1beta1_machine_openshift_io:
-            metadata:
-              labels:
-                machine.openshift.io/cluster-api-machine-role: master
-                machine.openshift.io/cluster-api-machine-type: master
-                machine.openshift.io/cluster-api-cluster: cluster
-            spec:
-              providerSpec: {}
-            failureDomains:
-              platform: BareMetal
-              aws:
-              - placement:
-                  availabilityZone: foo
-    expectedError: "spec.template.machines_v1beta1_machine_openshift_io.failureDomains: Invalid value: \"object\": aws configuration is required when platform is AWS, and forbidden otherwise"
-  - name: Should reject an AWS failure domain with the subnet type omitted
-    initial: |
-      apiVersion: machine.openshift.io/v1
-      kind: ControlPlaneMachineSet
-      spec:
-        selector:
-          matchLabels:
-            machine.openshift.io/cluster-api-machine-role: master
-            machine.openshift.io/cluster-api-machine-type: master
-        template:
-          machineType: machines_v1beta1_machine_openshift_io
-          machines_v1beta1_machine_openshift_io:
-            metadata:
-              labels:
-                machine.openshift.io/cluster-api-machine-role: master
-                machine.openshift.io/cluster-api-machine-type: master
-                machine.openshift.io/cluster-api-cluster: cluster
-            spec:
-              providerSpec: {}
-            failureDomains:
-              platform: AWS
-              aws:
-              - subnet: {}
-    expectedError: "spec.template.machines_v1beta1_machine_openshift_io.failureDomains.aws[0].subnet.type: Required value, <nil>: Invalid value: \"null\""
-  - name: Should reject an AWS failure domain with the subnet type ID and no ID provided
-    initial: |
-      apiVersion: machine.openshift.io/v1
-      kind: ControlPlaneMachineSet
-      spec:
-        selector:
-          matchLabels:
-            machine.openshift.io/cluster-api-machine-role: master
-            machine.openshift.io/cluster-api-machine-type: master
-        template:
-          machineType: machines_v1beta1_machine_openshift_io
-          machines_v1beta1_machine_openshift_io:
-            metadata:
-              labels:
-                machine.openshift.io/cluster-api-machine-role: master
-                machine.openshift.io/cluster-api-machine-type: master
-                machine.openshift.io/cluster-api-cluster: cluster
-            spec:
-              providerSpec: {}
-            failureDomains:
-              platform: AWS
-              aws:
-              - subnet:
-                  type: ID
-    expectedError: "spec.template.machines_v1beta1_machine_openshift_io.failureDomains.aws[0].subnet: Invalid value: \"object\": id is required when type is ID, and forbidden otherwise"
-  - name: Should accept an AWS failure domain with the subnet type ID and an ID provided
-    initial: |
-      apiVersion: machine.openshift.io/v1
-      kind: ControlPlaneMachineSet
-      spec:
-        selector:
-          matchLabels:
-            machine.openshift.io/cluster-api-machine-role: master
-            machine.openshift.io/cluster-api-machine-type: master
-        template:
-          machineType: machines_v1beta1_machine_openshift_io
-          machines_v1beta1_machine_openshift_io:
-            metadata:
-              labels:
-                machine.openshift.io/cluster-api-machine-role: master
-                machine.openshift.io/cluster-api-machine-type: master
-                machine.openshift.io/cluster-api-cluster: cluster
-            spec:
-              providerSpec: {}
-            failureDomains:
-              platform: AWS
-              aws:
-              - subnet:
-                  type: ID
-                  id: foo
     expected: |
       apiVersion: machine.openshift.io/v1
       kind: ControlPlaneMachineSet
       spec:
         replicas: 3
+        state: Inactive
         strategy:
           type: RollingUpdate
         selector:
@@ -169,13 +44,116 @@ tests:
                 machine.openshift.io/cluster-api-cluster: cluster
             spec:
               providerSpec: {}
-            failureDomains:
-              platform: AWS
-              aws:
-              - subnet:
-                  type: ID
-                  id: foo
-  - name: Should reject an AWS failure domain with the subnet type ID and an ARN provided
+  - name: Should reject a missing machineType
+    initial: |
+      apiVersion: machine.openshift.io/v1
+      kind: ControlPlaneMachineSet
+      spec:
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-machine-role: master
+            machine.openshift.io/cluster-api-machine-type: master
+        template:
+          machines_v1beta1_machine_openshift_io:
+            metadata:
+              labels:
+                machine.openshift.io/cluster-api-machine-role: master
+                machine.openshift.io/cluster-api-machine-type: master
+                machine.openshift.io/cluster-api-cluster: cluster
+            spec:
+              providerSpec: {}
+    expectedError: "spec.template.machineType: Required value"
+  - name: Should reject a missing machines_v1beta1_machine_openshift_io
+    initial: |
+      apiVersion: machine.openshift.io/v1
+      kind: ControlPlaneMachineSet
+      spec:
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-machine-role: master
+            machine.openshift.io/cluster-api-machine-type: master
+        template:
+          machineType: machines_v1beta1_machine_openshift_io
+    expectedError: "spec.template: Invalid value: \"object\": machines_v1beta1_machine_openshift_io configuration is required when machineType is machines_v1beta1_machine_openshift_io, and forbidden otherwise"
+  - name: Should reject a worker role label
+    initial: |
+      apiVersion: machine.openshift.io/v1
+      kind: ControlPlaneMachineSet
+      spec:
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-machine-role: master
+            machine.openshift.io/cluster-api-machine-type: master
+        template:
+          machineType: machines_v1beta1_machine_openshift_io
+          machines_v1beta1_machine_openshift_io:
+            metadata:
+              labels:
+                machine.openshift.io/cluster-api-machine-role: worker
+                machine.openshift.io/cluster-api-machine-type: master
+                machine.openshift.io/cluster-api-cluster: cluster
+            spec:
+              providerSpec: {}
+    expectedError: "spec.template.machines_v1beta1_machine_openshift_io.metadata.labels: Invalid value: \"object\": label 'machine.openshift.io/cluster-api-machine-role' is required, and must have value 'master'"
+  - name: Should reject a missing role label
+    initial: |
+      apiVersion: machine.openshift.io/v1
+      kind: ControlPlaneMachineSet
+      spec:
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-machine-role: master
+            machine.openshift.io/cluster-api-machine-type: master
+        template:
+          machineType: machines_v1beta1_machine_openshift_io
+          machines_v1beta1_machine_openshift_io:
+            metadata:
+              labels:
+                machine.openshift.io/cluster-api-machine-type: master
+                machine.openshift.io/cluster-api-cluster: cluster
+            spec:
+              providerSpec: {}
+    expectedError: "spec.template.machines_v1beta1_machine_openshift_io.metadata.labels: Invalid value: \"object\": label 'machine.openshift.io/cluster-api-machine-role' is required, and must have value 'master'"
+  - name: Should reject a worker type label
+    initial: |
+      apiVersion: machine.openshift.io/v1
+      kind: ControlPlaneMachineSet
+      spec:
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-machine-role: master
+            machine.openshift.io/cluster-api-machine-type: master
+        template:
+          machineType: machines_v1beta1_machine_openshift_io
+          machines_v1beta1_machine_openshift_io:
+            metadata:
+              labels:
+                machine.openshift.io/cluster-api-machine-role: master
+                machine.openshift.io/cluster-api-machine-type: worker
+                machine.openshift.io/cluster-api-cluster: cluster
+            spec:
+              providerSpec: {}
+    expectedError: "spec.template.machines_v1beta1_machine_openshift_io.metadata.labels: Invalid value: \"object\": label 'machine.openshift.io/cluster-api-machine-type' is required, and must have value 'master'"
+  - name: Should reject a missing type label
+    initial: |
+      apiVersion: machine.openshift.io/v1
+      kind: ControlPlaneMachineSet
+      spec:
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-machine-role: master
+            machine.openshift.io/cluster-api-machine-type: master
+        template:
+          machineType: machines_v1beta1_machine_openshift_io
+          machines_v1beta1_machine_openshift_io:
+            metadata:
+              labels:
+                machine.openshift.io/cluster-api-machine-role: master
+                machine.openshift.io/cluster-api-cluster: cluster
+            spec:
+              providerSpec: {}
+    expectedError: "spec.template.machines_v1beta1_machine_openshift_io.metadata.labels: Invalid value: \"object\": label 'machine.openshift.io/cluster-api-machine-type' is required, and must have value 'master'"
+  - name: Should reject a missing cluster ID label
     initial: |
       apiVersion: machine.openshift.io/v1
       kind: ControlPlaneMachineSet
@@ -191,22 +169,15 @@ tests:
               labels:
                 machine.openshift.io/cluster-api-machine-role: master
                 machine.openshift.io/cluster-api-machine-type: master
-                machine.openshift.io/cluster-api-cluster: cluster
             spec:
               providerSpec: {}
-            failureDomains:
-              platform: AWS
-              aws:
-              - subnet:
-                  type: ID
-                  id: foo
-                  arn: foo
-    expectedError: "spec.template.machines_v1beta1_machine_openshift_io.failureDomains.aws[0].subnet: Invalid value: \"object\": arn is required when type is ARN, and forbidden otherwise"
-  - name: Should reject an AWS failure domain with the subnet type ID and a Filter provided
+    expectedError: "spec.template.machines_v1beta1_machine_openshift_io.metadata.labels: Invalid value: \"object\": label 'machine.openshift.io/cluster-api-cluster' is required"
+  - name: Should be able to create an Active ControlPlaneMachineSet
     initial: |
       apiVersion: machine.openshift.io/v1
       kind: ControlPlaneMachineSet
       spec:
+        state: Active
         selector:
           matchLabels:
             machine.openshift.io/cluster-api-machine-role: master
@@ -221,45 +192,12 @@ tests:
                 machine.openshift.io/cluster-api-cluster: cluster
             spec:
               providerSpec: {}
-            failureDomains:
-              platform: AWS
-              aws:
-              - subnet:
-                  type: ID
-                  id: foo
-                  filters:
-                  - name: foo
-    expectedError: "spec.template.machines_v1beta1_machine_openshift_io.failureDomains.aws[0].subnet: Invalid value: \"object\": filters is required when type is Filters, and forbidden otherwise"
-  - name: Should accept an AWS failure domain with the subnet type ARN and an ARN provided
-    initial: |
-      apiVersion: machine.openshift.io/v1
-      kind: ControlPlaneMachineSet
-      spec:
-        selector:
-          matchLabels:
-            machine.openshift.io/cluster-api-machine-role: master
-            machine.openshift.io/cluster-api-machine-type: master
-        template:
-          machineType: machines_v1beta1_machine_openshift_io
-          machines_v1beta1_machine_openshift_io:
-            metadata:
-              labels:
-                machine.openshift.io/cluster-api-machine-role: master
-                machine.openshift.io/cluster-api-machine-type: master
-                machine.openshift.io/cluster-api-cluster: cluster
-            spec:
-              providerSpec: {}
-            failureDomains:
-              platform: AWS
-              aws:
-              - subnet:
-                  type: ARN
-                  arn: foo
     expected: |
       apiVersion: machine.openshift.io/v1
       kind: ControlPlaneMachineSet
       spec:
         replicas: 3
+        state: Active
         strategy:
           type: RollingUpdate
         selector:
@@ -276,43 +214,14 @@ tests:
                 machine.openshift.io/cluster-api-cluster: cluster
             spec:
               providerSpec: {}
-            failureDomains:
-              platform: AWS
-              aws:
-              - subnet:
-                  type: ARN
-                  arn: foo
-  - name: Should accept an AWS failure domain with the subnet type Filters and a Filter provided
+  onUpdate:
+  - name: Replicas should be immutable
     initial: |
       apiVersion: machine.openshift.io/v1
       kind: ControlPlaneMachineSet
       spec:
-        selector:
-          matchLabels:
-            machine.openshift.io/cluster-api-machine-role: master
-            machine.openshift.io/cluster-api-machine-type: master
-        template:
-          machineType: machines_v1beta1_machine_openshift_io
-          machines_v1beta1_machine_openshift_io:
-            metadata:
-              labels:
-                machine.openshift.io/cluster-api-machine-role: master
-                machine.openshift.io/cluster-api-machine-type: master
-                machine.openshift.io/cluster-api-cluster: cluster
-            spec:
-              providerSpec: {}
-            failureDomains:
-              platform: AWS
-              aws:
-              - subnet:
-                  type: Filters
-                  filters:
-                  - name: foo
-    expected: |
-      apiVersion: machine.openshift.io/v1
-      kind: ControlPlaneMachineSet
-      spec:
         replicas: 3
+        state: Inactive
         strategy:
           type: RollingUpdate
         selector:
@@ -329,18 +238,14 @@ tests:
                 machine.openshift.io/cluster-api-cluster: cluster
             spec:
               providerSpec: {}
-            failureDomains:
-              platform: AWS
-              aws:
-              - subnet:
-                  type: Filters
-                  filters:
-                  - name: foo
-  - name: Should reject an AWS failure domain with the subnet type ARN and an ID provided
-    initial: |
+    updated: |
       apiVersion: machine.openshift.io/v1
       kind: ControlPlaneMachineSet
       spec:
+        replicas: 5
+        state: Inactive
+        strategy:
+          type: RollingUpdate
         selector:
           matchLabels:
             machine.openshift.io/cluster-api-machine-role: master
@@ -355,11 +260,229 @@ tests:
                 machine.openshift.io/cluster-api-cluster: cluster
             spec:
               providerSpec: {}
-            failureDomains:
-              platform: AWS
-              aws:
-              - subnet:
-                  type: ARN
-                  id: foo
-                  arn: foo
-    expectedError: "spec.template.machines_v1beta1_machine_openshift_io.failureDomains.aws[0].subnet: Invalid value: \"object\": id is required when type is ID, and forbidden otherwise"
+    expectedError: "spec.replicas: Invalid value: \"integer\": replicas is immutable"
+  - name: Selector should be immutable
+    initial: |
+      apiVersion: machine.openshift.io/v1
+      kind: ControlPlaneMachineSet
+      spec:
+        replicas: 3
+        state: Inactive
+        strategy:
+          type: RollingUpdate
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-machine-role: master
+            machine.openshift.io/cluster-api-machine-type: master
+        template:
+          machineType: machines_v1beta1_machine_openshift_io
+          machines_v1beta1_machine_openshift_io:
+            metadata:
+              labels:
+                machine.openshift.io/cluster-api-machine-role: master
+                machine.openshift.io/cluster-api-machine-type: master
+                machine.openshift.io/cluster-api-cluster: cluster
+            spec:
+              providerSpec: {}
+    updated: |
+      apiVersion: machine.openshift.io/v1
+      kind: ControlPlaneMachineSet
+      spec:
+        replicas: 3
+        state: Inactive
+        strategy:
+          type: RollingUpdate
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-machine-role: master
+            machine.openshift.io/cluster-api-machine-type: master
+            foo: bar
+        template:
+          machineType: machines_v1beta1_machine_openshift_io
+          machines_v1beta1_machine_openshift_io:
+            metadata:
+              labels:
+                machine.openshift.io/cluster-api-machine-role: master
+                machine.openshift.io/cluster-api-machine-type: master
+                machine.openshift.io/cluster-api-cluster: cluster
+            spec:
+              providerSpec: {}
+    expectedError: "spec.selector: Invalid value: \"object\": selector is immutable"
+  - name: Should default the strategy when removed
+    initial: |
+      apiVersion: machine.openshift.io/v1
+      kind: ControlPlaneMachineSet
+      spec:
+        replicas: 3
+        state: Inactive
+        strategy:
+          type: OnDelete
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-machine-role: master
+            machine.openshift.io/cluster-api-machine-type: master
+        template:
+          machineType: machines_v1beta1_machine_openshift_io
+          machines_v1beta1_machine_openshift_io:
+            metadata:
+              labels:
+                machine.openshift.io/cluster-api-machine-role: master
+                machine.openshift.io/cluster-api-machine-type: master
+                machine.openshift.io/cluster-api-cluster: cluster
+            spec:
+              providerSpec: {}
+    updated: |
+      apiVersion: machine.openshift.io/v1
+      kind: ControlPlaneMachineSet
+      spec:
+        replicas: 3
+        state: Inactive
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-machine-role: master
+            machine.openshift.io/cluster-api-machine-type: master
+        template:
+          machineType: machines_v1beta1_machine_openshift_io
+          machines_v1beta1_machine_openshift_io:
+            metadata:
+              labels:
+                machine.openshift.io/cluster-api-machine-role: master
+                machine.openshift.io/cluster-api-machine-type: master
+                machine.openshift.io/cluster-api-cluster: cluster
+            spec:
+              providerSpec: {}
+    expected: |
+      apiVersion: machine.openshift.io/v1
+      kind: ControlPlaneMachineSet
+      spec:
+        replicas: 3
+        state: Inactive
+        strategy:
+          type: RollingUpdate
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-machine-role: master
+            machine.openshift.io/cluster-api-machine-type: master
+        template:
+          machineType: machines_v1beta1_machine_openshift_io
+          machines_v1beta1_machine_openshift_io:
+            metadata:
+              labels:
+                machine.openshift.io/cluster-api-machine-role: master
+                machine.openshift.io/cluster-api-machine-type: master
+                machine.openshift.io/cluster-api-cluster: cluster
+            spec:
+              providerSpec: {}
+  - name: Should allow the state to change to Active
+    initial: |
+      apiVersion: machine.openshift.io/v1
+      kind: ControlPlaneMachineSet
+      spec:
+        replicas: 3
+        state: Inactive
+        strategy:
+          type: RollingUpdate
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-machine-role: master
+            machine.openshift.io/cluster-api-machine-type: master
+        template:
+          machineType: machines_v1beta1_machine_openshift_io
+          machines_v1beta1_machine_openshift_io:
+            metadata:
+              labels:
+                machine.openshift.io/cluster-api-machine-role: master
+                machine.openshift.io/cluster-api-machine-type: master
+                machine.openshift.io/cluster-api-cluster: cluster
+            spec:
+              providerSpec: {}
+    updated: |
+      apiVersion: machine.openshift.io/v1
+      kind: ControlPlaneMachineSet
+      spec:
+        replicas: 3
+        state: Active
+        strategy:
+          type: RollingUpdate
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-machine-role: master
+            machine.openshift.io/cluster-api-machine-type: master
+        template:
+          machineType: machines_v1beta1_machine_openshift_io
+          machines_v1beta1_machine_openshift_io:
+            metadata:
+              labels:
+                machine.openshift.io/cluster-api-machine-role: master
+                machine.openshift.io/cluster-api-machine-type: master
+                machine.openshift.io/cluster-api-cluster: cluster
+            spec:
+              providerSpec: {}
+    expected: |
+      apiVersion: machine.openshift.io/v1
+      kind: ControlPlaneMachineSet
+      spec:
+        replicas: 3
+        state: Active
+        strategy:
+          type: RollingUpdate
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-machine-role: master
+            machine.openshift.io/cluster-api-machine-type: master
+        template:
+          machineType: machines_v1beta1_machine_openshift_io
+          machines_v1beta1_machine_openshift_io:
+            metadata:
+              labels:
+                machine.openshift.io/cluster-api-machine-role: master
+                machine.openshift.io/cluster-api-machine-type: master
+                machine.openshift.io/cluster-api-cluster: cluster
+            spec:
+              providerSpec: {}
+  - name: Should not allow the state to change from Active
+    initial: |
+      apiVersion: machine.openshift.io/v1
+      kind: ControlPlaneMachineSet
+      spec:
+        replicas: 3
+        state: Active
+        strategy:
+          type: RollingUpdate
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-machine-role: master
+            machine.openshift.io/cluster-api-machine-type: master
+        template:
+          machineType: machines_v1beta1_machine_openshift_io
+          machines_v1beta1_machine_openshift_io:
+            metadata:
+              labels:
+                machine.openshift.io/cluster-api-machine-role: master
+                machine.openshift.io/cluster-api-machine-type: master
+                machine.openshift.io/cluster-api-cluster: cluster
+            spec:
+              providerSpec: {}
+    updated: |
+      apiVersion: machine.openshift.io/v1
+      kind: ControlPlaneMachineSet
+      spec:
+        replicas: 3
+        state: Inactive
+        strategy:
+          type: RollingUpdate
+        selector:
+          matchLabels:
+            machine.openshift.io/cluster-api-machine-role: master
+            machine.openshift.io/cluster-api-machine-type: master
+        template:
+          machineType: machines_v1beta1_machine_openshift_io
+          machines_v1beta1_machine_openshift_io:
+            metadata:
+              labels:
+                machine.openshift.io/cluster-api-machine-role: master
+                machine.openshift.io/cluster-api-machine-type: master
+                machine.openshift.io/cluster-api-cluster: cluster
+            spec:
+              providerSpec: {}
+    expectedError: "spec.state: Invalid value: \"string\": state cannot be changed once Active"

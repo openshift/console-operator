@@ -10,9 +10,9 @@ require (
 	github.com/go-test/deep v1.0.5
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 	github.com/open-cluster-management/api v0.0.0-20210527013639-a6845f2ebcb1
-	github.com/openshift/api v0.0.0-20220930100508-08a31a5d2264
+	github.com/openshift/api v0.0.0-20221018124113-7edcfe3c76cb
 	github.com/openshift/build-machinery-go v0.0.0-20220913142420-e25cf57ea46d
-	github.com/openshift/client-go v0.0.0-20220915152853-9dfefb19db2e
+	github.com/openshift/client-go v0.0.0-20221019135458-c867144964db
 	github.com/openshift/library-go v0.0.0-20220823205642-e2ef049de560
 	github.com/spf13/cobra v1.4.0
 	gopkg.in/yaml.v2 v2.4.0
