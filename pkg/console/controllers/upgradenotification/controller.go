@@ -128,7 +128,7 @@ func (c *UpgradeNotificationController) syncClusterUpgradeNotification(ctx conte
 			Spec: consolev1.ConsoleNotificationSpec{
 				Text:            fmt.Sprintf("This cluster is updating from %s to %s", currentVersion, desiredVersion),
 				Location:        "BannerTop",
-				Color:           "#FFFFFF",
+				Color:           "#000000",
 				BackgroundColor: "#F0AB00",
 			},
 		}
