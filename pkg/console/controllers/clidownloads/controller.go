@@ -196,7 +196,7 @@ func ODOConsoleCLIDownloads() *v1.ConsoleCLIDownload {
 
 odo abstracts away complex Kubernetes and OpenShift concepts, thus allowing developers to focus on what is most important to them: code.
 `,
-			DisplayName: "odo - Developer-focused CLI for OpenShift",
+			DisplayName: "odo - Developer-focused CLI for OpenShift (Community Support)",
 			Links: []v1.CLIDownloadLink{
 				{
 					Href: "https://developers.redhat.com/content-gateway/rest/mirror/pub/openshift-v4/clients/odo/latest",
