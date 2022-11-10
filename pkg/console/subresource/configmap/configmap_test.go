@@ -52,6 +52,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		operatorConfig           *operatorv1.Console
 		consoleConfig            *configv1.Console
 		managedConfig            *corev1.ConfigMap
+		monitoringSharedConfig   *corev1.ConfigMap
 		infrastructureConfig     *configv1.Infrastructure
 		rt                       *routev1.Route
 		useDefaultCAFile         bool
@@ -799,6 +800,73 @@ providers: {}
 				},
 			},
 		},
+		{
+			name: "Test default configmap with monitoring config",
+			args: args{
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL:         mockAPIServer,
+						ControlPlaneTopology: configv1.HighlyAvailableTopologyMode,
+					},
+				},
+				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
+					Spec: routev1.RouteSpec{
+						Host: host,
+					},
+				},
+				useDefaultCAFile:         true,
+				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
+				monitoringSharedConfig: &corev1.ConfigMap{
+					Data: map[string]string{
+						"alertmanagerUserWorkloadHost": "alertmanager-user-workload.openshift-user-workload-monitoring.svc:9094",
+						"alertmanagerTenancyHost":      "alertmanager-user-workload.openshift-user-workload-monitoring.svc:9092",
+					},
+				},
+			},
+			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+  controlPlaneTopology: HighlyAvailable
+  releaseVersion: ` + testReleaseVersion + `
+customization:
+  branding: ` + DEFAULT_BRAND + `
+  documentationBaseURL: ` + DEFAULT_DOC_URL + `
+monitoringInfo:
+  alertmanagerTenancyHost: alertmanager-user-workload.openshift-user-workload-monitoring.svc:9092
+  alertmanagerUserWorkloadHost: alertmanager-user-workload.openshift-user-workload-monitoring.svc:9094
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: {}
+`,
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -806,6 +874,7 @@ providers: {}
 				tt.args.operatorConfig,
 				tt.args.consoleConfig,
 				tt.args.managedConfig,
+				tt.args.monitoringSharedConfig,
 				tt.args.infrastructureConfig,
 				tt.args.rt,
 				tt.args.useDefaultCAFile,

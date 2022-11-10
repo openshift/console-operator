@@ -8,6 +8,7 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -46,6 +47,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	addPage                    operatorv1.AddPage
 	customLogoFile             string
 	CAFile                     string
+	monitoring                 map[string]string
 	customHostnameRedirectPort int
 	inactivityTimeoutSeconds   int
 	pluginsList                map[string]string
@@ -129,6 +131,13 @@ func (b *ConsoleServerCLIConfigBuilder) OAuthServingCert(useDefaultCAFile bool) 
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) Monitoring(monitoringConfig *corev1.ConfigMap) *ConsoleServerCLIConfigBuilder {
+	if monitoringConfig != nil {
+		b.monitoring = monitoringConfig.Data
+	}
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) InactivityTimeout(timeout int) *ConsoleServerCLIConfigBuilder {
 	b.inactivityTimeoutSeconds = timeout
 	return b
@@ -173,6 +182,7 @@ func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 		Customization:            b.customization(),
 		ServingInfo:              b.servingInfo(),
 		Providers:                b.providers(),
+		MonitoringInfo:           b.monitoringInfo(),
 		Plugins:                  b.plugins(),
 		I18nNamespaces:           b.i18nNamespaces(),
 		Proxy:                    b.proxy(),
@@ -222,6 +232,34 @@ func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {
 	if len(b.releaseVersion) > 0 {
 		conf.ReleaseVersion = b.releaseVersion
 	}
+	return conf
+}
+
+func (b *ConsoleServerCLIConfigBuilder) monitoringInfo() MonitoringInfo {
+	conf := MonitoringInfo{}
+	if len(b.monitoring) == 0 {
+		return conf
+	}
+
+	m, err := yaml.Marshal(b.monitoring)
+	if err != nil {
+		return conf
+	}
+
+	var monitoringInfo MonitoringInfo
+	err = yaml.Unmarshal(m, &monitoringInfo)
+	if err != nil {
+		return conf
+	}
+
+	if len(monitoringInfo.AlertmanagerUserWorkloadHost) > 0 {
+		conf.AlertmanagerUserWorkloadHost = monitoringInfo.AlertmanagerUserWorkloadHost
+	}
+
+	if len(monitoringInfo.AlertmanagerTenancyHost) > 0 {
+		conf.AlertmanagerTenancyHost = monitoringInfo.AlertmanagerTenancyHost
+	}
+
 	return conf
 }
 

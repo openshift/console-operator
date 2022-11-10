@@ -7,6 +7,7 @@ import (
 	"github.com/go-test/deep"
 	v1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // Tests that the builder will return a correctly structured
@@ -415,6 +416,42 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Providers:     Providers{},
 				Telemetry: map[string]string{
 					"a-key": "a-value",
+				},
+			},
+		},
+		{
+			name: "Config builder should pass monitoring info",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.Monitoring(&corev1.ConfigMap{
+					Data: map[string]string{
+						"alertmanagerUserWorkloadHost": "alertmanager-user-workload.openshift-user-workload-monitoring.svc:9094",
+						"alertmanagerTenancyHost":      "alertmanager-user-workload.openshift-user-workload-monitoring.svc:9092",
+					},
+				})
+				return b.Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+				},
+				Customization: Customization{},
+				Providers:     Providers{},
+				MonitoringInfo: MonitoringInfo{
+					AlertmanagerUserWorkloadHost: "alertmanager-user-workload.openshift-user-workload-monitoring.svc:9094",
+					AlertmanagerTenancyHost:      "alertmanager-user-workload.openshift-user-workload-monitoring.svc:9092",
 				},
 			},
 		},

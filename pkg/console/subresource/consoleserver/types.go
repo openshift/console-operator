@@ -22,6 +22,7 @@ type Config struct {
 	Auth                     `yaml:"auth"`
 	Customization            `yaml:"customization"`
 	Providers                `yaml:"providers"`
+	MonitoringInfo           `yaml:"monitoringInfo,omitempty"`
 	Plugins                  map[string]string `yaml:"plugins,omitempty"`
 	I18nNamespaces           []string          `yaml:"i18nNamespaces,omitempty"`
 	Proxy                    Proxy             `yaml:"proxy,omitempty"`
@@ -65,6 +66,12 @@ type ClusterInfo struct {
 	MasterPublicURL     string                `yaml:"masterPublicURL,omitempty"`
 	ControlPlaneToplogy configv1.TopologyMode `yaml:"controlPlaneTopology,omitempty"`
 	ReleaseVersion      string                `yaml:"releaseVersion,omitempty"`
+}
+
+// MonitoringInfo holds configuration for monitoring related services
+type MonitoringInfo struct {
+	AlertmanagerUserWorkloadHost string `yaml:"alertmanagerUserWorkloadHost,omitempty"`
+	AlertmanagerTenancyHost      string `yaml:"alertmanagerTenancyHost,omitempty"`
 }
 
 // Auth holds configuration for authenticating with OpenShift. The auth method is assumed to be "openshift".
