@@ -425,8 +425,9 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 				}
 			}
 			perspectives[perspectiveIndex] = Perspective{
-				ID:         perspective.ID,
-				Visibility: perspectiveVisibility,
+				ID:              perspective.ID,
+				Visibility:      perspectiveVisibility,
+				PinnedResources: perspective.PinnedResources,
 			}
 		}
 

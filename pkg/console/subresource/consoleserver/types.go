@@ -2,6 +2,7 @@ package consoleserver
 
 import (
 	configv1 "github.com/openshift/api/config/v1"
+	operatorv1 "github.com/openshift/api/operator/v1"
 	authorizationv1 "k8s.io/api/authorization/v1"
 )
 
@@ -205,6 +206,7 @@ type PerspectiveVisibility struct {
 	AccessReview *ResourceAttributesAccessReview `yaml:"accessReview,omitempty"`
 }
 
+// Perspective defines a perspective that cluster admins want to show/hide in the perspective switcher dropdown
 type Perspective struct {
 	// id defines the id of the perspective.
 	// Example: "dev", "admin".
@@ -214,6 +216,11 @@ type Perspective struct {
 	// visibility defines the state of perspective along with access review checks if needed for that perspective.
 	// visibility is required
 	Visibility PerspectiveVisibility `yaml:"visibility"`
+	// pinnedResources defines the list of default pinned resources that users will see on the perspective navigation if they have not customized these pinned resources themselves.
+	// The list of available Kubernetes resources could be read via `kubectl api-resources`.
+	// The console will also provide a configuration UI and a YAML snippet that will list the available resources that can be pinned to the navigation.
+	// Incorrect or unknown resources will be ignored.
+	PinnedResources *[]operatorv1.PinnedResourceReference `yaml:"pinnedResources,omitempty"`
 }
 
 type Providers struct {
