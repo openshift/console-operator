@@ -209,10 +209,6 @@ spec:
           operator: Exists
           effect: NoExecute
           tolerationSeconds: 120
-        - key: node.kubernetes.io/not-reachable
-          operator: Exists
-          effect: NoExecute
-          tolerationSeconds: 120
 `)
 
 func deploymentsConsoleDeploymentYamlBytes() ([]byte, error) {
@@ -419,10 +415,6 @@ spec:
           operator: Exists
           effect: NoSchedule
         - key: node.kubernetes.io/unreachable
-          operator: Exists
-          effect: NoExecute
-          tolerationSeconds: 120
-        - key: node.kubernetes.io/not-reachable
           operator: Exists
           effect: NoExecute
           tolerationSeconds: 120

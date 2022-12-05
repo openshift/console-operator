@@ -89,7 +89,3 @@ spec:
           operator: Exists
           effect: NoExecute
           tolerationSeconds: 120
-        - key: node.kubernetes.io/not-reachable
-          operator: Exists
-          effect: NoExecute
-          tolerationSeconds: 120

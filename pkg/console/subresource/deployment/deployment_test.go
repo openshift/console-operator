@@ -120,12 +120,6 @@ func TestDefaultDeployment(t *testing.T) {
 			Effect:            corev1.TaintEffectNoExecute,
 			TolerationSeconds: &tolerationSeconds,
 		},
-		{
-			Key:               "node.kubernetes.io/not-reachable",
-			Operator:          corev1.TolerationOpExists,
-			Effect:            corev1.TaintEffectNoExecute,
-			TolerationSeconds: &tolerationSeconds,
-		},
 	}
 
 	consoleDeploymentTemplateAnnotations := map[string]string{
@@ -1382,12 +1376,6 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 			},
 			{
 				Key:               "node.kubernetes.io/unreachable",
-				Operator:          corev1.TolerationOpExists,
-				Effect:            corev1.TaintEffectNoExecute,
-				TolerationSeconds: &tolerationSeconds,
-			},
-			{
-				Key:               "node.kubernetes.io/not-reachable",
 				Operator:          corev1.TolerationOpExists,
 				Effect:            corev1.TaintEffectNoExecute,
 				TolerationSeconds: &tolerationSeconds,
