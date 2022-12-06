@@ -57,6 +57,7 @@ const (
 	OAuthClientManagedClusterViewName         = "console-oauth-client"
 	CreateOAuthClientManagedClusterActionName = "console-create-oauth-client"
 	OAuthServerCertManagedClusterViewName     = "console-oauth-server-cert"
+	OLMConfigManagedClusterViewName           = "olm-config"
 
 	V1Alpha1PluginI18nAnnotation = "console.openshift.io/use-i18n"
 

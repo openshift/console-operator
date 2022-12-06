@@ -34,6 +34,7 @@ var (
     clientID: test-client-id
     clientSecret: test-client-secret
     caFile: /var/oauth/ca
+  copiedCSVsDisabled: false
 `
 )
 
