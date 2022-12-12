@@ -393,6 +393,24 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		controllerContext.EventRecorder,
 	)
 
+	// Show all ConsolePlugin instances as related objects
+	clusterOperatorStatus.WithRelatedObjectsFunc(func() (bool, []configv1.ObjectReference) {
+		relatedObjects := []configv1.ObjectReference{}
+		consolePlugins, err := consoleClient.ConsoleV1().ConsolePlugins().List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return false, nil
+		}
+		for _, plugin := range consolePlugins.Items {
+			relatadPlugin := configv1.ObjectReference{
+				Group:    "console.openshift.io",
+				Resource: "consoleplugins",
+				Name:     plugin.GetName(),
+			}
+			relatedObjects = append(relatedObjects, relatadPlugin)
+		}
+		return true, relatedObjects
+	})
+
 	// NOTE: be sure to uncomment the .Run() below if using this
 	staleConditionsController := staleconditions.NewRemoveStaleConditionsController(
 		[]string{
