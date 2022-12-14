@@ -7,6 +7,7 @@
 // bindata/managedclusteractions/console-create-oauth-client.yaml
 // bindata/managedclusterviews/console-oauth-client.yaml
 // bindata/managedclusterviews/console-oauth-server-cert.yaml
+// bindata/managedclusterviews/olm-config.yaml
 // bindata/pdb/console-pdb.yaml
 // bindata/pdb/downloads-pdb.yaml
 // bindata/routes/console-custom-route.yaml
@@ -512,6 +513,30 @@ func managedclusterviewsConsoleOauthServerCertYaml() (*asset, error) {
 	return a, nil
 }
 
+var _managedclusterviewsOlmConfigYaml = []byte(`apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+spec:
+  scope:
+    apiVersion: operators.coreos.com/v1
+    resource: OLMConfig
+    name: cluster
+`)
+
+func managedclusterviewsOlmConfigYamlBytes() ([]byte, error) {
+	return _managedclusterviewsOlmConfigYaml, nil
+}
+
+func managedclusterviewsOlmConfigYaml() (*asset, error) {
+	bytes, err := managedclusterviewsOlmConfigYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "managedclusterviews/olm-config.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _pdbConsolePdbYaml = []byte(`apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -928,6 +953,7 @@ var _bindata = map[string]func() (*asset, error){
 	"managedclusteractions/console-create-oauth-client.yaml": managedclusteractionsConsoleCreateOauthClientYaml,
 	"managedclusterviews/console-oauth-client.yaml":          managedclusterviewsConsoleOauthClientYaml,
 	"managedclusterviews/console-oauth-server-cert.yaml":     managedclusterviewsConsoleOauthServerCertYaml,
+	"managedclusterviews/olm-config.yaml":                    managedclusterviewsOlmConfigYaml,
 	"pdb/console-pdb.yaml":                                   pdbConsolePdbYaml,
 	"pdb/downloads-pdb.yaml":                                 pdbDownloadsPdbYaml,
 	"routes/console-custom-route.yaml":                       routesConsoleCustomRouteYaml,
@@ -995,6 +1021,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 	"managedclusterviews": {nil, map[string]*bintree{
 		"console-oauth-client.yaml":      {managedclusterviewsConsoleOauthClientYaml, map[string]*bintree{}},
 		"console-oauth-server-cert.yaml": {managedclusterviewsConsoleOauthServerCertYaml, map[string]*bintree{}},
+		"olm-config.yaml":                {managedclusterviewsOlmConfigYaml, map[string]*bintree{}},
 	}},
 	"pdb": {nil, map[string]*bintree{
 		"console-pdb.yaml":   {pdbConsolePdbYaml, map[string]*bintree{}},

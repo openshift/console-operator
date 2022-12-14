@@ -169,6 +169,10 @@ func (c *ManagedClusterController) Sync(ctx context.Context, controllerContext f
 	errReason, err = c.SyncOAuthServerCertConfigMaps(oAuthServerCertMCVs, ctx, operatorConfig, controllerContext.Recorder())
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterSync", errReason, err))
 
+	// Create managed cluster views for OLM config
+	errReason, err = c.SyncOLMConfigManagedClusterViews(ctx, operatorConfig, managedClusters)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterSync", errReason, err))
+
 	// Create config maps for each managed cluster API server ca bundle
 	errReason, err = c.SyncAPIServerCertConfigMaps(managedClusters, ctx, operatorConfig, controllerContext.Recorder())
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterSync", errReason, err))
@@ -362,6 +366,31 @@ func (c *ManagedClusterController) SyncOAuthServerCertManagedClusterViews(ctx co
 	return mcvs, "", nil
 }
 
+func (c *ManagedClusterController) SyncOLMConfigManagedClusterViews(ctx context.Context, operatorConfig *operatorv1.Console, managedClusters []clusterv1.ManagedCluster) (string, error) {
+	errs := []string{}
+	for _, managedCluster := range managedClusters {
+		mcv, err := c.dynamicClient.Resource(api.ManagedClusterViewGroupVersionResource).Namespace(managedCluster.Name).Get(ctx, api.OLMConfigManagedClusterViewName, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			required, err := managedclusterviewsub.DefaultOLMConfigView(operatorConfig, managedCluster.Name)
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("Error initializing OLM config ManagedClusterView for cluster %s: %v", managedCluster.Name, err))
+				continue
+			}
+			mcv, err = c.dynamicClient.Resource(api.ManagedClusterViewGroupVersionResource).Namespace(managedCluster.Name).Create(ctx, required, metav1.CreateOptions{})
+		}
+
+		if err != nil || mcv == nil {
+			errs = append(errs, fmt.Sprintf("Error syncing OLM config ManagedClusterView for cluster %s: %v", managedCluster.Name, err))
+		}
+	}
+
+	if len(errs) > 0 {
+		return "OLMConfigManagedClusterViewSyncError", errors.New(strings.Join(errs, "\n"))
+	}
+
+	return "", nil
+}
+
 func (c *ManagedClusterController) SyncOAuthServerCertConfigMaps(oAuthServerCertMCVs []*unstructured.Unstructured, ctx context.Context, operatorConfig *operatorv1.Console, recorder events.Recorder) (string, error) {
 	errs := []string{}
 	for _, oAuthServerCertMCV := range oAuthServerCertMCVs {
@@ -451,7 +480,7 @@ func (c *ManagedClusterController) SyncManagedClusterConfigMap(managedClusters [
 		}
 
 		// Check that managed cluster OAuth client MCV has already been synced, skip if not found
-		oAuthClientMCV, err := c.dynamicClient.Resource(api.ManagedClusterViewGroupVersionResource).Namespace(managedCluster.Name).Get(ctx, api.OAuthClientManagedClusterViewName, metav1.GetOptions{})
+		oAuthClientMCV, err := c.dynamicClient.Resource(api.ManagedClusterViewGroupVersionResource).Namespace(clusterName).Get(ctx, api.OAuthClientManagedClusterViewName, metav1.GetOptions{})
 		if apierrors.IsNotFound(err) {
 			klog.V(4).Infof("OAuth client ManagedClusterView not found for managed cluster %v", clusterName)
 			continue
@@ -469,6 +498,25 @@ func (c *ManagedClusterController) SyncManagedClusterConfigMap(managedClusters [
 			continue
 		}
 
+		// Check that managed cluster olm config MCV has already been synced, skip if not found
+		olmConfigMCV, err := c.dynamicClient.Resource(api.ManagedClusterViewGroupVersionResource).Namespace(clusterName).Get(ctx, api.OLMConfigManagedClusterViewName, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			klog.V(4).Infof("OLM config ManagedClusterView not found for managed cluster %v", clusterName)
+			continue
+		}
+
+		// Skip if unable to get olm config MCV for any other reason
+		if err != nil {
+			klog.V(4).Infof("Error getting OLM config ManagedClusterView for managed cluster %v", clusterName)
+			continue
+		}
+
+		copiedCSVsDisabled, err := managedclusterviewsub.GetOLMConfigCopiedCSVDisabled(olmConfigMCV)
+		if err != nil {
+			klog.V(4).Infof("Error getting copiedCSVDisabled field for managed cluster %v", clusterName)
+			continue
+		}
+
 		managedClusterConfigs = append(managedClusterConfigs, consoleserver.ManagedClusterConfig{
 			Name: clusterName,
 			APIServer: consoleserver.ManagedClusterAPIServerConfig{
@@ -480,6 +528,7 @@ func (c *ManagedClusterController) SyncManagedClusterConfigMap(managedClusters [
 				ClientID:     api.ManagedClusterOAuthClientName,
 				ClientSecret: oAuthClientSecret,
 			},
+			CopiedCSVsDisabled: copiedCSVsDisabled,
 		})
 	}
 
