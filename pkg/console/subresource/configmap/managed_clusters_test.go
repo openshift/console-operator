@@ -16,10 +16,6 @@ import (
 var (
 	testManagedClusterConfig consoleserver.ManagedClusterConfig = consoleserver.ManagedClusterConfig{
 		Name: "test-cluster",
-		APIServer: consoleserver.ManagedClusterAPIServerConfig{
-			URL:    "test-url",
-			CAFile: "/var/api/ca",
-		},
 		Oauth: consoleserver.ManagedClusterOAuthConfig{
 			ClientID:     "test-client-id",
 			ClientSecret: "test-client-secret",
@@ -27,9 +23,6 @@ var (
 		},
 	}
 	testManagedClusterConfigYaml = `- name: test-cluster
-  apiServer:
-    url: test-url
-    caFile: /var/api/ca
   oauth:
     clientID: test-client-id
     clientSecret: test-client-secret

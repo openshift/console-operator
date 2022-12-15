@@ -229,12 +229,6 @@ type Helm struct {
 	ChartRepo HelmChartRepo `yaml:"chartRepository"`
 }
 
-// ManagedClusterAPIServerConfig enables proxying managed cluster API server requests
-type ManagedClusterAPIServerConfig struct {
-	URL    string `json:"url" yaml:"url"`
-	CAFile string `json:"caFile" yaml:"caFile"`
-}
-
 // ManagedClusterOauthConfig enables proxying managed cluster auth
 type ManagedClusterOAuthConfig struct {
 	ClientID     string `json:"clientID" yaml:"clientID"`
@@ -244,8 +238,7 @@ type ManagedClusterOAuthConfig struct {
 
 // ManagedClusterConfig enables proxying to an ACM managed cluster
 type ManagedClusterConfig struct {
-	Name               string                        `json:"name" yaml:"name"` // ManagedCluster name, provided through ACM
-	APIServer          ManagedClusterAPIServerConfig `json:"apiServer" yaml:"apiServer"`
-	Oauth              ManagedClusterOAuthConfig     `json:"oauth" yaml:"oauth"`
-	CopiedCSVsDisabled bool                          `json:"copiedCSVsDisabled" yaml:"copiedCSVsDisabled"`
+	Name               string                    `json:"name" yaml:"name"` // ManagedCluster name, provided through ACM
+	Oauth              ManagedClusterOAuthConfig `json:"oauth" yaml:"oauth"`
+	CopiedCSVsDisabled bool                      `json:"copiedCSVsDisabled" yaml:"copiedCSVsDisabled"`
 }

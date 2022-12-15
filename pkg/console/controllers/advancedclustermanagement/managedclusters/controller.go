@@ -12,13 +12,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/dynamic/dynamicinformer"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/klog/v2"
 
 	// openshift
 	clusterclientv1 "github.com/open-cluster-management/api/client/cluster/clientset/versioned/typed/cluster/v1"
-	clusterinformersv1 "github.com/open-cluster-management/api/client/cluster/informers/externalversions/cluster/v1"
 	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
@@ -72,8 +70,6 @@ func NewManagedClusterController(
 
 	// informers
 	operatorConfigInformer v1.ConsoleInformer,
-	managedClusterInformers clusterinformersv1.ManagedClusterInformer,
-	dynamicInformers dynamicinformer.DynamicSharedInformerFactory,
 
 	// events
 	recorder events.Recorder,
@@ -173,13 +169,6 @@ func (c *ManagedClusterController) Sync(ctx context.Context, controllerContext f
 	errReason, err = c.SyncOLMConfigManagedClusterViews(ctx, operatorConfig, managedClusters)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterSync", errReason, err))
 
-	// Create config maps for each managed cluster API server ca bundle
-	errReason, err = c.SyncAPIServerCertConfigMaps(managedClusters, ctx, operatorConfig, controllerContext.Recorder())
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterSync", errReason, err))
-	if err != nil {
-		return statusHandler.FlushAndReturn(err)
-	}
-
 	// Create  manged cluster config map
 	errReason, err = c.SyncManagedClusterConfigMap(managedClusters, ctx, operatorConfig, controllerContext.Recorder())
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterSync", errReason, err))
@@ -210,25 +199,6 @@ func (c *ManagedClusterController) SyncManagedClusterList(ctx context.Context) (
 	valid := []clusterv1.ManagedCluster{}
 	for _, managedCluster := range managedClusters.Items {
 		clusterName := managedCluster.GetName()
-
-		// Ensure client configs exists
-		clientConfigs := managedCluster.Spec.ManagedClusterClientConfigs
-		if len(clientConfigs) == 0 {
-			klog.V(4).Infoln(fmt.Sprintf("Skipping managed cluster %v, no client config found", clusterName))
-			continue
-		}
-
-		// Ensure client config CA bundle exists
-		if clientConfigs[0].CABundle == nil {
-			klog.V(4).Infoln(fmt.Sprintf("Skipping managed cluster %v, client config CA bundle not found", clusterName))
-			continue
-		}
-
-		// Ensure client config URL exists
-		if clientConfigs[0].URL == "" {
-			klog.V(4).Infof("Skipping managed cluster %v, client config URL not found", clusterName)
-			continue
-		}
 
 		// Check the claims if version and product are supported
 		validProduct, validVersion := isSupportedCluster(managedCluster.Status.ClusterClaims)
@@ -417,57 +387,15 @@ func (c *ManagedClusterController) SyncOAuthServerCertConfigMaps(oAuthServerCert
 	return "", nil
 }
 
-// Using ManagedCluster.spec.ManagedClusterClientConfigs, sync ConfigMaps containing the API server CA bundle for each managed cluster
-// If a managed cluster doesn't have complete client config yet, the information is logged, but no error is returned
-// If applying any ConfigMap fails, an error and reason are returned
-func (c *ManagedClusterController) SyncAPIServerCertConfigMaps(managedClusters []clusterv1.ManagedCluster, ctx context.Context, operatorConfig *operatorv1.Console, recorder events.Recorder) (string, error) {
-	errs := []string{}
-	for _, managedCluster := range managedClusters {
-		// Apply the config map. If this fails for any managed cluster, operator is degraded
-		clusterName := managedCluster.GetName()
-		caBundle := managedCluster.Spec.ManagedClusterClientConfigs[0].CABundle
-		required := configmapsub.DefaultAPIServerCAConfigMap(managedCluster.GetName(), caBundle, operatorConfig)
-		_, _, configMapApplyError := resourceapply.ApplyConfigMap(ctx, c.configMapClient, recorder, required)
-		if configMapApplyError != nil {
-			klog.V(4).Infoln(fmt.Sprintf("Skipping API server CA ConfigMap sync for managed cluster %v, Error applying ConfigMap", clusterName))
-			errs = append(errs, configMapApplyError.Error())
-			continue
-		}
-	}
-
-	// Return any apply errors that occurred
-	if len(errs) > 0 {
-		return "APIServerCAConfigMapSyncError", errors.New(strings.Join(errs, "\n"))
-	}
-
-	// Success
-	return "", nil
-}
-
-// Using ManagedClusters.Spec.ManagedClusterClientConfigs and previously synced CA bundles, sync a ConfigMap containing serverconfig.ManagedClusterConfig YAML for each managed cluster
-// If a managed cluster doesn't have an API server CA bundle ConfigMap yet or the client config is incomplete, this is logged, but no error is returned
-// If applying the ConfigMap fails, an error and reason are returned
+// Aggregate all managed cluster config data into manged-clusters configmap
 func (c *ManagedClusterController) SyncManagedClusterConfigMap(managedClusters []clusterv1.ManagedCluster, ctx context.Context, operatorConfig *operatorv1.Console, recorder events.Recorder) (string, error) {
 	managedClusterConfigs := []consoleserver.ManagedClusterConfig{}
 	for _, managedCluster := range managedClusters {
 		clusterName := managedCluster.GetName()
 		klog.V(4).Infoln(fmt.Sprintf("Building config for managed cluster: %v", clusterName))
 
-		// Check that managed cluster API server CA ConfigMap has already been synced, skip if not found
-		_, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, configmapsub.APIServerCAConfigMapName(clusterName), metav1.GetOptions{})
-		if apierrors.IsNotFound(err) {
-			klog.V(4).Infof("API server CA file not found for managed cluster %v", clusterName)
-			continue
-		}
-
-		// Skip if unable to get managed cluster API server config map for any other reason
-		if err != nil {
-			klog.V(4).Infof("Error getting API server CA file for managed cluster %v", clusterName)
-			continue
-		}
-
 		// Check that managed cluster OAuth server CA ConfigMap has already been synced, skip if not found
-		_, err = c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, configmapsub.ManagedClusterOAuthServerCertConfigMapName(clusterName), metav1.GetOptions{})
+		_, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, configmapsub.ManagedClusterOAuthServerCertConfigMapName(clusterName), metav1.GetOptions{})
 		if apierrors.IsNotFound(err) {
 			klog.V(4).Infof("OAuth server CA file not found for managed cluster %v", clusterName)
 			continue
@@ -519,10 +447,6 @@ func (c *ManagedClusterController) SyncManagedClusterConfigMap(managedClusters [
 
 		managedClusterConfigs = append(managedClusterConfigs, consoleserver.ManagedClusterConfig{
 			Name: clusterName,
-			APIServer: consoleserver.ManagedClusterAPIServerConfig{
-				URL:    managedCluster.Spec.ManagedClusterClientConfigs[0].URL,
-				CAFile: configmapsub.APIServerCAFileMountPath(clusterName),
-			},
 			Oauth: consoleserver.ManagedClusterOAuthConfig{
 				CAFile:       configmapsub.ManagedClusterOAuthServerCAFileMountPath(clusterName),
 				ClientID:     api.ManagedClusterOAuthClientName,

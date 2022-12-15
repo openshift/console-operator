@@ -37,7 +37,6 @@ func TestDefaultDeployment(t *testing.T) {
 	type args struct {
 		config             *operatorsv1.Console
 		cm                 *corev1.ConfigMap
-		ccas               *corev1.ConfigMapList
 		ocas               *corev1.ConfigMapList
 		ca                 *corev1.ConfigMap
 		dica               *corev1.ConfigMap
@@ -172,10 +171,10 @@ func TestDefaultDeployment(t *testing.T) {
 
 	consoleDeploymentTemplate := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/console-deployment.yaml"))
 	withConsoleContainerImage(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
-	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMapList{}, &corev1.ConfigMapList{}, trustedCAConfigMapEmpty, nil, false)
+	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMapList{}, trustedCAConfigMapEmpty, nil, false)
 	consoleDeploymentContainer := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumes := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
-	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMapList{}, &corev1.ConfigMapList{}, trustedCAConfigMapSet, nil, false)
+	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMapList{}, trustedCAConfigMapSet, nil, false)
 	consoleDeploymentContainerTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumesTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 
@@ -189,7 +188,6 @@ func TestDefaultDeployment(t *testing.T) {
 			args: args{
 				config: consoleOperatorConfig,
 				cm:     consoleConfig,
-				ccas:   &corev1.ConfigMapList{},
 				ocas:   &corev1.ConfigMapList{},
 				ca:     &corev1.ConfigMap{},
 				dica: &corev1.ConfigMap{
@@ -273,7 +271,6 @@ func TestDefaultDeployment(t *testing.T) {
 			args: args{
 				config: consoleOperatorConfig,
 				cm:     consoleConfig,
-				ccas:   &corev1.ConfigMapList{},
 				ocas:   &corev1.ConfigMapList{},
 				ca:     &corev1.ConfigMap{},
 				dica: &corev1.ConfigMap{
@@ -356,7 +353,6 @@ func TestDefaultDeployment(t *testing.T) {
 			args: args{
 				config: consoleOperatorConfig,
 				cm:     consoleConfig,
-				ccas:   &corev1.ConfigMapList{},
 				ocas:   &corev1.ConfigMapList{},
 				ca:     &corev1.ConfigMap{},
 				dica: &corev1.ConfigMap{
@@ -432,7 +428,6 @@ func TestDefaultDeployment(t *testing.T) {
 			args: args{
 				config: consoleOperatorConfig,
 				cm:     consoleConfig,
-				ccas:   &corev1.ConfigMapList{},
 				ocas:   &corev1.ConfigMapList{},
 				ca:     &corev1.ConfigMap{},
 				dica: &corev1.ConfigMap{
@@ -513,7 +508,6 @@ func TestDefaultDeployment(t *testing.T) {
 			if diff := deep.Equal(DefaultDeployment(
 				tt.args.config,
 				tt.args.cm,
-				tt.args.ccas,
 				tt.args.ocas,
 				tt.args.dica,
 				tt.args.cm,
@@ -1094,7 +1088,6 @@ func TestWithConsoleVolumes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			withConsoleVolumes(
 				tt.args.deployment,
-				&corev1.ConfigMapList{},
 				&corev1.ConfigMapList{},
 				tt.args.trustedCAConfigMap,
 				tt.args.managedClusterConfigMap,

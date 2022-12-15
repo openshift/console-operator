@@ -55,7 +55,6 @@ import (
 	consoleinformers "github.com/openshift/client-go/console/informers/externalversions"
 
 	clusterclient "github.com/open-cluster-management/api/client/cluster/clientset/versioned"
-	clusterinformers "github.com/open-cluster-management/api/client/cluster/informers/externalversions"
 
 	"github.com/openshift/console-operator/pkg/console/clientwrapper"
 	"github.com/openshift/console-operator/pkg/console/operator"
@@ -154,11 +153,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 	consoleInformers := consoleinformers.NewSharedInformerFactory(
 		consoleClient,
-		resync,
-	)
-
-	managedClusterInformers := clusterinformers.NewSharedInformerFactoryWithOptions(
-		managedClusterClient,
 		resync,
 	)
 
@@ -349,8 +343,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		oauthClient.OauthV1(),
 		// informers
 		operatorConfigInformers.Operator().V1().Consoles(),
-		managedClusterInformers.Cluster().V1().ManagedClusters(),
-		dynamicInformers,
 		//events
 		recorder,
 	)
@@ -459,7 +451,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configInformers,
 		routesInformersNamespaced,
 		oauthInformers,
-		managedClusterInformers,
 		dynamicInformers,
 	} {
 		informer.Start(ctx.Done())

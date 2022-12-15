@@ -64,7 +64,6 @@ type volumeConfig struct {
 func DefaultDeployment(
 	operatorConfig *operatorv1.Console,
 	cm *corev1.ConfigMap,
-	apiServerCertConfigMaps *corev1.ConfigMapList,
 	managedClusterOAuthServerCertConfigMaps *corev1.ConfigMapList,
 	serviceCAConfigMap *corev1.ConfigMap,
 	localOAuthServingCertConfigMap *corev1.ConfigMap,
@@ -80,7 +79,7 @@ func DefaultDeployment(
 	withAffinity(deployment, infrastructureConfig, "ui")
 	withStrategy(deployment, infrastructureConfig)
 	withConsoleAnnotations(deployment, cm, serviceCAConfigMap, localOAuthServingCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig)
-	withConsoleVolumes(deployment, apiServerCertConfigMaps, managedClusterOAuthServerCertConfigMaps, trustedCAConfigMap, managedClusterConfigMap, canMountCustomLogo)
+	withConsoleVolumes(deployment, managedClusterOAuthServerCertConfigMaps, trustedCAConfigMap, managedClusterConfigMap, canMountCustomLogo)
 	withConsoleContainerImage(deployment, operatorConfig, proxyConfig)
 	withConsoleNodeSelector(deployment, infrastructureConfig)
 	util.AddOwnerRef(deployment, util.OwnerRefFrom(operatorConfig))
@@ -163,7 +162,6 @@ func withConsoleAnnotations(deployment *appsv1.Deployment, cm *corev1.ConfigMap,
 
 func withConsoleVolumes(
 	deployment *appsv1.Deployment,
-	apiServerCertConfigMaps *corev1.ConfigMapList,
 	oAuthServerCertConfigMaps *corev1.ConfigMapList,
 	trustedCAConfigMap *corev1.ConfigMap,
 	managedClusterConfigMap *corev1.ConfigMap,
@@ -179,11 +177,6 @@ func withConsoleVolumes(
 	}
 	if canMountCustomLogo {
 		volumeConfig = append(volumeConfig, customLogoVolume())
-	}
-	if len(apiServerCertConfigMaps.Items) > 0 {
-		for _, apiServerCertConfigMap := range apiServerCertConfigMaps.Items {
-			volumeConfig = append(volumeConfig, apiServerCertVolumeConfig(apiServerCertConfigMap))
-		}
 	}
 	if len(oAuthServerCertConfigMaps.Items) > 0 {
 		for _, oAuthServerCertConfigMap := range oAuthServerCertConfigMaps.Items {
