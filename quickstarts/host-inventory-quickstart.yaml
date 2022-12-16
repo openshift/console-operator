@@ -25,17 +25,15 @@ spec:
 
         1.  Configure your host inventory settings.
 
-          a. From the **All Clusters** view of the OpenShift Container Platform web console, navigate to the host inventory by clicking infrastructure > **Host inventory**
+          a. From the **All Clusters** view of the OpenShift Container Platform web console, navigate to the host inventory by clicking **Infrastructure** > **Host inventory**
 
           b. Select **Configure host inventory settings**.
 
         1. Enter the required values for **Database storage**, **System Storage**, and **Image Storage** in the modal that opens. 
 
-          a. Enter the required values for Database storage, System Storage, and Image Storage.
-
           **Note**: The modal is for connected environments only. For disconnected environments, follow the steps for [configuring your host inventory settings documentation](https://access.redhat.com/documentation/en-us/red_hat_advanced_cluster_management_for_kubernetes/2.5/html-single/clusters/index#enable-cim).
 
-          b. If your cluster is running on AWS and you have not configured your load balancer, select the 'Configure load balancer on Amazon Web Services for me' checkbox.
+          a. If your cluster is running on AWS and you have not configured your load balancer, select the 'Configure load balancer on Amazon Web Services for me' checkbox.
 
         1. Then click configure.
 
@@ -45,7 +43,7 @@ spec:
 
         1. Create an infrastructure environment for your host inventory.
 
-          a. From the **All Clusters** view of the OpenShift Container Platform web console, navigate to the host inventory by clicking infrastructure > **Host inventory**
+          a. From the **All Clusters** view of the OpenShift Container Platform web console, navigate to the host inventory by clicking **Infrastructure** > **Host inventory**
 
           b. Select **Create infrastructure environment**.
 
