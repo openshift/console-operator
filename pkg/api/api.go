@@ -87,6 +87,8 @@ const (
 	ConsoleServingCertName      = "console-serving-cert"
 	DownloadsPortName           = "http"
 	DownloadsPort               = 8080
+
+	ManagedProxyServiceResolverCRDName = "managedproxyserviceresolvers.proxy.open-cluster-management.io"
 )
 
 var (

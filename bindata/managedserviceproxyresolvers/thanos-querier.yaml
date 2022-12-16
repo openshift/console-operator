@@ -1,0 +1,16 @@
+kind: ManagedProxyServiceResolver
+apiVersion: proxy.open-cluster-management.io/v1alpha1
+metadata:
+  name: thanos-querier-resolver
+  labels:
+    app: console
+spec:
+  managedClusterSelector:
+    type: ManagedClusterSet
+    managedClusterSet:
+      name: global
+  serviceSelector:
+    type: ServiceRef
+    serviceRef:
+      namespace: openshift-monitoring
+      name: thanos-querier

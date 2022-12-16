@@ -8,6 +8,8 @@ import (
 
 	// kube
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	apiextensionsinformers "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/dynamic"
@@ -22,6 +24,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator"
 	"github.com/openshift/console-operator/pkg/api"
 	managedcluster "github.com/openshift/console-operator/pkg/console/controllers/advancedclustermanagement/managedclusters"
+	"github.com/openshift/console-operator/pkg/console/controllers/advancedclustermanagement/thanosquerierproxyserviceresolver"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
 	"github.com/openshift/console-operator/pkg/console/controllers/healthcheck"
@@ -55,12 +58,21 @@ import (
 	consoleinformers "github.com/openshift/client-go/console/informers/externalversions"
 
 	clusterclient "github.com/open-cluster-management/api/client/cluster/clientset/versioned"
-	clusterinformers "github.com/open-cluster-management/api/client/cluster/informers/externalversions"
+
+	proxyclient "open-cluster-management.io/cluster-proxy/pkg/generated/clientset/versioned"
 
 	"github.com/openshift/console-operator/pkg/console/clientwrapper"
 	"github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/library-go/pkg/operator/loglevel"
 )
+
+func tweakListOptionsForOAuthInformer(options *metav1.ListOptions) {
+	options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OAuthClientName).String()
+}
+
+func tweakListOptionsForCRDInformer(options *metav1.ListOptions) {
+	options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.ManagedProxyServiceResolverCRDName).String()
+}
 
 func RunOperator(ctx context.Context, controllerContext *controllercmd.ControllerContext) error {
 
@@ -104,11 +116,17 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		return err
 	}
 
-	const resync = 10 * time.Minute
-
-	tweakListOptionsForOAuth := func(options *metav1.ListOptions) {
-		options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OAuthClientName).String()
+	proxyClient, err := proxyclient.NewForConfig(controllerContext.KubeConfig)
+	if err != nil {
+		return err
 	}
+
+	apiExtensionsClient, err := apiextensionsclient.NewForConfig(controllerContext.KubeConfig)
+	if err != nil {
+		return err
+	}
+
+	const resync = 10 * time.Minute
 
 	kubeInformersNamespaced := informers.NewSharedInformerFactoryWithOptions(
 		kubeClient,
@@ -149,7 +167,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	oauthInformers := oauthinformers.NewSharedInformerFactoryWithOptions(
 		oauthClient,
 		resync,
-		oauthinformers.WithTweakListOptions(tweakListOptionsForOAuth),
+		oauthinformers.WithTweakListOptions(tweakListOptionsForOAuthInformer),
 	)
 
 	consoleInformers := consoleinformers.NewSharedInformerFactory(
@@ -157,14 +175,15 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		resync,
 	)
 
-	managedClusterInformers := clusterinformers.NewSharedInformerFactoryWithOptions(
-		managedClusterClient,
-		resync,
-	)
-
 	dynamicInformers := dynamicinformer.NewDynamicSharedInformerFactory(
 		dynamicClient,
 		resync,
+	)
+
+	apiExentensionsInformers := apiextensionsinformers.NewSharedInformerFactoryWithOptions(
+		apiExtensionsClient,
+		resync,
+		apiextensionsinformers.WithTweakListOptions(tweakListOptionsForCRDInformer),
 	)
 
 	operatorClient := &operatorclient.OperatorClient{
@@ -335,10 +354,26 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		recorder,
 	)
 
+	thanosQuerierProxyServiceResolverController := thanosquerierproxyserviceresolver.NewThanosQuerierProxyServiceResolverController(
+		// clients
+		operatorClient,
+		operatorConfigClient.OperatorV1().Consoles(),
+		apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions(),
+		proxyClient.ProxyV1alpha1().ManagedProxyServiceResolvers(),
+
+		// informers
+		operatorConfigInformers.Operator().V1().Consoles(),
+		apiExentensionsInformers.Apiextensions().V1().CustomResourceDefinitions(),
+
+		//events
+		recorder,
+	)
+
 	managedClusterController := managedcluster.NewManagedClusterController(
 		// top level config
 		configClient.ConfigV1(),
 		configInformers,
+
 		// clients
 		operatorClient,
 		operatorConfigClient.OperatorV1().Consoles(),
@@ -347,10 +382,10 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		dynamicClient,
 		kubeClient.CoreV1(),
 		oauthClient.OauthV1(),
+
 		// informers
 		operatorConfigInformers.Operator().V1().Consoles(),
-		managedClusterInformers.Cluster().V1().ManagedClusters(),
-		dynamicInformers,
+
 		//events
 		recorder,
 	)
@@ -459,7 +494,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configInformers,
 		routesInformersNamespaced,
 		oauthInformers,
-		managedClusterInformers,
+		apiExentensionsInformers,
 		dynamicInformers,
 	} {
 		informer.Start(ctx.Done())
@@ -477,6 +512,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleRouteController,
 		downloadsServiceController,
 		downloadsRouteController,
+		thanosQuerierProxyServiceResolverController,
 		managedClusterController,
 		consoleOperator,
 		cliDownloadsController,
