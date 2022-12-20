@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
+	operatorv1 "github.com/openshift/api/operator/v1"
 	v1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	authorizationv1 "k8s.io/api/authorization/v1"
@@ -448,7 +449,149 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
-						{ID: "perspective1", Visibility: PerspectiveVisibility{State: PerspectiveAccessReview, AccessReview: &ResourceAttributesAccessReview{Required: []authorizationv1.ResourceAttributes{{Resource: "namespaces", Verb: "list"}}, Missing: []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}}}}},
+						{
+							ID: "perspective1",
+							Visibility: PerspectiveVisibility{
+								State: PerspectiveAccessReview,
+								AccessReview: &ResourceAttributesAccessReview{
+									Required: []authorizationv1.ResourceAttributes{
+										{Resource: "namespaces", Verb: "list"},
+									},
+									Missing: []authorizationv1.ResourceAttributes{
+										{Resource: "clusterroles", Verb: "list"},
+									},
+								},
+							},
+						},
+						{ID: "perspective2", Visibility: PerspectiveVisibility{State: PerspectiveDisabled}},
+					},
+				},
+				Providers: Providers{},
+			},
+		},
+		{
+			name: "Config builder should handle perspectives with Pinned resources",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.Perspectives([]v1.Perspective{
+					{
+						ID: "perspective1",
+						Visibility: v1.PerspectiveVisibility{
+							State: v1.PerspectiveAccessReview,
+							AccessReview: &v1.ResourceAttributesAccessReview{
+								Required: []authorizationv1.ResourceAttributes{{Resource: "namespaces", Verb: "list"}},
+								Missing:  []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}},
+							},
+						},
+						PinnedResources: &[]operatorv1.PinnedResourceReference{
+							{Group: "apps", Version: "v1", Resource: "deployments"},
+							{Group: "", Version: "v1", Resource: "configmaps"},
+						},
+					}, {
+						ID: "perspective2",
+						Visibility: v1.PerspectiveVisibility{
+							State: v1.PerspectiveDisabled,
+						},
+					},
+				})
+				return b.Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+				},
+				Customization: Customization{
+					Perspectives: []Perspective{
+						{ID: "perspective1",
+							Visibility: PerspectiveVisibility{
+								State: PerspectiveAccessReview, AccessReview: &ResourceAttributesAccessReview{
+									Required: []authorizationv1.ResourceAttributes{
+										{Resource: "namespaces", Verb: "list"},
+									},
+									Missing: []authorizationv1.ResourceAttributes{
+										{Resource: "clusterroles", Verb: "list"},
+									},
+								},
+							},
+							PinnedResources: &[]operatorv1.PinnedResourceReference{
+								{Group: "apps", Version: "v1", Resource: "deployments"},
+								{Group: "", Version: "v1", Resource: "configmaps"},
+							},
+						},
+						{ID: "perspective2", Visibility: PerspectiveVisibility{State: PerspectiveDisabled}},
+					},
+				},
+				Providers: Providers{},
+			},
+		},
+		{
+			name: "Config builder should handle perspectives with empty Pinned resources",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.Perspectives([]v1.Perspective{
+					{
+						ID: "perspective1",
+						Visibility: v1.PerspectiveVisibility{
+							State: v1.PerspectiveAccessReview,
+							AccessReview: &v1.ResourceAttributesAccessReview{
+								Required: []authorizationv1.ResourceAttributes{{Resource: "namespaces", Verb: "list"}},
+								Missing:  []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}},
+							},
+						},
+						PinnedResources: &[]operatorv1.PinnedResourceReference{},
+					}, {
+						ID: "perspective2",
+						Visibility: v1.PerspectiveVisibility{
+							State: v1.PerspectiveDisabled,
+						},
+					},
+				})
+				return b.Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+				},
+				Customization: Customization{
+					Perspectives: []Perspective{
+						{ID: "perspective1",
+							Visibility: PerspectiveVisibility{
+								State: PerspectiveAccessReview,
+								AccessReview: &ResourceAttributesAccessReview{
+									Required: []authorizationv1.ResourceAttributes{
+										{Resource: "namespaces", Verb: "list"},
+									},
+									Missing: []authorizationv1.ResourceAttributes{
+										{Resource: "clusterroles", Verb: "list"},
+									},
+								},
+							},
+							PinnedResources: &[]operatorv1.PinnedResourceReference{},
+						},
 						{ID: "perspective2", Visibility: PerspectiveVisibility{State: PerspectiveDisabled}},
 					},
 				},
@@ -999,6 +1142,143 @@ customization:
           resource: clusterroles
           subresource: ""
           name: ""
+  - id: perspective2
+    visibility:
+      state: Disabled
+providers: {}
+`,
+		},
+		{
+			name: "Config builder should handle perspectives with Pinned resources",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.Perspectives([]v1.Perspective{
+					{
+						ID: "perspective1",
+						Visibility: v1.PerspectiveVisibility{
+							State: v1.PerspectiveAccessReview,
+							AccessReview: &v1.ResourceAttributesAccessReview{
+								Required: []authorizationv1.ResourceAttributes{{Resource: "namespaces", Verb: "list"}},
+								Missing:  []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}},
+							},
+						},
+						PinnedResources: &[]operatorv1.PinnedResourceReference{
+							{Group: "apps", Version: "v1", Resource: "deployments"},
+							{Group: "", Version: "v1", Resource: "configmaps"},
+						},
+					}, {
+						ID: "perspective2",
+						Visibility: v1.PerspectiveVisibility{
+							State: v1.PerspectiveDisabled,
+						},
+					},
+				})
+				return b.ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo: {}
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+customization:
+  perspectives:
+  - id: perspective1
+    visibility:
+      state: AccessReview
+      accessReview:
+        required:
+        - namespace: ""
+          verb: list
+          group: ""
+          version: ""
+          resource: namespaces
+          subresource: ""
+          name: ""
+        missing:
+        - namespace: ""
+          verb: list
+          group: ""
+          version: ""
+          resource: clusterroles
+          subresource: ""
+          name: ""
+    pinnedResources:
+    - group: apps
+      version: v1
+      resource: deployments
+    - group: ""
+      version: v1
+      resource: configmaps
+  - id: perspective2
+    visibility:
+      state: Disabled
+providers: {}
+`,
+		},
+		{
+			name: "Config builder should handle perspectives with empty Pinned resources",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.Perspectives([]v1.Perspective{
+					{
+						ID: "perspective1",
+						Visibility: v1.PerspectiveVisibility{
+							State: v1.PerspectiveAccessReview,
+							AccessReview: &v1.ResourceAttributesAccessReview{
+								Required: []authorizationv1.ResourceAttributes{{Resource: "namespaces", Verb: "list"}},
+								Missing:  []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}},
+							},
+						},
+						PinnedResources: &[]operatorv1.PinnedResourceReference{},
+					}, {
+						ID: "perspective2",
+						Visibility: v1.PerspectiveVisibility{
+							State: v1.PerspectiveDisabled,
+						},
+					},
+				})
+				return b.ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo: {}
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+customization:
+  perspectives:
+  - id: perspective1
+    visibility:
+      state: AccessReview
+      accessReview:
+        required:
+        - namespace: ""
+          verb: list
+          group: ""
+          version: ""
+          resource: namespaces
+          subresource: ""
+          name: ""
+        missing:
+        - namespace: ""
+          verb: list
+          group: ""
+          version: ""
+          resource: clusterroles
+          subresource: ""
+          name: ""
+    pinnedResources: []
   - id: perspective2
     visibility:
       state: Disabled
