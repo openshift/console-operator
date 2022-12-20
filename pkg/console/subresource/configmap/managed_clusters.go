@@ -30,6 +30,7 @@ func DefaultManagedClustersConfigMap(operatorConfig *operatorv1.Console, managed
 func ManagedClustersConfigMapStub() *corev1.ConfigMap {
 	configMap := ConsoleConfigMapStub()
 	configMap.Name = api.ManagedClusterConfigMapName
+	configMap.Labels = util.SharedLabels()
 	configMap.Labels[api.ManagedClusterLabel] = ""
 	return configMap
 }
