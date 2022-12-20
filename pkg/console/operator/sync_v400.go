@@ -41,6 +41,7 @@ import (
 	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
 	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
+	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
 // The sync loop starts from zero and works its way through the requirements for a running console.
@@ -606,7 +607,7 @@ func (co *consoleOperator) ValidateCustomLogo(ctx context.Context, operatorConfi
 
 func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []string) []*v1.ConsolePlugin {
 	var availablePlugins []*v1.ConsolePlugin
-	for _, pluginName := range enabledPluginsNames {
+	for _, pluginName := range utilsub.RemoveDuplicateStr(enabledPluginsNames) {
 		plugin, err := co.consolePluginLister.Get(pluginName)
 		if err != nil {
 			klog.Errorf("failed to get %q plugin: %v", pluginName, err)
