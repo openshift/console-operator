@@ -2,12 +2,14 @@ package managedcluster
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	// k8s
+	"gopkg.in/yaml.v2"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -153,6 +155,10 @@ func (c *ManagedClusterController) Sync(ctx context.Context, controllerContext f
 		return c.removeManagedClusters(ctx)
 	}
 
+	// Create managed cluster actions for hub-cluster configmap for each managed-cluster
+	errReason, err = c.SyncHubClusterURL(ctx, operatorConfig, managedClusters)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterSync", errReason, err))
+
 	// Create managed cluster views for oauth clients
 	oAuthClientMCVs, errReason, err := c.SyncOAuthClientManagedClusterViews(ctx, operatorConfig, managedClusters)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterSync", errReason, err))
@@ -193,6 +199,58 @@ func (c *ManagedClusterController) SyncLocalOAuthClient(ctx context.Context) (*o
 	}
 
 	return oAuthClient, "", nil
+}
+
+func (c *ManagedClusterController) SyncHubClusterURL(ctx context.Context, operatorConfig *operatorv1.Console, managedClusters []clusterv1.ManagedCluster) (string, error) {
+	consoleConfig, consoleConfigErr := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
+	if consoleConfigErr != nil {
+		klog.V(4).Infof("failed to GET %q configmap", api.OpenShiftConsoleConfigMapName)
+		return "SyncHubClusterURLSyncError", fmt.Errorf("failed to GET %q configmap", api.OpenShiftConsoleConfigMapName)
+	}
+	configBytes := []byte(consoleConfig.Data[api.OpenShiftConsoleConfigMapKey])
+	var actualConfig consoleserver.Config
+	err := yaml.Unmarshal(configBytes, &actualConfig)
+	if err != nil {
+		klog.V(4).Infof("failed to parse %q configmap", api.OpenShiftConsoleConfigMapName)
+		return "SyncHubClusterURLSyncError", fmt.Errorf("failed to parse %q configmap", api.OpenShiftConsoleConfigMapName)
+	}
+
+	hubClusterURL := actualConfig.ClusterInfo.ConsoleBaseAddress
+	defaultHubClusterConfigMap, err := configmapsub.DefaultHubClusterConfigMap(operatorConfig, hubClusterURL)
+	if err != nil {
+		klog.V(4).Infof("failed to build default %q configmap", api.HubClusterConfigMapName)
+		return "SyncHubClusterURLSyncError", fmt.Errorf("failed to parse %q configmap", api.OpenShiftConsoleConfigMapName)
+	}
+
+	marshaledDefaultHubClusterConfigMap, err := json.Marshal(defaultHubClusterConfigMap)
+	if err != nil {
+		klog.V(4).Infof("failed to marshal default %q configmap", api.HubClusterConfigMapName)
+		return "SyncHubClusterURLSyncError", fmt.Errorf("failed to marshal %q configmap", api.OpenShiftConsoleConfigMapName)
+	}
+
+	errs := []string{}
+	for _, managedCluster := range managedClusters {
+		managedClusterName := managedCluster.GetName()
+		_, err := c.dynamicClient.Resource(api.ManagedClusterActionGroupVersionResource).Namespace(managedClusterName).Get(ctx, api.CreateOAuthClientManagedClusterActionName, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			required, err := managedclusteractionsub.DefaultCreateHubClusterConfigMapAction(managedClusterName, string(marshaledDefaultHubClusterConfigMap))
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("Error initializing %q configmap ManagedClusterAction for cluster %q: %v", api.HubClusterConfigMapName, managedClusterName, err))
+				continue
+			}
+			_, err = c.dynamicClient.Resource(api.ManagedClusterActionGroupVersionResource).Namespace(managedClusterName).Create(ctx, required, metav1.CreateOptions{})
+		}
+
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("Error syncing managed cluster action for %q configmap for cluster %q: %v", api.HubClusterConfigMapName, managedClusterName, err))
+		}
+	}
+
+	if len(errs) > 0 {
+		return "SyncHubClusterURLSyncError", errors.New(strings.Join(errs, "\n"))
+	}
+
+	return "", nil
 }
 
 func (c *ManagedClusterController) SyncManagedClusterList(ctx context.Context) ([]clusterv1.ManagedCluster, string, error) {
