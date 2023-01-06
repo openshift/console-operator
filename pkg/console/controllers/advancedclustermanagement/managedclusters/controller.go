@@ -22,7 +22,6 @@ import (
 	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
-	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
 	oauthclientv1 "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
@@ -48,7 +47,6 @@ import (
 type ManagedClusterController struct {
 	operatorClient       v1helpers.OperatorClient
 	operatorConfigClient operatorclientv1.ConsoleInterface
-	featureGateClient    configclientv1.FeatureGateInterface
 	configMapClient      coreclientv1.ConfigMapsGetter
 	managedClusterClient clusterclientv1.ManagedClustersGetter
 	dynamicClient        dynamic.Interface
@@ -58,7 +56,6 @@ type ManagedClusterController struct {
 
 func NewManagedClusterController(
 	// top level config
-	configClient configclientv1.ConfigV1Interface,
 	configInformer configinformer.SharedInformerFactory,
 
 	// clients
@@ -81,7 +78,6 @@ func NewManagedClusterController(
 	ctrl := &ManagedClusterController{
 		operatorClient:       operatorClient,
 		operatorConfigClient: operatorConfigClient,
-		featureGateClient:    configClient.FeatureGates(),
 		configMapClient:      configMapClient,
 		managedClusterClient: managedClusterClient,
 		dynamicClient:        dynamicClient,
@@ -89,35 +85,16 @@ func NewManagedClusterController(
 		oauthClient:          oauthClient,
 	}
 
-	configV1Informers := configInformer.Config().V1()
-
 	return factory.New().
 		WithFilteredEventsInformers( // configs
 			util.IncludeNamesFilter(api.ConfigResourceName),
-			configV1Informers.Consoles().Informer(),
+			configInformer.Config().V1().Consoles().Informer(),
 			operatorConfigInformer.Informer(),
-			configV1Informers.FeatureGates().Informer(),
 		).ResyncEvery(1*time.Minute).WithSync(ctrl.Sync).
 		ToController("ManagedClusterController", recorder.WithComponentSuffix("managed-cluster-controller"))
 }
 
 func (c *ManagedClusterController) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
-
-	// Get cluster FeatureGate config
-	featureGateConfig, err := c.featureGateClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		klog.Errorf("Error getting FeatureGate config: %v", err)
-		return nil
-	}
-
-	// Check that the "TechPreviewNoUpgrade" feature set is configured, else exit the sync loop
-	featureSet := string(featureGateConfig.Spec.FeatureSet)
-	if featureSet == "" || !strings.Contains(featureSet, "TechPreviewNoUpgrade") {
-		return nil
-	}
-
-	klog.V(4).Info("Tech preview is enabled. Running managed cluster sync")
-
 	operatorConfig, err := c.operatorConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
