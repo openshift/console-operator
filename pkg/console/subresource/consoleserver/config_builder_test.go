@@ -12,6 +12,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+const testHubClusterURL = "https://hub-cluster-console-openshift-console.apps.some.cluster.openshift.com"
+
 // Tests that the builder will return a correctly structured
 // Console Server Config struct when builder.Config() is called
 func TestConsoleServerCLIConfigBuilder(t *testing.T) {
@@ -712,6 +714,40 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				MonitoringInfo: MonitoringInfo{
 					AlertmanagerUserWorkloadHost: "alertmanager-user-workload.openshift-user-workload-monitoring.svc:9094",
 					AlertmanagerTenancyHost:      "alertmanager-user-workload.openshift-user-workload-monitoring.svc:9092",
+				},
+			},
+		},
+		{
+			name: "Config builder should pass cluster hub info",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.HubCluster(&corev1.ConfigMap{
+					Data: map[string]string{
+						"consoleBasePath": testHubClusterURL,
+					},
+				})
+				return b.Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+				},
+				Customization: Customization{},
+				Providers:     Providers{},
+				HubClusterInfo: HubClusterInfo{
+					ConsoleBasePath: testHubClusterURL,
 				},
 			},
 		},

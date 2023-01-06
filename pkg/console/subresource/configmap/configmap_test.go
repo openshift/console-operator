@@ -61,6 +61,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		managedClusterConfigFile string
 		nodeArchitectures        []string
 		copiedCSVsDisabled       bool
+		hubClusterConfig         *corev1.ConfigMap
 	}
 	t.Setenv("RELEASE_VERSION", testReleaseVersion)
 	tests := []struct {
@@ -949,6 +950,69 @@ providers: {}
 				},
 			},
 		},
+		{
+			name: "Test default configmap, with hubcluster config",
+			args: args{
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL:         mockAPIServer,
+						ControlPlaneTopology: configv1.HighlyAvailableTopologyMode,
+					},
+				},
+				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
+					Spec: routev1.RouteSpec{
+						Host: host,
+					},
+				},
+				useDefaultCAFile: true,
+				hubClusterConfig: &corev1.ConfigMap{
+					Data: map[string]string{
+						api.HubClusterConsoleURLKey: testHubClusterURL,
+					},
+				},
+			},
+			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+  controlPlaneTopology: HighlyAvailable
+  releaseVersion: ` + testReleaseVersion + `
+customization:
+  branding: ` + DEFAULT_BRAND + `
+  documentationBaseURL: ` + DEFAULT_DOC_URL + `
+hubClusterInfo:
+  consoleBasePath: ` + testHubClusterURL + `
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: {}
+`,
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -965,6 +1029,7 @@ providers: {}
 				tt.args.managedClusterConfigFile,
 				tt.args.nodeArchitectures,
 				tt.args.copiedCSVsDisabled,
+				tt.args.hubClusterConfig,
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below

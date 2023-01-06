@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	testHubClusterURL        string                             = "https://hub-cluster-console-openshift-console.apps.some.cluster.openshift.com"
+	testHubClusterURL                                           = "https://hub-cluster-console-openshift-console.apps.some.cluster.openshift.com"
 	testManagedClusterConfig consoleserver.ManagedClusterConfig = consoleserver.ManagedClusterConfig{
 		Name: "test-cluster",
 		APIServer: consoleserver.ManagedClusterAPIServerConfig{
@@ -171,7 +171,7 @@ func TestDefaultHubClusterConfigMap(t *testing.T) {
 					Finalizers:                 nil,
 				},
 				Data: map[string]string{
-					HubClusterURLKey: testHubClusterURL,
+					api.HubClusterConsoleURLKey: testHubClusterURL,
 				},
 				BinaryData: nil,
 			},

@@ -65,6 +65,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	releaseVersion             string
 	nodeArchitectures          []string
 	copiedCSVsDisabled         bool
+	hubCluster                 map[string]string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -196,6 +197,13 @@ func (b *ConsoleServerCLIConfigBuilder) CopiedCSVsDisabled(copiedCSVsDisabled bo
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) HubCluster(hubClusterConfig *corev1.ConfigMap) *ConsoleServerCLIConfigBuilder {
+	if hubClusterConfig != nil {
+		b.hubCluster = hubClusterConfig.Data
+	}
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
 		Kind:                     "ConsoleConfig",
@@ -211,6 +219,7 @@ func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 		Proxy:                    b.proxy(),
 		ManagedClusterConfigFile: b.managedClusterConfigFile,
 		Telemetry:                b.telemetry,
+		HubClusterInfo:           b.hubClusterInfo(),
 	}
 }
 
@@ -285,6 +294,30 @@ func (b *ConsoleServerCLIConfigBuilder) monitoringInfo() MonitoringInfo {
 
 	if len(monitoringInfo.AlertmanagerTenancyHost) > 0 {
 		conf.AlertmanagerTenancyHost = monitoringInfo.AlertmanagerTenancyHost
+	}
+
+	return conf
+}
+
+func (b *ConsoleServerCLIConfigBuilder) hubClusterInfo() HubClusterInfo {
+	conf := HubClusterInfo{}
+	if len(b.hubCluster) == 0 {
+		return conf
+	}
+
+	m, err := yaml.Marshal(b.hubCluster)
+	if err != nil {
+		return conf
+	}
+
+	var hubClusterInfo HubClusterInfo
+	err = yaml.Unmarshal(m, &hubClusterInfo)
+	if err != nil {
+		return conf
+	}
+
+	if len(hubClusterInfo.ConsoleBasePath) > 0 {
+		conf.ConsoleBasePath = hubClusterInfo.ConsoleBasePath
 	}
 
 	return conf

@@ -11,8 +11,6 @@ import (
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
-const HubClusterURLKey = "hubClusterURL"
-
 func DefaultManagedClustersConfigMap(operatorConfig *operatorv1.Console, managedClusters []consoleserver.ManagedClusterConfig) (*corev1.ConfigMap, error) {
 	yml, err := yaml.Marshal(managedClusters)
 	if err != nil {
@@ -42,7 +40,7 @@ func ManagedClustersConfigMapStub() *corev1.ConfigMap {
 func DefaultHubClusterConfigMap(operatorConfig *operatorv1.Console, hubClusterURL string) (*corev1.ConfigMap, error) {
 	configMap := HubClusterConfigMapStub()
 	configMap.Data = map[string]string{
-		HubClusterURLKey: hubClusterURL,
+		api.HubClusterConsoleURLKey: hubClusterURL,
 	}
 	util.AddOwnerRef(configMap, util.OwnerRefFrom(operatorConfig))
 

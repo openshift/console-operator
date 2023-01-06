@@ -1,0 +1,10 @@
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+spec:
+  actionType: Create
+  kube:
+    resource: ConfigMap
+    template:
+      apiVersion: v1
+      kind: ConfigMap
+      grantMethod: auto

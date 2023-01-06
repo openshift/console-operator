@@ -53,6 +53,7 @@ func DefaultConfigMap(
 	managedClusterConfigFile string,
 	nodeArchitectures []string,
 	copiedCSVsDisabled bool,
+	hubClusterConfig *corev1.ConfigMap,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
@@ -67,6 +68,7 @@ func DefaultConfigMap(
 		ReleaseVersion().
 		NodesArchitecture(nodeArchitectures).
 		CopiedCSVsDisabled(copiedCSVsDisabled).
+		HubCluster(hubClusterConfig).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate default console-config config: %v", err)

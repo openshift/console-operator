@@ -29,7 +29,12 @@ type Config struct {
 	I18nNamespaces           []string          `yaml:"i18nNamespaces,omitempty"`
 	Proxy                    Proxy             `yaml:"proxy,omitempty"`
 	ManagedClusterConfigFile string            `yaml:"managedClusterConfigFile,omitempty"`
+	HubClusterInfo           `yaml:"hubClusterInfo,omitempty"`
 	Telemetry                map[string]string `yaml:"telemetry,omitempty"`
+}
+
+type HubClusterInfo struct {
+	ConsoleBasePath string `yaml:"consoleBasePath,omitempty"`
 }
 
 type Proxy struct {

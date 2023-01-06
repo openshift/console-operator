@@ -160,11 +160,11 @@ func (c *ManagedClusterController) Sync(ctx context.Context, controllerContext f
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterSync", errReason, err))
 
 	// Create managed cluster views for oauth clients
-	oAuthClientMCVs, errReason, err := c.SyncOAuthClientManagedClusterViews(ctx, operatorConfig, managedClusters)
+	oAuthClientMCVs, errReason, err := c.SyncOAuthClientManagedClusterViews(ctx, managedClusters)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterSync", errReason, err))
 
 	// Create managed cluster actions for oauth clients
-	errReason, err = c.SyncOAuthClientCreationManagedClusterActions(ctx, operatorConfig, localOAuthClient, oAuthClientMCVs)
+	errReason, err = c.SyncOAuthClientCreationManagedClusterActions(ctx, localOAuthClient, oAuthClientMCVs)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterSync", errReason, err))
 
 	// Create managed cluster views for ingress cert
@@ -231,7 +231,7 @@ func (c *ManagedClusterController) SyncHubClusterURL(ctx context.Context, operat
 	errs := []string{}
 	for _, managedCluster := range managedClusters {
 		managedClusterName := managedCluster.GetName()
-		_, err := c.dynamicClient.Resource(api.ManagedClusterActionGroupVersionResource).Namespace(managedClusterName).Get(ctx, api.CreateOAuthClientManagedClusterActionName, metav1.GetOptions{})
+		_, err := c.dynamicClient.Resource(api.ManagedClusterActionGroupVersionResource).Namespace(managedClusterName).Get(ctx, api.CreateHubClusterConfigManagedClusterActionName, metav1.GetOptions{})
 		if apierrors.IsNotFound(err) {
 			required, err := managedclusteractionsub.DefaultCreateHubClusterConfigMapAction(managedClusterName, string(marshaledDefaultHubClusterConfigMap))
 			if err != nil {
@@ -323,7 +323,7 @@ func isSupportedCluster(clusterClaims []clusterv1.ManagedClusterClaim) (bool, bo
 	return isValidProduct, isValidVersion
 }
 
-func (c *ManagedClusterController) SyncOAuthClientManagedClusterViews(ctx context.Context, operatorConfig *operatorv1.Console, managedClusters []clusterv1.ManagedCluster) ([]*unstructured.Unstructured, string, error) {
+func (c *ManagedClusterController) SyncOAuthClientManagedClusterViews(ctx context.Context, managedClusters []clusterv1.ManagedCluster) ([]*unstructured.Unstructured, string, error) {
 	errs := []string{}
 	mcvs := []*unstructured.Unstructured{}
 	for _, managedCluster := range managedClusters {
@@ -351,7 +351,7 @@ func (c *ManagedClusterController) SyncOAuthClientManagedClusterViews(ctx contex
 	return mcvs, "", nil
 }
 
-func (c *ManagedClusterController) SyncOAuthClientCreationManagedClusterActions(ctx context.Context, operatorConfig *operatorv1.Console, localOAuthClient *oauthv1.OAuthClient, oAuthClientMCVs []*unstructured.Unstructured) (string, error) {
+func (c *ManagedClusterController) SyncOAuthClientCreationManagedClusterActions(ctx context.Context, localOAuthClient *oauthv1.OAuthClient, oAuthClientMCVs []*unstructured.Unstructured) (string, error) {
 	managedClusterList := []string{}
 	managedClusterListErrors := []string{}
 	for _, managedClusterOAuthView := range oAuthClientMCVs {
@@ -632,7 +632,7 @@ func (c *ManagedClusterController) removeManagedClusters(ctx context.Context) er
 
 func (c *ManagedClusterController) removeManagedClusterActions(ctx context.Context) error {
 	errs := []string{}
-	mcas, err := c.dynamicClient.Resource(api.ManagedClusterViewGroupVersionResource).List(ctx, metav1.ListOptions{LabelSelector: api.ManagedClusterLabel})
+	mcas, err := c.dynamicClient.Resource(api.ManagedClusterActionGroupVersionResource).List(ctx, metav1.ListOptions{LabelSelector: api.ManagedClusterLabel})
 
 	if apierrors.IsNotFound(err) {
 		return nil
@@ -647,7 +647,7 @@ func (c *ManagedClusterController) removeManagedClusterActions(ctx context.Conte
 	}
 
 	for _, mca := range mcas.Items {
-		deletionErr := c.dynamicClient.Resource(api.ManagedClusterViewGroupVersionResource).Namespace(mca.GetNamespace()).Delete(ctx, mca.GetName(), metav1.DeleteOptions{})
+		deletionErr := c.dynamicClient.Resource(api.ManagedClusterActionGroupVersionResource).Namespace(mca.GetNamespace()).Delete(ctx, mca.GetName(), metav1.DeleteOptions{})
 		if deletionErr != nil && !apierrors.IsNotFound(deletionErr) {
 			errs = append(errs, deletionErr.Error())
 		}

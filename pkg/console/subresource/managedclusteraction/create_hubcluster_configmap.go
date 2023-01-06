@@ -6,6 +6,7 @@ import (
 
 	// openshift
 
+	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/assets"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	// acm - TODO conflicts adding package to go.mod with several dependencies
@@ -15,6 +16,7 @@ import (
 func DefaultCreateHubClusterConfigMapAction(clusterName string, configmap string) (*unstructured.Unstructured, error) {
 	mca := CreateHubClusterConfigMapStub(clusterName)
 	var errors []error
+	errors = append(errors, unstructured.SetNestedField(mca.Object, api.CreateHubClusterConfigManagedClusterActionName, "metadata", "name"))
 	errors = append(errors, unstructured.SetNestedField(mca.Object, clusterName, "metadata", "namespace"))
 	errors = append(errors, unstructured.SetNestedStringMap(mca.Object, util.LabelsForManagedClusterResources(clusterName), "metadata", "labels"))
 	errors = append(errors, unstructured.SetNestedField(mca.Object, configmap, "spec", "kube", "template", "configmap"))

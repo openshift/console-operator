@@ -410,6 +410,11 @@ func (co *consoleOperator) SyncConfigMap(
 		return nil, false, "FailedGetMonitoringSharedConfig", mscErr
 	}
 
+	hubClusterConfig, hubClusterConfigErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, api.HubClusterConfigMapName, metav1.GetOptions{})
+	if hubClusterConfig != nil && !apierrors.IsNotFound(hubClusterConfigErr) {
+		return nil, false, "FailedGetHubClusterConfig", hubClusterConfigErr
+	}
+
 	copiedCSVsDisabled, ccdErr := co.isCopiedCSVsDisabled(ctx)
 	if ccdErr != nil {
 		return nil, false, "FailedGetOLMConfig", ccdErr
@@ -428,6 +433,7 @@ func (co *consoleOperator) SyncConfigMap(
 		managedClusterConfigFile,
 		nodeArchitectures,
 		copiedCSVsDisabled,
+		hubClusterConfig,
 	)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
