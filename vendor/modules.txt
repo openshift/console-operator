@@ -113,7 +113,7 @@ github.com/grpc-ecosystem/go-grpc-prometheus
 github.com/grpc-ecosystem/grpc-gateway/internal
 github.com/grpc-ecosystem/grpc-gateway/runtime
 github.com/grpc-ecosystem/grpc-gateway/utilities
-# github.com/imdario/mergo v0.3.7
+# github.com/imdario/mergo v0.3.9
 ## explicit
 github.com/imdario/mergo
 # github.com/inconshreveable/mousetrap v1.0.0
@@ -331,6 +331,12 @@ github.com/openshift/library-go/pkg/operator/unsupportedconfigoverridescontrolle
 github.com/openshift/library-go/pkg/operator/v1helpers
 github.com/openshift/library-go/pkg/route/routeapihelpers
 github.com/openshift/library-go/pkg/serviceability
+# github.com/openshift/machine-config-operator v0.0.1-0.20201023110058-6c8bd9b2915c
+## explicit; go 1.13
+github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1
+github.com/openshift/machine-config-operator/pkg/generated/clientset/versioned
+github.com/openshift/machine-config-operator/pkg/generated/clientset/versioned/scheme
+github.com/openshift/machine-config-operator/pkg/generated/clientset/versioned/typed/machineconfiguration.openshift.io/v1
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
