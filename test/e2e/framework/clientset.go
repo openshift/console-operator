@@ -14,6 +14,7 @@ import (
 	consoleclientv1alpha1 "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1alpha1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	clientroutev1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
+	clientmachineconfigv1 "github.com/openshift/machine-config-operator/pkg/generated/clientset/versioned"
 )
 
 // ClientSet is a set of Kubernetes clients.
@@ -22,6 +23,7 @@ type ClientSet struct {
 	Core                   clientcorev1.CoreV1Interface
 	Apps                   clientappsv1.AppsV1Interface
 	Routes                 clientroutev1.RouteV1Interface
+	MachineConfig          clientmachineconfigv1.Interface
 	ConsoleCliDownloads    consoleclientv1.ConsoleCLIDownloadInterface
 	ConsoleExternalLogLink consoleclientv1.ConsoleExternalLogLinkInterface
 	ConsoleLink            consoleclientv1.ConsoleLinkInterface
@@ -62,6 +64,11 @@ func NewClientset(kubeconfig *restclient.Config) (*ClientSet, error) {
 	if err != nil {
 		return nil, err
 	}
+	clientset.MachineConfig, err = clientmachineconfigv1.NewForConfig(kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+
 	operatorsClient, err := operatorclientv1.NewForConfig(kubeconfig)
 	if err != nil {
 		return nil, err
