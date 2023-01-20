@@ -28,6 +28,7 @@ const (
 )
 
 const (
+	managedClusterConfigMapResourceVersionAnnotation   = "console.openshift.io/managed-cluster-config-version"
 	configMapResourceVersionAnnotation                 = "console.openshift.io/console-config-version"
 	proxyConfigResourceVersionAnnotation               = "console.openshift.io/proxy-config-version"
 	infrastructureConfigResourceVersionAnnotation      = "console.openshift.io/infrastructure-config-version"
@@ -63,14 +64,14 @@ type volumeConfig struct {
 
 func DefaultDeployment(
 	operatorConfig *operatorv1.Console,
-	cm *corev1.ConfigMap,
+	consoleConfigMap *corev1.ConfigMap,
 	apiServerCertConfigMaps *corev1.ConfigMapList,
 	managedClusterOAuthServerCertConfigMaps *corev1.ConfigMapList,
 	serviceCAConfigMap *corev1.ConfigMap,
 	localOAuthServingCertConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
 	managedClusterConfigMap *corev1.ConfigMap,
-	sec *corev1.Secret,
+	oAuthClientSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
 	canMountCustomLogo bool,
@@ -79,16 +80,38 @@ func DefaultDeployment(
 	withReplicas(deployment, infrastructureConfig)
 	withAffinity(deployment, infrastructureConfig, "ui")
 	withStrategy(deployment, infrastructureConfig)
-	withConsoleAnnotations(deployment, cm, serviceCAConfigMap, localOAuthServingCertConfigMap, trustedCAConfigMap, sec, proxyConfig, infrastructureConfig)
-	withConsoleVolumes(deployment, apiServerCertConfigMaps, managedClusterOAuthServerCertConfigMaps, trustedCAConfigMap, managedClusterConfigMap, canMountCustomLogo)
+	withConsoleAnnotations(
+		deployment,
+		consoleConfigMap,
+		managedClusterConfigMap,
+		serviceCAConfigMap,
+		localOAuthServingCertConfigMap,
+		trustedCAConfigMap,
+		oAuthClientSecret,
+		proxyConfig,
+		infrastructureConfig,
+	)
+	withConsoleVolumes(
+		deployment,
+		apiServerCertConfigMaps,
+		managedClusterOAuthServerCertConfigMaps,
+		trustedCAConfigMap,
+		managedClusterConfigMap,
+		canMountCustomLogo,
+	)
 	withConsoleContainerImage(deployment, operatorConfig, proxyConfig)
 	withConsoleNodeSelector(deployment, infrastructureConfig)
 	util.AddOwnerRef(deployment, util.OwnerRefFrom(operatorConfig))
 	return deployment
 }
 
-func DefaultDownloadsDeployment(operatorConfig *operatorv1.Console, infrastructureConfig *configv1.Infrastructure) *appsv1.Deployment {
-	downloadsDeployment := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/downloads-deployment.yaml"))
+func DefaultDownloadsDeployment(
+	operatorConfig *operatorv1.Console,
+	infrastructureConfig *configv1.Infrastructure,
+) *appsv1.Deployment {
+	downloadsDeployment := resourceread.ReadDeploymentV1OrDie(
+		assets.MustAsset("deployments/downloads-deployment.yaml"),
+	)
 	withReplicas(downloadsDeployment, infrastructureConfig)
 	withAffinity(downloadsDeployment, infrastructureConfig, "downloads")
 	withStrategy(downloadsDeployment, infrastructureConfig)
@@ -105,7 +128,11 @@ func withReplicas(deployment *appsv1.Deployment, infrastructureConfig *configv1.
 	deployment.Spec.Replicas = &replicas
 }
 
-func withAffinity(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure, component string) {
+func withAffinity(
+	deployment *appsv1.Deployment,
+	infrastructureConfig *configv1.Infrastructure,
+	component string,
+) {
 	affinity := &corev1.Affinity{}
 	if infrastructureConfig.Status.InfrastructureTopology != configv1.SingleReplicaTopologyMode {
 		affinity = &corev1.Affinity{
@@ -143,16 +170,29 @@ func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.
 	deployment.Spec.Strategy.RollingUpdate = rollingUpdateParams
 }
 
-func withConsoleAnnotations(deployment *appsv1.Deployment, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, oauthServingCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, infrastructureConfig *configv1.Infrastructure) {
+func withConsoleAnnotations(
+	deployment *appsv1.Deployment,
+	consoleConfigMap *corev1.ConfigMap,
+	managedClusterConfigMap *corev1.ConfigMap,
+	serviceCAConfigMap *corev1.ConfigMap,
+	oauthServingCertConfigMap *corev1.ConfigMap,
+	trustedCAConfigMap *corev1.ConfigMap,
+	oAuthClientSecret *corev1.Secret,
+	proxyConfig *configv1.Proxy,
+	infrastructureConfig *configv1.Infrastructure,
+) {
 	deployment.ObjectMeta.Annotations = map[string]string{
-		configMapResourceVersionAnnotation:                 cm.GetResourceVersion(),
+		configMapResourceVersionAnnotation:                 consoleConfigMap.GetResourceVersion(),
 		serviceCAConfigMapResourceVersionAnnotation:        serviceCAConfigMap.GetResourceVersion(),
 		oauthServingCertConfigMapResourceVersionAnnotation: oauthServingCertConfigMap.GetResourceVersion(),
 		trustedCAConfigMapResourceVersionAnnotation:        trustedCAConfigMap.GetResourceVersion(),
 		proxyConfigResourceVersionAnnotation:               proxyConfig.GetResourceVersion(),
 		infrastructureConfigResourceVersionAnnotation:      infrastructureConfig.GetResourceVersion(),
-		secretResourceVersionAnnotation:                    sec.GetResourceVersion(),
+		secretResourceVersionAnnotation:                    oAuthClientSecret.GetResourceVersion(),
 		consoleImageAnnotation:                             util.GetImageEnv("CONSOLE_IMAGE"),
+	}
+	if managedClusterConfigMap != nil {
+		deployment.ObjectMeta.Annotations[managedClusterConfigMapResourceVersionAnnotation] = managedClusterConfigMap.GetResourceVersion()
 	}
 	podAnnotations := deployment.Spec.Template.ObjectMeta.Annotations
 	for k, v := range deployment.ObjectMeta.Annotations {
@@ -237,7 +277,11 @@ func withConsoleVolumes(
 	deployment.Spec.Template.Spec.Volumes = vols
 }
 
-func withConsoleContainerImage(deployment *appsv1.Deployment, operatorConfig *operatorv1.Console, proxyConfig *configv1.Proxy) {
+func withConsoleContainerImage(
+	deployment *appsv1.Deployment,
+	operatorConfig *operatorv1.Console,
+	proxyConfig *configv1.Proxy,
+) {
 	commands := deployment.Spec.Template.Spec.Containers[0].Command
 	commands = withLogLevelFlag(operatorConfig.Spec.LogLevel, commands)
 	commands = withStatusPageFlag(operatorConfig.Spec.Providers, commands)
@@ -246,7 +290,10 @@ func withConsoleContainerImage(deployment *appsv1.Deployment, operatorConfig *op
 	deployment.Spec.Template.Spec.Containers[0].Image = util.GetImageEnv("CONSOLE_IMAGE")
 }
 
-func withConsoleNodeSelector(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
+func withConsoleNodeSelector(
+	deployment *appsv1.Deployment,
+	infrastructureConfig *configv1.Infrastructure,
+) {
 	nodeSelector := deployment.Spec.Template.Spec.NodeSelector
 
 	// If running with an externalized control plane, remove the master node selector
@@ -269,7 +316,11 @@ func Stub() *appsv1.Deployment {
 	return dep
 }
 
-func LogDeploymentAnnotationChanges(client appsclientv1.DeploymentsGetter, updated *appsv1.Deployment, ctx context.Context) {
+func LogDeploymentAnnotationChanges(
+	client appsclientv1.DeploymentsGetter,
+	updated *appsv1.Deployment,
+	ctx context.Context,
+) {
 	existing, err := client.Deployments(updated.Namespace).Get(ctx, updated.Name, metav1.GetOptions{})
 	if err != nil {
 		klog.V(4).Infof("%v", err)

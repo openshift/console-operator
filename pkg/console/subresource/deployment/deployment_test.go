@@ -35,18 +35,18 @@ func TestDefaultDeployment(t *testing.T) {
 		tolerationSeconds      int64 = 120
 	)
 	type args struct {
-		config             *operatorsv1.Console
-		cm                 *corev1.ConfigMap
-		ccas               *corev1.ConfigMapList
-		ocas               *corev1.ConfigMapList
-		ca                 *corev1.ConfigMap
-		dica               *corev1.ConfigMap
-		tca                *corev1.ConfigMap
-		mccm               *corev1.ConfigMap
-		sec                *corev1.Secret
-		proxy              *configv1.Proxy
-		infrastructure     *configv1.Infrastructure
-		canMountCustomLogo bool
+		consoleOperatorConfig                   *operatorsv1.Console
+		consoleConfig                           *corev1.ConfigMap
+		apiServerCertConfigMaps                 *corev1.ConfigMapList
+		managedClusterOAuthServerCertConfigMaps *corev1.ConfigMapList
+		serviceCAConfigMap                      *corev1.ConfigMap
+		localOAuthServingCertConfigMap          *corev1.ConfigMap
+		trustedCAConfigMap                      *corev1.ConfigMap
+		managedClusterConfigMap                 *corev1.ConfigMap
+		oAuthClientSecret                       *corev1.Secret
+		proxyConfig                             *configv1.Proxy
+		infrastructureConfig                    *configv1.Infrastructure
+		canMountCustomLogo                      bool
 	}
 
 	consoleOperatorConfig := &operatorsv1.Console{
@@ -169,7 +169,6 @@ func TestDefaultDeployment(t *testing.T) {
 	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
 	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
 	infrastructureConfigExternalTopologyMode := infrastructureConfigWithTopology(configv1.ExternalTopologyMode)
-
 	consoleDeploymentTemplate := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/console-deployment.yaml"))
 	withConsoleContainerImage(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
 	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMapList{}, &corev1.ConfigMapList{}, trustedCAConfigMapEmpty, nil, false)
@@ -187,24 +186,25 @@ func TestDefaultDeployment(t *testing.T) {
 		{
 			name: "Test Default Config Map",
 			args: args{
-				config: consoleOperatorConfig,
-				cm:     consoleConfig,
-				ccas:   &corev1.ConfigMapList{},
-				ocas:   &corev1.ConfigMapList{},
-				ca:     &corev1.ConfigMap{},
-				dica: &corev1.ConfigMap{
+				consoleOperatorConfig:                   consoleOperatorConfig,
+				consoleConfig:                           consoleConfig,
+				apiServerCertConfigMaps:                 &corev1.ConfigMapList{},
+				managedClusterOAuthServerCertConfigMaps: &corev1.ConfigMapList{},
+				serviceCAConfigMap:                      &corev1.ConfigMap{},
+				localOAuthServingCertConfigMap: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
 				},
-				tca: trustedCAConfigMapEmpty,
-				sec: &corev1.Secret{
+				trustedCAConfigMap:      trustedCAConfigMapEmpty,
+				managedClusterConfigMap: nil,
+				oAuthClientSecret: &corev1.Secret{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
 					Data:       nil,
 					StringData: nil,
 					Type:       "",
 				},
-				proxy:          proxyConfig,
-				infrastructure: infrastructureConfigHighlyAvailable,
+				proxyConfig:          proxyConfig,
+				infrastructureConfig: infrastructureConfigHighlyAvailable,
 			},
 			want: &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -271,24 +271,25 @@ func TestDefaultDeployment(t *testing.T) {
 		{
 			name: "Test Trusted CA Config Map",
 			args: args{
-				config: consoleOperatorConfig,
-				cm:     consoleConfig,
-				ccas:   &corev1.ConfigMapList{},
-				ocas:   &corev1.ConfigMapList{},
-				ca:     &corev1.ConfigMap{},
-				dica: &corev1.ConfigMap{
+				consoleOperatorConfig:                   consoleOperatorConfig,
+				consoleConfig:                           consoleConfig,
+				apiServerCertConfigMaps:                 &corev1.ConfigMapList{},
+				managedClusterOAuthServerCertConfigMaps: &corev1.ConfigMapList{},
+				serviceCAConfigMap:                      &corev1.ConfigMap{},
+				localOAuthServingCertConfigMap: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
 				},
-				tca: trustedCAConfigMapSet,
-				sec: &corev1.Secret{
+				trustedCAConfigMap:      trustedCAConfigMapSet,
+				managedClusterConfigMap: nil,
+				oAuthClientSecret: &corev1.Secret{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
 					Data:       nil,
 					StringData: nil,
 					Type:       "",
 				},
-				proxy:          proxyConfig,
-				infrastructure: infrastructureConfigHighlyAvailable,
+				proxyConfig:          proxyConfig,
+				infrastructureConfig: infrastructureConfigHighlyAvailable,
 			},
 			want: &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -354,24 +355,25 @@ func TestDefaultDeployment(t *testing.T) {
 		{
 			name: "Test Infrastructure Config SingleReplicaTopologyMode",
 			args: args{
-				config: consoleOperatorConfig,
-				cm:     consoleConfig,
-				ccas:   &corev1.ConfigMapList{},
-				ocas:   &corev1.ConfigMapList{},
-				ca:     &corev1.ConfigMap{},
-				dica: &corev1.ConfigMap{
+				consoleOperatorConfig:                   consoleOperatorConfig,
+				consoleConfig:                           consoleConfig,
+				apiServerCertConfigMaps:                 &corev1.ConfigMapList{},
+				managedClusterOAuthServerCertConfigMaps: &corev1.ConfigMapList{},
+				serviceCAConfigMap:                      &corev1.ConfigMap{},
+				localOAuthServingCertConfigMap: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
 				},
-				tca: trustedCAConfigMapEmpty,
-				sec: &corev1.Secret{
+				trustedCAConfigMap:      trustedCAConfigMapEmpty,
+				managedClusterConfigMap: nil,
+				oAuthClientSecret: &corev1.Secret{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
 					Data:       nil,
 					StringData: nil,
 					Type:       "",
 				},
-				proxy:          proxyConfig,
-				infrastructure: infrastructureConfigSingleReplica,
+				proxyConfig:          proxyConfig,
+				infrastructureConfig: infrastructureConfigSingleReplica,
 			},
 			want: &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -430,24 +432,25 @@ func TestDefaultDeployment(t *testing.T) {
 		{
 			name: "Test Infrastructure Config ExternalTopologyMode",
 			args: args{
-				config: consoleOperatorConfig,
-				cm:     consoleConfig,
-				ccas:   &corev1.ConfigMapList{},
-				ocas:   &corev1.ConfigMapList{},
-				ca:     &corev1.ConfigMap{},
-				dica: &corev1.ConfigMap{
+				consoleOperatorConfig:                   consoleOperatorConfig,
+				consoleConfig:                           consoleConfig,
+				apiServerCertConfigMaps:                 &corev1.ConfigMapList{},
+				managedClusterOAuthServerCertConfigMaps: &corev1.ConfigMapList{},
+				serviceCAConfigMap:                      &corev1.ConfigMap{},
+				localOAuthServingCertConfigMap: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
 				},
-				tca: trustedCAConfigMapEmpty,
-				sec: &corev1.Secret{
+				trustedCAConfigMap:      trustedCAConfigMapEmpty,
+				managedClusterConfigMap: nil,
+				oAuthClientSecret: &corev1.Secret{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
 					Data:       nil,
 					StringData: nil,
 					Type:       "",
 				},
-				proxy:          proxyConfig,
-				infrastructure: infrastructureConfigExternalTopologyMode,
+				proxyConfig:          proxyConfig,
+				infrastructureConfig: infrastructureConfigExternalTopologyMode,
 			},
 			want: &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -511,17 +514,17 @@ func TestDefaultDeployment(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if diff := deep.Equal(DefaultDeployment(
-				tt.args.config,
-				tt.args.cm,
-				tt.args.ccas,
-				tt.args.ocas,
-				tt.args.dica,
-				tt.args.cm,
-				tt.args.tca,
-				tt.args.mccm,
-				tt.args.sec,
-				tt.args.proxy,
-				tt.args.infrastructure,
+				tt.args.consoleOperatorConfig,
+				tt.args.consoleConfig,
+				tt.args.apiServerCertConfigMaps,
+				tt.args.managedClusterOAuthServerCertConfigMaps,
+				tt.args.localOAuthServingCertConfigMap,
+				tt.args.consoleConfig,
+				tt.args.trustedCAConfigMap,
+				tt.args.managedClusterConfigMap,
+				tt.args.oAuthClientSecret,
+				tt.args.proxyConfig,
+				tt.args.infrastructureConfig,
 				tt.args.canMountCustomLogo,
 			), tt.want); diff != nil {
 				t.Error(diff)
@@ -533,16 +536,17 @@ func TestDefaultDeployment(t *testing.T) {
 func TestWithConsoleAnnotations(t *testing.T) {
 	type args struct {
 		deployment                *appsv1.Deployment
-		cm                        *corev1.ConfigMap
+		consoleConfigMap          *corev1.ConfigMap
+		managedClusterConfigMap   *corev1.ConfigMap
 		serviceCAConfigMap        *corev1.ConfigMap
 		oauthServingCertConfigMap *corev1.ConfigMap
 		trustedCAConfigMap        *corev1.ConfigMap
-		sec                       *corev1.Secret
+		oAuthClientSecret         *corev1.Secret
 		proxyConfig               *configv1.Proxy
 		infrastructureConfig      *configv1.Infrastructure
 	}
 
-	consoleConfig := &corev1.ConfigMap{
+	consoleConfigMap := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "console-config",
@@ -583,7 +587,17 @@ func TestWithConsoleAnnotations(t *testing.T) {
 		},
 	}
 
-	sec := &corev1.Secret{
+	managedClusterConfigMap := &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "managed-clusters",
+			ResourceVersion: "12345",
+		},
+		Data:       map[string]string{"managed-clusters.yaml": ""},
+		BinaryData: nil,
+	}
+
+	oAuthClientSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			ResourceVersion: "101010",
 		},
@@ -611,24 +625,26 @@ func TestWithConsoleAnnotations(t *testing.T) {
 						},
 					},
 				},
-				cm:                        consoleConfig,
+				consoleConfigMap:          consoleConfigMap,
+				managedClusterConfigMap:   managedClusterConfigMap,
 				serviceCAConfigMap:        serviceCAConfigMap,
 				oauthServingCertConfigMap: oauthServingCertConfigMap,
 				trustedCAConfigMap:        trustedCAConfigMap,
-				sec:                       sec,
+				oAuthClientSecret:         oAuthClientSecret,
 				proxyConfig:               proxyConfig,
 				infrastructureConfig:      infrastructureConfig,
 			},
 			want: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						configMapResourceVersionAnnotation:                 consoleConfig.GetResourceVersion(),
+						managedClusterConfigMapResourceVersionAnnotation:   managedClusterConfigMap.GetResourceVersion(),
+						configMapResourceVersionAnnotation:                 consoleConfigMap.GetResourceVersion(),
 						serviceCAConfigMapResourceVersionAnnotation:        serviceCAConfigMap.GetResourceVersion(),
 						oauthServingCertConfigMapResourceVersionAnnotation: oauthServingCertConfigMap.GetResourceVersion(),
 						trustedCAConfigMapResourceVersionAnnotation:        trustedCAConfigMap.GetResourceVersion(),
 						proxyConfigResourceVersionAnnotation:               proxyConfig.GetResourceVersion(),
 						infrastructureConfigResourceVersionAnnotation:      infrastructureConfig.GetResourceVersion(),
-						secretResourceVersionAnnotation:                    sec.GetResourceVersion(),
+						secretResourceVersionAnnotation:                    oAuthClientSecret.GetResourceVersion(),
 						consoleImageAnnotation:                             util.GetImageEnv("CONSOLE_IMAGE"),
 					},
 				},
@@ -636,14 +652,15 @@ func TestWithConsoleAnnotations(t *testing.T) {
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Annotations: map[string]string{
+								managedClusterConfigMapResourceVersionAnnotation:   managedClusterConfigMap.GetResourceVersion(),
 								workloadManagementAnnotation:                       workloadManagementAnnotationValue,
-								configMapResourceVersionAnnotation:                 consoleConfig.GetResourceVersion(),
+								configMapResourceVersionAnnotation:                 consoleConfigMap.GetResourceVersion(),
 								serviceCAConfigMapResourceVersionAnnotation:        serviceCAConfigMap.GetResourceVersion(),
 								oauthServingCertConfigMapResourceVersionAnnotation: oauthServingCertConfigMap.GetResourceVersion(),
 								trustedCAConfigMapResourceVersionAnnotation:        trustedCAConfigMap.GetResourceVersion(),
 								proxyConfigResourceVersionAnnotation:               proxyConfig.GetResourceVersion(),
 								infrastructureConfigResourceVersionAnnotation:      infrastructureConfig.GetResourceVersion(),
-								secretResourceVersionAnnotation:                    sec.GetResourceVersion(),
+								secretResourceVersionAnnotation:                    oAuthClientSecret.GetResourceVersion(),
 								consoleImageAnnotation:                             util.GetImageEnv("CONSOLE_IMAGE"),
 							},
 						},
@@ -654,7 +671,7 @@ func TestWithConsoleAnnotations(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withConsoleAnnotations(tt.args.deployment, tt.args.cm, tt.args.serviceCAConfigMap, tt.args.oauthServingCertConfigMap, tt.args.trustedCAConfigMap, tt.args.sec, tt.args.proxyConfig, tt.args.infrastructureConfig)
+			withConsoleAnnotations(tt.args.deployment, tt.args.consoleConfigMap, tt.args.managedClusterConfigMap, tt.args.serviceCAConfigMap, tt.args.oauthServingCertConfigMap, tt.args.trustedCAConfigMap, tt.args.oAuthClientSecret, tt.args.proxyConfig, tt.args.infrastructureConfig)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
 			}
