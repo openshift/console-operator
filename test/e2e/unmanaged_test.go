@@ -10,6 +10,10 @@ import (
 
 func setupUnmanagedTestCase(t *testing.T) (*framework.ClientSet, *operatorsv1.Console) {
 	client, operatorConfig := framework.StandardSetup(t)
+	err := framework.ConsoleResourcesAvailable(client)
+	if err != nil {
+		t.Fatal(err)
+	}
 	framework.MustUnmanageConsole(t, client)
 	return client, operatorConfig
 }
