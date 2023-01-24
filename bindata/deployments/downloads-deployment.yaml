@@ -130,7 +130,7 @@ spec:
                   ('ppc64le', 'linux', '/usr/share/openshift/linux_ppc64le/oc'),
                   ('s390x', 'linux', '/usr/share/openshift/linux_s390x/oc'),
                   ]:
-                basename = os.path.basename(path)
+                basename = os.path.basename(os.path.splitext(path)[0])
                 target_path = os.path.join(arch, operating_system, basename)
                 os.mkdir(os.path.join(arch, operating_system))
                 os.symlink(path, target_path)
