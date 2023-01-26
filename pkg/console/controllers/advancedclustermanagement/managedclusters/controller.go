@@ -143,7 +143,7 @@ func (c *ManagedClusterController) Sync(ctx context.Context, controllerContext f
 	}
 
 	// Get a list of validated ManagedCluster resources
-	managedClusters, errReason, err := c.SyncManagedClusterList(ctx)
+	managedClusters, errReason, err := util.GetValidManagedClusters(ctx, c.managedClusterClient.ManagedClusters())
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterSync", errReason, err))
 	if err != nil || len(managedClusters) == 0 {
 		return c.removeManagedClusters(ctx)
@@ -189,76 +189,6 @@ func (c *ManagedClusterController) SyncLocalOAuthClient(ctx context.Context) (*o
 	}
 
 	return oAuthClient, "", nil
-}
-
-func (c *ManagedClusterController) SyncManagedClusterList(ctx context.Context) ([]clusterv1.ManagedCluster, string, error) {
-	managedClusters, err := c.managedClusterClient.ManagedClusters().List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("local-cluster!=true")})
-
-	// Not degraded, API is not found which means ACM isn't installed
-	if apierrors.IsNotFound(err) {
-		return nil, "", nil
-	}
-
-	if err != nil {
-		return nil, "ErrorListingManagedClusters", err
-	}
-
-	valid := []clusterv1.ManagedCluster{}
-	for _, managedCluster := range managedClusters.Items {
-		clusterName := managedCluster.GetName()
-
-		// Ensure client configs exists
-		clientConfigs := managedCluster.Spec.ManagedClusterClientConfigs
-		if len(clientConfigs) == 0 {
-			klog.V(4).Infoln(fmt.Sprintf("Skipping managed cluster %v, no client config found", clusterName))
-			continue
-		}
-
-		// Ensure client config CA bundle exists
-		if clientConfigs[0].CABundle == nil {
-			klog.V(4).Infoln(fmt.Sprintf("Skipping managed cluster %v, client config CA bundle not found", clusterName))
-			continue
-		}
-
-		// Ensure client config URL exists
-		if clientConfigs[0].URL == "" {
-			klog.V(4).Infof("Skipping managed cluster %v, client config URL not found", clusterName)
-			continue
-		}
-
-		// Check the claims if version and product are supported
-		validProduct, validVersion := isSupportedCluster(managedCluster.Status.ClusterClaims)
-		// Omit clusters that have unsupported product name defined in api UnsupportedClusterProducts
-		if !validProduct {
-			klog.V(4).Infof("Skipping managed cluster %q, product is unsupported", clusterName)
-			continue
-		}
-
-		// Omit any clusters with version less than ocp 4.0.0
-		if !validVersion {
-			klog.V(4).Infof("Skipping managed cluster %q, versions prior to openshift 4.0.0 are not supported", clusterName)
-			continue
-		}
-		valid = append(valid, managedCluster)
-	}
-
-	return valid, "", nil
-}
-
-func isSupportedCluster(clusterClaims []clusterv1.ManagedClusterClaim) (bool, bool) {
-	isValidProduct := false
-	isValidVersion := false
-	for _, claim := range clusterClaims {
-		if claim.Name == api.ManagedClusterClaimProductAnnotation && util.SliceContains(api.SupportedClusterProducts, claim.Value) {
-			isValidProduct = true
-			continue
-		}
-		if claim.Name == api.ManagedClusterClaimVersionAnnotation && util.IsSupportedVersion(claim.Value) {
-			isValidVersion = true
-			continue
-		}
-	}
-	return isValidProduct, isValidVersion
 }
 
 func (c *ManagedClusterController) SyncOAuthClientManagedClusterViews(ctx context.Context, operatorConfig *operatorv1.Console, managedClusters []clusterv1.ManagedCluster) ([]*unstructured.Unstructured, string, error) {
