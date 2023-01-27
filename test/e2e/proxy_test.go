@@ -13,10 +13,11 @@ import (
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/test/e2e/framework"
 
-	mcfgv1 "github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
+
+var originalConfig = map[string]string{}
 
 func setupProxyTest(t *testing.T) (*framework.ClientSet, *operatorsv1.Console) {
 	clientSet, operatorConfig := framework.StandardSetup(t)
@@ -26,6 +27,7 @@ func setupProxyTest(t *testing.T) (*framework.ClientSet, *operatorsv1.Console) {
 }
 
 func cleanupProxyTest(t *testing.T, clientSet *framework.ClientSet) {
+	waitforMachineConfig(t, clientSet)
 	framework.ResetClusterProxyConfig(clientSet)
 	// Make sure mco gets to react to us resetting the proxy config, and then unpause
 	unpauseAllMachineConfigPools(t, clientSet)
@@ -117,6 +119,7 @@ func pollDeploymentForEnv(client *framework.ClientSet, clusterVars []corev1.EnvV
 // while we're doing this test. See: https://issues.redhat.com/browse/OCPBUGS-5780
 func pauseAllMachineConfigPools(t *testing.T, clientSet *framework.ClientSet) error {
 
+	originalConfig = make(map[string]string)
 	pools, err := clientSet.MachineConfig.MachineconfigurationV1().MachineConfigPools().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -128,13 +131,46 @@ func pauseAllMachineConfigPools(t *testing.T, clientSet *framework.ClientSet) er
 		if _, err := clientSet.MachineConfig.MachineconfigurationV1().MachineConfigPools().Patch(context.Background(), pool.Name, types.MergePatchType, pausePatch, metav1.PatchOptions{}); err != nil {
 			return err
 		}
+		originalConfig[pool.Name] = pool.Spec.Configuration.Name
 	}
 
 	return nil
 }
 
-// pauseAllMachineConfigPools unpauses all the MachineConfigPools once the pool config has settled back to the original after
-// the example proxy configuration has been removed. See: https://issues.redhat.com/browse/OCPBUGS-5780
+// waitFormachineConfig waits to make sure the pool receieves the new config containing the proxy. This is necessary because sometimes when
+// things happen too fast, we pause and unpause before the config is even rendered, and it still get applied to the nodes.
+// See: https://issues.redhat.com/browse/OCPBUGS-5780
+func waitforMachineConfig(t *testing.T, clientSet *framework.ClientSet) error {
+
+	pools, err := clientSet.MachineConfig.MachineconfigurationV1().MachineConfigPools().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, pool := range pools.Items {
+		t.Logf("waiting on pool %s to acknowledge the proxy change...", pool.Name)
+
+		if err := wait.PollImmediate(2*time.Second, 2*time.Minute, func() (bool, error) {
+			mcp, err := clientSet.MachineConfig.MachineconfigurationV1().MachineConfigPools().Get(context.TODO(), pool.Name, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+
+			// If we're still on the config we started on, we didn't get the new one yet
+			if mcp.Spec.Configuration.Name == originalConfig[mcp.Name] {
+				return false, nil
+			}
+			return true, nil
+		}); err != nil {
+			t.Fatalf("Machine config pool %s never acknowledged the proxy change: %v", pool.Name, err)
+		}
+	}
+
+	return nil
+}
+
+// unpauseAllMachineConfigPools unpauses all the MachineConfigPools once the pool config has settled back to the original after
+// the proxy configuration has been removed. See: https://issues.redhat.com/browse/OCPBUGS-5780
 func unpauseAllMachineConfigPools(t *testing.T, clientSet *framework.ClientSet) error {
 
 	pools, err := clientSet.MachineConfig.MachineconfigurationV1().MachineConfigPools().List(context.Background(), metav1.ListOptions{})
@@ -142,8 +178,6 @@ func unpauseAllMachineConfigPools(t *testing.T, clientSet *framework.ClientSet) 
 		return err
 	}
 
-	// The MCO didn't roll out the proxy config because it was paused, but it did probably render a new machineconfig that got selected for the pool,
-	// we need to wait for controllerconfig to get updated again (the MCO to react to the proxy config removal) and move back to the previous config
 	for _, pool := range pools.Items {
 		t.Logf("waiting on pool %s to revert the proxy change...", pool.Name)
 
@@ -153,16 +187,16 @@ func unpauseAllMachineConfigPools(t *testing.T, clientSet *framework.ClientSet) 
 				return false, err
 			}
 
-			// paused == not updated, not updating, not degraded
-			// safe to unpause without changes == updated, not updating, not degraded
-			if mcfgv1.IsMachineConfigPoolConditionTrue(mcp.Status.Conditions, mcfgv1.MachineConfigPoolUpdated) &&
-				mcfgv1.IsMachineConfigPoolConditionFalse(mcp.Status.Conditions, mcfgv1.MachineConfigPoolUpdating) &&
-				mcfgv1.IsMachineConfigPoolConditionFalse(mcp.Status.Conditions, mcfgv1.MachineConfigPoolDegraded) {
-				return true, nil
+			// If we're not back on the old config yet, it hasn't processed it
+			// TODO(jkyros): this will break if something else pushes a machineconfig change while we're paused,
+			// but that does not happen during this test, so it is okay -- just be aware this might not work
+			// well for "parallel" tests, this expects things to happen sequentially.
+			if mcp.Spec.Configuration.Name != originalConfig[mcp.Name] {
+				return false, nil
 			}
-			return false, nil
+			return true, nil
 		}); err != nil {
-			t.Errorf("Machine config pool never went back to normal after config revert: %v", err)
+			t.Fatalf("Machine config pool %s never reverted the proxy change: %v", pool.Name, err)
 		}
 	}
 
