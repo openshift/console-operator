@@ -15,6 +15,8 @@ import (
 
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	proxyv1alpha1 "open-cluster-management.io/cluster-proxy/pkg/apis/proxy/v1alpha1"
+	proxyscheme "open-cluster-management.io/cluster-proxy/pkg/generated/clientset/versioned/scheme"
 )
 
 func SharedLabels() map[string]string {
@@ -131,4 +133,13 @@ func ReadUnstructuredOrDie(objBytes []byte) *unstructured.Unstructured {
 		panic(err)
 	}
 	return udi.(*unstructured.Unstructured)
+}
+
+func ReadManagedProxyServiceResolverOrDie(objBytes []byte) *proxyv1alpha1.ManagedProxyServiceResolver {
+	groupVersionKind := proxyv1alpha1.GroupVersion.WithKind("ManagedProxyServiceResolver")
+	resource, _, err := proxyscheme.Codecs.UniversalDecoder().Decode(objBytes, &groupVersionKind, &proxyv1alpha1.ManagedProxyServiceResolver{})
+	if err != nil {
+		panic(err)
+	}
+	return resource.(*proxyv1alpha1.ManagedProxyServiceResolver)
 }

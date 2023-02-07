@@ -12,13 +12,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/dynamic/dynamicinformer"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/klog/v2"
 
 	// openshift
 	clusterclientv1 "github.com/open-cluster-management/api/client/cluster/clientset/versioned/typed/cluster/v1"
-	clusterinformersv1 "github.com/open-cluster-management/api/client/cluster/informers/externalversions/cluster/v1"
 	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
@@ -72,8 +70,6 @@ func NewManagedClusterController(
 
 	// informers
 	operatorConfigInformer v1.ConsoleInformer,
-	managedClusterInformers clusterinformersv1.ManagedClusterInformer,
-	dynamicInformers dynamicinformer.DynamicSharedInformerFactory,
 
 	// events
 	recorder events.Recorder,
