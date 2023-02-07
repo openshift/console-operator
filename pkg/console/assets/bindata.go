@@ -7,6 +7,7 @@
 // bindata/managedclusteractions/console-create-oauth-client.yaml
 // bindata/managedclusterviews/console-oauth-client.yaml
 // bindata/managedclusterviews/console-oauth-server-cert.yaml
+// bindata/managedclusterviews/infrastructure-config.yaml
 // bindata/managedclusterviews/olm-config.yaml
 // bindata/pdb/console-pdb.yaml
 // bindata/pdb/downloads-pdb.yaml
@@ -513,6 +514,30 @@ func managedclusterviewsConsoleOauthServerCertYaml() (*asset, error) {
 	return a, nil
 }
 
+var _managedclusterviewsInfrastructureConfigYaml = []byte(`apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+spec:
+  scope:
+    apiVersion: operators.coreos.com/v1
+    resource: Infrastructure
+    name: cluster
+`)
+
+func managedclusterviewsInfrastructureConfigYamlBytes() ([]byte, error) {
+	return _managedclusterviewsInfrastructureConfigYaml, nil
+}
+
+func managedclusterviewsInfrastructureConfigYaml() (*asset, error) {
+	bytes, err := managedclusterviewsInfrastructureConfigYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "managedclusterviews/infrastructure-config.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _managedclusterviewsOlmConfigYaml = []byte(`apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 spec:
@@ -953,6 +978,7 @@ var _bindata = map[string]func() (*asset, error){
 	"managedclusteractions/console-create-oauth-client.yaml": managedclusteractionsConsoleCreateOauthClientYaml,
 	"managedclusterviews/console-oauth-client.yaml":          managedclusterviewsConsoleOauthClientYaml,
 	"managedclusterviews/console-oauth-server-cert.yaml":     managedclusterviewsConsoleOauthServerCertYaml,
+	"managedclusterviews/infrastructure-config.yaml":         managedclusterviewsInfrastructureConfigYaml,
 	"managedclusterviews/olm-config.yaml":                    managedclusterviewsOlmConfigYaml,
 	"pdb/console-pdb.yaml":                                   pdbConsolePdbYaml,
 	"pdb/downloads-pdb.yaml":                                 pdbDownloadsPdbYaml,
@@ -1021,6 +1047,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 	"managedclusterviews": {nil, map[string]*bintree{
 		"console-oauth-client.yaml":      {managedclusterviewsConsoleOauthClientYaml, map[string]*bintree{}},
 		"console-oauth-server-cert.yaml": {managedclusterviewsConsoleOauthServerCertYaml, map[string]*bintree{}},
+		"infrastructure-config.yaml":     {managedclusterviewsInfrastructureConfigYaml, map[string]*bintree{}},
 		"olm-config.yaml":                {managedclusterviewsOlmConfigYaml, map[string]*bintree{}},
 	}},
 	"pdb": {nil, map[string]*bintree{

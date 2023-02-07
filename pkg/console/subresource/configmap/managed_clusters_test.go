@@ -8,6 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
@@ -25,6 +26,7 @@ var (
 			ClientSecret: "test-client-secret",
 			CAFile:       "/var/oauth/ca",
 		},
+		ControlPlaneToplogy: configv1.HighlyAvailableTopologyMode,
 	}
 	testManagedClusterConfigYaml = `- name: test-cluster
   apiServer:
@@ -35,6 +37,7 @@ var (
     clientSecret: test-client-secret
     caFile: /var/oauth/ca
   copiedCSVsDisabled: false
+  controlPlaneTopology: HighlyAvailable
 `
 )
 
