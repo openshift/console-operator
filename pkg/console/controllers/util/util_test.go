@@ -7,12 +7,12 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	clusterclientv1 "github.com/open-cluster-management/api/client/cluster/clientset/versioned/typed/cluster/v1"
-	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	v1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clusterclientv1 "open-cluster-management.io/api/client/cluster/clientset/versioned/typed/cluster/v1"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
 var (

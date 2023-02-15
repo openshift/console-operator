@@ -332,7 +332,7 @@ func (co *consoleOperator) SyncOAuthClient(
 		return nil, false, "FailedGet", errors.New(fmt.Sprintf("oauth client for console does not exist and cannot be created (%v)", err))
 	}
 	oauthsub.RegisterConsoleToOAuthClient(oauthClient, consoleURL, secretsub.GetSecretString(sec))
-	oauthClient, oauthChanged, oauthErr := oauthsub.CustomApplyOAuth(co.oauthClient, oauthClient, ctx)
+	oauthClient, oauthChanged, oauthErr := oauthsub.ApplyOAuthClient(co.oauthClient, oauthClient, ctx)
 	if oauthErr != nil {
 		return nil, false, "FailedRegister", oauthErr
 	}

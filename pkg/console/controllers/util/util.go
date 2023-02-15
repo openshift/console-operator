@@ -1,9 +1,9 @@
 package util
 
 import (
-	//k8s
 	"context"
 
+	//k8s
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,10 +12,12 @@ import (
 
 	//github
 	"github.com/blang/semver"
-	clusterclientv1 "github.com/open-cluster-management/api/client/cluster/clientset/versioned/typed/cluster/v1"
-	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/library-go/pkg/controller/factory"
+
+	// open-cluster-management
+	clusterclientv1 "open-cluster-management.io/api/client/cluster/clientset/versioned/typed/cluster/v1"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
 // Return func which returns true if obj name is in names
