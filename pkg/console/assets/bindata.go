@@ -370,7 +370,11 @@ spec:
                   tar.add(path, basename)
                 with zipfile.ZipFile('{}.zip'.format(archive_path_root), 'w') as zip:
                   zip.write(path, basename)
-                content.append('<a href="{0}">oc ({1} {2})</a> (<a href="{0}.tar">tar</a> <a href="{0}.zip">zip</a>)'.format(target_path, arch, operating_system))
+                content.append(
+                  '<a href="{0}">oc ({1} {2})</a> (<a href="{3}.tar">tar</a> <a href="{3}.zip">zip</a>)'.format(
+                    target_path, arch, operating_system, archive_path_root
+                  )
+                )
 
               for root, directories, filenames in os.walk(temp_dir):
                 root_link = os.path.relpath(temp_dir, os.path.join(root, 'child')).replace(os.path.sep, '/')
