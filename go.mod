@@ -1,6 +1,6 @@
 module github.com/openshift/console-operator
 
-go 1.18
+go 1.19
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
