@@ -175,7 +175,7 @@ func (c *ManagedClusterController) Sync(ctx context.Context, controllerContext f
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterSync", errReason, err))
 
 	// Create managed cluster views for Infrastructure config
-	errReason, err = c.SyncOLMConfigManagedClusterViews(ctx, operatorConfig, managedClusters)
+	errReason, err = c.SyncInfrastructureConfigManagedClusterViews(ctx, operatorConfig, managedClusters)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterSync", errReason, err))
 
 	// Create config maps for each managed cluster API server ca bundle
@@ -185,7 +185,7 @@ func (c *ManagedClusterController) Sync(ctx context.Context, controllerContext f
 		return statusHandler.FlushAndReturn(err)
 	}
 
-	// Create  manged cluster config map
+	// Create managed cluster config map
 	errReason, err = c.SyncManagedClusterConfigMap(managedClusters, ctx, operatorConfig, controllerContext.Recorder())
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterSync", errReason, err))
 	return statusHandler.FlushAndReturn(err)
@@ -483,73 +483,56 @@ func (c *ManagedClusterController) SyncManagedClusterConfigMap(managedClusters [
 		clusterName := managedCluster.GetName()
 		klog.V(4).Infoln(fmt.Sprintf("Building config for managed cluster: %v", clusterName))
 
-		// Check that managed cluster API server CA ConfigMap has already been synced, skip if not found
+		// Check that managed cluster API server CA ConfigMap has already been synced. Skip if unable to get managed cluster API server config map for any other reason.
 		_, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, configmapsub.APIServerCAConfigMapName(clusterName), metav1.GetOptions{})
-		if apierrors.IsNotFound(err) {
-			klog.V(4).Infof("API server CA file not found for managed cluster %v", clusterName)
-			continue
-		}
-
-		// Skip if unable to get managed cluster API server config map for any other reason
 		if err != nil {
-			klog.V(4).Infof("Error getting API server CA file for managed cluster %v", clusterName)
+			klog.V(4).Infof("Error getting API server CA file for managed cluster %q: %v", clusterName, err)
 			continue
 		}
 
-		// Check that managed cluster OAuth server CA ConfigMap has already been synced, skip if not found
+		// Check that managed cluster OAuth server CA ConfigMap has already been synced. Skip if unable to get managed cluster OAuth server config map for any other reason.
 		_, err = c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, configmapsub.ManagedClusterOAuthServerCertConfigMapName(clusterName), metav1.GetOptions{})
-		if apierrors.IsNotFound(err) {
-			klog.V(4).Infof("OAuth server CA file not found for managed cluster %v", clusterName)
-			continue
-		}
-
-		// Skip if unable to get managed cluster OAuth server config map for any other reason
 		if err != nil {
-			klog.V(4).Infof("Error getting OAuth server CA file for managed cluster %v", clusterName)
+			klog.V(4).Infof("Error getting OAuth server CA file for managed cluster %q: %v", clusterName, err)
 			continue
 		}
 
-		// Check that managed cluster OAuth client MCV has already been synced, skip if not found
+		// Check that managed cluster OAuth client MCV has already been synced. Skip if unable to get managed cluster OAuth client MCV for any other reason.
 		oAuthClientMCV, err := c.dynamicClient.Resource(api.ManagedClusterViewGroupVersionResource).Namespace(clusterName).Get(ctx, api.OAuthClientManagedClusterViewName, metav1.GetOptions{})
-		if apierrors.IsNotFound(err) {
-			klog.V(4).Infof("OAuth client ManagedClusterView not found for managed cluster %v", clusterName)
-			continue
-		}
-
-		// Skip if unable to get managed cluster OAuth client MCV for any other reason
 		if err != nil {
-			klog.V(4).Infof("Error getting OAuth client ManagedClusterView for managed cluster %v", clusterName)
+			klog.V(4).Infof("Error getting OAuth client ManagedClusterView for managed cluster %q: %v", clusterName, err)
 			continue
 		}
 
 		oAuthClientSecret, err := managedclusterviewsub.GetOAuthClientSecret(oAuthClientMCV)
 		if err != nil || oAuthClientSecret == "" {
-			klog.V(4).Infof("Error getting OAuth client secret for managed cluster %v", clusterName)
+			klog.V(4).Infof("Error getting OAuth client secret for managed cluster %q", clusterName)
 			continue
 		}
 
-		// Check that managed cluster olm config MCV has already been synced, skip if not found
+		// Check that managed cluster olm config MCV has already been synced. Skip if unable to get olm config MCV for any other reason.
 		olmConfigMCV, err := c.dynamicClient.Resource(api.ManagedClusterViewGroupVersionResource).Namespace(clusterName).Get(ctx, api.OLMConfigManagedClusterViewName, metav1.GetOptions{})
-		if apierrors.IsNotFound(err) {
-			klog.V(4).Infof("OLM config ManagedClusterView not found for managed cluster %v", clusterName)
-			continue
-		}
-
-		// Skip if unable to get olm config MCV for any other reason
 		if err != nil {
-			klog.V(4).Infof("Error getting OLM config ManagedClusterView for managed cluster %v", clusterName)
+			klog.V(4).Infof("Error getting OLM config ManagedClusterView for managed cluster %q: %v", clusterName, err)
 			continue
 		}
 
 		copiedCSVsDisabled, err := managedclusterviewsub.GetOLMConfigCopiedCSVDisabled(olmConfigMCV)
 		if err != nil {
-			klog.V(4).Infof("Error getting copiedCSVDisabled field for managed cluster %v", clusterName)
+			klog.V(4).Infof("Error getting copiedCSVDisabled field for managed cluster %q: %v", clusterName, err)
 			continue
 		}
 
-		controlPlaneTopology, err := managedclusterviewsub.GetInfrastructureConfigCopiedCSVDisabled(olmConfigMCV)
+		// Check that managed cluster infrastructure config MCV has already been synced. Skip if unable to get infrastructure config MCV for any other reason.
+		infraConfigMCV, err := c.dynamicClient.Resource(api.ManagedClusterViewGroupVersionResource).Namespace(clusterName).Get(ctx, api.InfrastructureConfigManagedClusterViewName, metav1.GetOptions{})
 		if err != nil {
-			klog.V(4).Infof("Error getting copiedCSVDisabled field for managed cluster %v", clusterName)
+			klog.V(4).Infof("Error getting Infrastructure config ManagedClusterView for managed cluster %q: %v", clusterName, err)
+			continue
+		}
+
+		controlPlaneTopology, err := managedclusterviewsub.GetInfrastructureConfigControlPlaneTopology(infraConfigMCV)
+		if err != nil {
+			klog.V(4).Infof("Error getting controlPlaneTopology field for managed cluster %q: %v", clusterName, err)
 			continue
 		}
 

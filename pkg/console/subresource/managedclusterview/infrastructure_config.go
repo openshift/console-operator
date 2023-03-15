@@ -30,8 +30,8 @@ func InfrastructureConfigViewStub(cn string) *unstructured.Unstructured {
 	return util.ReadUnstructuredOrDie(assets.MustAsset("managedclusterviews/infrastructure-config.yaml"))
 }
 
-func GetInfrastructureConfigCopiedCSVDisabled(olmConfig *unstructured.Unstructured) (string, error) {
-	controlPlaneTopology, found, err := unstructured.NestedString(olmConfig.Object, "status", "result", "status", "controlPlaneTopology")
+func GetInfrastructureConfigControlPlaneTopology(infraConfig *unstructured.Unstructured) (string, error) {
+	controlPlaneTopology, found, err := unstructured.NestedString(infraConfig.Object, "status", "result", "status", "controlPlaneTopology")
 	if err != nil || !found {
 		return "", err
 	}
