@@ -1,5 +1,5 @@
 # Default 'console' route manifest.
-# The 'console' route will be pointing to the 'console' service. 
+# The 'console' route will be pointing to the 'console' service.
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:

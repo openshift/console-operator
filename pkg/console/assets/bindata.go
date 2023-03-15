@@ -8,7 +8,6 @@
 // bindata/managedclusterviews/console-oauth-client.yaml
 // bindata/managedclusterviews/console-oauth-server-cert.yaml
 // bindata/managedclusterviews/olm-config.yaml
-// bindata/managedserviceproxyresolvers/thanos-querier.yaml
 // bindata/pdb/console-pdb.yaml
 // bindata/pdb/downloads-pdb.yaml
 // bindata/routes/console-custom-route.yaml
@@ -180,7 +179,7 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop:
-              - ALL
+                - ALL
           command:
             - /opt/bridge/bin/bridge
             - "--public-dir=/opt/bridge/static"
@@ -279,7 +278,7 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop:
-              - ALL
+                - ALL
           command:
             - /bin/sh
           livenessProbe:
@@ -299,7 +298,7 @@ spec:
           terminationMessagePolicy: FallbackToLogsOnError
           image: ${IMAGE}
           args:
-            - '-c'
+            - "-c"
             - |
               cat <<EOF >>/tmp/serve.py
               import errno, http.server, os, re, signal, socket, sys, tarfile, tempfile, threading, time, zipfile
@@ -542,39 +541,6 @@ func managedclusterviewsOlmConfigYaml() (*asset, error) {
 	return a, nil
 }
 
-var _managedserviceproxyresolversThanosQuerierYaml = []byte(`kind: ManagedProxyServiceResolver
-apiVersion: proxy.open-cluster-management.io/v1alpha1
-metadata:
-  name: thanos-querier-resolver
-  labels:
-    app: console
-spec:
-  managedClusterSelector:
-    type: ManagedClusterSet
-    managedClusterSet:
-      name: global
-  serviceSelector:
-    type: ServiceRef
-    serviceRef:
-      namespace: openshift-monitoring
-      name: thanos-querier
-`)
-
-func managedserviceproxyresolversThanosQuerierYamlBytes() ([]byte, error) {
-	return _managedserviceproxyresolversThanosQuerierYaml, nil
-}
-
-func managedserviceproxyresolversThanosQuerierYaml() (*asset, error) {
-	bytes, err := managedserviceproxyresolversThanosQuerierYamlBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	info := bindataFileInfo{name: "managedserviceproxyresolvers/thanos-querier.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
-	a := &asset{bytes: bytes, info: info}
-	return a, nil
-}
-
 var _pdbConsolePdbYaml = []byte(`apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -585,7 +551,8 @@ spec:
   selector:
     matchLabels:
       app: console
-      component: ui`)
+      component: ui
+`)
 
 func pdbConsolePdbYamlBytes() ([]byte, error) {
 	return _pdbConsolePdbYaml, nil
@@ -612,7 +579,8 @@ spec:
   selector:
     matchLabels:
       app: console
-      component: downloads`)
+      component: downloads
+`)
 
 func pdbDownloadsPdbYamlBytes() ([]byte, error) {
 	return _pdbDownloadsPdbYaml, nil
@@ -631,7 +599,7 @@ func pdbDownloadsPdbYaml() (*asset, error) {
 
 var _routesConsoleCustomRouteYaml = []byte(`# This route 'console-custom' manifest is used in case a custom console route is set
 # either on the ingress config or console-operator config.
-# The 'console-custom' route will be pointing to the 'console' service. 
+# The 'console-custom' route will be pointing to the 'console' service.
 # Only a single custom console route is supported.
 kind: Route
 apiVersion: route.openshift.io/v1
@@ -709,7 +677,7 @@ func routesConsoleRedirectRouteYaml() (*asset, error) {
 }
 
 var _routesConsoleRouteYaml = []byte(`# Default 'console' route manifest.
-# The 'console' route will be pointing to the 'console' service. 
+# The 'console' route will be pointing to the 'console' service.
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
@@ -782,7 +750,7 @@ func routesDownloadsCustomRouteYaml() (*asset, error) {
 }
 
 var _routesDownloadsRouteYaml = []byte(`# Default 'downloads' route manifest.
-# The 'downloads' route will be pointing to the 'downloads' service. 
+# The 'downloads' route will be pointing to the 'downloads' service.
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -859,7 +827,7 @@ func servicesConsoleRedirectServiceYaml() (*asset, error) {
 }
 
 var _servicesConsoleServiceYaml = []byte(`# Default 'console' service manifest.
-# The 'console' service will be pointing to the 'console' deployment. 
+# The 'console' service will be pointing to the 'console' deployment.
 apiVersion: v1
 kind: Service
 metadata:
@@ -898,7 +866,7 @@ func servicesConsoleServiceYaml() (*asset, error) {
 }
 
 var _servicesDownloadsServiceYaml = []byte(`# Default 'downloads' service manifest.
-# The 'downloads' route will be pointing to the 'downloads' deployment. 
+# The 'downloads' route will be pointing to the 'downloads' deployment.
 apiVersion: v1
 kind: Service
 metadata:
@@ -906,10 +874,10 @@ metadata:
   name: downloads
 spec:
   ports:
-  - name: http
-    port: 80
-    protocol: TCP
-    targetPort: 8080
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8080
   selector:
     app: console
     component: downloads
@@ -992,7 +960,6 @@ var _bindata = map[string]func() (*asset, error){
 	"managedclusterviews/console-oauth-client.yaml":          managedclusterviewsConsoleOauthClientYaml,
 	"managedclusterviews/console-oauth-server-cert.yaml":     managedclusterviewsConsoleOauthServerCertYaml,
 	"managedclusterviews/olm-config.yaml":                    managedclusterviewsOlmConfigYaml,
-	"managedserviceproxyresolvers/thanos-querier.yaml":       managedserviceproxyresolversThanosQuerierYaml,
 	"pdb/console-pdb.yaml":                                   pdbConsolePdbYaml,
 	"pdb/downloads-pdb.yaml":                                 pdbDownloadsPdbYaml,
 	"routes/console-custom-route.yaml":                       routesConsoleCustomRouteYaml,
@@ -1063,9 +1030,6 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"console-oauth-client.yaml":      {managedclusterviewsConsoleOauthClientYaml, map[string]*bintree{}},
 		"console-oauth-server-cert.yaml": {managedclusterviewsConsoleOauthServerCertYaml, map[string]*bintree{}},
 		"olm-config.yaml":                {managedclusterviewsOlmConfigYaml, map[string]*bintree{}},
-	}},
-	"managedserviceproxyresolvers": {nil, map[string]*bintree{
-		"thanos-querier.yaml": {managedserviceproxyresolversThanosQuerierYaml, map[string]*bintree{}},
 	}},
 	"pdb": {nil, map[string]*bintree{
 		"console-pdb.yaml":   {pdbConsolePdbYaml, map[string]*bintree{}},

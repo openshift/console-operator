@@ -49,7 +49,7 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop:
-              - ALL
+                - ALL
           command:
             - /bin/sh
           livenessProbe:
@@ -69,7 +69,7 @@ spec:
           terminationMessagePolicy: FallbackToLogsOnError
           image: ${IMAGE}
           args:
-            - '-c'
+            - "-c"
             - |
               cat <<EOF >>/tmp/serve.py
               import errno, http.server, os, re, signal, socket, sys, tarfile, tempfile, threading, time, zipfile

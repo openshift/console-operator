@@ -9,13 +9,13 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
-	clusterproxy "open-cluster-management.io/cluster-proxy/pkg/apis/proxy/v1alpha1"
+	proxy "open-cluster-management.io/cluster-proxy/pkg/apis/proxy/v1alpha1"
 	proxyclient "open-cluster-management.io/cluster-proxy/pkg/generated/clientset/versioned/typed/proxy/v1alpha1"
 )
 
-// ApplyManagedProxyServiceResolver merges objectmeta, requires spec.
+// Apply merges objectmeta, requires spec.
 // If existing.Spec doesn't deeply equal required.Spec, existing is updated to match required.
-func ApplyManagedProxyServiceResolver(ctx context.Context, client proxyclient.ManagedProxyServiceResolverInterface, required *clusterproxy.ManagedProxyServiceResolver) error {
+func ApplyManagedProxyServiceResolver(ctx context.Context, client proxyclient.ManagedProxyServiceResolverInterface, required *proxy.ManagedProxyServiceResolver) error {
 	existing, err := client.Get(ctx, required.Name, metav1.GetOptions{})
 
 	// If existing resource isn't found, try to create it
@@ -24,7 +24,7 @@ func ApplyManagedProxyServiceResolver(ctx context.Context, client proxyclient.Ma
 
 		// Create failed, return error
 		if err != nil {
-			klog.V(4).Infof("failed to create ManagedServiceProxyResolver '%s': %s/n", required.Name, err)
+			klog.V(4).Infof("failed to create ManagedProxyServiceResolver %q: %v/n", required.Name, err)
 			return err
 		}
 
@@ -34,7 +34,7 @@ func ApplyManagedProxyServiceResolver(ctx context.Context, client proxyclient.Ma
 
 	// Get failed, return error
 	if err != nil {
-		klog.V(4).Infoln("failed to get ManagedServiceProxyResolver '%s': %s/n", required.Name, err)
+		klog.V(4).Infoln("failed to get ManagedProxyServiceResolver %q: %v/n", required.Name, err)
 		return err
 	}
 
@@ -51,7 +51,7 @@ func ApplyManagedProxyServiceResolver(ctx context.Context, client proxyclient.Ma
 
 		// Update failed, return error
 		if err != nil {
-			klog.V(4).Infof("failed to update ManagedServiceProxyResolver '%s': %s/n", required.Name, err)
+			klog.V(4).Infof("failed to update ManagedProxyServiceResolver %q: %v/n", required.Name, err)
 			return err
 		}
 	}

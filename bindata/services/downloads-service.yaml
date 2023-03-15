@@ -1,5 +1,5 @@
 # Default 'downloads' service manifest.
-# The 'downloads' route will be pointing to the 'downloads' deployment. 
+# The 'downloads' route will be pointing to the 'downloads' deployment.
 apiVersion: v1
 kind: Service
 metadata:
@@ -7,10 +7,10 @@ metadata:
   name: downloads
 spec:
   ports:
-  - name: http
-    port: 80
-    protocol: TCP
-    targetPort: 8080
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8080
   selector:
     app: console
     component: downloads

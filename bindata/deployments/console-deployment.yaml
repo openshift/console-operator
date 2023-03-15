@@ -58,7 +58,7 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop:
-              - ALL
+                - ALL
           command:
             - /opt/bridge/bin/bridge
             - "--public-dir=/opt/bridge/static"

@@ -1,5 +1,5 @@
 # Default 'console' service manifest.
-# The 'console' service will be pointing to the 'console' deployment. 
+# The 'console' service will be pointing to the 'console' deployment.
 apiVersion: v1
 kind: Service
 metadata:

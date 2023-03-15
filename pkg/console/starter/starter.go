@@ -24,7 +24,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator"
 	"github.com/openshift/console-operator/pkg/api"
 	managedcluster "github.com/openshift/console-operator/pkg/console/controllers/advancedclustermanagement/managedclusters"
-	"github.com/openshift/console-operator/pkg/console/controllers/advancedclustermanagement/thanosquerierproxyserviceresolver"
+	"github.com/openshift/console-operator/pkg/console/controllers/advancedclustermanagement/managedproxyserviceresolver"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
 	"github.com/openshift/console-operator/pkg/console/controllers/healthcheck"
@@ -354,7 +354,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		recorder,
 	)
 
-	thanosQuerierProxyServiceResolverController := thanosquerierproxyserviceresolver.NewThanosQuerierProxyServiceResolverController(
+	managedProxyServiceResolverController := managedproxyserviceresolver.NewManagedProxyServiceResolverController(
 		// clients
 		operatorClient,
 		operatorConfigClient.OperatorV1().Consoles(),
@@ -518,7 +518,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleRouteController,
 		downloadsServiceController,
 		downloadsRouteController,
-		thanosQuerierProxyServiceResolverController,
+		managedProxyServiceResolverController,
 		managedClusterController,
 		consoleOperator,
 		cliDownloadsController,

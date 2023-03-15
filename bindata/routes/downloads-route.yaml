@@ -1,5 +1,5 @@
 # Default 'downloads' route manifest.
-# The 'downloads' route will be pointing to the 'downloads' service. 
+# The 'downloads' route will be pointing to the 'downloads' service.
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
