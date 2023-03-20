@@ -58,6 +58,8 @@ const (
 	CreateOAuthClientManagedClusterActionName = "console-create-oauth-client"
 	OAuthServerCertManagedClusterViewName     = "console-oauth-server-cert"
 	OLMConfigManagedClusterViewName           = "olm-config"
+	ManagedClusterVersionClaim                = "version.openshift.io"
+	ManagedClusterProductClaim                = "product.open-cluster-management.io"
 
 	V1Alpha1PluginI18nAnnotation = "console.openshift.io/use-i18n"
 
@@ -65,14 +67,12 @@ const (
 
 	NodeArchitectureLabel = "kubernetes.io/arch"
 
-	ManagedClusterViewAPIGroup           = "view.open-cluster-management.io"
-	ManagedClusterViewAPIVersion         = "v1beta1"
-	ManagedClusterViewResource           = "managedclusterviews"
-	ManagedClusterActionAPIGroup         = "action.open-cluster-management.io"
-	ManagedClusterActionAPIVersion       = "v1beta1"
-	ManagedClusterActionResource         = "managedclusteractions"
-	ManagedClusterClaimVersionAnnotation = "version.openshift.io"
-	ManagedClusterClaimProductAnnotation = "product.open-cluster-management.io"
+	ManagedClusterViewAPIGroup     = "view.open-cluster-management.io"
+	ManagedClusterViewAPIVersion   = "v1beta1"
+	ManagedClusterViewResource     = "managedclusterviews"
+	ManagedClusterActionAPIGroup   = "action.open-cluster-management.io"
+	ManagedClusterActionAPIVersion = "v1beta1"
+	ManagedClusterActionResource   = "managedclusteractions"
 
 	OLMConfigGroup    = "operators.coreos.com"
 	OLMConfigVersion  = "v1"
@@ -105,4 +105,11 @@ var (
 )
 
 // List of products we support for managed clusters (under the claims "product.open-cluster-management.io")
-var SupportedClusterProducts = []string{"OpenShift", "ROSA", "ARO", "ROKS", "OpenShiftDedicated"}
+// Use a map for trivial lookup
+var SupportedClusterProducts = map[string]struct{}{
+	"OpenShift":          {},
+	"ROSA":               {},
+	"ARO":                {},
+	"ROKS":               {},
+	"OpenShiftDedicated": {},
+}
