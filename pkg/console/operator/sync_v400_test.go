@@ -111,6 +111,30 @@ func TestGetNodeArchitectures(t *testing.T) {
 			},
 			expected: []string{"baz"},
 		},
+		{
+			name: "Test getNodeArchitectures duplicate arch label",
+			nodeList: &v1.NodeList{
+				Items: []v1.Node{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "node-1",
+							Labels: map[string]string{
+								api.NodeArchitectureLabel: "baz",
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "node-2",
+							Labels: map[string]string{
+								api.NodeArchitectureLabel: "baz",
+							},
+						},
+					},
+				},
+			},
+			expected: []string{"baz"},
+		},
 	}
 
 	for _, tt := range tests {
