@@ -621,7 +621,9 @@ func getNodeArchitectures(nodes *corev1.NodeList) []string {
 	nodeArchitecturesSet := sets.NewString()
 	for _, node := range nodes.Items {
 		nodeArch := node.Labels[api.NodeArchitectureLabel]
-		nodeArchitecturesSet.Insert(nodeArch)
+		if nodeArch != "" {
+			nodeArchitecturesSet.Insert(nodeArch)
+		}
 	}
 	return nodeArchitecturesSet.List()
 }
