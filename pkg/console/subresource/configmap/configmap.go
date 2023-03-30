@@ -52,6 +52,7 @@ func DefaultConfigMap(
 	availablePlugins []*v1.ConsolePlugin,
 	managedClusterConfigFile string,
 	nodeArchitectures []string,
+	nodeOperatingSystems []string,
 	copiedCSVsDisabled bool,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
@@ -65,7 +66,8 @@ func DefaultConfigMap(
 		Monitoring(monitoringSharedConfig).
 		InactivityTimeout(inactivityTimeoutSeconds).
 		ReleaseVersion().
-		NodesArchitecture(nodeArchitectures).
+		NodeArchitectures(nodeArchitectures).
+		NodeOperatingSystems(nodeOperatingSystems).
 		CopiedCSVsDisabled(copiedCSVsDisabled).
 		ConfigYAML()
 	if err != nil {
@@ -99,7 +101,8 @@ func DefaultConfigMap(
 		ManagedClusterConfigFile(managedClusterConfigFile).
 		TelemetryConfiguration(GetTelemetryConfiguration(operatorConfig)).
 		ReleaseVersion().
-		NodesArchitecture(nodeArchitectures).
+		NodeArchitectures(nodeArchitectures).
+		NodeOperatingSystems(nodeOperatingSystems).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate user defined console-config config: %v", err)
