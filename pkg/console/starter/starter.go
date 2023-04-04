@@ -8,8 +8,6 @@ import (
 
 	// kube
 	corev1 "k8s.io/api/core/v1"
-	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	apiextensionsinformers "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/dynamic"
@@ -23,8 +21,6 @@ import (
 	"github.com/openshift/api/oauth"
 	operatorv1 "github.com/openshift/api/operator"
 	"github.com/openshift/console-operator/pkg/api"
-	managedcluster "github.com/openshift/console-operator/pkg/console/controllers/advancedclustermanagement/managedclusters"
-	"github.com/openshift/console-operator/pkg/console/controllers/advancedclustermanagement/thanosquerierproxyserviceresolver"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
 	"github.com/openshift/console-operator/pkg/console/controllers/healthcheck"
@@ -56,10 +52,6 @@ import (
 
 	consolev1client "github.com/openshift/client-go/console/clientset/versioned"
 	consoleinformers "github.com/openshift/client-go/console/informers/externalversions"
-
-	clusterclient "github.com/open-cluster-management/api/client/cluster/clientset/versioned"
-
-	proxyclient "open-cluster-management.io/cluster-proxy/pkg/generated/clientset/versioned"
 
 	"github.com/openshift/console-operator/pkg/console/clientwrapper"
 	"github.com/openshift/console-operator/pkg/console/operator"
@@ -106,22 +98,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		return err
 	}
 
-	managedClusterClient, err := clusterclient.NewForConfig(controllerContext.KubeConfig)
-	if err != nil {
-		return err
-	}
-
 	dynamicClient, err := dynamic.NewForConfig(controllerContext.KubeConfig)
-	if err != nil {
-		return err
-	}
-
-	proxyClient, err := proxyclient.NewForConfig(controllerContext.KubeConfig)
-	if err != nil {
-		return err
-	}
-
-	apiExtensionsClient, err := apiextensionsclient.NewForConfig(controllerContext.KubeConfig)
 	if err != nil {
 		return err
 	}
@@ -178,12 +155,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	dynamicInformers := dynamicinformer.NewDynamicSharedInformerFactory(
 		dynamicClient,
 		resync,
-	)
-
-	apiExentensionsInformers := apiextensionsinformers.NewSharedInformerFactoryWithOptions(
-		apiExtensionsClient,
-		resync,
-		apiextensionsinformers.WithTweakListOptions(tweakListOptionsForCRDInformer),
 	)
 
 	operatorClient := &operatorclient.OperatorClient{
@@ -354,42 +325,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		recorder,
 	)
 
-	thanosQuerierProxyServiceResolverController := thanosquerierproxyserviceresolver.NewThanosQuerierProxyServiceResolverController(
-		// clients
-		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(),
-		apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions(),
-		proxyClient.ProxyV1alpha1().ManagedProxyServiceResolvers(),
-
-		// informers
-		operatorConfigInformers.Operator().V1().Consoles(),
-		apiExentensionsInformers.Apiextensions().V1().CustomResourceDefinitions(),
-
-		//events
-		recorder,
-	)
-
-	managedClusterController := managedcluster.NewManagedClusterController(
-		// top level config
-		configClient.ConfigV1(),
-		configInformers,
-
-		// clients
-		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(),
-		kubeClient.CoreV1(),
-		managedClusterClient.ClusterV1(),
-		dynamicClient,
-		kubeClient.CoreV1(),
-		oauthClient.OauthV1(),
-
-		// informers
-		operatorConfigInformers.Operator().V1().Consoles(),
-
-		//events
-		recorder,
-	)
-
 	upgradeNotificationController := upgradenotification.NewUpgradeNotificationController(
 		// top level config
 		configClient.ConfigV1(),
@@ -500,7 +435,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configInformers,
 		routesInformersNamespaced,
 		oauthInformers,
-		apiExentensionsInformers,
 		dynamicInformers,
 	} {
 		informer.Start(ctx.Done())
@@ -518,8 +452,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleRouteController,
 		downloadsServiceController,
 		downloadsRouteController,
-		thanosQuerierProxyServiceResolverController,
-		managedClusterController,
 		consoleOperator,
 		cliDownloadsController,
 		downloadsDeploymentController,
