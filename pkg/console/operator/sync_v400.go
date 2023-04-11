@@ -374,7 +374,7 @@ func (co *consoleOperator) SyncConfigMap(
 	if nodeListErr != nil {
 		return nil, false, "FailedListNodes", nodeListErr
 	}
-	nodeArchitectures := getNodeArchitectures(nodeList)
+	nodeArchitectures, nodeOperatingSystems := getNodeComputeEnvironments(nodeList)
 
 	useDefaultCAFile := false
 	// We are syncing the `oauth-serving-cert` configmap from `openshift-config-managed` to `openshift-console`.
@@ -427,6 +427,7 @@ func (co *consoleOperator) SyncConfigMap(
 		availablePlugins,
 		managedClusterConfigFile,
 		nodeArchitectures,
+		nodeOperatingSystems,
 		copiedCSVsDisabled,
 	)
 	if err != nil {
@@ -617,17 +618,25 @@ func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []string) []*
 	return availablePlugins
 }
 
-func getNodeArchitectures(nodes *corev1.NodeList) []string {
+func getNodeComputeEnvironments(nodes *corev1.NodeList) ([]string, []string) {
 	nodeArchitecturesSet := sets.NewString()
+	nodeOperatingSystemSet := sets.NewString()
 	for _, node := range nodes.Items {
 		nodeArch := node.Labels[api.NodeArchitectureLabel]
 		if nodeArch == "" {
-			klog.Warningf("Architecture label %q missing on node %q", api.NodeArchitectureLabel, node.GetName())
+			klog.Warningf("Missing architecture label %q on node %q.", api.NodeArchitectureLabel, node.GetName())
 		} else {
 			nodeArchitecturesSet.Insert(nodeArch)
 		}
+
+		nodeOperatingSystem := node.Labels[api.NodeOperatingSystemLabel]
+		if nodeOperatingSystem == "" {
+			klog.Warningf("Missing operating system label %q on node %q", api.NodeOperatingSystemLabel, node.GetName())
+		} else {
+			nodeOperatingSystemSet.Insert(nodeOperatingSystem)
+		}
 	}
-	return nodeArchitecturesSet.List()
+	return nodeArchitecturesSet.List(), nodeOperatingSystemSet.List()
 }
 
 func (co *consoleOperator) isCopiedCSVsDisabled(ctx context.Context) (bool, error) {

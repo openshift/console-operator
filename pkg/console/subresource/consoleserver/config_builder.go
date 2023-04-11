@@ -64,6 +64,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	telemetry                  map[string]string
 	releaseVersion             string
 	nodeArchitectures          []string
+	nodeOperatingSystems       []string
 	copiedCSVsDisabled         bool
 }
 
@@ -186,8 +187,13 @@ func (b *ConsoleServerCLIConfigBuilder) ReleaseVersion() *ConsoleServerCLIConfig
 	return b
 }
 
-func (b *ConsoleServerCLIConfigBuilder) NodesArchitecture(architectures []string) *ConsoleServerCLIConfigBuilder {
+func (b *ConsoleServerCLIConfigBuilder) NodeArchitectures(architectures []string) *ConsoleServerCLIConfigBuilder {
 	b.nodeArchitectures = architectures
+	return b
+}
+
+func (b *ConsoleServerCLIConfigBuilder) NodeOperatingSystems(operatingSystems []string) *ConsoleServerCLIConfigBuilder {
+	b.nodeOperatingSystems = operatingSystems
 	return b
 }
 
@@ -257,6 +263,10 @@ func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {
 	}
 	if len(b.nodeArchitectures) > 0 {
 		conf.NodeArchitectures = b.nodeArchitectures
+	}
+
+	if len(b.nodeOperatingSystems) > 0 {
+		conf.NodeOperatingSystems = b.nodeOperatingSystems
 	}
 	conf.CopiedCSVsDisabled = b.copiedCSVsDisabled
 	return conf
