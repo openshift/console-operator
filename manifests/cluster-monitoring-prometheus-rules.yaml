@@ -1,0 +1,30 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  namespace: openshift-console-operator
+  name: cluster-monitoring-prometheus-rules
+  labels:
+    prometheus: k8s
+  annotations:
+    capability.openshift.io/name: Console
+    include.release.openshift.io/ibm-cloud-managed: "true"
+    include.release.openshift.io/self-managed-high-availability: "true"
+    include.release.openshift.io/single-node-developer: "true"
+spec:
+  groups:
+    - name: openshift/console-operator
+      rules:
+        - expr: 'sum(console_auth_login_requests_total)'
+          record: 'cluster:console_auth_login_requests_total:sum'
+        - expr: 'sum(console_auth_login_successes_total) by (role)'
+          record: 'cluster:console_auth_login_successes_total:sum'
+        - expr: 'sum(console_auth_login_failures_total) by (reason)'
+          record: 'cluster:console_auth_login_failures_total:sum'
+        - expr: 'sum(console_auth_logout_requests_total) by (reason)'
+          record: 'cluster:console_auth_logout_requests_total:sum'
+        - expr: 'max(console_usage_users) by (role)'
+          record: 'cluster:console_usage_users:max'
+        - expr: 'max(console_plugins_info{name=~"redhat|demo|other"}) by (name, state)'
+          record: 'cluster:console_plugins_info:max'
+        - expr: 'max(console_customization_perspectives_info{name=~"admin|dev|acm|other"}) by (name, state)'
+          record: 'cluster:console_customization_perspectives_info:max'
