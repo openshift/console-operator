@@ -445,10 +445,12 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 			// "DefaultIngressCertValidation",
 			// in 4.13 we are removing CustomRouteSync and DefaultRouteSync
 			// we are need to backport the removal of these conditions all the way down to 4.10
-			// since we only remove the in https://github.com/openshift/console-operator/pull/662
-			// and its cause upgrade issues to the customers
-			"CustomRouteSync",
-			"DefaultRouteSync",
+			// since we only remove them in https://github.com/openshift/console-operator/pull/662
+			// and its causing upgrade issues to the customers
+			"CustomRouteSyncDegraded",
+			"CustomRouteSyncProgressing",
+			"DefaultRouteSyncDegraded",
+			"DefaultRouteSyncProgressing",
 		},
 		operatorClient,
 		controllerContext.EventRecorder,
