@@ -181,3 +181,22 @@ func TestHTTPS(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoveDuplicateStr(t *testing.T) {
+	tests := []struct {
+		strSlice []string
+		want     []string
+	}{
+		{
+			strSlice: []string{"plugin1", "plugin2", "plugin3", "plugin1", "plugin2"},
+			want:     []string{"plugin1", "plugin2", "plugin3"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run("RemoveDuplicateStr unit test", func(t *testing.T) {
+			if diff := deep.Equal(RemoveDuplicateStr(tt.strSlice), tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
