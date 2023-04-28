@@ -1,0 +1,215 @@
+apiVersion: console.openshift.io/v1
+kind: ConsoleQuickStart
+metadata:
+  name: jboss-eap7-with-helm
+  annotations:
+    include.release.openshift.io/ibm-cloud-managed: 'true'
+    include.release.openshift.io/self-managed-high-availability: 'true'
+    include.release.openshift.io/single-node-developer: 'true'
+    capability.openshift.io/name: Console
+spec:
+  description: 'Deploy a JBoss EAP 7 application using a Helm Chart.'
+  displayName: Get started with JBoss EAP 7 using a Helm Chart
+  durationMinutes: 10
+  icon: >-
+    data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6I2Q3MWUwMDt9LmNscy0ye2ZpbGw6I2MyMWEwMDt9LmNscy0ze2ZpbGw6I2NkY2RjZDt9LmNscy00e2ZpbGw6I2I3YjdiNzt9LmNscy01e2ZpbGw6I2VhZWFlYTt9LmNscy02e2ZpbGw6I2ZmZjt9PC9zdHlsZT48L2RlZnM+PHRpdGxlPkxvZ288L3RpdGxlPjxnIGlkPSJMYXllcl8xIiBkYXRhLW5hbWU9IkxheWVyIDEiPjxjaXJjbGUgY2xhc3M9ImNscy0xIiBjeD0iNTAiIGN5PSI1MCIgcj0iNTAiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMC43MSA1MCkgcm90YXRlKC00NSkiLz48cGF0aCBjbGFzcz0iY2xzLTIiIGQ9Ik04NS4zNiwxNC42NEE1MCw1MCwwLDAsMSwxNC42NCw4NS4zNloiLz48cGF0aCBjbGFzcz0iY2xzLTMiIGQ9Ik02MC4xNyw0My4xM2EzLjQxLDMuNDEsMCwwLDEsLjA3LjY4QTMuNCwzLjQsMCwwLDAsNjAuMTcsNDMuMTNaIi8+PHBhdGggY2xhc3M9ImNscy0zIiBkPSJNNTkuMjEsNDEuMzhBMy40OCwzLjQ4LDAsMCwxLDYwLDQyLjQ3LDMuNDgsMy40OCwwLDAsMCw1OS4yMSw0MS4zOFoiLz48cG9seWdvbiBjbGFzcz0iY2xzLTMiIHBvaW50cz0iNTkuMTMgNDEuMjkgNTkuMTMgNDEuMjkgNTkuMDQgNDEuMjEgNTkuMTMgNDEuMjkiLz48cGF0aCBjbGFzcz0iY2xzLTMiIGQ9Ik01OS4xMiw0Ni4zNCwzMy41NCw2OS43M2wyNS41OC0yMy40YTMuNDUsMy40NSwwLDAsMCwuOTEtMS40QTMuNDUsMy40NSwwLDAsMSw1OS4xMiw0Ni4zNFoiLz48cGF0aCBjbGFzcz0iY2xzLTMiIGQ9Ik0yOC41NCw3MS40OCw1OC44Nyw0MSw1OC43OSw0MWEzLjcsMy43LDAsMCwwLTUuMjEuMkwyOSw2OC4yNmMtMSwxLTEuMTksMi41Mi0uMzUsMy4zMWExLjc1LDEuNzUsMCwwLDAsLjc0LjQxLDEuNzUsMS43NSwwLDAsMS0uNzQtLjQxWiIvPjxwYXRoIGNsYXNzPSJjbHMtNCIgZD0iTTI4LjYyLDcxLjU3QTIuNTIsMi41MiwwLDAsMCwzMiw3MS4xMUw1OS4xMiw0Ni4zNGEzLjQyLDMuNDIsMCwwLDAsMC01TDU4Ljg3LDQxLDI4LjU0LDcxLjQ4WiIvPjxwYXRoIGNsYXNzPSJjbHMtNSIgZD0iTTM0LjQ2LDM0LjcxbC0xMC42LTguNDNhMi42LDIuNiwwLDAsMC00LjIsMi4zM2wuMTksMS42NGExOC4yMSwxOC4yMSwwLDAsMCwxMS42OSwxNWwxMy42OSw1LjE0LDIuMzEtMi41NUwzNi4xNiwzNi43M0ExNi40NSwxNi40NSwwLDAsMSwzNC40NiwzNC43MVoiLz48cGF0aCBjbGFzcz0iY2xzLTUiIGQ9Ik03NC42OSw3NS40MSw2NS44OCw2NS4xMmExNi40NSwxNi40NSwwLDAsMS0yLjA4LTEuNjNMNTIuMzMsNTIuNTVsLTIuNTIsMi4zLDUuNjcsMTMuNThBMTguMjEsMTguMjEsMCwwLDAsNzAuODcsNzkuNTZsMS42NC4xM0EyLjYsMi42LDAsMCwwLDc0LjY5LDc1LjQxWiIvPjxwYXRoIGNsYXNzPSJjbHMtNSIgZD0iTTU4LjY0LDQ2Ljc4YTMsMywwLDAsMCwzLjg1LTIuMTcsMy4yOCwzLjI4LDAsMCwwLTMtNC4xNWgwbC0uNTkuNTloMGwuMjYuMjVhMy40MiwzLjQyLDAsMCwxLDAsNVoiLz48cGF0aCBjbGFzcz0iY2xzLTYiIGQ9Ik0zMi43NywxNy4xOGwtLjUsMS41M2ExNy42LDE3LjYsMCwwLDAsMy44OSwxOEw0Ny41Myw0Ny44MmwzLjYxLTQtMTMuNy0yN0EyLjU0LDIuNTQsMCwwLDAsMzIuNzcsMTcuMThaIi8+PHBhdGggY2xhc3M9ImNscy02IiBkPSJNODMuNjUsNjEuNDgsNTYuMzUsNDguODdsLTQsMy42OEw2My44LDYzLjQ5YTE3LjYsMTcuNiwwLDAsMCwxOC4xNSwzLjIzbDEuNTEtLjU1QTIuNTQsMi41NCwwLDAsMCw4My42NSw2MS40OFoiLz48cGF0aCBjbGFzcz0iY2xzLTYiIGQ9Ik01My41OCw0MS4xN2EzLjcsMy43LDAsMCwxLDUuMjEtLjJsLjA4LjA4aDBsLjU5LS41OWgwYTMuNDEsMy40MSwwLDAsMC00LjI5LTIuOTNjLTIsLjM4LTMuMDcsMi42OC0yLDQuMTFaIi8+PC9nPjwvc3ZnPg==
+  introduction: |-
+    [Red Hat® JBoss® Enterprise Application Platform (EAP)](https://www.redhat.com/en/technologies/jboss-middleware/application-platform) is an application server. It includes everything needed to build, run, deploy, and manage enterprise Java applications in a variety of environments, including on-premise, virtual environments, and in private, public, and hybrid clouds.
+
+    * **Optimized for OpenShift, Cloud and Containers**
+
+    * **Jakarta EE 8 compatibility**
+
+    * **Lightweight, flexible architecture**
+
+    * **Red Hat Portfolio Integration**
+
+    * **More productive developers with DevOps and Agile Development**
+
+    With this quick start, you can deploy and run a [Jakarta EE application](https://github.com/jboss-eap-up-and-running/eap7-getting-started) with JBoss EAP 7 on OpenShift.
+
+    **Note:** The quickstart uses a sample [Jakarta EE application](https://github.com/jboss-eap-up-and-running/eap7-getting-started). You can deploy your own Jakarta EE application using the same steps.
+    The quick start has instructions where changes would be needed (Task 1).
+
+  tasks:
+    - description: >-
+        To create a JBoss EAP 7 application:
+        
+        1. In the main navigation, click the dropdown menu [perspective switcher]{{highlight qs-perspective-switcher}} and select **Developer**.
+        
+        1. In the navigation menu, click [Add]{{highlight qs-nav-add}}.  
+           The **Add** page opens.
+
+        1. In the **Add** page, click **Helm Chart**.
+        
+        1. In the **Helm Charts** catalog, search for **JBoss EAP 7.4**.
+        
+        1. Click the **JBoss EAP 7.4**  Helm chart card.
+
+            - The side panel displays information about the JBoss EAP 7 Helm chart.
+
+        1. Click **Install Helm Chart**.
+        
+            - Some form sections are collapsed by default. Click **>** to expand and view its content.  
+              **Note:** No updates are required to these sections to proceed.
+
+            - The details about the [Jakarta EE application](https://github.com/jboss-eap-up-and-running/eap7-getting-started) that you are building and deploying are specified in the `build.uri` field:
+
+              ```
+              build:
+                  uri: https://github.com/jboss-eap-up-and-running/eap7-getting-started
+              ```
+
+              **Note:** If you are building a different application, you must change this `uri` field to point to the Git repository of that application.
+
+        1.  Click **Install** to create the JBoss EAP 7 application using the Helm Chart.
+
+            - The console switches to the [Topology]{{highlight qs-nav-topology}} view and displays a pane with the Helm Release notes.
+              After you read the notes, you can close the pane.
+      review:
+        failedTaskHelp: This task isn’t verified yet. Try the task again.
+        instructions: |-
+          The Helm release is represented by a dashed box that contains the JBoss EAP icon and **eap74** text. This content is placed outside the dashed box.
+
+          The deployment is indicated by a circle inside the dashed box with text **D eap74**.
+
+          Verify the application was successfully created:
+          
+          - Do you see an **eap74** Helm Release?
+          
+          - Do you see an **eap74** deployment?
+
+      summary:
+        failed: Try the steps again.
+        success: Your JBoss EAP7 application has been deployed onto OpenShift.
+      title: Create a JBoss EAP7 application with Helm
+    - description: >-
+        To view the Helm release:
+
+        1. In the navigation menu, click [Helm]{{highlight qs-nav-helm}}.
+
+        1. Click **eap74** Helm release.  
+           The **Helm Release details** page opens. It shows all the information related to the Helm release that you installed.
+
+           -  Click the **Resources** tab. It lists all the resources created by this Helm release.
+      review:
+        failedTaskHelp: This task isn’t verified yet. Try the task again.
+        instructions: >-
+          Verify you see the Helm release:
+
+          - Do you see a **Deployed** label next to the Helm Release **eap74**?
+      summary:
+        failed: Try the steps again.
+        success: Your Helm release for JBoss EAP 7 is deployed.
+      title: View the Helm release
+    - description: >-
+        To view the associated code:
+
+        1. In the navigation menu, click [Topology]{{highlight qs-nav-topology}}.  
+           In the Topology view, the **eap74** deployment displays a code icon in the bottom right-hand corner. This icon either represents the Git repository
+           of the associated code, or if the appropriate operators are installed, it will bring up the associated code in your IDE.
+
+        1. If the icon shown is CodeReady Workspaces or Eclipse Che, clicking the icon opens the associated code in your IDE.
+
+        1. If the icon represents a Git repository, clicking the icon opens the associated Git repository.
+      review:
+        failedTaskHelp: >-
+          This task isn’t verified yet. Try the task again.
+        instructions: >-
+          Verify that you can see the code associated with your application:
+
+          - Did the Git repository or your IDE open in a separate browser window?
+      summary:
+        failed: Try the steps again.
+        success: You viewed the code associated with the **eap74** deployment.
+      title: View the associated code
+    - description: >-
+        To view the build status of the JBoss EAP 7 application:
+
+        1. In the navigation menu, click [Topology]{{highlight qs-nav-topology}}.
+
+        1. In the Topology view, click **D eap74**.  
+           A side panel opens with detailed information about the application.
+
+        1. In the side panel, click the **Resources** tab.  
+           The **Builds** section shows all the details related to builds of the application.
+
+        The JBoss EAP 7 application is built in two steps:
+
+          - The first build configuration **eap74-build-artifacts** compiles and packages the Jakarta EE application, and creates a JBoss EAP server.
+            The application is run on this JBoss EAP server.
+
+            The build may take a few minutes to complete. The build state is indicated by a relevant message such as **Pending**, **Running**, and **Complete**.
+
+            When the build is complete, a checkmark and the following message is displayed: **Build #1 was complete**.
+
+            When the first build is complete, the second build starts.
+
+          - The second build configuration **eap74** puts the Jakarta EE deployment and the JBoss EAP server in a runtime image that contains only what is required to run the  application.
+
+            When the second build is complete, a checkmark and the following message are displayed: **Build #2 was complete**.
+      review:
+        failedTaskHelp: This task isn’t verified yet. Try the task again.
+        instructions: >-
+          The two builds for **eap74-build-artifacts** and **eap74** may take a few minutes to complete.
+
+          Verify the builds are complete:
+
+          - The message **Build #1 was complete** is displayed for the **eap74-build-artifacts** build configuration. Did this message appear?
+
+          - The message **Build #2 was complete** is displayed for the **eap74** build configuration. Did this message appear?
+      summary:
+        failed: Try the steps again.
+        success: Your build is complete.
+      title: View the Build status
+    - description: >-
+        To view the pod status:
+
+        1. In the navigation menu, click [Topology]{{highlight qs-nav-topology}}.
+
+        1. In the **Topology** view, click **D eap74**.  
+           A side panel opens with detailed information about the application.
+
+        1. In the **Details** tab, the pod status is available in a tooltip by hovering over the pod.
+
+            - Inside the pod circle, it displays the number of pod.
+            - The color of the pod circle indicates the pod status:
+              Light blue = **Pending**, Blue = **Not Ready**, Dark blue = **Running**
+
+        **Note:** In the **Topology** view, the dark outer circle indicates the pod status.
+      review:
+        failedTaskHelp: >-
+          This task isn’t verified yet. Try the task again.
+        instructions: |-
+          Verify you see the pod status:
+          
+          - Does the text inside the pod cirle display **1 Pod**?
+
+          - When you hover of the pod circle, does it display **1 Running**?
+
+      summary:
+        failed: Try the steps again.
+        success: Your deployment has one running pod.
+      title: View the Pod status
+    - description: >-
+
+        To view the JBoss EAP application:
+
+        1. In the **Topology** view, click the external link icon in the top right-hand corner to open the URL and run the application in a separate browser window.
+      review:
+        failedTaskHelp: This task isn’t verified yet. Try the task again.
+        instructions: >-
+          Verify your JBoss EAP 7 application is running:
+
+          - Did **JBoss EAP 7 on Red Hat OpenShift** open in a separate browser window?
+      summary:
+        failed: Try the steps again.
+        success: Your JBoss EAP 7 application is running.
+      title: Run the JBoss EAP 7 application
+  conclusion: >-
+    Your JBoss EAP 7 application is deployed and ready.
+
+    ## Resources:
+
+      - Learn more about  [JBoss EAP](https://access.redhat.com/products/red-hat-jboss-enterprise-application-platform/).
+      - Read detailed [JBoss EAP 7 documentation](https://access.redhat.com/documentation/en-us/red_hat_jboss_enterprise_application_platform/7.4).
