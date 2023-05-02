@@ -24,6 +24,8 @@ import (
 	"github.com/openshift/library-go/pkg/route/routeapihelpers"
 
 	// informers
+	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
+	configinformer "github.com/openshift/client-go/config/informers/externalversions"
 	consoleinformersv1 "github.com/openshift/client-go/console/informers/externalversions/console/v1"
 	operatorinformersv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
@@ -37,6 +39,7 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 	controllersutil "github.com/openshift/console-operator/pkg/console/controllers/util"
 	"github.com/openshift/console-operator/pkg/console/status"
+	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
@@ -44,11 +47,14 @@ type CLIDownloadsSyncController struct {
 	// clients
 	operatorClient            v1helpers.OperatorClient
 	consoleCliDownloadsClient consoleclientv1.ConsoleCLIDownloadInterface
+	ingressClient             configclientv1.IngressInterface
 	routeClient               routeclientv1.RoutesGetter
 	operatorConfigClient      operatorclientv1.ConsoleInterface
 }
 
 func NewCLIDownloadsSyncController(
+	// top level config
+	configClient configclientv1.ConfigV1Interface,
 	// clients
 	operatorClient v1helpers.OperatorClient,
 	operatorConfigClient operatorclientv1.OperatorV1Interface,
@@ -56,6 +62,7 @@ func NewCLIDownloadsSyncController(
 	routeClient routeclientv1.RoutesGetter,
 	// informers
 	operatorConfigInformer operatorinformersv1.ConsoleInformer,
+	configInformer configinformer.SharedInformerFactory,
 	consoleCLIDownloadsInformers consoleinformersv1.ConsoleCLIDownloadInformer,
 	routeInformer routesinformersv1.RouteInformer,
 	// events
@@ -66,14 +73,18 @@ func NewCLIDownloadsSyncController(
 		// clients
 		operatorClient:            operatorClient,
 		consoleCliDownloadsClient: cliDownloadsInterface,
+		ingressClient:             configClient.Ingresses(),
 		routeClient:               routeClient,
 		operatorConfigClient:      operatorConfigClient.Consoles(),
 	}
+
+	configV1Informers := configInformer.Config().V1()
 
 	return factory.New().
 		WithFilteredEventsInformers( // configs
 			controllersutil.IncludeNamesFilter(api.ConfigResourceName),
 			operatorConfigInformer.Informer(),
+			configV1Informers.Ingresses().Informer(),
 		).WithFilteredEventsInformers( // console resources
 		controllersutil.IncludeNamesFilter(api.OpenShiftConsoleDownloadsRouteName),
 		routeInformer.Informer(),
@@ -103,7 +114,19 @@ func (c *CLIDownloadsSyncController) Sync(ctx context.Context, controllerContext
 		return fmt.Errorf("console is in an unknown state: %v", updatedOperatorConfig.Spec.ManagementState)
 	}
 
-	downloadsRoute, downloadsRouteErr := c.routeClient.Routes(api.TargetNamespace).Get(ctx, api.OpenShiftConsoleDownloadsRouteName, metav1.GetOptions{})
+	statusHandler := status.NewStatusHandler(c.operatorClient)
+	ingressConfig, err := c.ingressClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		return statusHandler.FlushAndReturn(err)
+	}
+
+	activeRouteName := api.OpenShiftConsoleDownloadsRouteName
+	routeConfig := routesub.NewRouteConfig(updatedOperatorConfig, ingressConfig, activeRouteName)
+	if routeConfig.IsCustomHostnameSet() {
+		activeRouteName = api.OpenshiftDownloadsCustomRouteName
+	}
+
+	downloadsRoute, downloadsRouteErr := c.routeClient.Routes(api.TargetNamespace).Get(ctx, activeRouteName, metav1.GetOptions{})
 	if downloadsRouteErr != nil {
 		return downloadsRouteErr
 	}
@@ -113,7 +136,6 @@ func (c *CLIDownloadsSyncController) Sync(ctx context.Context, controllerContext
 		return downloadsRouteErr
 	}
 
-	statusHandler := status.NewStatusHandler(c.operatorClient)
 	ocConsoleCLIDownloads := PlatformBasedOCConsoleCLIDownloads(downloadsURI.String(), api.OCCLIDownloadsCustomResourceName)
 	_, ocCLIDownloadsErrReason, ocCLIDownloadsErr := ApplyCLIDownloads(ctx, c.consoleCliDownloadsClient, ocConsoleCLIDownloads)
 	statusHandler.AddCondition(status.HandleDegraded("OCDownloadsSync", ocCLIDownloadsErrReason, ocCLIDownloadsErr))
