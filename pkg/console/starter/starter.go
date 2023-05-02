@@ -224,13 +224,16 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	)
 
 	cliDownloadsController := clidownloads.NewCLIDownloadsSyncController(
+		// top level config
+		configClient.ConfigV1(),
 		// clients
 		operatorClient,
 		operatorConfigClient.OperatorV1(),
 		consoleClient.ConsoleV1().ConsoleCLIDownloads(),
 		routesClient.RouteV1(),
 		// informers
-		operatorConfigInformers.Operator().V1().Consoles(),    // OperatorConfig
+		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
+		configInformers, // Config
 		consoleInformers.Console().V1().ConsoleCLIDownloads(), // ConsoleCliDownloads
 		routesInformersNamespaced.Route().V1().Routes(),       // Routes
 		// events
