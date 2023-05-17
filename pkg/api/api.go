@@ -57,6 +57,7 @@ const (
 	OpenShiftCustomLogoConfigMapName          = "custom-logo"
 	OpenShiftMonitoringConfigMapName          = "monitoring-shared-config"
 	OpenshiftConsoleCustomRouteName           = "console-custom"
+	OpenshiftDownloadsCustomRouteName         = "downloads-custom"
 	OpenshiftConsoleRedirectServiceName       = "console-redirect"
 	RedirectContainerPort                     = 8444
 	RedirectContainerPortName                 = "custom-route-redirect"
