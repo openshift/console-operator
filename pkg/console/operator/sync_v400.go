@@ -613,7 +613,11 @@ func getNodeArchitectures(nodes *corev1.NodeList) []string {
 	nodeArchitecturesSet := sets.NewString()
 	for _, node := range nodes.Items {
 		nodeArch := node.Labels[api.NodeArchitectureLabel]
-		nodeArchitecturesSet.Insert(nodeArch)
+		if nodeArch == "" {
+			klog.Warningf("Architecture label %q missing on node %q", api.NodeArchitectureLabel, node.GetName())
+		} else {
+			nodeArchitecturesSet.Insert(nodeArch)
+		}
 	}
 	return nodeArchitecturesSet.List()
 }
