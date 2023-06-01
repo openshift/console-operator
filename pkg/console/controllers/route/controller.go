@@ -124,17 +124,21 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 	}
 	routeConfig := routesub.NewRouteConfig(updatedOperatorConfig, ingressConfig, c.routeName)
 
+	typePrefix := fmt.Sprintf("%sCustomRouteSync", strings.Title(c.routeName))
 	// try to sync the custom route first. If the sync fails for any reason, error
 	// out the sync loop and inform about this fact instead of putting default
 	// route into inaccessible state.
 	_, customRouteErrReason, customRouteErr := c.SyncCustomRoute(ctx, routeConfig, controllerContext)
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("CustomRouteSync", customRouteErrReason, customRouteErr))
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded(typePrefix, customRouteErrReason, customRouteErr))
+	statusHandler.AddCondition(status.HandleUpgradable(typePrefix, customRouteErrReason, customRouteErr))
 	if customRouteErr != nil {
 		return statusHandler.FlushAndReturn(customRouteErr)
 	}
 
+	typePrefix = fmt.Sprintf("%sDefaultRouteSync", strings.Title(c.routeName))
 	_, defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(ctx, routeConfig, ingressConfig, controllerContext)
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DefaultRouteSync", defaultRouteErrReason, defaultRouteErr))
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded(typePrefix, defaultRouteErrReason, defaultRouteErr))
+	statusHandler.AddCondition(status.HandleUpgradable(typePrefix, defaultRouteErrReason, defaultRouteErr))
 
 	// warn if deprecated configuration of custom domain for 'console' route is set on the console-operator config
 	if (len(operatorConfig.Spec.Route.Hostname) != 0 || len(operatorConfig.Spec.Route.Secret.Name) != 0) && c.routeName == api.OpenShiftConsoleRouteName {
