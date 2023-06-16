@@ -16,8 +16,19 @@ import (
 	"github.com/openshift/console-operator/test/e2e/framework"
 )
 
-var validOperatorConfigBrands = []operatorsv1.Brand{operatorsv1.BrandOKD, operatorsv1.BrandOCP, operatorsv1.BrandOnline, operatorsv1.BrandDedicated, operatorsv1.BrandAzure}
-var validManagedConfigMapBrands = []operatorsv1.Brand{operatorsv1.BrandOKD, operatorsv1.BrandOCP}
+var validOperatorConfigBrands = []operatorsv1.Brand{operatorsv1.BrandOKDLegacy,
+	operatorsv1.BrandOCPLegacy,
+	operatorsv1.BrandOnlineLegacy,
+	operatorsv1.BrandDedicatedLegacy,
+	operatorsv1.BrandAzureLegacy,
+	operatorsv1.BrandOKD,
+	operatorsv1.BrandOCP,
+	operatorsv1.BrandOnline,
+	operatorsv1.BrandDedicated,
+	operatorsv1.BrandAzure,
+	operatorsv1.BrandROSA,
+}
+var validManagedConfigMapBrands = []operatorsv1.Brand{operatorsv1.BrandOKDLegacy, operatorsv1.BrandOCPLegacy}
 
 // Test prep - setup the client used by each test
 func setupBrandingTestCase(t *testing.T) (*framework.ClientSet, operatorsv1.Brand, map[string]string) {
@@ -39,7 +50,7 @@ func setupBrandingTestCase(t *testing.T) (*framework.ClientSet, operatorsv1.Bran
 
 func cleanupBrandingTestCase(t *testing.T, client *framework.ClientSet, originalConfigBrand operatorsv1.Brand, originalManagedConfigMapData map[string]string) {
 	setOperatorConfigBrand(t, client, originalConfigBrand)
-	managedConfigMap := generateTestConfigMap(operatorsv1.BrandOKD)
+	managedConfigMap := generateTestConfigMap(operatorsv1.BrandOKDLegacy)
 	if originalManagedConfigMapData != nil {
 		managedConfigMap.Data = originalManagedConfigMapData
 	}
@@ -50,7 +61,7 @@ func cleanupBrandingTestCase(t *testing.T, client *framework.ClientSet, original
 	framework.StandardCleanup(t, client)
 }
 
-// TestOperatorConfigBranding() tests that changing the brand value on the operator-config
+// TestOperatorConfigBranding() tests that changing the legacy brand value on the operator-config
 // will result in the brand being set on the console-config in openshift-console.
 // Implicitly it ensures that the operator-config brand overrides brand set on
 // console-config in openshift-config-managed, if the managed configmap exists.
@@ -58,7 +69,7 @@ func TestOperatorConfigBranding(t *testing.T) {
 	client, originalConfigBrand, originalManagedConfigMapData := setupBrandingTestCase(t)
 	defer cleanupBrandingTestCase(t, client, originalConfigBrand, originalManagedConfigMapData)
 	// Set a temporary managed config to test it does not override the operator config values
-	_, err := updateOrCreateConsoleConfigMap(client, generateTestConfigMap(operatorsv1.BrandOKD))
+	_, err := updateOrCreateConsoleConfigMap(client, generateTestConfigMap(operatorsv1.BrandOKDLegacy))
 	if err != nil {
 		t.Fatalf("error: could not apply managed config map %v", err)
 	}
@@ -73,7 +84,7 @@ func TestOperatorConfigBranding(t *testing.T) {
 				return false, nil
 			}
 			gotBrand := getConsoleBrand(t, client)
-			return (gotBrand == expectedBrand), nil
+			return strings.ToLower(string(expectedBrand)) == strings.ToLower(gotBrand), nil
 		})
 		if err != nil {
 			t.Fatalf("error: brand was never updated, %v", err)
@@ -101,7 +112,7 @@ func TestBrandingFromManagedConfigMap(t *testing.T) {
 
 		err = wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
 			gotBrand := getConsoleBrand(t, client)
-			return (gotBrand == expectedBrand), nil
+			return strings.ToLower(string(expectedBrand)) == strings.ToLower(gotBrand), nil
 		})
 		if err != nil {
 			t.Fatalf("error: brand was never updated, %v", err)
@@ -154,7 +165,7 @@ func setOperatorConfigBrand(t *testing.T, client *framework.ClientSet, brand ope
 }
 
 // Get the brand from the console-config in the data of the console CM
-func getConsoleBrand(t *testing.T, client *framework.ClientSet) operatorsv1.Brand {
+func getConsoleBrand(t *testing.T, client *framework.ClientSet) string {
 	cm, err := framework.GetConsoleConfigMap(client)
 	if err != nil {
 		t.Fatalf("error: %s", err)
@@ -168,25 +179,8 @@ func getConsoleBrand(t *testing.T, client *framework.ClientSet) operatorsv1.Bran
 			brandingValue = strings.Split(strings.TrimSpace(item), ":")[1]
 		}
 	}
-	brand, _ := stringToBrand(t, strings.TrimSpace(brandingValue))
-	return brand
-}
 
-// Helper function to convert string version of valid brands to their corresponding constant name
-func stringToBrand(t *testing.T, brandstr string) (b operatorsv1.Brand, ok bool) {
-	switch found := operatorsv1.Brand(brandstr); found {
-	case
-		operatorsv1.BrandDedicated,
-		operatorsv1.BrandOnline,
-		operatorsv1.BrandOKD,
-		operatorsv1.BrandOCP,
-		operatorsv1.BrandOpenShift,
-		operatorsv1.BrandAzure:
-		return found, true
-	default:
-		t.Logf("invalid brand (%s), defaulting to %s \n", brandstr, operatorsv1.BrandOKD)
-		return operatorsv1.BrandOKD, false
-	}
+	return strings.TrimSpace(brandingValue)
 }
 
 // Helper function that decides whether to update a config map (if it exists) or create a new one

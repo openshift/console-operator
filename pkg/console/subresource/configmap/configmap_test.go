@@ -375,7 +375,7 @@ clusterInfo:
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
 customization:
-  branding: ` + string(operatorv1.BrandDedicated) + `
+  branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
 servingInfo:
   bindAddress: https://[::]:8443
@@ -452,7 +452,7 @@ clusterInfo:
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
 customization:
-  branding: ` + string(operatorv1.BrandDedicated) + `
+  branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
   customLogoFile: /var/logo/logo.svg
   customProductName: custom-product-name
@@ -531,7 +531,7 @@ clusterInfo:
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
 customization:
-  branding: ` + string(operatorv1.BrandDedicated) + `
+  branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
 servingInfo:
   bindAddress: https://[::]:8443
