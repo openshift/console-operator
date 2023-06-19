@@ -48,7 +48,7 @@ spec:
 
             - The side panel displays information about the JBoss EAP 7 Helm chart.
 
-        1. Click **Install Helm Chart**.
+        1. Click **Create**.
         
             - Some form sections are collapsed by default. Click **>** to expand and view its content.  
               **Note:** No updates are required to these sections to proceed.
@@ -62,7 +62,7 @@ spec:
 
               **Note:** If you are building a different application, you must change this `uri` field to point to the Git repository of that application.
 
-        1.  Click **Install** to create the JBoss EAP 7 application using the Helm Chart.
+        1.  Click **Create** to create the JBoss EAP 7 application using the Helm Chart.
 
             - The console switches to the [Topology]{{highlight qs-nav-topology}} view and displays a pane with the Helm Release notes.
               After you read the notes, you can close the pane.
