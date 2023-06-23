@@ -1,0 +1,147 @@
+apiVersion: console.openshift.io/v1
+kind: ConsoleQuickStart
+metadata:
+  annotations:
+    capability.openshift.io/name: Console
+    include.release.openshift.io/ibm-cloud-managed: 'true'
+    include.release.openshift.io/self-managed-high-availability: 'true'
+    include.release.openshift.io/single-node-developer: 'true'
+  name: install-cryostat
+spec:
+  accessReviewResources:
+    - group: operators.coreos.com
+      resource: operatorgroups
+      verb: list
+    - group: packages.operators.coreos.com
+      resource: packagemanifests
+      verb: list
+  durationMinutes: 10
+  displayName: Get started with the Red Hat build of Cryostat
+  description: >-
+    Install the Red Hat build of Cryostat to profile and monitor your Java applications deployed on OpenShift.
+  icon: >-
+    data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPCFET0NUWVBFIHN2ZyBQVUJMSUMgIi0vL1czQy8vRFREIFNWRyAxLjEvL0VOIiAiaHR0cDovL3d3dy53My5vcmcvR3JhcGhpY3MvU1ZHLzEuMS9EVEQvc3ZnMTEuZHRkIj4KPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgd2lkdGg9IjEyOHB4IiBoZWlnaHQ9IjEyOHB4IiBzdHlsZT0ic2hhcGUtcmVuZGVyaW5nOmdlb21ldHJpY1ByZWNpc2lvbjsgdGV4dC1yZW5kZXJpbmc6Z2VvbWV0cmljUHJlY2lzaW9uOyBpbWFnZS1yZW5kZXJpbmc6b3B0aW1pemVRdWFsaXR5OyBmaWxsLXJ1bGU6ZXZlbm9kZDsgY2xpcC1ydWxlOmV2ZW5vZGQiIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIj4KPGc+PHBhdGggc3R5bGU9Im9wYWNpdHk6MC45MDQiIGZpbGw9IiM1ZmE4ZDMiIGQ9Ik0gNTguNSwtMC41IEMgNjEuODMzMywtMC41IDY1LjE2NjcsLTAuNSA2OC41LC0wLjVDIDY4LjMzNCw0Ljg0MzcyIDY4LjUwMDYsMTAuMTc3MSA2OSwxNS41QyA3MS4wMTY1LDEzLjMxNiA3My4xODMxLDExLjMxNiA3NS41LDkuNUMgNzguMzY4NiwxMS41MzQxIDgwLjcwMTksMTQuMDM0MSA4Mi41LDE3QyA3Ni42OTYxLDIzLjk3MTIgNzAuMzYyNywzMC40NzEyIDYzLjUsMzYuNUMgNTYuNjM3MywzMC40NzEyIDUwLjMwMzksMjMuOTcxMiA0NC41LDE3QyA0Ni4yOTgxLDE0LjAzNDEgNDguNjMxNCwxMS41MzQxIDUxLjUsOS41QyA1My44MTY5LDExLjMxNiA1NS45ODM1LDEzLjMxNiA1OCwxNS41QyA1OC40OTk0LDEwLjE3NzEgNTguNjY2LDQuODQzNzIgNTguNSwtMC41IFoiLz48L2c+CjxnPjxwYXRoIHN0eWxlPSJvcGFjaXR5OjAuOTA5IiBmaWxsPSIjNWZhOGQzIiBkPSJNIDMwLjUsMjMuNSBDIDMxLjUsMjMuNSAzMi41LDIzLjUgMzMuNSwyMy41QyAzNS42NTg5LDMyLjQ2ODYgMzcuNjU4OSw0MS40Njg2IDM5LjUsNTAuNUMgMzAuODkzMyw1Mi44NzUzIDIyLjIyNjYsNTQuNzA4NiAxMy41LDU2QyAxMi4yNzI4LDUzLjI2NDEgMTEuMjcyOCw1MC40MzA4IDEwLjUsNDcuNUMgMTMuMTE1NSw0Ni4yMzg0IDE1Ljc4MjEsNDUuMDcxOCAxOC41LDQ0QyAxNC41LDQxLjY2NjcgMTAuNSwzOS4zMzMzIDYuNSwzN0MgNS45NzgxNCwzNi40Mzg3IDUuNjQ0OCwzNS43NzIgNS41LDM1QyA2Ljk1MTI4LDMyLjA0NjcgOC42MTc5NSwyOS4yMTMzIDEwLjUsMjYuNUMgMTUuMDgyNSwyOS4wNDA3IDE5LjU4MjUsMzEuNzA3NCAyNCwzNC41QyAyNC4xNTM4LDMxLjc2ODIgMjMuNjUzOCwyOS4xMDE1IDIyLjUsMjYuNUMgMjUuMjc2MywyNS40ODUyIDI3Ljk0MjksMjQuNDg1MiAzMC41LDIzLjUgWiIvPjwvZz4KPGc+PHBhdGggc3R5bGU9Im9wYWNpdHk6MC45MDkiIGZpbGw9IiM1ZmE4ZDMiIGQ9Ik0gOTMuNSwyMy41IEMgOTcuMjkwNSwyNC4wMzEgMTAwLjk1NywyNS4wMzEgMTA0LjUsMjYuNUMgMTAzLjM0NiwyOS4xMDE1IDEwMi44NDYsMzEuNzY4MiAxMDMsMzQuNUMgMTA3LjQxOCwzMS43MDc0IDExMS45MTgsMjkuMDQwNyAxMTYuNSwyNi41QyAxMTguMzgyLDI5LjIxMzMgMTIwLjA0OSwzMi4wNDY3IDEyMS41LDM1QyAxMjEuMzU1LDM1Ljc3MiAxMjEuMDIyLDM2LjQzODcgMTIwLjUsMzdDIDExNi41LDM5LjMzMzMgMTEyLjUsNDEuNjY2NyAxMDguNSw0NEMgMTExLjIxOCw0NS4wNzE4IDExMy44ODUsNDYuMjM4NCAxMTYuNSw0Ny41QyAxMTUuNzI3LDUwLjQzMDggMTE0LjcyNyw1My4yNjQxIDExMy41LDU2QyAxMDQuNzczLDU0LjcwODYgOTYuMTA2Nyw1Mi44NzUzIDg3LjUsNTAuNUMgODkuMzQxMSw0MS40Njg2IDkxLjM0MTEsMzIuNDY4NiA5My41LDIzLjUgWiIvPjwvZz4KPGc+PHBhdGggc3R5bGU9Im9wYWNpdHk6MC44MTkiIGZpbGw9IiM5NWM5ZTgiIGQ9Ik0gNDcuNSwyOS41IEMgNDkuNDY3MiwyOS4yNjA2IDUxLjMwMDUsMjkuNTkzOSA1MywzMC41QyA1Mi45OTY4LDM0LjE5NjQgNTIuNDk2OCwzNy44NjMxIDUxLjUsNDEuNUMgNDcuMzQ1Miw0MS4xMjggNDMuMzQ1Miw0MC4xMjggMzkuNSwzOC41QyA0MC4zMDk0LDM2LjkyOTEgNDAuNjQyNywzNS4yNjI0IDQwLjUsMzMuNUMgNDIuNDY3MiwzMy4yNjA2IDQ0LjMwMDUsMzMuNTkzOSA0NiwzNC41QyA0Ny4wMDg2LDMyLjk3NTEgNDcuNTA4NiwzMS4zMDg0IDQ3LjUsMjkuNSBaIi8+PC9nPgo8Zz48cGF0aCBzdHlsZT0ib3BhY2l0eTowLjgyNSIgZmlsbD0iIzk1YzllOCIgZD0iTSA3NC41LDI5LjUgQyA3Ni4xNjY3LDI5LjUgNzcuODMzMywyOS41IDc5LjUsMjkuNUMgNzkuNDkxNCwzMS4zMDg0IDc5Ljk5MTQsMzIuOTc1MSA4MSwzNC41QyA4Mi42OTk1LDMzLjU5MzkgODQuNTMyOCwzMy4yNjA2IDg2LjUsMzMuNUMgODYuODU0MSwzNS41NDEyIDg2Ljg1NDEsMzcuMzc0NSA4Ni41LDM5QyA4Mi45Mjk2LDQwLjMwOTUgNzkuMjYzLDQxLjE0MjggNzUuNSw0MS41QyA3NC45OTUxLDM4LjQ3ODggNzQuMzI4NCwzNS40Nzg4IDczLjUsMzIuNUMgNzMuNjg1LDMxLjQxNjMgNzQuMDE4MywzMC40MTYzIDc0LjUsMjkuNSBaIi8+PC9nPgo8Zz48cGF0aCBzdHlsZT0ib3BhY2l0eTowLjkzIiBmaWxsPSIjMWQ0YTY2IiBkPSJNIDU1LjUsMzEuNSBDIDU4LjE0NywzMy44MTA5IDYwLjgxMzYsMzYuMTQ0MiA2My41LDM4LjVDIDY2LjE1MDYsMzYuMzUwMSA2OC42NTA2LDM0LjAxNjggNzEsMzEuNUMgNzIuMTgwNSwzNS44OTExIDczLjUxMzksNDAuMjI0NSA3NSw0NC41QyA3OS4wNjU2LDQyLjYwMDQgODMuMjMyMiw0MS45MzM3IDg3LjUsNDIuNUMgODYuNzI3Miw0NS40MzA4IDg1LjcyNzIsNDguMjY0MSA4NC41LDUxQyA4OC4wMjAxLDUxLjY3MzIgOTEuMzUzNCw1Mi44Mzk4IDk0LjUsNTQuNUMgOTEuODMzMyw1Ny41IDg5LjE2NjcsNjAuNSA4Ni41LDYzLjVDIDg5LjE2NjcsNjYuNSA5MS44MzMzLDY5LjUgOTQuNSw3Mi41QyA5MS4zNTM0LDc0LjE2MDIgODguMDIwMSw3NS4zMjY4IDg0LjUsNzZDIDg1LjcyNzIsNzguNzM1OSA4Ni43MjcyLDgxLjU2OTIgODcuNSw4NC41QyA4My4yMzIyLDg1LjA2NjMgNzkuMDY1Niw4NC4zOTk2IDc1LDgyLjVDIDczLjUxMzksODYuNzc1NSA3Mi4xODA1LDkxLjEwODkgNzEsOTUuNUMgNjguNjUwNiw5Mi45ODMyIDY2LjE1MDYsOTAuNjQ5OSA2My41LDg4LjVDIDYwLjg0OTQsOTAuNjQ5OSA1OC4zNDk0LDkyLjk4MzIgNTYsOTUuNUMgNTQuODE5NSw5MS4xMDg5IDUzLjQ4NjEsODYuNzc1NSA1Miw4Mi41QyA0Ny45MzQ0LDg0LjM5OTYgNDMuNzY3OCw4NS4wNjYzIDM5LjUsODQuNUMgNDAuMjcyOCw4MS41NjkyIDQxLjI3MjgsNzguNzM1OSA0Mi41LDc2QyAzOC45Nzk5LDc1LjMyNjggMzUuNjQ2Niw3NC4xNjAyIDMyLjUsNzIuNUMgMzUuMTY2Nyw2OS41IDM3LjgzMzMsNjYuNSA0MC41LDYzLjVDIDM3LjgzMzMsNjAuNSAzNS4xNjY3LDU3LjUgMzIuNSw1NC41QyAzNS42NDY2LDUyLjgzOTggMzguOTc5OSw1MS42NzMyIDQyLjUsNTFDIDQxLjI3MjgsNDguMjY0MSA0MC4yNzI4LDQ1LjQzMDggMzkuNSw0Mi41QyA0My43Njc4LDQxLjkzMzcgNDcuOTM0NCw0Mi42MDA0IDUyLDQ0LjVDIDUzLjYzNTgsNDAuMjg5OCA1NC44MDI1LDM1Ljk1NjQgNTUuNSwzMS41IFoiLz48L2c+CjxnPjxwYXRoIHN0eWxlPSJvcGFjaXR5OjEiIGZpbGw9IiNmOGY5ZmEiIGQ9Ik0gNjIuNSw0NC41IEMgNjguMTEyMiw0Ny42NDI1IDczLjc3ODksNTAuODA5MiA3OS41LDU0QyA3Ni41ODE1LDU1LjcwODggNzMuNzQ4Miw1Ny41NDIxIDcxLDU5LjVDIDY2LDU0LjE2NjcgNjEsNTQuMTY2NyA1Niw1OS41QyA1NC4zODkyLDY4LjIxNzggNTcuODg5Miw3Mi4wNTEyIDY2LjUsNzFDIDY4LjI4Niw3MC4yMTU1IDY5Ljc4Niw2OS4wNDg4IDcxLDY3LjVDIDc0LjA4ODcsNjguOTU5NiA3Ni45MjIxLDcwLjc5MyA3OS41LDczQyA3NC4wMDE2LDc1LjkxNDggNjguNjY4Miw3OS4wODE1IDYzLjUsODIuNUMgNTguNjY1Nyw3OS4yNDg0IDUzLjY2NTcsNzYuMjQ4NCA0OC41LDczLjVDIDQ3LjE2NjcsNjYuODMzMyA0Ny4xNjY3LDYwLjE2NjcgNDguNSw1My41QyA1My41NzEzLDUwLjk3NDQgNTguMjM4LDQ3Ljk3NDQgNjIuNSw0NC41IFoiLz48L2c+CjxnPjxwYXRoIHN0eWxlPSJvcGFjaXR5OjAuODEzIiBmaWxsPSIjOTVjOWU4IiBkPSJNIDI5LjUsNTUuNSBDIDMzLjA4MDEsNTcuNDA3NiAzNi4wODAxLDYwLjA3NDMgMzguNSw2My41QyAzNi4xNjY3LDY2LjUgMzMuNSw2OS4xNjY3IDMwLjUsNzEuNUMgMjUuNzE1NSw2OS4yOTQ0IDI1LjM4MjIsNjYuNjI3NyAyOS41LDYzLjVDIDI4LjUsNjIuMTY2NyAyNy41LDYwLjgzMzMgMjYuNSw1OS41QyAyNy41MjQ0LDU4LjE0ODIgMjguNTI0NCw1Ni44MTQ5IDI5LjUsNTUuNSBaIi8+PC9nPgo8Zz48cGF0aCBzdHlsZT0ib3BhY2l0eTowLjgxMyIgZmlsbD0iIzk1YzllOCIgZD0iTSA5NS41LDU1LjUgQyAxMDAuOTc5LDU3LjA5OTYgMTAxLjY0Niw1OS43NjYyIDk3LjUsNjMuNUMgMTAxLjYxOCw2Ni42Mjc3IDEwMS4yODUsNjkuMjk0NCA5Ni41LDcxLjVDIDkzLjUsNjkuMTY2NyA5MC44MzMzLDY2LjUgODguNSw2My41QyA5MC44NTU4LDYwLjgxMzYgOTMuMTg5MSw1OC4xNDcgOTUuNSw1NS41IFoiLz48L2c+CjxnPjxwYXRoIHN0eWxlPSJvcGFjaXR5OjAuOTA5IiBmaWxsPSIjNWZhOGQzIiBkPSJNIDEzLjUsNzAuNSBDIDIyLjIxMzgsNzIuMjkzNCAzMC44ODA1LDc0LjI5MzQgMzkuNSw3Ni41QyAzNy42NTg5LDg1LjUzMTQgMzUuNjU4OSw5NC41MzE0IDMzLjUsMTAzLjVDIDI5LjcwOTUsMTAyLjk2OSAyNi4wNDI4LDEwMS45NjkgMjIuNSwxMDAuNUMgMjMuNjUzOCw5Ny44OTg1IDI0LjE1MzgsOTUuMjMxOCAyNCw5Mi41QyAxOS41ODI1LDk1LjI5MjYgMTUuMDgyNSw5Ny45NTkzIDEwLjUsMTAwLjVDIDcuNzQxNTQsOTcuNjIyNSA2LjI0MTU0LDk0LjI4OTIgNiw5MC41QyAxMC4wODM4LDg3Ljg3NDIgMTQuMjUwNSw4NS4zNzQyIDE4LjUsODNDIDE1Ljc4MjEsODEuOTI4MiAxMy4xMTU1LDgwLjc2MTYgMTAuNSw3OS41QyAxMS4zNTA3LDc2LjQyMjMgMTIuMzUwNyw3My40MjIzIDEzLjUsNzAuNSBaIi8+PC9nPgo8Zz48cGF0aCBzdHlsZT0ib3BhY2l0eTowLjkwOSIgZmlsbD0iIzVmYThkMyIgZD0iTSAxMDkuNSw3MC41IEMgMTExLjE0NCw3MC4yODY1IDExMi42NDQsNzAuNjE5OCAxMTQsNzEuNUMgMTE0LjgzNCw3NC4xNzI0IDExNS42NjgsNzYuODM5IDExNi41LDc5LjVDIDExMy44ODUsODAuNzYxNiAxMTEuMjE4LDgxLjkyODIgMTA4LjUsODNDIDExMi41LDg1LjMzMzMgMTE2LjUsODcuNjY2NyAxMjAuNSw5MEMgMTIxLjUxNyw5MS4wNDk1IDEyMS42ODQsOTIuMjE2MSAxMjEsOTMuNUMgMTE5LjUsOTUuODMzMyAxMTgsOTguMTY2NyAxMTYuNSwxMDAuNUMgMTExLjkxOCw5Ny45NTkzIDEwNy40MTgsOTUuMjkyNiAxMDMsOTIuNUMgMTAyLjg0Niw5NS4yMzE4IDEwMy4zNDYsOTcuODk4NSAxMDQuNSwxMDAuNUMgMTAwLjk1NywxMDEuOTY5IDk3LjI5MDUsMTAyLjk2OSA5My41LDEwMy41QyA5MS4zNDExLDk0LjUzMTQgODkuMzQxMSw4NS41MzE0IDg3LjUsNzYuNUMgOTUuMDk5MSw3NS4wNzE5IDEwMi40MzIsNzMuMDcxOSAxMDkuNSw3MC41IFoiLz48L2c+CjxnPjxwYXRoIHN0eWxlPSJvcGFjaXR5OjAuODI1IiBmaWxsPSIjOTVjOWU4IiBkPSJNIDQ3LjUsODUuNSBDIDQ4LjgzMzMsODUuNSA1MC4xNjY3LDg1LjUgNTEuNSw4NS41QyA1Mi40OTY4LDg5LjEzNjkgNTIuOTk2OCw5Mi44MDM2IDUzLDk2LjVDIDUxLjMwMDUsOTcuNDA2MSA0OS40NjcyLDk3LjczOTQgNDcuNSw5Ny41QyA0Ny41MDg2LDk1LjY5MTYgNDcuMDA4Niw5NC4wMjQ5IDQ2LDkyLjVDIDQ0LjMwMDUsOTMuNDA2MSA0Mi40NjcyLDkzLjczOTQgNDAuNSw5My41QyA0MC43MTM1LDkxLjg1NjEgNDAuMzgwMiw5MC4zNTYxIDM5LjUsODlDIDQyLjEyMTgsODcuNTI1MiA0NC43ODg0LDg2LjM1ODYgNDcuNSw4NS41IFoiLz48L2c+CjxnPjxwYXRoIHN0eWxlPSJvcGFjaXR5OjAuODE5IiBmaWxsPSIjOTVjOWU4IiBkPSJNIDc1LjUsODUuNSBDIDc5LjY1NDgsODUuODcyIDgzLjY1NDgsODYuODcyIDg3LjUsODguNUMgODYuNjkwNiw5MC4wNzA5IDg2LjM1NzMsOTEuNzM3NiA4Ni41LDkzLjVDIDg0LjUzMjgsOTMuNzM5NCA4Mi42OTk1LDkzLjQwNjEgODEsOTIuNUMgNzkuOTkxNCw5NC4wMjQ5IDc5LjQ5MTQsOTUuNjkxNiA3OS41LDk3LjVDIDc3LjUzMjgsOTcuNzM5NCA3NS42OTk1LDk3LjQwNjEgNzQsOTYuNUMgNzQuMDAzMiw5Mi44MDM2IDc0LjUwMzIsODkuMTM2OSA3NS41LDg1LjUgWiIvPjwvZz4KPGc+PHBhdGggc3R5bGU9Im9wYWNpdHk6MC45MDQiIGZpbGw9IiM1ZmE4ZDMiIGQ9Ik0gNjguNSwxMjcuNSBDIDY1LjE2NjcsMTI3LjUgNjEuODMzMywxMjcuNSA1OC41LDEyNy41QyA1OC42NjYsMTIyLjE1NiA1OC40OTk0LDExNi44MjMgNTgsMTExLjVDIDU1Ljk4MzUsMTEzLjY4NCA1My44MTY5LDExNS42ODQgNTEuNSwxMTcuNUMgNDguNjMxNCwxMTUuNDY2IDQ2LjI5ODEsMTEyLjk2NiA0NC41LDExMEMgNTAuMzAzOSwxMDMuMDI5IDU2LjYzNzMsOTYuNTI4OCA2My41LDkwLjVDIDcwLjM2MjcsOTYuNTI4OCA3Ni42OTYxLDEwMy4wMjkgODIuNSwxMTBDIDgwLjcwMTksMTEyLjk2NiA3OC4zNjg2LDExNS40NjYgNzUuNSwxMTcuNUMgNzMuMTgzMSwxMTUuNjg0IDcxLjAxNjUsMTEzLjY4NCA2OSwxMTEuNUMgNjguNTAwNiwxMTYuODIzIDY4LjMzNCwxMjIuMTU2IDY4LjUsMTI3LjUgWiIvPjwvZz4KPC9zdmc+Cg==
+  introduction: >-
+    Cryostat is a container-native Java application based on JDK Flight Recorder (JFR). You can use it to monitor the performance of the Java Virtual Machine (JVM) for containerized workloads that run on an OpenShift cluster.
+
+    1. You can deploy Cryostat in a container in an OpenShift project that hosts your containerized Java applications. 
+
+    1. You can create JVM targets that correspond to the JVM instances that you use to run your containerized workload. 
+
+    1. You can connect Cryostat to the JVM targets to record and analyze data about heap and non-heap memory usage, thread count, garbage collection, and other performance metrics for each JVM target.
+
+
+    To start using Cryostat, install the cert-manager Operator for Red Hat OpenShift and Red Hat build of Cryostat Operators on your cluster.
+
+  tasks:
+    - title: Install the cert-manager Operator for Red Hat OpenShift
+      description: >
+        To install the **cert-manager Operator for Red Hat OpenShift**:
+
+        1. From the **Administrator** perspective, go to the **OperatorHub** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
+        
+        1. In the **Filter by keyword** field, type `cert-manager`.
+          
+          **Note:** If the tile has an **Installed** label, the Operator is already installed. Proceed to the next task to install the **Red Hat build of Cryostat** Operator.
+        
+        1. Click the **cert-manager Operator for Red Hat OpenShift** tile to open the Operator details.
+        
+        1. In the **cert-manager Operator for Red Hat** OpenShift panel click **Install**.
+        
+        1. The **Install Operator** page opens with default values.
+        
+        1. Select the default channel `stable-v1`.
+        
+        1. Click **Install**. A page opens that shows the various installation steps and displays a message when the Operator is installed.
+        
+        1. Click **View installed Operators in Namespace** to open the Installed Operators page.
+      review:
+        failedTaskHelp: >-
+          This task is incomplete. Try the task again, or [read
+          more](https://access.redhat.com/documentation/en-us/openshift_container_platform/4.10/html/security_and_compliance/cert-manager-operator-for-red-hat-openshift#cert-manager-operator-install)
+          about this topic.
+        instructions: >-
+          #### Verify that **cert-manager Operator for Red Hat OpenShift** is installed:
+
+            - From the **Administrator** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
+            - The cert-manager Operator for Red Hat OpenShift should be shown in the list of Operators
+            - In the **Status** column, do you see the status of **cert-manager Operator for Red Hat OpenShift** as **Succeeded**?
+
+    - title: Install the Red Hat build of Cryostat Operator
+      description: >
+        To install the Red Hat build of Cryostat operator:
+       
+        1. From the **Administrator** perspective, go to the **OperatorHub** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
+        
+        1. From the **Project** list, select the OpenShift project that hosts your containerized Java applications.
+
+        1. In the **Filter by keyword** field, type `Red Hat build of Cryostat`.
+        
+          **Note:** If the tile has an **Installed** label, the Operator is already installed. Proceed to the next task to create an instance of Cryostat.
+        
+        1. Click the **Red Hat build of Cryostat** tile to open the Operator details.
+        
+        1. In the Red Hat build of Cryostat panel, click **Install**. The **Install Operator** page opens with default values.
+        
+        1. Select the default channel `stable`.
+        
+        1. Click **Install** to start the Operator installation. A page opens that shows the various installation steps and displays a message when the Operator is installed.
+        
+        1. Click **View installed Operators in Namespace** to open the **Installed Operators** page.
+
+      review:
+        failedTaskHelp: >-
+          This task isn’t verified yet. Try the task again, or [read
+          more](https://access.redhat.com/documentation/en-us/red_hat_build_of_cryostat/2/html/installing_cryostat/assembly_installing-cryostat_cryostat)
+          about this topic.
+        instructions: >
+          #### Verify that the Red Hat build of Cryostat is installed:
+          
+          - From the **Administrator** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
+
+          - The Red Hat build of Cryostat should be shown in the list of Operators.
+
+          - In the **Status** column, do you see the status of the Red Hat build of Cryostat as `Succeeded`?
+    - title: Create a Cryostat instance
+      description: >
+        To create a Cryostat instance:
+
+        1. From the **Administrator** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
+        
+        1. In the **Search by name** field type and search for the `Red Hat build of Cryostat`. If the operator is not found, ensure that you have selected the project where the Cryostat Operator was installed. 
+
+        1. Click **Red Hat build of Cryostat** to open the Operator details.
+
+        1. Click the **Cryostat** tab.
+
+        1. Click **Create Cryostat**. A form with default values opens.
+       
+        1. Specify a new name for the Cryostat instance. 
+        
+          **Note:** No other updates are required in the form to proceed. However, based on your requirements, you can also update the optional fields on the form. 
+       
+        1. Click **Create**.
+
+      review:
+        failedTaskHelp: >-
+          This task isn’t verified yet. Try the task again, or [read
+          more](https://access.redhat.com/documentation/en-us/red_hat_build_of_cryostat/2/html/installing_cryostat/assembly_installing-cryostat_cryostat)
+          about this topic.
+        instructions: >
+          #### Verify that your Cryostat instance has been created:
+
+          From the **Administrator** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
+
+          - Go to the Red Hat build of Cryostat operator and click the **Cryostat** tab.
+
+          - Do you see the Cryostat instance in the Cryostats list?
+
+          - Click the Cryostat instance in the **Cryostats** list. 
+
+              - You should see a URL to the Cryostat application in Application URL.
+              - In the **Cryostat Conditions** table, do you see the **TLSSetupComplete** and **MainDeploymentAvailable** types set to `True`?
+
+          **Note:** It may take some time for the **Cryostat Conditions** to be set to true as Cryostat is being deployed.
+
+  conclusion: >-
+    Your Red Hat build of Cryostat operator has been installed and an instance of Cryostat has been created. To profile your Java applications with Cryostat, please follow this [guide](https://access.redhat.com/documentation/en-us/red_hat_build_of_cryostat/2/html/getting_started_with_cryostat/assembly_configuing-java-applications_cryostat).
