@@ -388,9 +388,17 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 			// "FooDegraded",
 			//
 			// in 4.8 we removed DonwloadsDeploymentSyncDegraded and can remove this in 4.9
-			"DonwloadsDeploymentSyncDegraded",
+			// "DonwloadsDeploymentSyncDegraded",
 			// in 4.9 we replaced DefaultIngressCertValidation with OAuthServingCertValidation and can remove this in 4.10
-			"DefaultIngressCertValidation",
+			// "DefaultIngressCertValidation",
+			// in 4.13 we are removing CustomRouteSync and DefaultRouteSync
+			// we are need to backport the removal of these conditions all the way down to 4.10
+			// since we only remove them in https://github.com/openshift/console-operator/pull/662
+			// and its causing upgrade issues to the customers
+			"CustomRouteSyncDegraded",
+			"CustomRouteSyncProgressing",
+			"DefaultRouteSyncDegraded",
+			"DefaultRouteSyncProgressing",
 		},
 		operatorClient,
 		controllerContext.EventRecorder,
