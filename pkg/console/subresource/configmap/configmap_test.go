@@ -58,7 +58,6 @@ func TestDefaultConfigMap(t *testing.T) {
 		useDefaultCAFile         bool
 		inactivityTimeoutSeconds int
 		availablePlugins         []*v1.ConsolePlugin
-		managedClusterConfigFile string
 		nodeArchitectures        []string
 		nodeOperatingSystems     []string
 		copiedCSVsDisabled       bool
@@ -91,7 +90,6 @@ func TestDefaultConfigMap(t *testing.T) {
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
-				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -148,7 +146,6 @@ providers: {}
 				},
 				useDefaultCAFile:         false,
 				inactivityTimeoutSeconds: 0,
-				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -212,7 +209,6 @@ customization:
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
-				managedClusterConfigFile: "",
 				nodeArchitectures:        []string{"amd64", "arm64"},
 			},
 			want: &corev1.ConfigMap{
@@ -280,7 +276,6 @@ customization:
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
-				managedClusterConfigFile: "",
 				nodeOperatingSystems:     []string{"foo", "bar"},
 			},
 			want: &corev1.ConfigMap{
@@ -357,7 +352,6 @@ customization:
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
-				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -435,7 +429,6 @@ customization:
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
-				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -515,7 +508,6 @@ customization:
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
-				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -578,7 +570,6 @@ providers:
 				},
 				useDefaultCAFile:         false,
 				inactivityTimeoutSeconds: 0,
-				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -635,7 +626,6 @@ providers: {}
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 60,
-				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -672,63 +662,6 @@ providers: {}
 			},
 		},
 		{
-			name: "Test operator config, with managedClusterConfigFile set",
-			args: args{
-				operatorConfig: &operatorv1.Console{},
-				consoleConfig:  &configv1.Console{},
-				managedConfig:  &corev1.ConfigMap{},
-				infrastructureConfig: &configv1.Infrastructure{
-					Status: configv1.InfrastructureStatus{
-						APIServerURL: mockAPIServer,
-					},
-				},
-				rt: &routev1.Route{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: api.OpenShiftConsoleName,
-					},
-					Spec: routev1.RouteSpec{
-						Host: host,
-					},
-				},
-				useDefaultCAFile:         true,
-				inactivityTimeoutSeconds: 0,
-				managedClusterConfigFile: "test",
-			},
-			want: &corev1.ConfigMap{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "ConfigMap",
-					APIVersion: "v1",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        api.OpenShiftConsoleConfigMapName,
-					Namespace:   api.OpenShiftConsoleNamespace,
-					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
-					Annotations: map[string]string{},
-				},
-				Data: map[string]string{configKey: `kind: ConsoleConfig
-apiVersion: console.openshift.io/v1
-auth:
-  clientID: console
-  clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-clusterInfo:
-  consoleBaseAddress: https://` + host + `
-  masterPublicURL: ` + mockAPIServer + `
-  releaseVersion: ` + testReleaseVersion + `
-customization:
-  branding: ` + DEFAULT_BRAND + `
-  documentationBaseURL: ` + DEFAULT_DOC_URL + `
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-providers: {}
-managedClusterConfigFile: 'test'
-`,
-				},
-			},
-		},
-		{
 			name: "Test operator config, with enabledPlugins set",
 			args: args{
 				operatorConfig: &operatorv1.Console{},
@@ -754,7 +687,6 @@ managedClusterConfigFile: 'test'
 					testPluginsWithProxy("plugin2", "service2", "service-namespace2"),
 					testPluginsWithI18nPreloadType("plugin3", "service3", "service-namespace3"),
 				},
-				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -855,7 +787,6 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
-				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -914,7 +845,6 @@ providers: {}
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
-				managedClusterConfigFile: "",
 			},
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -973,7 +903,6 @@ providers: {}
 				},
 				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
-				managedClusterConfigFile: "",
 				monitoringSharedConfig: &corev1.ConfigMap{
 					Data: map[string]string{
 						"alertmanagerUserWorkloadHost": "alertmanager-user-workload.openshift-user-workload-monitoring.svc:9094",
@@ -1031,7 +960,6 @@ providers: {}
 				tt.args.useDefaultCAFile,
 				tt.args.inactivityTimeoutSeconds,
 				tt.args.availablePlugins,
-				tt.args.managedClusterConfigFile,
 				tt.args.nodeArchitectures,
 				tt.args.nodeOperatingSystems,
 				tt.args.copiedCSVsDisabled,
