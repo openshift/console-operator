@@ -28,7 +28,6 @@ const (
 )
 
 const (
-	managedClusterConfigMapResourceVersionAnnotation   = "console.openshift.io/managed-cluster-config-version"
 	configMapResourceVersionAnnotation                 = "console.openshift.io/console-config-version"
 	proxyConfigResourceVersionAnnotation               = "console.openshift.io/proxy-config-version"
 	infrastructureConfigResourceVersionAnnotation      = "console.openshift.io/infrastructure-config-version"
@@ -70,7 +69,6 @@ func DefaultDeployment(
 	serviceCAConfigMap *corev1.ConfigMap,
 	localOAuthServingCertConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
-	managedClusterConfigMap *corev1.ConfigMap,
 	oAuthClientSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
@@ -83,7 +81,6 @@ func DefaultDeployment(
 	withConsoleAnnotations(
 		deployment,
 		consoleConfigMap,
-		managedClusterConfigMap,
 		serviceCAConfigMap,
 		localOAuthServingCertConfigMap,
 		trustedCAConfigMap,
@@ -96,7 +93,6 @@ func DefaultDeployment(
 		apiServerCertConfigMaps,
 		managedClusterOAuthServerCertConfigMaps,
 		trustedCAConfigMap,
-		managedClusterConfigMap,
 		canMountCustomLogo,
 	)
 	withConsoleContainerImage(deployment, operatorConfig, proxyConfig)
@@ -173,7 +169,6 @@ func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.
 func withConsoleAnnotations(
 	deployment *appsv1.Deployment,
 	consoleConfigMap *corev1.ConfigMap,
-	managedClusterConfigMap *corev1.ConfigMap,
 	serviceCAConfigMap *corev1.ConfigMap,
 	oauthServingCertConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
@@ -191,9 +186,6 @@ func withConsoleAnnotations(
 		secretResourceVersionAnnotation:                    oAuthClientSecret.GetResourceVersion(),
 		consoleImageAnnotation:                             util.GetImageEnv("CONSOLE_IMAGE"),
 	}
-	if managedClusterConfigMap != nil {
-		deployment.ObjectMeta.Annotations[managedClusterConfigMapResourceVersionAnnotation] = managedClusterConfigMap.GetResourceVersion()
-	}
 	podAnnotations := deployment.Spec.Template.ObjectMeta.Annotations
 	for k, v := range deployment.ObjectMeta.Annotations {
 		podAnnotations[k] = v
@@ -206,16 +198,12 @@ func withConsoleVolumes(
 	apiServerCertConfigMaps *corev1.ConfigMapList,
 	oAuthServerCertConfigMaps *corev1.ConfigMapList,
 	trustedCAConfigMap *corev1.ConfigMap,
-	managedClusterConfigMap *corev1.ConfigMap,
 	canMountCustomLogo bool) {
 	volumeConfig := defaultVolumeConfig()
 
 	caBundle, caBundleExists := trustedCAConfigMap.Data["ca-bundle.crt"]
 	if caBundleExists && caBundle != "" {
 		volumeConfig = append(volumeConfig, trustedCAVolume())
-	}
-	if managedClusterConfigMap != nil {
-		volumeConfig = append(volumeConfig, managedClusterVolumeConfig())
 	}
 	if canMountCustomLogo {
 		volumeConfig = append(volumeConfig, customLogoVolume())

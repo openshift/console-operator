@@ -75,10 +75,6 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(routeErr)
 	}
 
-	// managed-clusters ConfigMap is managed by another controller and is not required, we don't need to exit the sync loop if it's not present
-	managedClusterConfigMap, managedClusterConfigErrReason, managedClusterConfigErr := co.GetManagedClusterConfigMap(ctx)
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ManagedClusterConfigSync", managedClusterConfigErrReason, managedClusterConfigErr))
-
 	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(
 		ctx,
 		set.Operator,
@@ -86,7 +82,6 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		set.Infrastructure,
 		set.OAuth,
 		route,
-		managedClusterConfigMap,
 		controllerContext.Recorder(),
 	)
 	toUpdate = toUpdate || cmChanged
@@ -145,7 +140,6 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		serviceCAConfigMap,
 		oauthServingCertConfigMap,
 		trustedCAConfigMap,
-		managedClusterConfigMap,
 		sec,
 		set.Proxy,
 		set.Infrastructure,
@@ -267,7 +261,6 @@ func (co *consoleOperator) SyncDeployment(
 	serviceCAConfigMap *corev1.ConfigMap,
 	oauthServingCertConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
-	managedClusterConfigMap *corev1.ConfigMap,
 	sec *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
@@ -292,7 +285,6 @@ func (co *consoleOperator) SyncDeployment(
 		serviceCAConfigMap,
 		oauthServingCertConfigMap,
 		trustedCAConfigMap,
-		managedClusterConfigMap,
 		sec,
 		proxyConfig,
 		infrastructureConfig,
@@ -362,7 +354,6 @@ func (co *consoleOperator) SyncConfigMap(
 	infrastructureConfig *configv1.Infrastructure,
 	oauthConfig *configv1.OAuth,
 	activeConsoleRoute *routev1.Route,
-	managedClusterConfigMap *corev1.ConfigMap,
 	recorder events.Recorder,
 ) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
 
@@ -401,10 +392,6 @@ func (co *consoleOperator) SyncConfigMap(
 	}
 
 	availablePlugins := co.GetAvailablePlugins(operatorConfig.Spec.Plugins)
-	managedClusterConfigFile := ""
-	if managedClusterConfigMap != nil {
-		managedClusterConfigFile = fmt.Sprintf("%v/%v", api.ManagedClusterConfigMountDir, api.ManagedClusterConfigKey)
-	}
 
 	monitoringSharedConfig, mscErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(ctx, api.OpenShiftMonitoringConfigMapName, metav1.GetOptions{})
 	if mscErr != nil && !apierrors.IsNotFound(mscErr) {
@@ -426,7 +413,6 @@ func (co *consoleOperator) SyncConfigMap(
 		useDefaultCAFile,
 		inactivityTimeoutSeconds,
 		availablePlugins,
-		managedClusterConfigFile,
 		nodeArchitectures,
 		nodeOperatingSystems,
 		copiedCSVsDisabled,
@@ -443,22 +429,6 @@ func (co *consoleOperator) SyncConfigMap(
 		klog.V(4).Infof("%s", cm.Data)
 	}
 	return cm, cmChanged, "ConsoleConfigBuilder", cmErr
-}
-
-func (co *consoleOperator) GetManagedClusterConfigMap(ctx context.Context) (*corev1.ConfigMap, string, error) {
-	managedClusterConfigMap, err := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, api.ManagedClusterConfigMapName, metav1.GetOptions{})
-	// Not degraded if get fails because the config map isn't there
-	if apierrors.IsNotFound(err) {
-		klog.V(4).Infof("%s ConfigMap not found, continuing...", api.ManagedClusterConfigMapName)
-		return nil, "", nil
-	}
-
-	// Degraded if get fails for any other reason
-	if err != nil {
-		return nil, "FailedGet", err
-	}
-
-	return managedClusterConfigMap, "", nil
 }
 
 // apply service-ca configmap
