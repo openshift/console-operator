@@ -60,7 +60,6 @@ type ConsoleServerCLIConfigBuilder struct {
 	pluginsList                map[string]string
 	i18nNamespaceList          []string
 	proxyServices              []ProxyService
-	managedClusterConfigFile   string
 	telemetry                  map[string]string
 	releaseVersion             string
 	nodeArchitectures          []string
@@ -171,11 +170,6 @@ func (b *ConsoleServerCLIConfigBuilder) Proxy(proxyServices []ProxyService) *Con
 	return b
 }
 
-func (b *ConsoleServerCLIConfigBuilder) ManagedClusterConfigFile(file string) *ConsoleServerCLIConfigBuilder {
-	b.managedClusterConfigFile = file
-	return b
-}
-
 func (b *ConsoleServerCLIConfigBuilder) TelemetryConfiguration(telemetry map[string]string) *ConsoleServerCLIConfigBuilder {
 	b.telemetry = telemetry
 	return b
@@ -198,19 +192,18 @@ func (b *ConsoleServerCLIConfigBuilder) CopiedCSVsDisabled(copiedCSVsDisabled bo
 
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
-		Kind:                     "ConsoleConfig",
-		APIVersion:               "console.openshift.io/v1",
-		Auth:                     b.auth(),
-		ClusterInfo:              b.clusterInfo(),
-		Customization:            b.customization(),
-		ServingInfo:              b.servingInfo(),
-		Providers:                b.providers(),
-		MonitoringInfo:           b.monitoringInfo(),
-		Plugins:                  b.plugins(),
-		I18nNamespaces:           b.i18nNamespaces(),
-		Proxy:                    b.proxy(),
-		ManagedClusterConfigFile: b.managedClusterConfigFile,
-		Telemetry:                b.telemetry,
+		Kind:           "ConsoleConfig",
+		APIVersion:     "console.openshift.io/v1",
+		Auth:           b.auth(),
+		ClusterInfo:    b.clusterInfo(),
+		Customization:  b.customization(),
+		ServingInfo:    b.servingInfo(),
+		Providers:      b.providers(),
+		MonitoringInfo: b.monitoringInfo(),
+		Plugins:        b.plugins(),
+		I18nNamespaces: b.i18nNamespaces(),
+		Proxy:          b.proxy(),
+		Telemetry:      b.telemetry,
 	}
 }
 

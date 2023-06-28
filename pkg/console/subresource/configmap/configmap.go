@@ -50,7 +50,6 @@ func DefaultConfigMap(
 	useDefaultCAFile bool,
 	inactivityTimeoutSeconds int,
 	availablePlugins []*v1.ConsolePlugin,
-	managedClusterConfigFile string,
 	nodeArchitectures []string,
 	copiedCSVsDisabled bool,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
@@ -96,7 +95,6 @@ func DefaultConfigMap(
 		Perspectives(operatorConfig.Spec.Customization.Perspectives).
 		StatusPageID(statusPageId(operatorConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
-		ManagedClusterConfigFile(managedClusterConfigFile).
 		TelemetryConfiguration(GetTelemetryConfiguration(operatorConfig)).
 		ReleaseVersion().
 		NodesArchitecture(nodeArchitectures).
