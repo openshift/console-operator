@@ -73,8 +73,6 @@ spec:
        
         1. From the **Administrator** perspective, go to the **OperatorHub** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
         
-        1. From the **Project** list, select the OpenShift project that hosts your containerized Java applications.
-
         1. In the **Filter by keyword** field, type `Red Hat build of Cryostat`.
         
           **Note:** If the tile has an **Installed** label, the Operator is already installed. Proceed to the next task to create an instance of Cryostat.
@@ -107,6 +105,8 @@ spec:
         To create a Cryostat instance:
 
         1. From the **Administrator** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
+        
+        1. From the **Project** list, select the OpenShift project that hosts your containerized Java applications.
         
         1. In the **Search by name** field type and search for the `Red Hat build of Cryostat`. If the operator is not found, ensure that you have selected the project where the Cryostat Operator was installed. 
 
