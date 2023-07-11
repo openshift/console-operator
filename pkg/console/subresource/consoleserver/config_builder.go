@@ -2,6 +2,7 @@ package consoleserver
 
 import (
 	"os"
+	"strings"
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
@@ -314,7 +315,10 @@ func (b *ConsoleServerCLIConfigBuilder) auth() Auth {
 func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 	conf := Customization{}
 	if len(b.brand) > 0 {
-		conf.Branding = string(b.brand)
+		// lowercase all the brands to match the original/legacy
+		// branding names which are lowercased. Check:
+		// https://github.com/openshift/api/pull/1494
+		conf.Branding = strings.ToLower(string(b.brand))
 	}
 	if len(b.docURL) > 0 {
 		conf.DocumentationBaseURL = b.docURL
