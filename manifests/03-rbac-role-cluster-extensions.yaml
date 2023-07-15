@@ -13,13 +13,14 @@ rules:
 - apiGroups:
   - console.openshift.io
   resources:
+  - consoleclidownloads
+  - consoleexternalloglinks
   - consolelinks
   - consolenotifications
-  - consoleexternalloglinks
-  - consoleclidownloads
-  - consoleyamlsamples
-  - consolequickstarts
   - consoleplugins
+  - consolequickstarts
+  - consolesamples
+  - consoleyamlsamples
   verbs:
   - get
   - list
