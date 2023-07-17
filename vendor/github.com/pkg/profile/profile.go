@@ -12,6 +12,8 @@ import (
 	"runtime/pprof"
 	"runtime/trace"
 	"sync/atomic"
+
+	"github.com/felixge/fgprof"
 )
 
 const (
@@ -22,6 +24,7 @@ const (
 	traceMode
 	threadCreateMode
 	goroutineMode
+	clockMode
 )
 
 // Profile represents an active profiling session.
@@ -42,6 +45,10 @@ type Profile struct {
 
 	// memProfileRate holds the rate for the memory profile.
 	memProfileRate int
+
+	// memProfileType holds the profile type for memory
+	// profiles. Allowed values are `heap` and `allocs`.
+	memProfileType string
 
 	// closer holds a cleanup function that run after each profile
 	closer func()
@@ -84,6 +91,20 @@ func MemProfileRate(rate int) func(*Profile) {
 	}
 }
 
+// MemProfileHeap changes which type of memory profiling to profile
+// the heap.
+func MemProfileHeap(p *Profile) {
+	p.memProfileType = "heap"
+	p.mode = memMode
+}
+
+// MemProfileAllocs changes which type of memory to profile
+// allocations.
+func MemProfileAllocs(p *Profile) {
+	p.memProfileType = "allocs"
+	p.mode = memMode
+}
+
 // MutexProfile enables mutex profiling.
 // It disables any previous profiling settings.
 func MutexProfile(p *Profile) { p.mode = mutexMode }
@@ -103,6 +124,10 @@ func ThreadcreationProfile(p *Profile) { p.mode = threadCreateMode }
 // GoroutineProfile enables goroutine profiling.
 // It disables any previous profiling settings.
 func GoroutineProfile(p *Profile) { p.mode = goroutineMode }
+
+// ClockProfile enables wall clock (fgprof) profiling.
+// It disables any previous profiling settings.
+func ClockProfile(p *Profile) { p.mode = clockMode }
 
 // ProfilePath controls the base path where various profiling
 // files are written. If blank, the base path will be generated
@@ -158,6 +183,10 @@ func Start(options ...func(*Profile)) interface {
 		}
 	}
 
+	if prof.memProfileType == "" {
+		prof.memProfileType = "heap"
+	}
+
 	switch prof.mode {
 	case cpuMode:
 		fn := filepath.Join(path, "cpu.pprof")
@@ -183,7 +212,7 @@ func Start(options ...func(*Profile)) interface {
 		runtime.MemProfileRate = prof.memProfileRate
 		logf("profile: memory profiling enabled (rate %d), %s", runtime.MemProfileRate, fn)
 		prof.closer = func() {
-			pprof.Lookup("heap").WriteTo(f, 0)
+			pprof.Lookup(prof.memProfileType).WriteTo(f, 0)
 			f.Close()
 			runtime.MemProfileRate = old
 			logf("profile: memory profiling disabled, %s", fn)
@@ -264,6 +293,20 @@ func Start(options ...func(*Profile)) interface {
 			}
 			f.Close()
 			logf("profile: goroutine profiling disabled, %s", fn)
+		}
+
+	case clockMode:
+		fn := filepath.Join(path, "clock.pprof")
+		f, err := os.Create(fn)
+		if err != nil {
+			log.Fatalf("profile: could not create clock profile %q: %v", fn, err)
+		}
+		logf("profile: clock profiling enabled, %s", fn)
+		stop := fgprof.Start(f, fgprof.FormatPprof)
+		prof.closer = func() {
+			stop()
+			f.Close()
+			logf("profile: clock profiling disabled, %s", fn)
 		}
 	}
 
