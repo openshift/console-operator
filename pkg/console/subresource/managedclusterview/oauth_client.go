@@ -6,8 +6,8 @@ import (
 
 	// openshift
 
+	"github.com/openshift/console-operator/bindata"
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/assets"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	// acm - TODO conflicts adding package to go.mod with several dependencies
 	// managedclusterviewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/action/v1beta1"
@@ -27,7 +27,7 @@ func DefaultOAuthClientView(cn string) (*unstructured.Unstructured, error) {
 }
 
 func OAuthClientViewStub() *unstructured.Unstructured {
-	return util.ReadUnstructuredOrDie(assets.MustAsset("managedclusterviews/console-oauth-client.yaml"))
+	return util.ReadUnstructuredOrDie(bindata.MustAsset("assets/managedclusterviews/console-oauth-client.yaml"))
 }
 
 func GetStatus(mcv *unstructured.Unstructured) (bool, error) {

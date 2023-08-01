@@ -17,8 +17,8 @@ import (
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	operatorinformersv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
+	"github.com/openshift/console-operator/bindata"
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/assets"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	"github.com/openshift/console-operator/pkg/console/status"
 	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
@@ -153,13 +153,13 @@ func (c *ServiceSyncController) removeService(ctx context.Context, serviceName s
 }
 
 func (c *ServiceSyncController) getDefaultService() *corev1.Service {
-	service := resourceread.ReadServiceV1OrDie(assets.MustAsset(fmt.Sprintf("services/%s-service.yaml", c.serviceName)))
+	service := resourceread.ReadServiceV1OrDie(bindata.MustAsset(fmt.Sprintf("assets/services/%s-service.yaml", c.serviceName)))
 
 	return service
 }
 
 func (c *ServiceSyncController) getRedirectService() *corev1.Service {
-	service := resourceread.ReadServiceV1OrDie(assets.MustAsset(fmt.Sprintf("services/%s-redirect-service.yaml", c.serviceName)))
+	service := resourceread.ReadServiceV1OrDie(bindata.MustAsset(fmt.Sprintf("assets/services/%s-redirect-service.yaml", c.serviceName)))
 
 	return service
 }
