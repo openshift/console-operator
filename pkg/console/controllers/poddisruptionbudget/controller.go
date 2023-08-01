@@ -6,7 +6,7 @@ import (
 	"time"
 
 	// k8s
-	"k8s.io/api/policy/v1"
+	v1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	policyv1 "k8s.io/client-go/informers/policy/v1"
@@ -16,7 +16,7 @@ import (
 	// openshift
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
-	"github.com/openshift/console-operator/pkg/console/assets"
+	"github.com/openshift/console-operator/bindata"
 	"github.com/openshift/console-operator/pkg/console/status"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
@@ -110,6 +110,6 @@ func (c *PodDisruptionBudgetController) removePodDisruptionBudget(ctx context.Co
 
 // Load manifests and create the PDBs
 func (c *PodDisruptionBudgetController) getDefaultPodDisruptionBudget() *v1.PodDisruptionBudget {
-	pdb := resourceread.ReadPodDisruptionBudgetV1OrDie(assets.MustAsset(fmt.Sprintf("pdb/%s-pdb.yaml", c.pdbName)))
+	pdb := resourceread.ReadPodDisruptionBudgetV1OrDie(bindata.MustAsset(fmt.Sprintf("assets/pdb/%s-pdb.yaml", c.pdbName)))
 	return pdb
 }

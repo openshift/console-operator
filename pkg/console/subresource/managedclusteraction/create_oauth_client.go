@@ -5,8 +5,8 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
 	// openshift
+	"github.com/openshift/console-operator/bindata"
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/assets"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	// acm - TODO conflicts adding package to go.mod with several dependencies
 	// managedclusterviewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/action/v1beta1"
@@ -29,7 +29,7 @@ func DefaultCreateOAuthClientAction(cn string, sec string, redirects []string) (
 }
 
 func CreateOAuthClientStub(cn string) *unstructured.Unstructured {
-	return util.ReadUnstructuredOrDie(assets.MustAsset("managedclusteractions/console-create-oauth-client.yaml"))
+	return util.ReadUnstructuredOrDie(bindata.MustAsset("assets/managedclusteractions/console-create-oauth-client.yaml"))
 }
 
 func GetName(mca *unstructured.Unstructured) (string, error) {

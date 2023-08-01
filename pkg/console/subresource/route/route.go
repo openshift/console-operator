@@ -21,8 +21,8 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
 
+	"github.com/openshift/console-operator/bindata"
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/assets"
 )
 
 const (
@@ -155,9 +155,9 @@ func (rc *RouteConfig) GetDomain() string {
 func (rc *RouteConfig) DefaultRoute(tlsConfig *CustomTLSCert, ingressConfig *configv1.Ingress) *routev1.Route {
 	route := &routev1.Route{}
 	if rc.IsCustomHostnameSet() && rc.routeName == api.OpenShiftConsoleRouteName {
-		route = resourceread.ReadRouteV1OrDie(assets.MustAsset(fmt.Sprintf("routes/%s-redirect-route.yaml", rc.routeName)))
+		route = resourceread.ReadRouteV1OrDie(bindata.MustAsset(fmt.Sprintf("assets/routes/%s-redirect-route.yaml", rc.routeName)))
 	} else {
-		route = resourceread.ReadRouteV1OrDie(assets.MustAsset(fmt.Sprintf("routes/%s-route.yaml", rc.routeName)))
+		route = resourceread.ReadRouteV1OrDie(bindata.MustAsset(fmt.Sprintf("assets/routes/%s-route.yaml", rc.routeName)))
 	}
 	route.Spec.Host = GetDefaultRouteHost(rc.routeName, ingressConfig)
 	setTLS(tlsConfig, route)
@@ -165,7 +165,7 @@ func (rc *RouteConfig) DefaultRoute(tlsConfig *CustomTLSCert, ingressConfig *con
 }
 
 func (rc *RouteConfig) CustomRoute(tlsConfig *CustomTLSCert, routeName string) *routev1.Route {
-	route := resourceread.ReadRouteV1OrDie(assets.MustAsset(fmt.Sprintf("routes/%s-custom-route.yaml", rc.routeName)))
+	route := resourceread.ReadRouteV1OrDie(bindata.MustAsset(fmt.Sprintf("assets/routes/%s-custom-route.yaml", rc.routeName)))
 	route.Spec.Host = rc.customRoute.hostname
 	setTLS(tlsConfig, route)
 	return route
