@@ -8,21 +8,29 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 
 	//github
 	"github.com/blang/semver"
 	clusterclientv1 "github.com/open-cluster-management/api/client/cluster/clientset/versioned/typed/cluster/v1"
 	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
-	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/library-go/pkg/controller/factory"
+
+	"github.com/openshift/console-operator/pkg/api"
 )
 
 // Return func which returns true if obj name is in names
 func IncludeNamesFilter(names ...string) factory.EventFilterFunc {
 	nameSet := sets.NewString(names...)
 	return func(obj interface{}) bool {
-		metaObj := obj.(metav1.Object)
+		if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+			obj = tombstone
+		}
+		metaObj, ok := obj.(metav1.Object)
+		if !ok {
+			klog.Errorf("Unexpected type %T", obj)
+		}
 		return nameSet.Has(metaObj.GetName())
 	}
 }
@@ -38,7 +46,13 @@ func ExcludeNamesFilter(names ...string) factory.EventFilterFunc {
 // (i.e for each key in labels map, obj.metadata.labels[key] is equal to labels[key])
 func LabelFilter(labels map[string]string) factory.EventFilterFunc {
 	return func(obj interface{}) bool {
-		metaObj := obj.(metav1.Object)
+		if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+			obj = tombstone
+		}
+		metaObj, ok := obj.(metav1.Object)
+		if !ok {
+			klog.Errorf("Unexpected type %T", obj)
+		}
 		objLabels := metaObj.GetLabels()
 		for k, v := range labels {
 			if objLabels[k] != v {
