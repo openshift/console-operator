@@ -25,11 +25,12 @@ func IncludeNamesFilter(names ...string) factory.EventFilterFunc {
 	nameSet := sets.NewString(names...)
 	return func(obj interface{}) bool {
 		if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
-			obj = tombstone
+			obj = tombstone.Obj
 		}
 		metaObj, ok := obj.(metav1.Object)
 		if !ok {
 			klog.Errorf("Unexpected type %T", obj)
+			return false
 		}
 		return nameSet.Has(metaObj.GetName())
 	}
@@ -47,11 +48,12 @@ func ExcludeNamesFilter(names ...string) factory.EventFilterFunc {
 func LabelFilter(labels map[string]string) factory.EventFilterFunc {
 	return func(obj interface{}) bool {
 		if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
-			obj = tombstone
+			obj = tombstone.Obj
 		}
 		metaObj, ok := obj.(metav1.Object)
 		if !ok {
 			klog.Errorf("Unexpected type %T", obj)
+			return false
 		}
 		objLabels := metaObj.GetLabels()
 		for k, v := range labels {
