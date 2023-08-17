@@ -14,8 +14,8 @@ import (
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
+	"github.com/openshift/console-operator/bindata"
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/assets"
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
@@ -168,7 +168,7 @@ func TestDefaultDeployment(t *testing.T) {
 	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
 	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
 	infrastructureConfigExternalTopologyMode := infrastructureConfigWithTopology(configv1.ExternalTopologyMode)
-	consoleDeploymentTemplate := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/console-deployment.yaml"))
+	consoleDeploymentTemplate := resourceread.ReadDeploymentV1OrDie(bindata.MustAsset("assets/deployments/console-deployment.yaml"))
 	withConsoleContainerImage(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
 	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMapList{}, &corev1.ConfigMapList{}, trustedCAConfigMapEmpty, false)
 	consoleDeploymentContainer := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
@@ -1318,7 +1318,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 		labels                            = util.LabelsForDownloads()
 		gracePeriod                 int64 = 0
 		tolerationSeconds           int64 = 120
-		downloadsDeploymentTemplate       = resourceread.ReadDeploymentV1OrDie(assets.MustAsset("deployments/downloads-deployment.yaml"))
+		downloadsDeploymentTemplate       = resourceread.ReadDeploymentV1OrDie(bindata.MustAsset("assets/deployments/downloads-deployment.yaml"))
 	)
 
 	type args struct {

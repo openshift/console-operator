@@ -12,8 +12,8 @@ import (
 	v1 "github.com/openshift/api/console/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	"github.com/openshift/console-operator/bindata"
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/assets"
 	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
@@ -222,7 +222,7 @@ func isCustomRoute(activeRoute *routev1.Route) bool {
 }
 
 func DefaultPublicConfig(consoleURL string) *corev1.ConfigMap {
-	config := resourceread.ReadConfigMapV1OrDie(assets.MustAsset("configmaps/console-public-configmap.yaml"))
+	config := resourceread.ReadConfigMapV1OrDie(bindata.MustAsset("assets/configmaps/console-public-configmap.yaml"))
 	config.Data = map[string]string{
 		"consoleURL": consoleURL,
 	}
@@ -230,13 +230,13 @@ func DefaultPublicConfig(consoleURL string) *corev1.ConfigMap {
 }
 
 func EmptyPublicConfig() *corev1.ConfigMap {
-	config := resourceread.ReadConfigMapV1OrDie(assets.MustAsset("configmaps/console-public-configmap.yaml"))
+	config := resourceread.ReadConfigMapV1OrDie(bindata.MustAsset("assets/configmaps/console-public-configmap.yaml"))
 	config.Data = map[string]string{}
 	return config
 }
 
 func ConsoleConfigMapStub() *corev1.ConfigMap {
-	return resourceread.ReadConfigMapV1OrDie(assets.MustAsset("configmaps/console-configmap.yaml"))
+	return resourceread.ReadConfigMapV1OrDie(bindata.MustAsset("assets/configmaps/console-configmap.yaml"))
 }
 
 func Stub() *corev1.ConfigMap {
