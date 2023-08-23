@@ -386,6 +386,14 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 			"CustomRouteSyncProgressing",
 			"DefaultRouteSyncDegraded",
 			"DefaultRouteSyncProgressing",
+
+			// Remove multicluster conditions until 4.15
+			"ThanosQuerierProxyServiceResolverSyncDegraded",
+			"ThanosQuerierProxyServiceResolverSyncProgressing",
+			"ManagedClusterSyncDegraded",
+			"ManagedClusterSyncProgressing",
+			"ManagedClusterConfigSyncDegraded",
+			"ManagedClusterConfigSyncProgressing",
 		},
 		operatorClient,
 		controllerContext.EventRecorder,
