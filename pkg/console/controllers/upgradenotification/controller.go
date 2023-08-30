@@ -117,7 +117,7 @@ func (c *UpgradeNotificationController) syncClusterUpgradeNotification(ctx conte
 		}
 		desiredVersion := clusterVersionConfig.Status.Desired.Version
 
-		if currentVersion == desiredVersion {
+		if currentVersion == "" || desiredVersion == "" || currentVersion == desiredVersion {
 			return "", nil
 		}
 
