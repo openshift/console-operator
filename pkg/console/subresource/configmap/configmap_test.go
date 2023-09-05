@@ -60,6 +60,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		availablePlugins         []*v1.ConsolePlugin
 		managedClusterConfigFile string
 		nodeArchitectures        []string
+		copiedCSVsDisabled       bool
 	}
 	t.Setenv("RELEASE_VERSION", testReleaseVersion)
 	tests := []struct {
@@ -822,6 +823,66 @@ providers: {}
 			},
 		},
 		{
+			name: "Test operator config, with CopiedCSVsDisabled",
+			args: args{
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL:         mockAPIServer,
+						ControlPlaneTopology: configv1.ExternalTopologyMode,
+					},
+				},
+				copiedCSVsDisabled: true,
+				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
+					Spec: routev1.RouteSpec{
+						Host: host,
+					},
+				},
+				useDefaultCAFile:         true,
+				inactivityTimeoutSeconds: 0,
+				managedClusterConfigFile: "",
+			},
+			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+				},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+  controlPlaneTopology: External
+  releaseVersion: ` + testReleaseVersion + `
+  copiedCSVsDisabled: true
+customization:
+  branding: ` + DEFAULT_BRAND + `
+  documentationBaseURL: ` + DEFAULT_DOC_URL + `
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: {}
+`,
+				},
+			},
+		},
+		{
 			name: "Test default configmap with monitoring config",
 			args: args{
 				operatorConfig: &operatorv1.Console{},
@@ -903,6 +964,7 @@ providers: {}
 				tt.args.availablePlugins,
 				tt.args.managedClusterConfigFile,
 				tt.args.nodeArchitectures,
+				tt.args.copiedCSVsDisabled,
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below

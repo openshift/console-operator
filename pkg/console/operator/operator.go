@@ -9,7 +9,10 @@ import (
 	// kube
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/dynamic/dynamicinformer"
 	corev1 "k8s.io/client-go/informers/core/v1"
 	appsclientv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -55,6 +58,7 @@ type consoleOperator struct {
 	ingressConfigClient        configclientv1.IngressInterface
 	proxyConfigClient          configclientv1.ProxyInterface
 	oauthConfigClient          configclientv1.OAuthInterface
+	dynamicClient              dynamic.Interface
 	// core kube
 	secretsClient    coreclientv1.SecretsGetter
 	configMapClient  coreclientv1.ConfigMapsGetter
@@ -75,6 +79,8 @@ func NewConsoleOperator(
 	// top level config
 	configClient configclientv1.ConfigV1Interface,
 	configInformer configinformer.SharedInformerFactory,
+	dynamicClient dynamic.Interface,
+	dynamicInformers dynamicinformer.DynamicSharedInformerFactory,
 	// operator
 	operatorClient v1helpers.OperatorClient,
 	operatorConfigClient operatorclientv1.OperatorV1Interface,
@@ -116,6 +122,7 @@ func NewConsoleOperator(
 		serviceClient:    corev1Client,
 		nodeClient:       corev1Client,
 		deploymentClient: deploymentClient,
+		dynamicClient:    dynamicClient,
 		// openshift
 		routeClient:   routev1Client,
 		oauthClient:   oauthv1Client,
@@ -135,6 +142,8 @@ func NewConsoleOperator(
 	configNameFilter := util.IncludeNamesFilter(api.ConfigResourceName)
 	targetNameFilter := util.IncludeNamesFilter(api.OpenShiftConsoleName)
 
+	olmConfigInformer := dynamicInformers.ForResource(schema.GroupVersionResource{Group: api.OLMConfigGroup, Version: api.OLMConfigVersion, Resource: api.OLMConfigResource})
+
 	return factory.New().
 		WithFilteredEventsInformers( // configs
 			configNameFilter,
@@ -144,6 +153,7 @@ func NewConsoleOperator(
 			configV1Informers.Ingresses().Informer(),
 			configV1Informers.Proxies().Informer(),
 			configV1Informers.OAuths().Informer(),
+			olmConfigInformer.Informer(),
 		).WithFilteredEventsInformers( // console resources
 		targetNameFilter,
 		deploymentInformer.Informer(),
