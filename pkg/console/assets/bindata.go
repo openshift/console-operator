@@ -631,13 +631,15 @@ func pdbDownloadsPdbYaml() (*asset, error) {
 
 var _routesConsoleCustomRouteYaml = []byte(`# This route 'console-custom' manifest is used in case a custom console route is set
 # either on the ingress config or console-operator config.
-# The 'console-custom' route will be pointing to the 'console' service. 
+# The 'console-custom' route will be pointing to the 'console' service.
 # Only a single custom console route is supported.
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
   name: console-custom
   namespace: openshift-console
+  annotations:
+    haproxy.router.openshift.io/timeout: 5m
   labels:
     app: console
 spec:
@@ -709,12 +711,14 @@ func routesConsoleRedirectRouteYaml() (*asset, error) {
 }
 
 var _routesConsoleRouteYaml = []byte(`# Default 'console' route manifest.
-# The 'console' route will be pointing to the 'console' service. 
+# The 'console' route will be pointing to the 'console' service.
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
   name: console
   namespace: openshift-console
+  annotations:
+    haproxy.router.openshift.io/timeout: 5m
   labels:
     app: console
 spec:
