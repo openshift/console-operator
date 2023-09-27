@@ -256,7 +256,7 @@ func (c *consoleOperator) handleSync(ctx context.Context, controllerContext fact
 		return nil
 	case operatorsv1.Removed:
 		klog.V(4).Infoln("console has been removed.")
-		return c.removeConsole(ctx, controllerContext.Recorder())
+		return c.removeConsole(ctx, updatedStatus, controllerContext.Recorder())
 	default:
 		return fmt.Errorf("console is in an unknown state: %v", updatedStatus.Spec.ManagementState)
 	}
@@ -265,9 +265,7 @@ func (c *consoleOperator) handleSync(ctx context.Context, controllerContext fact
 }
 
 // this may need to move to sync_v400 if versions ever have custom delete logic
-func (c *consoleOperator) removeConsole(ctx context.Context, recorder events.Recorder) error {
-	statusHandler := consolestatus.NewStatusHandler(c.operatorClient)
-
+func (c *consoleOperator) removeConsole(ctx context.Context, operatorConfig *operatorsv1.Console, recorder events.Recorder) error {
 	klog.V(2).Info("deleting console resources")
 	defer klog.V(2).Info("finished deleting console resources")
 	var errs []error
@@ -293,9 +291,7 @@ func (c *consoleOperator) removeConsole(ctx context.Context, recorder events.Rec
 	// filter out 404 errors, which indicate that resource is already deleted
 	err := utilerrors.FilterOut(utilerrors.NewAggregate(errs), apierrors.IsNotFound)
 
-	statusHandler.AddCondition(consolestatus.HandleAvailable("", "ConsoleRemoved", err))
-	statusHandler.AddCondition(consolestatus.HandleDegraded("", "ConsoleRemoved", err))
-	statusHandler.AddCondition(consolestatus.HandleUpgradable("", "ConsoleRemoved", err))
-
-	return err
+	statusHandler := consolestatus.NewStatusHandler(c.operatorClient)
+	statusHandler.AddConditions(statusHandler.ResetConditions(operatorConfig.Status.Conditions))
+	return statusHandler.FlushAndReturn(err)
 }
