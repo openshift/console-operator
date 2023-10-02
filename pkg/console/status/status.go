@@ -64,6 +64,36 @@ func HandleUpgradable(typePrefix string, reason string, err error) v1helpers.Upd
 	return v1helpers.UpdateConditionFn(condition)
 }
 
+func (c *StatusHandler) ResetConditions(conditions []operatorsv1.OperatorCondition) []v1helpers.UpdateStatusFunc {
+	updateStatusFuncs := []v1helpers.UpdateStatusFunc{}
+	for _, condition := range conditions {
+		klog.V(2).Info("\nresetting condition: ", condition.Type)
+		if strings.HasSuffix(condition.Type, operatorsv1.OperatorStatusTypeDegraded) {
+			conditionPrefix := strings.TrimSuffix(condition.Type, operatorsv1.OperatorStatusTypeDegraded)
+			updateStatusFuncs = append(updateStatusFuncs, HandleDegraded(conditionPrefix, "", nil))
+			continue
+		}
+		if strings.HasSuffix(condition.Type, operatorsv1.OperatorStatusTypeAvailable) {
+			conditionPrefix := strings.TrimSuffix(condition.Type, operatorsv1.OperatorStatusTypeAvailable)
+			updateStatusFuncs = append(updateStatusFuncs, HandleAvailable(conditionPrefix, "", nil))
+			continue
+		}
+		if strings.HasSuffix(condition.Type, operatorsv1.OperatorStatusTypeProgressing) {
+			conditionPrefix := strings.TrimSuffix(condition.Type, operatorsv1.OperatorStatusTypeProgressing)
+			updateStatusFuncs = append(updateStatusFuncs, HandleProgressing(conditionPrefix, "", nil))
+			continue
+		}
+		if strings.HasSuffix(condition.Type, operatorsv1.OperatorStatusTypeUpgradeable) {
+			conditionPrefix := strings.TrimSuffix(condition.Type, operatorsv1.OperatorStatusTypeUpgradeable)
+			updateStatusFuncs = append(updateStatusFuncs, HandleUpgradable(conditionPrefix, "", nil))
+			continue
+		}
+		klog.V(2).Info("unable to reset condition: ", condition.Type)
+	}
+
+	return updateStatusFuncs
+}
+
 // HandleProgressingOrDegraded exists until we remove type SyncError
 // If isSyncError
 // - Type suffix will be set to Progressing
