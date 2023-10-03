@@ -27,6 +27,7 @@ const (
 	OpenshiftConsoleRedirectServiceName       = "console-redirect"
 	OpenShiftConsoleRouteName                 = OpenShiftConsoleName
 	OpenshiftConsoleCustomRouteName           = "console-custom"
+	OpenshiftDownloadsCustomRouteName         = "downloads-custom"
 	DownloadsResourceName                     = "downloads"
 	OpenShiftConsoleDownloadsRouteName        = DownloadsResourceName
 	OpenShiftConsoleDownloadsDeploymentName   = DownloadsResourceName
