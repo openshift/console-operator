@@ -43,7 +43,6 @@ import (
 	configinformers "github.com/openshift/client-go/config/informers/externalversions"
 
 	authclient "github.com/openshift/client-go/oauth/clientset/versioned"
-	oauthinformers "github.com/openshift/client-go/oauth/informers/externalversions"
 
 	operatorversionedclient "github.com/openshift/client-go/operator/clientset/versioned"
 	operatorinformers "github.com/openshift/client-go/operator/informers/externalversions"
@@ -137,13 +136,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		routesinformers.WithNamespace(api.TargetNamespace),
 	)
 
-	// oauthclients are not namespaced
-	oauthInformers := oauthinformers.NewSharedInformerFactoryWithOptions(
-		oauthClient,
-		resync,
-		oauthinformers.WithTweakListOptions(tweakListOptionsForOAuthInformer),
-	)
-
 	consoleInformers := consoleinformers.NewSharedInformerFactory(
 		consoleClient,
 		resync,
@@ -203,10 +195,10 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	)
 
 	oauthClientController := oauthclients.NewOAuthClientsController(
+		ctx,
 		operatorClient,
-		oauthClient.OauthV1(),
+		oauthClient,
 		kubeClient.CoreV1(),
-		oauthInformers.Oauth().V1().OAuthClients(),
 		configInformers.Config().V1().Authentications(),
 		operatorConfigInformers.Operator().V1().Consoles(),
 		routesInformersNamespaced.Route().V1().Routes(),
@@ -464,7 +456,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleInformers,
 		configInformers,
 		routesInformersNamespaced,
-		oauthInformers,
 		dynamicInformers,
 	} {
 		informer.Start(ctx.Done())
