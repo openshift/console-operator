@@ -23,8 +23,13 @@ rules:
     verbs:
       - get
       - list
-      - update
       - watch
+  - apiGroups:
+      - oauth.openshift.io
+    resources:
+      - oauthclients
+    verbs:
+      - update
     resourceNames:
       - console
   - apiGroups:
