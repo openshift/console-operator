@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/client-go/informers/core/v1"
 	appsclientv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 
 	// openshift
@@ -28,11 +29,11 @@ import (
 	consoleinformersv1 "github.com/openshift/client-go/console/informers/externalversions/console/v1"
 	listerv1 "github.com/openshift/client-go/console/listers/console/v1"
 	oauthclientv1 "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
-	oauthinformersv1 "github.com/openshift/client-go/oauth/informers/externalversions/oauth/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	operatorinformerv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
+	routev1listers "github.com/openshift/client-go/route/listers/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	consolestatus "github.com/openshift/console-operator/pkg/console/status"
@@ -63,12 +64,14 @@ type consoleOperator struct {
 	dynamicClient              dynamic.Interface
 	// core kube
 	secretsClient    coreclientv1.SecretsGetter
+	secretsLister    corev1listers.SecretLister
 	configMapClient  coreclientv1.ConfigMapsGetter
 	serviceClient    coreclientv1.ServicesGetter
 	nodeClient       coreclientv1.NodesGetter
 	deploymentClient appsclientv1.DeploymentsGetter
 	// openshift
 	routeClient   routeclientv1.RoutesGetter
+	routeLister   routev1listers.RouteLister
 	oauthClient   oauthclientv1.OAuthClientsGetter
 	versionGetter status.VersionGetter
 	// lister
@@ -99,9 +102,6 @@ func NewConsoleOperator(
 	// routes
 	routev1Client routeclientv1.RoutesGetter,
 	routeInformer routesinformersv1.RouteInformer,
-	// oauth
-	oauthv1Client oauthclientv1.OAuthClientsGetter,
-	oauthClients oauthinformersv1.OAuthClientInformer,
 	// plugins
 	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
 	// openshift managed
@@ -111,6 +111,16 @@ func NewConsoleOperator(
 	recorder events.Recorder,
 	resourceSyncer resourcesynccontroller.ResourceSyncer,
 ) factory.Controller {
+
+	secretsInformer := coreV1.Secrets()
+	configMapInformer := coreV1.ConfigMaps()
+	managedConfigMapInformer := managedCoreV1.ConfigMaps()
+	serviceInformer := coreV1.Services()
+	nodeInformer := coreV1.Nodes()
+	configV1Informers := configInformer.Config().V1()
+	configNameFilter := util.IncludeNamesFilter(api.ConfigResourceName)
+	targetNameFilter := util.IncludeNamesFilter(api.OpenShiftConsoleName)
+
 	c := &consoleOperator{
 		// configs
 		operatorClient:             operatorClient,
@@ -123,6 +133,7 @@ func NewConsoleOperator(
 		// console resources
 		// core kube
 		secretsClient:    corev1Client,
+		secretsLister:    secretsInformer.Lister(),
 		configMapClient:  corev1Client,
 		serviceClient:    corev1Client,
 		nodeClient:       corev1Client,
@@ -130,22 +141,13 @@ func NewConsoleOperator(
 		dynamicClient:    dynamicClient,
 		// openshift
 		routeClient:   routev1Client,
-		oauthClient:   oauthv1Client,
+		routeLister:   routeInformer.Lister(),
 		versionGetter: versionGetter,
 		// plugins
 		consolePluginLister: consolePluginInformer.Lister(),
 
 		resourceSyncer: resourceSyncer,
 	}
-
-	secretsInformer := coreV1.Secrets()
-	configMapInformer := coreV1.ConfigMaps()
-	managedConfigMapInformer := managedCoreV1.ConfigMaps()
-	serviceInformer := coreV1.Services()
-	nodeInformer := coreV1.Nodes()
-	configV1Informers := configInformer.Config().V1()
-	configNameFilter := util.IncludeNamesFilter(api.ConfigResourceName)
-	targetNameFilter := util.IncludeNamesFilter(api.OpenShiftConsoleName)
 
 	informers := []factory.Informer{
 		configV1Informers.Consoles().Informer(),
@@ -180,7 +182,6 @@ func NewConsoleOperator(
 		deploymentInformer.Informer(),
 		routeInformer.Informer(),
 		serviceInformer.Informer(),
-		oauthClients.Informer(),
 	).WithInformers(
 		nodeInformer.Informer(),
 		consolePluginInformer.Informer(),

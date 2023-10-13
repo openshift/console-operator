@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
 	"github.com/openshift/console-operator/pkg/console/controllers/healthcheck"
+	"github.com/openshift/console-operator/pkg/console/controllers/oauthclients"
 	pdb "github.com/openshift/console-operator/pkg/console/controllers/poddisruptionbudget"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
@@ -191,9 +192,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// routes
 		routesClient.RouteV1(),
 		routesInformersNamespaced.Route().V1().Routes(), // Route
-		// oauth
-		oauthClient.OauthV1(),
-		oauthInformers.Oauth().V1().OAuthClients(), // OAuth clients
 		// plugins
 		consoleInformers.Console().V1().ConsolePlugins(),
 		// openshift managed
@@ -202,6 +200,19 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		versionGetter,
 		recorder,
 		resourceSyncer,
+	)
+
+	oauthClientController := oauthclients.NewOAuthClientsController(
+		operatorClient,
+		oauthClient.OauthV1(),
+		kubeClient.CoreV1(),
+		oauthInformers.Oauth().V1().OAuthClients(),
+		configInformers.Config().V1().Authentications(),
+		operatorConfigInformers.Operator().V1().Consoles(),
+		routesInformersNamespaced.Route().V1().Routes(),
+		configInformers.Config().V1().Ingresses(),
+		kubeInformersNamespaced.Core().V1().Secrets(),
+		recorder,
 	)
 
 	downloadsDeploymentController := downloadsdeployment.NewDownloadsDeploymentSyncController(
@@ -477,6 +488,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleRouteHealthCheckController,
 		consolePDBController,
 		downloadsPDBController,
+		oauthClientController,
 		upgradeNotificationController,
 		staleConditionsController,
 	} {
