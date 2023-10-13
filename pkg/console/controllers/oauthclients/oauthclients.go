@@ -12,6 +12,7 @@ import (
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/klog/v2"
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
@@ -50,6 +51,7 @@ type oauthClientsController struct {
 	routesLister          routev1listers.RouteLister
 	ingressConfigLister   configv1lister.IngressLister
 	targetNSSecretsLister corev1listers.SecretLister
+	configNSSecretsLister corev1listers.SecretLister
 
 	oauthClientsInformerSwitch *informerWithSwitch
 }
@@ -64,6 +66,7 @@ func NewOAuthClientsController(
 	routeInformer routev1informers.RouteInformer,
 	ingressConfigInformer configv1informers.IngressInformer,
 	targetNSsecretsInformer corev1informers.SecretInformer,
+	configNSSecretsInformer corev1informers.SecretInformer,
 	recorder events.Recorder,
 ) factory.Controller {
 	oauthClientInformer := oauthv1informers.NewOAuthClientInformer(oauthClient, 10*time.Minute, nil)
@@ -79,6 +82,7 @@ func NewOAuthClientsController(
 		routesLister:          routeInformer.Lister(),
 		ingressConfigLister:   ingressConfigInformer.Lister(),
 		targetNSSecretsLister: targetNSsecretsInformer.Lister(),
+		configNSSecretsLister: configNSSecretsInformer.Lister(),
 
 		oauthClientsInformerSwitch: NewOAuthClientsInformerSwitch(ctx, oauthClientInformer),
 	}
@@ -92,6 +96,7 @@ func NewOAuthClientsController(
 			routeInformer.Informer(),
 			ingressConfigInformer.Informer(),
 			targetNSsecretsInformer.Informer(),
+			configNSSecretsInformer.Informer(),
 		).
 		WithSyncDegradedOnError(operatorClient).
 		ToController("OAuthClientsController", recorder.WithComponentSuffix("oauth-clients-controller"))
@@ -148,8 +153,21 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 			return statusHandler.FlushAndReturn(oauthErr)
 		}
 		return nil
-	case "OIDC":
+	case "OIDC", configv1.AuthenticationTypeNone:
 		c.oauthClientsInformerSwitch.Stop()
+		clientConfigSecret, err := c.configNSSecretsLister.Secrets(api.OpenShiftConfigNamespace).Get("console-client-config")
+		if apierrors.IsNotFound(err) {
+			klog.Error("oauth client config secret not found")
+			return nil
+		} else if err != nil {
+			return err
+		}
+		secret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name)
+		expectedClientSecret := string(clientConfigSecret.Data["client-secret"])
+		if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) != expectedClientSecret {
+			_, _, err := resourceapply.ApplySecret(ctx, c.secretsClient, controllerContext.Recorder(), secretsub.DefaultSecret(operatorConfig, expectedClientSecret))
+			return err
+		}
 		return nil
 	default:
 		return nil

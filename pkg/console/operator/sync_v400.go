@@ -37,7 +37,6 @@ import (
 	"github.com/openshift/console-operator/pkg/console/status"
 	configmapsub "github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
-	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
 	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
 	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
@@ -74,12 +73,18 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(routeErr)
 	}
 
+	authnConfig, err := co.authnConfigLister.Get("cluster")
+	if err != nil {
+		return statusHandler.FlushAndReturn(err)
+	}
+
 	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(
 		ctx,
 		set.Operator,
 		set.Console,
 		set.Infrastructure,
 		set.OAuth,
+		authnConfig,
 		route,
 		controllerContext.Recorder(),
 	)
@@ -294,6 +299,7 @@ func (co *consoleOperator) SyncConfigMap(
 	consoleConfig *configv1.Console,
 	infrastructureConfig *configv1.Infrastructure,
 	oauthConfig *configv1.OAuth,
+	authConfig *configv1.Authentication,
 	activeConsoleRoute *routev1.Route,
 	recorder events.Recorder,
 ) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
@@ -309,18 +315,25 @@ func (co *consoleOperator) SyncConfigMap(
 	}
 	nodeArchitectures, nodeOperatingSystems := getNodeComputeEnvironments(nodeList)
 
-	inactivityTimeoutSeconds := 0
-	oauthClient, oacErr := co.oauthClient.OAuthClients().Get(ctx, oauthsub.Stub().Name, metav1.GetOptions{})
-	if oacErr != nil {
-		return nil, false, "FailedGetOAuthClient", oacErr
+	// FIXME: don't do live lookups
+	clientIDSecret, err := co.secretsClient.Secrets(api.OpenShiftConfigNamespace).Get(ctx, "console-client-config", metav1.GetOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, false, "FailedConsoleClientConfigSecretGet", err
 	}
-	if oauthClient.AccessTokenInactivityTimeoutSeconds != nil {
-		inactivityTimeoutSeconds = int(*oauthClient.AccessTokenInactivityTimeoutSeconds)
-	} else {
-		if oauthConfig.Spec.TokenConfig.AccessTokenInactivityTimeout != nil {
-			inactivityTimeoutSeconds = int(oauthConfig.Spec.TokenConfig.AccessTokenInactivityTimeout.Seconds())
-		}
-	}
+
+	// FIXME: let's just ignore this for now
+	// inactivityTimeoutSeconds := 0
+	// oauthClient, oacErr := co.oauthClient.OAuthClients().Get(ctx, oauthsub.Stub().Name, metav1.GetOptions{})
+	// if oacErr != nil {
+	// 	return nil, false, "FailedGetOAuthClient", oacErr
+	// }
+	// if oauthClient.AccessTokenInactivityTimeoutSeconds != nil {
+	// 	inactivityTimeoutSeconds = int(*oauthClient.AccessTokenInactivityTimeoutSeconds)
+	// } else {
+	// 	if oauthConfig.Spec.TokenConfig.AccessTokenInactivityTimeout != nil {
+	// 		inactivityTimeoutSeconds = int(oauthConfig.Spec.TokenConfig.AccessTokenInactivityTimeout.Seconds())
+	// 	}
+	// }
 
 	availablePlugins := co.GetAvailablePlugins(operatorConfig.Spec.Plugins)
 
@@ -343,11 +356,13 @@ func (co *consoleOperator) SyncConfigMap(
 	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(
 		operatorConfig,
 		consoleConfig,
+		authConfig,
+		clientIDSecret,
 		managedConfig,
 		monitoringSharedConfig,
 		infrastructureConfig,
 		activeConsoleRoute,
-		inactivityTimeoutSeconds,
+		60000,
 		availablePlugins,
 		nodeArchitectures,
 		nodeOperatingSystems,

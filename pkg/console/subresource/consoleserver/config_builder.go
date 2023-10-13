@@ -65,6 +65,22 @@ type ConsoleServerCLIConfigBuilder struct {
 	nodeArchitectures          []string
 	nodeOperatingSystems       []string
 	copiedCSVsDisabled         bool
+	oauthClientID              string
+}
+
+func (b *ConsoleServerCLIConfigBuilder) OAuthClientID(authConfig *configv1.Authentication, oauthClientSecret *corev1.Secret) *ConsoleServerCLIConfigBuilder {
+	var clientID string
+	switch authConfig.Spec.Type {
+	case "", configv1.AuthenticationTypeIntegratedOAuth:
+		clientID = api.OAuthClientName
+	case "OIDC", configv1.AuthenticationTypeNone:
+		if oauthClientSecret != nil {
+			clientID = string(oauthClientSecret.Data["client-id"])
+		}
+	}
+
+	b.oauthClientID = clientID
+	return b
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -295,8 +311,13 @@ func (b *ConsoleServerCLIConfigBuilder) auth() Auth {
 	if b.CAFile == "" {
 		b.CAFile = oauthServingCertFilePath
 	}
+
+	clientID := api.OAuthClientName
+	if clientIDOverride := b.oauthClientID; len(clientIDOverride) > 0 {
+		clientID = clientIDOverride
+	}
 	conf := Auth{
-		ClientID:                 api.OpenShiftConsoleName,
+		ClientID:                 clientID,
 		ClientSecretFile:         clientSecretFilePath,
 		OAuthEndpointCAFile:      b.CAFile,
 		InactivityTimeoutSeconds: b.inactivityTimeoutSeconds,

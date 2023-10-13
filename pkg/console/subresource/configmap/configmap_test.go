@@ -50,9 +50,11 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ
 func TestDefaultConfigMap(t *testing.T) {
 	type args struct {
 		operatorConfig           *operatorv1.Console
+		authConfig               *configv1.Authentication
 		consoleConfig            *configv1.Console
 		managedConfig            *corev1.ConfigMap
 		monitoringSharedConfig   *corev1.ConfigMap
+		oauthClientSecret        *corev1.Secret
 		infrastructureConfig     *configv1.Infrastructure
 		rt                       *routev1.Route
 		inactivityTimeoutSeconds int
@@ -70,6 +72,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		{
 			name: "Test default configmap, no customization",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig:  &corev1.ConfigMap{},
@@ -126,6 +129,7 @@ providers: {}
 		{
 			name: "Test configmap with oauth-serving-cert",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig:  &corev1.ConfigMap{},
@@ -180,6 +184,7 @@ providers: {}
 		{
 			name: "Test managed config to override default config",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig: &corev1.ConfigMap{
@@ -246,6 +251,7 @@ providers: {}
 		{
 			name: "Test nodeOperatingSystems config",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig: &corev1.ConfigMap{
@@ -312,6 +318,7 @@ providers: {}
 		{
 			name: "Test operator config overriding default config and managed config",
 			args: args{
+				authConfig: &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{
 					Spec: operatorv1.ConsoleSpec{
 						OperatorSpec: operatorv1.OperatorSpec{},
@@ -383,6 +390,7 @@ providers: {}
 		{
 			name: "Test operator config with Custom Branding Values",
 			args: args{
+				authConfig: &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{
 					Spec: operatorv1.ConsoleSpec{
 						OperatorSpec: operatorv1.OperatorSpec{},
@@ -461,6 +469,7 @@ providers: {}
 		{
 			name: "Test operator config with Statuspage pageID",
 			args: args{
+				authConfig: &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{
 					Spec: operatorv1.ConsoleSpec{
 						OperatorSpec: operatorv1.OperatorSpec{},
@@ -538,6 +547,7 @@ providers:
 		{
 			name: "Test operator config with custom route hostname",
 			args: args{
+				authConfig: &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{
 					Spec: operatorv1.ConsoleSpec{
 						Route: operatorv1.ConsoleConfigRoute{
@@ -599,6 +609,7 @@ providers: {}
 		{
 			name: "Test operator config, with inactivityTimeoutSeconds set",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig:  &corev1.ConfigMap{},
@@ -654,6 +665,7 @@ providers: {}
 		{
 			name: "Test operator config, with enabledPlugins set",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig:  &corev1.ConfigMap{},
@@ -757,6 +769,7 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 		{
 			name: "Test operator config, with 'External' ControlPlaneTopology",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig:  &corev1.ConfigMap{},
@@ -813,6 +826,7 @@ providers: {}
 		{
 			name: "Test operator config, with CopiedCSVsDisabled",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig:  &corev1.ConfigMap{},
@@ -871,6 +885,7 @@ providers: {}
 		{
 			name: "Test default configmap with monitoring config",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig:  &corev1.ConfigMap{},
@@ -939,6 +954,8 @@ providers: {}
 			cm, _, _ := DefaultConfigMap(
 				tt.args.operatorConfig,
 				tt.args.consoleConfig,
+				tt.args.authConfig,
+				tt.args.oauthClientSecret,
 				tt.args.managedConfig,
 				tt.args.monitoringSharedConfig,
 				tt.args.infrastructureConfig,

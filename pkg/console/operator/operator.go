@@ -26,9 +26,9 @@ import (
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
+	configv1listers "github.com/openshift/client-go/config/listers/config/v1"
 	consoleinformersv1 "github.com/openshift/client-go/console/informers/externalversions/console/v1"
 	listerv1 "github.com/openshift/client-go/console/listers/console/v1"
-	oauthclientv1 "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	operatorinformerv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
@@ -48,7 +48,6 @@ import (
 	// operator
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
-	"github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
 	"github.com/openshift/console-operator/pkg/console/subresource/secret"
 )
 
@@ -60,6 +59,7 @@ type consoleOperator struct {
 	infrastructureConfigClient configclientv1.InfrastructureInterface
 	ingressConfigClient        configclientv1.IngressInterface
 	proxyConfigClient          configclientv1.ProxyInterface
+	authnConfigLister          configv1listers.AuthenticationLister
 	oauthConfigClient          configclientv1.OAuthInterface
 	dynamicClient              dynamic.Interface
 	// core kube
@@ -72,7 +72,6 @@ type consoleOperator struct {
 	// openshift
 	routeClient   routeclientv1.RoutesGetter
 	routeLister   routev1listers.RouteLister
-	oauthClient   oauthclientv1.OAuthClientsGetter
 	versionGetter status.VersionGetter
 	// lister
 	consolePluginLister listerv1.ConsolePluginLister
@@ -129,6 +128,7 @@ func NewConsoleOperator(
 		infrastructureConfigClient: configClient.Infrastructures(),
 		ingressConfigClient:        configClient.Ingresses(),
 		proxyConfigClient:          configClient.Proxies(),
+		authnConfigLister:          configV1Informers.Authentications().Lister(),
 		oauthConfigClient:          configClient.OAuths(),
 		// console resources
 		// core kube
@@ -337,13 +337,14 @@ func (c *consoleOperator) removeConsole(ctx context.Context, operatorConfig *ope
 	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(ctx, configmap.ServiceCAStub().Name, metav1.DeleteOptions{}))
 	// secret
 	errs = append(errs, c.secretsClient.Secrets(api.TargetNamespace).Delete(ctx, secret.Stub().Name, metav1.DeleteOptions{}))
+	// FIXME: whyyyyy?
 	// existingOAuthClient is not a delete, it is a deregister/neutralize
-	existingOAuthClient, getAuthErr := c.oauthClient.OAuthClients().Get(ctx, oauthclient.Stub().Name, metav1.GetOptions{})
-	errs = append(errs, getAuthErr)
-	if len(existingOAuthClient.RedirectURIs) != 0 {
-		_, updateAuthErr := c.oauthClient.OAuthClients().Update(ctx, oauthclient.DeRegisterConsoleFromOAuthClient(existingOAuthClient), metav1.UpdateOptions{})
-		errs = append(errs, updateAuthErr)
-	}
+	// existingOAuthClient, getAuthErr := c.oauthClient.OAuthClients().Get(ctx, oauthclient.Stub().Name, metav1.GetOptions{})
+	// errs = append(errs, getAuthErr)
+	// if len(existingOAuthClient.RedirectURIs) != 0 {
+	// 	_, updateAuthErr := c.oauthClient.OAuthClients().Update(ctx, oauthclient.DeRegisterConsoleFromOAuthClient(existingOAuthClient), metav1.UpdateOptions{})
+	// 	errs = append(errs, updateAuthErr)
+	// }
 	// deployment
 	// NOTE: CVO controls the deployment for downloads, console-operator cannot delete it.
 	errs = append(errs, c.deploymentClient.Deployments(api.TargetNamespace).Delete(ctx, deployment.Stub().Name, metav1.DeleteOptions{}))

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
+	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	v1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
@@ -754,6 +755,27 @@ auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+customization: {}
+providers: {}
+`,
+		},
+		{
+			name: "Config builder should return modified client ID if overriden by user",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				return b.OAuthClientID(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}}, &corev1.Secret{Data: map[string][]byte{"client-id": []byte("testing-id")}}).ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo: {}
+auth:
+  clientID: testing-id
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
 customization: {}
 providers: {}
 `,

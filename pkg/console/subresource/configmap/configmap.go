@@ -43,6 +43,8 @@ func statusPageId(operatorConfig *operatorv1.Console) string {
 func DefaultConfigMap(
 	operatorConfig *operatorv1.Console,
 	consoleConfig *configv1.Console,
+	authConfig *configv1.Authentication,
+	oauthClientSecret *corev1.Secret,
 	managedConfig *corev1.ConfigMap,
 	monitoringSharedConfig *corev1.ConfigMap,
 	infrastructureConfig *configv1.Infrastructure,
@@ -98,6 +100,7 @@ func DefaultConfigMap(
 		ReleaseVersion().
 		NodeArchitectures(nodeArchitectures).
 		NodeOperatingSystems(nodeOperatingSystems).
+		OAuthClientID(authConfig, oauthClientSecret).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate user defined console-config config: %v", err)
