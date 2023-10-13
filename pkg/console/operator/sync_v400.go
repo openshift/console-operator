@@ -268,20 +268,9 @@ func (co *consoleOperator) SyncDeployment(
 	recorder events.Recorder,
 ) (consoleDeployment *appsv1.Deployment, changed bool, reason string, err error) {
 	updatedOperatorConfig := operatorConfig.DeepCopy()
-	apiServerCertConfigMaps, apiServerCertConfigMapsErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).List(ctx, metav1.ListOptions{LabelSelector: api.ManagedClusterAPIServerCertName})
-	if apiServerCertConfigMapsErr != nil {
-		klog.Warningf("Unable to list managed cluster API server cert ConfigMaps. Multicluster will not be enabled: %v", apiServerCertConfigMapsErr)
-	}
-
-	oAuthServerCertConfigMaps, oAuthServerCertConfigMapsErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).List(ctx, metav1.ListOptions{LabelSelector: api.ManagedClusterOAuthServerCertName})
-	if oAuthServerCertConfigMapsErr != nil {
-		klog.Warningf("Unable to list managed cluster OAuth server cert ConfigMaps. Multicluster will not be enabled: %v", oAuthServerCertConfigMapsErr)
-	}
 	requiredDeployment := deploymentsub.DefaultDeployment(
 		operatorConfig,
 		cm,
-		apiServerCertConfigMaps,
-		oAuthServerCertConfigMaps,
 		serviceCAConfigMap,
 		oauthServingCertConfigMap,
 		trustedCAConfigMap,

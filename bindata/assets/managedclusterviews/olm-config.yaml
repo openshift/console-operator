@@ -1,7 +1,0 @@
-apiVersion: view.open-cluster-management.io/v1beta1
-kind: ManagedClusterView
-spec:
-  scope:
-    apiVersion: operators.coreos.com/v1
-    resource: OLMConfig
-    name: cluster

@@ -64,8 +64,6 @@ type volumeConfig struct {
 func DefaultDeployment(
 	operatorConfig *operatorv1.Console,
 	consoleConfigMap *corev1.ConfigMap,
-	apiServerCertConfigMaps *corev1.ConfigMapList,
-	managedClusterOAuthServerCertConfigMaps *corev1.ConfigMapList,
 	serviceCAConfigMap *corev1.ConfigMap,
 	localOAuthServingCertConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
@@ -90,8 +88,6 @@ func DefaultDeployment(
 	)
 	withConsoleVolumes(
 		deployment,
-		apiServerCertConfigMaps,
-		managedClusterOAuthServerCertConfigMaps,
 		trustedCAConfigMap,
 		canMountCustomLogo,
 	)
@@ -195,8 +191,6 @@ func withConsoleAnnotations(
 
 func withConsoleVolumes(
 	deployment *appsv1.Deployment,
-	apiServerCertConfigMaps *corev1.ConfigMapList,
-	oAuthServerCertConfigMaps *corev1.ConfigMapList,
 	trustedCAConfigMap *corev1.ConfigMap,
 	canMountCustomLogo bool) {
 	volumeConfig := defaultVolumeConfig()
@@ -208,17 +202,6 @@ func withConsoleVolumes(
 	if canMountCustomLogo {
 		volumeConfig = append(volumeConfig, customLogoVolume())
 	}
-	if len(apiServerCertConfigMaps.Items) > 0 {
-		for _, apiServerCertConfigMap := range apiServerCertConfigMaps.Items {
-			volumeConfig = append(volumeConfig, apiServerCertVolumeConfig(apiServerCertConfigMap))
-		}
-	}
-	if len(oAuthServerCertConfigMaps.Items) > 0 {
-		for _, oAuthServerCertConfigMap := range oAuthServerCertConfigMaps.Items {
-			volumeConfig = append(volumeConfig, oAuthServerCertVolumeConfig(oAuthServerCertConfigMap))
-		}
-	}
-
 	volMountList := make([]corev1.VolumeMount, len(volumeConfig))
 	for i, item := range volumeConfig {
 		volMountList[i] = corev1.VolumeMount{
@@ -456,24 +439,4 @@ func customLogoVolume() volumeConfig {
 		name:        api.OpenShiftCustomLogoConfigMapName,
 		path:        "/var/logo/",
 		isConfigMap: true}
-}
-
-func apiServerCertVolumeConfig(configMap corev1.ConfigMap) volumeConfig {
-	name := configMap.GetName()
-	return volumeConfig{
-		name:        name,
-		path:        fmt.Sprintf("%s/%s", api.ManagedClusterAPIServerCertMountDir, name),
-		readOnly:    true,
-		isConfigMap: true,
-	}
-}
-
-func oAuthServerCertVolumeConfig(configMap corev1.ConfigMap) volumeConfig {
-	name := configMap.GetName()
-	return volumeConfig{
-		name:        name,
-		path:        fmt.Sprintf("%s/%s", api.ManagedClusterOAuthServerCertMountDir, name),
-		readOnly:    true,
-		isConfigMap: true,
-	}
 }

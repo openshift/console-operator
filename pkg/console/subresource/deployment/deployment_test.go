@@ -35,17 +35,15 @@ func TestDefaultDeployment(t *testing.T) {
 		tolerationSeconds      int64 = 120
 	)
 	type args struct {
-		consoleOperatorConfig                   *operatorsv1.Console
-		consoleConfig                           *corev1.ConfigMap
-		apiServerCertConfigMaps                 *corev1.ConfigMapList
-		managedClusterOAuthServerCertConfigMaps *corev1.ConfigMapList
-		serviceCAConfigMap                      *corev1.ConfigMap
-		localOAuthServingCertConfigMap          *corev1.ConfigMap
-		trustedCAConfigMap                      *corev1.ConfigMap
-		oAuthClientSecret                       *corev1.Secret
-		proxyConfig                             *configv1.Proxy
-		infrastructureConfig                    *configv1.Infrastructure
-		canMountCustomLogo                      bool
+		consoleOperatorConfig          *operatorsv1.Console
+		consoleConfig                  *corev1.ConfigMap
+		serviceCAConfigMap             *corev1.ConfigMap
+		localOAuthServingCertConfigMap *corev1.ConfigMap
+		trustedCAConfigMap             *corev1.ConfigMap
+		oAuthClientSecret              *corev1.Secret
+		proxyConfig                    *configv1.Proxy
+		infrastructureConfig           *configv1.Infrastructure
+		canMountCustomLogo             bool
 	}
 
 	consoleOperatorConfig := &operatorsv1.Console{
@@ -170,10 +168,10 @@ func TestDefaultDeployment(t *testing.T) {
 	infrastructureConfigExternalTopologyMode := infrastructureConfigWithTopology(configv1.ExternalTopologyMode)
 	consoleDeploymentTemplate := resourceread.ReadDeploymentV1OrDie(bindata.MustAsset("assets/deployments/console-deployment.yaml"))
 	withConsoleContainerImage(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
-	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMapList{}, &corev1.ConfigMapList{}, trustedCAConfigMapEmpty, false)
+	withConsoleVolumes(consoleDeploymentTemplate, trustedCAConfigMapEmpty, false)
 	consoleDeploymentContainer := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumes := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
-	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMapList{}, &corev1.ConfigMapList{}, trustedCAConfigMapSet, false)
+	withConsoleVolumes(consoleDeploymentTemplate, trustedCAConfigMapSet, false)
 	consoleDeploymentContainerTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumesTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 
@@ -185,11 +183,9 @@ func TestDefaultDeployment(t *testing.T) {
 		{
 			name: "Test Default Config Map",
 			args: args{
-				consoleOperatorConfig:                   consoleOperatorConfig,
-				consoleConfig:                           consoleConfig,
-				apiServerCertConfigMaps:                 &corev1.ConfigMapList{},
-				managedClusterOAuthServerCertConfigMaps: &corev1.ConfigMapList{},
-				serviceCAConfigMap:                      &corev1.ConfigMap{},
+				consoleOperatorConfig: consoleOperatorConfig,
+				consoleConfig:         consoleConfig,
+				serviceCAConfigMap:    &corev1.ConfigMap{},
 				localOAuthServingCertConfigMap: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
 				},
@@ -269,11 +265,9 @@ func TestDefaultDeployment(t *testing.T) {
 		{
 			name: "Test Trusted CA Config Map",
 			args: args{
-				consoleOperatorConfig:                   consoleOperatorConfig,
-				consoleConfig:                           consoleConfig,
-				apiServerCertConfigMaps:                 &corev1.ConfigMapList{},
-				managedClusterOAuthServerCertConfigMaps: &corev1.ConfigMapList{},
-				serviceCAConfigMap:                      &corev1.ConfigMap{},
+				consoleOperatorConfig: consoleOperatorConfig,
+				consoleConfig:         consoleConfig,
+				serviceCAConfigMap:    &corev1.ConfigMap{},
 				localOAuthServingCertConfigMap: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
 				},
@@ -352,11 +346,9 @@ func TestDefaultDeployment(t *testing.T) {
 		{
 			name: "Test Infrastructure Config SingleReplicaTopologyMode",
 			args: args{
-				consoleOperatorConfig:                   consoleOperatorConfig,
-				consoleConfig:                           consoleConfig,
-				apiServerCertConfigMaps:                 &corev1.ConfigMapList{},
-				managedClusterOAuthServerCertConfigMaps: &corev1.ConfigMapList{},
-				serviceCAConfigMap:                      &corev1.ConfigMap{},
+				consoleOperatorConfig: consoleOperatorConfig,
+				consoleConfig:         consoleConfig,
+				serviceCAConfigMap:    &corev1.ConfigMap{},
 				localOAuthServingCertConfigMap: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
 				},
@@ -428,11 +420,9 @@ func TestDefaultDeployment(t *testing.T) {
 		{
 			name: "Test Infrastructure Config ExternalTopologyMode",
 			args: args{
-				consoleOperatorConfig:                   consoleOperatorConfig,
-				consoleConfig:                           consoleConfig,
-				apiServerCertConfigMaps:                 &corev1.ConfigMapList{},
-				managedClusterOAuthServerCertConfigMaps: &corev1.ConfigMapList{},
-				serviceCAConfigMap:                      &corev1.ConfigMap{},
+				consoleOperatorConfig: consoleOperatorConfig,
+				consoleConfig:         consoleConfig,
+				serviceCAConfigMap:    &corev1.ConfigMap{},
 				localOAuthServingCertConfigMap: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
 				},
@@ -511,8 +501,6 @@ func TestDefaultDeployment(t *testing.T) {
 			if diff := deep.Equal(DefaultDeployment(
 				tt.args.consoleOperatorConfig,
 				tt.args.consoleConfig,
-				tt.args.apiServerCertConfigMaps,
-				tt.args.managedClusterOAuthServerCertConfigMaps,
 				tt.args.localOAuthServingCertConfigMap,
 				tt.args.consoleConfig,
 				tt.args.trustedCAConfigMap,
@@ -1089,8 +1077,6 @@ func TestWithConsoleVolumes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			withConsoleVolumes(
 				tt.args.deployment,
-				&corev1.ConfigMapList{},
-				&corev1.ConfigMapList{},
 				tt.args.trustedCAConfigMap,
 				tt.args.canMountCustomLogo,
 			)
