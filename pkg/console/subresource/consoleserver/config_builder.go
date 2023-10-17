@@ -2,6 +2,7 @@ package consoleserver
 
 import (
 	"os"
+	"path"
 	"strings"
 
 	configv1 "github.com/openshift/api/config/v1"
@@ -151,8 +152,20 @@ func (b *ConsoleServerCLIConfigBuilder) StatusPageID(id string) *ConsoleServerCL
 	return b
 }
 
-func (b *ConsoleServerCLIConfigBuilder) OAuthServingCert() *ConsoleServerCLIConfigBuilder {
-	b.CAFile = oauthServingCertFilePath
+func (b *ConsoleServerCLIConfigBuilder) AuthServerCA(authnConfig *configv1.Authentication, caConfigMap *corev1.Secret) *ConsoleServerCLIConfigBuilder {
+	switch authnConfig.Spec.Type {
+	case "", configv1.AuthenticationTypeIntegratedOAuth:
+		b.CAFile = oauthServingCertFilePath
+		return b
+	case "OIDC", configv1.AuthenticationTypeNone:
+		if caConfigMap == nil {
+			return b
+		}
+
+		if _, ok := caConfigMap.Data["ca.crt"]; ok {
+			b.CAFile = path.Join(api.AuthServerCAMountDir, api.AuthServerCAFileName)
+		}
+	}
 	return b
 }
 
@@ -306,12 +319,6 @@ func (b *ConsoleServerCLIConfigBuilder) monitoringInfo() MonitoringInfo {
 }
 
 func (b *ConsoleServerCLIConfigBuilder) auth() Auth {
-	// we need this fallback due to the way our unit test are structured,
-	// where the ConsoleServerCLIConfigBuilder object is being instantiated empty
-	if b.CAFile == "" {
-		b.CAFile = oauthServingCertFilePath
-	}
-
 	clientID := api.OAuthClientName
 	if clientIDOverride := b.oauthClientID; len(clientIDOverride) > 0 {
 		clientID = clientIDOverride

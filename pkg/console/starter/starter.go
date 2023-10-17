@@ -53,7 +53,6 @@ import (
 	consolev1client "github.com/openshift/client-go/console/clientset/versioned"
 	consoleinformers "github.com/openshift/client-go/console/informers/externalversions"
 
-	"github.com/openshift/console-operator/pkg/console/clientwrapper"
 	"github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/library-go/pkg/operator/loglevel"
 )
@@ -156,7 +155,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 	versionGetter := status.NewVersionGetter()
 
-	resourceSyncerInformers, resourceSyncer := getResourceSyncer(controllerContext, clientwrapper.WithoutSecret(kubeClient), operatorClient)
+	resourceSyncerInformers, resourceSyncer := getResourceSyncer(controllerContext, kubeClient, operatorClient)
 
 	err = startStaticResourceSyncing(resourceSyncer)
 	if err != nil {
@@ -499,6 +498,14 @@ func startStaticResourceSyncing(resourceSyncer *resourcesynccontroller.ResourceS
 	err := resourceSyncer.SyncConfigMap(
 		resourcesynccontroller.ResourceLocation{Name: api.OAuthServingCertConfigMapName, Namespace: api.OpenShiftConsoleNamespace},
 		resourcesynccontroller.ResourceLocation{Name: api.OAuthServingCertConfigMapName, Namespace: api.OpenShiftConfigManagedNamespace},
+	)
+	if err != nil {
+		return err
+	}
+
+	err = resourceSyncer.SyncSecret(
+		resourcesynccontroller.ResourceLocation{Name: "console-client-config", Namespace: api.TargetNamespace},
+		resourcesynccontroller.ResourceLocation{Name: "console-client-config", Namespace: api.OpenShiftConfigNamespace},
 	)
 	if err != nil {
 		return err

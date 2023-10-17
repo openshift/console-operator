@@ -78,12 +78,22 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(err)
 	}
 
+	// FIXME: don't do live lookups
+	oidcConfig, err := co.secretsClient.Secrets(api.OpenShiftConfigNamespace).Get(ctx, "console-client-config", metav1.GetOptions{})
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return statusHandler.FlushAndReturn(err)
+		}
+		oidcConfig = nil
+	}
+
 	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(
 		ctx,
 		set.Operator,
 		set.Console,
 		set.Infrastructure,
 		set.OAuth,
+		oidcConfig,
 		authnConfig,
 		route,
 		controllerContext.Recorder(),
@@ -117,10 +127,17 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(customLogoError)
 	}
 
-	oauthServingCertConfigMap, oauthServingCertErrReason, oauthServingCertErr := co.ValidateOAuthServingCertConfigMap(ctx)
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthServingCertValidation", oauthServingCertErrReason, oauthServingCertErr))
-	if oauthServingCertErr != nil {
-		return statusHandler.FlushAndReturn(oauthServingCertErr)
+	var oauthServingCertConfigMap *corev1.ConfigMap
+	switch authnConfig.Spec.Type {
+	case "", configv1.AuthenticationTypeIntegratedOAuth:
+		var oauthServingCertErrReason string
+		var oauthServingCertErr error
+
+		oauthServingCertConfigMap, oauthServingCertErrReason, oauthServingCertErr = co.ValidateOAuthServingCertConfigMap(ctx)
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthServingCertValidation", oauthServingCertErrReason, oauthServingCertErr))
+		if oauthServingCertErr != nil {
+			return statusHandler.FlushAndReturn(oauthServingCertErr)
+		}
 	}
 
 	clientSecret, secErr := co.secretsLister.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name)
@@ -135,6 +152,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		cm,
 		serviceCAConfigMap,
 		oauthServingCertConfigMap,
+		oidcConfig,
 		trustedCAConfigMap,
 		clientSecret,
 		set.Proxy,
@@ -250,6 +268,7 @@ func (co *consoleOperator) SyncDeployment(
 	cm *corev1.ConfigMap,
 	serviceCAConfigMap *corev1.ConfigMap,
 	oauthServingCertConfigMap *corev1.ConfigMap,
+	authServerCAConfigMap *corev1.Secret,
 	trustedCAConfigMap *corev1.ConfigMap,
 	sec *corev1.Secret,
 	proxyConfig *configv1.Proxy,
@@ -263,6 +282,7 @@ func (co *consoleOperator) SyncDeployment(
 		cm,
 		serviceCAConfigMap,
 		oauthServingCertConfigMap,
+		authServerCAConfigMap,
 		trustedCAConfigMap,
 		sec,
 		proxyConfig,
@@ -299,6 +319,7 @@ func (co *consoleOperator) SyncConfigMap(
 	consoleConfig *configv1.Console,
 	infrastructureConfig *configv1.Infrastructure,
 	oauthConfig *configv1.OAuth,
+	oidcConfig *corev1.Secret,
 	authConfig *configv1.Authentication,
 	activeConsoleRoute *routev1.Route,
 	recorder events.Recorder,
@@ -314,12 +335,6 @@ func (co *consoleOperator) SyncConfigMap(
 		return nil, false, "FailedListNodes", nodeListErr
 	}
 	nodeArchitectures, nodeOperatingSystems := getNodeComputeEnvironments(nodeList)
-
-	// FIXME: don't do live lookups
-	clientIDSecret, err := co.secretsClient.Secrets(api.OpenShiftConfigNamespace).Get(ctx, "console-client-config", metav1.GetOptions{})
-	if err != nil && !apierrors.IsNotFound(err) {
-		return nil, false, "FailedConsoleClientConfigSecretGet", err
-	}
 
 	// FIXME: let's just ignore this for now
 	// inactivityTimeoutSeconds := 0
@@ -357,7 +372,7 @@ func (co *consoleOperator) SyncConfigMap(
 		operatorConfig,
 		consoleConfig,
 		authConfig,
-		clientIDSecret,
+		oidcConfig,
 		managedConfig,
 		monitoringSharedConfig,
 		infrastructureConfig,
