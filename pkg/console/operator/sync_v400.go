@@ -368,16 +368,6 @@ func (co *consoleOperator) SyncConfigMap(
 	}
 	nodeArchitectures, nodeOperatingSystems := getNodeComputeEnvironments(nodeList)
 
-	useDefaultCAFile := false
-	// We are syncing the `oauth-serving-cert` configmap from `openshift-config-managed` to `openshift-console`.
-	// `oauth-serving-cert` is only published in `openshift-config-managed` in OpenShift 4.9.0 and newer.
-	// If the `oauth-serving-cert` configmap in `openshift-console` exists, we should mount that to the console container,
-	// otherwise default to `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt`
-	_, rcaErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, api.OAuthServingCertConfigMapName, metav1.GetOptions{})
-	if rcaErr != nil && apierrors.IsNotFound(rcaErr) {
-		useDefaultCAFile = true
-	}
-
 	inactivityTimeoutSeconds := 0
 	oauthClient, oacErr := co.oauthClient.OAuthClients().Get(ctx, oauthsub.Stub().Name, metav1.GetOptions{})
 	if oacErr != nil {
@@ -410,7 +400,6 @@ func (co *consoleOperator) SyncConfigMap(
 		monitoringSharedConfig,
 		infrastructureConfig,
 		activeConsoleRoute,
-		useDefaultCAFile,
 		inactivityTimeoutSeconds,
 		availablePlugins,
 		nodeArchitectures,

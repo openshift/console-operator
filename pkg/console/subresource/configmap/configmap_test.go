@@ -55,7 +55,6 @@ func TestDefaultConfigMap(t *testing.T) {
 		monitoringSharedConfig   *corev1.ConfigMap
 		infrastructureConfig     *configv1.Infrastructure
 		rt                       *routev1.Route
-		useDefaultCAFile         bool
 		inactivityTimeoutSeconds int
 		availablePlugins         []*v1.ConsolePlugin
 		nodeArchitectures        []string
@@ -88,7 +87,6 @@ func TestDefaultConfigMap(t *testing.T) {
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
 			},
 			want: &corev1.ConfigMap{
@@ -107,7 +105,7 @@ apiVersion: console.openshift.io/v1
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
@@ -144,7 +142,6 @@ providers: {}
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         false,
 				inactivityTimeoutSeconds: 0,
 			},
 			want: &corev1.ConfigMap{
@@ -207,7 +204,6 @@ customization:
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
 				nodeArchitectures:        []string{"amd64", "arm64"},
 			},
@@ -227,7 +223,7 @@ apiVersion: console.openshift.io/v1
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
@@ -274,7 +270,6 @@ customization:
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
 				nodeOperatingSystems:     []string{"foo", "bar"},
 			},
@@ -294,7 +289,7 @@ apiVersion: console.openshift.io/v1
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
@@ -350,7 +345,6 @@ customization:
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
 			},
 			want: &corev1.ConfigMap{
@@ -369,7 +363,7 @@ apiVersion: console.openshift.io/v1
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
@@ -427,7 +421,6 @@ customization:
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
 			},
 			want: &corev1.ConfigMap{
@@ -446,7 +439,7 @@ apiVersion: console.openshift.io/v1
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
@@ -506,7 +499,6 @@ customization:
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
 			},
 			want: &corev1.ConfigMap{
@@ -525,7 +517,7 @@ apiVersion: console.openshift.io/v1
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
@@ -568,7 +560,6 @@ providers:
 						Host: customHostname,
 					},
 				},
-				useDefaultCAFile:         false,
 				inactivityTimeoutSeconds: 0,
 			},
 			want: &corev1.ConfigMap{
@@ -624,7 +615,6 @@ providers: {}
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 60,
 			},
 			want: &corev1.ConfigMap{
@@ -644,7 +634,7 @@ auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   inactivityTimeoutSeconds: 60
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
@@ -680,7 +670,6 @@ providers: {}
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
 				availablePlugins: []*v1.ConsolePlugin{
 					testPluginsWithProxy("plugin1", "service1", "service-namespace1"),
@@ -704,7 +693,7 @@ apiVersion: console.openshift.io/v1
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
@@ -785,7 +774,6 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
 			},
 			want: &corev1.ConfigMap{
@@ -804,7 +792,7 @@ apiVersion: console.openshift.io/v1
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
@@ -843,7 +831,6 @@ providers: {}
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
 			},
 			want: &corev1.ConfigMap{
@@ -862,7 +849,7 @@ apiVersion: console.openshift.io/v1
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
@@ -901,7 +888,6 @@ providers: {}
 						Host: host,
 					},
 				},
-				useDefaultCAFile:         true,
 				inactivityTimeoutSeconds: 0,
 				monitoringSharedConfig: &corev1.ConfigMap{
 					Data: map[string]string{
@@ -926,7 +912,7 @@ apiVersion: console.openshift.io/v1
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
@@ -957,7 +943,6 @@ providers: {}
 				tt.args.monitoringSharedConfig,
 				tt.args.infrastructureConfig,
 				tt.args.rt,
-				tt.args.useDefaultCAFile,
 				tt.args.inactivityTimeoutSeconds,
 				tt.args.availablePlugins,
 				tt.args.nodeArchitectures,

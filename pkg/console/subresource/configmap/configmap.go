@@ -47,7 +47,6 @@ func DefaultConfigMap(
 	monitoringSharedConfig *corev1.ConfigMap,
 	infrastructureConfig *configv1.Infrastructure,
 	activeConsoleRoute *routev1.Route,
-	useDefaultCAFile bool,
 	inactivityTimeoutSeconds int,
 	availablePlugins []*v1.ConsolePlugin,
 	nodeArchitectures []string,
@@ -60,7 +59,6 @@ func DefaultConfigMap(
 		LogoutURL(defaultLogoutURL).
 		Brand(DEFAULT_BRAND).
 		DocURL(DEFAULT_DOC_URL).
-		OAuthServingCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
 		Monitoring(monitoringSharedConfig).
 		InactivityTimeout(inactivityTimeoutSeconds).
@@ -80,7 +78,6 @@ func DefaultConfigMap(
 		LogoutURL(consoleConfig.Spec.Authentication.LogoutRedirect).
 		Brand(operatorConfig.Spec.Customization.Brand).
 		DocURL(operatorConfig.Spec.Customization.DocumentationBaseURL).
-		OAuthServingCert(useDefaultCAFile).
 		APIServerURL(getApiUrl(infrastructureConfig)).
 		TopologyMode(infrastructureConfig.Status.ControlPlaneTopology).
 		Monitoring(monitoringSharedConfig).
