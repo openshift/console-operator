@@ -44,7 +44,7 @@ auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   logoutRedirect: https://foobar.com/logout
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 clusterInfo:
   consoleBaseAddress: https://console-openshift-console.apps.foobar.com
   masterPublicURL: https://foobar.com/api

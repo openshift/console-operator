@@ -40,7 +40,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 				},
 				Customization: Customization{},
 				Providers:     Providers{},
@@ -53,7 +53,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					OAuthServingCert(false).
+					OAuthServingCert().
 					Config()
 			},
 			output: Config{
@@ -86,7 +86,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					OAuthServingCert(false).
+					OAuthServingCert().
 					Config()
 			},
 			output: Config{
@@ -131,7 +131,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 				},
 				Customization: Customization{},
 				Providers: Providers{
@@ -160,7 +160,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 				},
 				Customization: Customization{},
 				Providers:     Providers{},
@@ -189,7 +189,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 				},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
@@ -243,7 +243,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 				},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
@@ -297,7 +297,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 				},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
@@ -331,7 +331,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 				},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
@@ -365,7 +365,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 				},
 				Customization: Customization{
 					ProjectAccess: ProjectAccess{
@@ -398,7 +398,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 				},
 				Customization: Customization{
 					QuickStarts: QuickStarts{
@@ -445,7 +445,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -510,7 +510,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -574,7 +574,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -630,7 +630,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 					LogoutRedirect:      "https://foobar.com/logout",
 				},
 				Customization: Customization{
@@ -670,7 +670,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 				},
 				Customization: Customization{},
 				Providers:     Providers{},
@@ -705,7 +705,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthEndpointCAFilePath,
+					OAuthEndpointCAFile: oauthServingCertFilePath,
 				},
 				Customization: Customization{},
 				Providers:     Providers{},
@@ -753,7 +753,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 customization: {}
 providers: {}
 `,
@@ -766,7 +766,7 @@ providers: {}
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					OAuthServingCert(false).
+					OAuthServingCert().
 					ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
@@ -803,7 +803,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 customization: {}
 providers:
   statuspageID: status-12345
@@ -826,7 +826,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 customization: {}
 providers: {}
 `,
@@ -850,7 +850,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 customization:
   developerCatalog:
     categories: []
@@ -898,7 +898,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 customization:
   developerCatalog:
     categories:
@@ -938,7 +938,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 customization:
   developerCatalog:
     categories: null
@@ -969,7 +969,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 customization:
   developerCatalog:
     categories: null
@@ -1001,7 +1001,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 customization:
   addPage:
     disabledActions:
@@ -1026,7 +1026,7 @@ providers: {}
 						"plugin2": "plugin2_url",
 					}).
 					I18nNamespaces([]string{"plugin__plugin1"}).
-					OAuthServingCert(true)
+					OAuthServingCert()
 				return b.ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
@@ -1041,7 +1041,7 @@ clusterInfo:
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
   logoutRedirect: https://foobar.com/logout
 customization:
   branding: okd
@@ -1077,7 +1077,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 customization:
   quickStarts:
     disabled:
@@ -1119,7 +1119,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 customization:
   perspectives:
   - id: perspective1
@@ -1185,7 +1185,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 customization:
   perspectives:
   - id: perspective1
@@ -1255,7 +1255,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 customization:
   perspectives:
   - id: perspective1
@@ -1305,7 +1305,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 customization: {}
 providers: {}
 telemetry:

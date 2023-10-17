@@ -458,15 +458,6 @@ func customLogoVolume() volumeConfig {
 		isConfigMap: true}
 }
 
-func managedClusterVolumeConfig() volumeConfig {
-	return volumeConfig{
-		name:        api.ManagedClusterConfigMapName,
-		path:        api.ManagedClusterConfigMountDir,
-		readOnly:    true,
-		isConfigMap: true,
-	}
-}
-
 func apiServerCertVolumeConfig(configMap corev1.ConfigMap) volumeConfig {
 	name := configMap.GetName()
 	return volumeConfig{

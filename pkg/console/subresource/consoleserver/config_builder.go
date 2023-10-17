@@ -17,7 +17,6 @@ import (
 const (
 	clientSecretFilePath     = "/var/oauth-config/clientSecret"
 	oauthServingCertFilePath = "/var/oauth-serving-cert/ca-bundle.crt"
-	oauthEndpointCAFilePath  = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 	// serving info
 	certFilePath = "/var/serving-cert/tls.crt"
 	keyFilePath  = "/var/serving-cert/tls.key"
@@ -136,11 +135,7 @@ func (b *ConsoleServerCLIConfigBuilder) StatusPageID(id string) *ConsoleServerCL
 	return b
 }
 
-func (b *ConsoleServerCLIConfigBuilder) OAuthServingCert(useDefaultCAFile bool) *ConsoleServerCLIConfigBuilder {
-	if useDefaultCAFile {
-		b.CAFile = oauthEndpointCAFilePath
-		return b
-	}
+func (b *ConsoleServerCLIConfigBuilder) OAuthServingCert() *ConsoleServerCLIConfigBuilder {
 	b.CAFile = oauthServingCertFilePath
 	return b
 }
@@ -298,7 +293,7 @@ func (b *ConsoleServerCLIConfigBuilder) auth() Auth {
 	// we need this fallback due to the way our unit test are structured,
 	// where the ConsoleServerCLIConfigBuilder object is being instantiated empty
 	if b.CAFile == "" {
-		b.CAFile = oauthEndpointCAFilePath
+		b.CAFile = oauthServingCertFilePath
 	}
 	conf := Auth{
 		ClientID:                 api.OpenShiftConsoleName,
