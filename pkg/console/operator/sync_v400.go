@@ -388,9 +388,15 @@ func (co *consoleOperator) SyncConfigMap(
 		return nil, false, "FailedGetMonitoringSharedConfig", mscErr
 	}
 
-	copiedCSVsDisabled, ccdErr := co.isCopiedCSVsDisabled(ctx)
-	if ccdErr != nil {
-		return nil, false, "FailedGetOLMConfig", ccdErr
+	var (
+		copiedCSVsDisabled bool
+		ccdErr             error
+	)
+	if !co.isOLMDisabled {
+		copiedCSVsDisabled, ccdErr = co.isCopiedCSVsDisabled(ctx)
+		if ccdErr != nil {
+			return nil, false, "FailedGetOLMConfig", ccdErr
+		}
 	}
 
 	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(

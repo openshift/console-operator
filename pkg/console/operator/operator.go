@@ -4,6 +4,7 @@ import (
 	// standard lib
 	"context"
 	"fmt"
+	"syscall"
 	"time"
 
 	// kube
@@ -11,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	corev1 "k8s.io/client-go/informers/core/v1"
@@ -73,6 +75,9 @@ type consoleOperator struct {
 	consolePluginLister listerv1.ConsolePluginLister
 
 	resourceSyncer resourcesynccontroller.ResourceSyncer
+
+	// used to keep track of OLM capability
+	isOLMDisabled bool
 }
 
 func NewConsoleOperator(
@@ -142,18 +147,34 @@ func NewConsoleOperator(
 	configNameFilter := util.IncludeNamesFilter(api.ConfigResourceName)
 	targetNameFilter := util.IncludeNamesFilter(api.OpenShiftConsoleName)
 
-	olmConfigInformer := dynamicInformers.ForResource(schema.GroupVersionResource{Group: api.OLMConfigGroup, Version: api.OLMConfigVersion, Resource: api.OLMConfigResource})
+	informers := []factory.Informer{
+		configV1Informers.Consoles().Informer(),
+		operatorConfigInformer.Informer(),
+		configV1Informers.Infrastructures().Informer(),
+		configV1Informers.Ingresses().Informer(),
+		configV1Informers.Proxies().Informer(),
+		configV1Informers.OAuths().Informer(),
+	}
+
+	olmGroupVersionResource := schema.GroupVersionResource{
+		Group:    api.OLMConfigGroup,
+		Version:  api.OLMConfigVersion,
+		Resource: api.OLMConfigResource,
+	}
+
+	if found, _ := isResourceEnabled(dynamicClient, olmGroupVersionResource); found {
+		olmConfigInformer := dynamicInformers.ForResource(olmGroupVersionResource)
+		informers = append(informers, olmConfigInformer.Informer())
+	} else {
+		klog.Info("olmconfigs resource does not exist in cluster, launching poll and disabling olmconfigs informer")
+		c.isOLMDisabled = true
+		c.startPollAndRestartIfResourceEnabled(olmGroupVersionResource)
+	}
 
 	return factory.New().
 		WithFilteredEventsInformers( // configs
 			configNameFilter,
-			configV1Informers.Consoles().Informer(),
-			operatorConfigInformer.Informer(),
-			configV1Informers.Infrastructures().Informer(),
-			configV1Informers.Ingresses().Informer(),
-			configV1Informers.Proxies().Informer(),
-			configV1Informers.OAuths().Informer(),
-			olmConfigInformer.Informer(),
+			informers...,
 		).WithFilteredEventsInformers( // console resources
 		targetNameFilter,
 		deploymentInformer.Informer(),
@@ -174,6 +195,47 @@ func NewConsoleOperator(
 		secretsInformer.Informer(),
 	).ResyncEvery(time.Minute).WithSync(c.Sync).
 		ToController("ConsoleOperator", recorder.WithComponentSuffix("console-operator"))
+}
+
+// startPollAndRestartIfResourceEnabled is a helper function to watch for the re-creation of a resource that is initiated
+// at start up, for example the OLMConfigs resource, because OLM is an optional operator and we initiate an informer at start up
+// this method tries to offer a way of trigger a container restart.
+func (c *consoleOperator) startPollAndRestartIfResourceEnabled(resource schema.GroupVersionResource) {
+	go func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		var enabled bool
+		// Poll Resource to see if resource has been re-enabled
+		wait.PollInfiniteWithContext(ctx, time.Minute*5, func(ctx context.Context) (done bool, err error) {
+			enabled, err = isResourceEnabled(c.dynamicClient, resource)
+			if err != nil {
+				klog.Errorf("failed to find if resource is enabled, retrying in 5 minutes: %v", err)
+			}
+			return enabled, nil
+		})
+
+		// If we exit out of a poll and enabled is not set to true do not issue interrupt
+		if !enabled {
+			return
+		}
+
+		// This is a brute force technique that won't involve additional permissions
+		// TODO: investigate alternative approaches for re-attaching informer
+		klog.Info("OLM has been re-enabled, restarting container")
+		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+	}()
+}
+
+func isResourceEnabled(client dynamic.Interface, resource schema.GroupVersionResource) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
+	defer cancel()
+	_, err := client.Resource(resource).List(ctx, metav1.ListOptions{})
+	// If List returns NotFound, then we know the resource does not exist
+	if err != nil && apierrors.IsNotFound(err) {
+		return false, nil
+	}
+	return true, err
 }
 
 type configSet struct {
