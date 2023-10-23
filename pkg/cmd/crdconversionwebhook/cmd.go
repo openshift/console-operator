@@ -1,6 +1,7 @@
 package crdconversionwebhook
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 
@@ -43,8 +44,9 @@ func startServer() {
 	http.HandleFunc("/readyz", func(w http.ResponseWriter, req *http.Request) { w.Write([]byte("ok")) })
 	clientset := getClient()
 	server := &http.Server{
-		Addr:      fmt.Sprintf(":%d", port),
-		TLSConfig: configTLS(config, clientset),
+		Addr:         fmt.Sprintf(":%d", port),
+		TLSConfig:    configTLS(config, clientset),
+		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)), // disable HTTP/2
 	}
 	server.ListenAndServeTLS("", "")
 }
