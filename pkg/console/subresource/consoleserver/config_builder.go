@@ -67,20 +67,28 @@ type ConsoleServerCLIConfigBuilder struct {
 	nodeOperatingSystems       []string
 	copiedCSVsDisabled         bool
 	oauthClientID              string
+	oidcExtraScopes            []string
+	oidcIssuerURL              string
+	authType                   string
 }
 
-func (b *ConsoleServerCLIConfigBuilder) OAuthClientID(authConfig *configv1.Authentication, oauthClientSecret *corev1.Secret) *ConsoleServerCLIConfigBuilder {
-	var clientID string
+func (b *ConsoleServerCLIConfigBuilder) OAuthClientConfig(authConfig *configv1.Authentication, oauthClientSecret *corev1.Secret) *ConsoleServerCLIConfigBuilder {
 	switch authConfig.Spec.Type {
 	case "", configv1.AuthenticationTypeIntegratedOAuth:
-		clientID = api.OAuthClientName
+		b.oauthClientID = api.OAuthClientName
 	case "OIDC", configv1.AuthenticationTypeNone:
-		if oauthClientSecret != nil {
-			clientID = string(oauthClientSecret.Data["client-id"])
+		if oauthClientSecret == nil {
+			return b
+		}
+
+		b.authType = "oidc"
+		b.oidcIssuerURL = string(oauthClientSecret.Data["issuer"])
+		b.oauthClientID = string(oauthClientSecret.Data["client-id"])
+		if extraScopes := string(oauthClientSecret.Data["extra-scopes"]); len(extraScopes) > 0 {
+			b.oidcExtraScopes = strings.Split(string(oauthClientSecret.Data["extra-scopes"]), ",")
 		}
 	}
 
-	b.oauthClientID = clientID
 	return b
 }
 
@@ -324,10 +332,13 @@ func (b *ConsoleServerCLIConfigBuilder) auth() Auth {
 		clientID = clientIDOverride
 	}
 	conf := Auth{
+		AuthType:                 b.authType,
+		OIDCIssuer:               b.oidcIssuerURL,
 		ClientID:                 clientID,
 		ClientSecretFile:         clientSecretFilePath,
 		OAuthEndpointCAFile:      b.CAFile,
 		InactivityTimeoutSeconds: b.inactivityTimeoutSeconds,
+		OIDCExtraScopes:          b.oidcExtraScopes,
 	}
 	if len(b.logoutRedirectURL) > 0 {
 		conf.LogoutRedirect = b.logoutRedirectURL

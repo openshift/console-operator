@@ -100,7 +100,7 @@ func DefaultConfigMap(
 		ReleaseVersion().
 		NodeArchitectures(nodeArchitectures).
 		NodeOperatingSystems(nodeOperatingSystems).
-		OAuthClientID(authConfig, oidcConfig).
+		OAuthClientConfig(authConfig, oidcConfig).
 		AuthServerCA(authConfig, oidcConfig).
 		ConfigYAML()
 	if err != nil {

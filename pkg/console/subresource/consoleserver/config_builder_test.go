@@ -781,7 +781,7 @@ providers: {}
 			name: "Config builder should return modified client ID if overriden by user",
 			input: func() ([]byte, error) {
 				b := &ConsoleServerCLIConfigBuilder{}
-				return b.OAuthClientID(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}}, &corev1.Secret{Data: map[string][]byte{"client-id": []byte("testing-id")}}).ConfigYAML()
+				return b.OAuthClientConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}}, &corev1.Secret{Data: map[string][]byte{"client-id": []byte("testing-id")}}).ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
@@ -791,6 +791,7 @@ servingInfo:
   keyFile: /var/serving-cert/tls.key
 clusterInfo: {}
 auth:
+  authType: oidc
   clientID: testing-id
   clientSecretFile: /var/oauth-config/clientSecret
 customization: {}
@@ -1331,7 +1332,6 @@ servingInfo:
   keyFile: /var/serving-cert/tls.key
 clusterInfo: {}
 auth:
-  authType: oidc
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
 customization: {}
