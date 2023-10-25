@@ -1,0 +1,197 @@
+apiVersion: console.openshift.io/v1
+kind: ConsoleQuickStart
+metadata:
+  name: rhdh-installation-via-operator
+  annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
+    include.release.openshift.io/self-managed-high-availability: "true"
+    include.release.openshift.io/single-node-developer: "true"
+    capability.openshift.io/name: Console
+spec:
+  displayName: Install Red Hat Developer Hub (RHDH) with an Operator
+  description: Install RHDH, a enterprise-grade, open developer platform for building developer portals, build on Backstage.
+  durationMinutes: 10
+  tags:
+    - rhdh
+    - developer-hub
+    - janus
+    - backstage
+    - idp
+    - developer-portal
+    - operator
+  icon: |-
+    data:image/svg+xml;base64,
+    PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zPSJodHRwOi8v
+    d3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjM4IiBoZWlnaHQ9IjM4IiB2aWV3Qm94PSIwIDAg
+    MzggMzgiPjxnIGlkPSJ1dWlkLTc5MDFmODc4LWNlMDAtNDQxZi1hYzI2LWRkZDM2NTRkNGY3OSI+
+    PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjM2IiBoZWlnaHQ9IjM2IiByeD0iOSIgcnk9IjkiIHN0
+    cm9rZS13aWR0aD0iMCIvPjxwYXRoIGQ9Im0yOCwyLjI1YzQuMjczMzYsMCw3Ljc1LDMuNDc2NjQs
+    Ny43NSw3Ljc1djE4YzAsNC4yNzMzNi0zLjQ3NjY0LDcuNzUtNy43NSw3Ljc1SDEwYy00LjI3MzM2
+    LDAtNy43NS0zLjQ3NjY0LTcuNzUtNy43NVYxMGMwLTQuMjczMzYsMy40NzY2NC03Ljc1LDcuNzUt
+    Ny43NWgxOG0wLTEuMjVIMTBDNS4wMjk0NCwxLDEsNS4wMjk0MywxLDEwdjE4YzAsNC45NzA1Nyw0
+    LjAyOTQ0LDksOSw5aDE4YzQuOTcwNTYsMCw5LTQuMDI5NDMsOS05VjEwYzAtNC45NzA1Ny00LjAy
+    OTQ0LTktOS05aDBaIiBmaWxsPSIjNGQ0ZDRkIiBzdHJva2Utd2lkdGg9IjAiLz48L2c+PGcgaWQ9
+    InV1aWQtYzNjYTY4OTEtNmUxOC00MmNiLTg1MmItM2RlZGQ2YzMxZTY4Ij48cGF0aCBkPSJtMjYu
+    NDQyMzgsMjUuNTU4MTFsLTMuNzczNzQtMy43NzM3NGMuNTkxNDMtLjc3NzA0Ljk1NjM2LTEuNzM0
+    OC45NTYzNi0yLjc4NDM2LDAtMi41NTAyOS0yLjA3NTItNC42MjUtNC42MjUtNC42MjUtMi41NTAy
+    OSwwLTQuNjI1LDIuMDc0NzEtNC42MjUsNC42MjVzMi4wNzQ3MSw0LjYyNSw0LjYyNSw0LjYyNWMx
+    LjA0OTQ0LDAsMi4wMDcyNi0uMzY0OTMsMi43ODQzNi0uOTU2MzZsMy43NzMyNSwzLjc3MzI1Yy4x
+    MjIwNy4xMjIwNy4yODIyMy4xODMxMS40NDIzOC4xODMxMXMuMzIwMzEtLjA2MTA0LjQ0MjM4LS4x
+    ODMxMWMuMjQzMTYtLjI0NDE0LjI0MzE2LS42Mzk2NSwwLS44ODM3OVptLTEwLjgxNzM4LTYuNTU4
+    MTFjMC0xLjg2MDg0LDEuNTE0MTYtMy4zNzUsMy4zNzUtMy4zNzUsMS44NjEzMywwLDMuMzc1LDEu
+    NTE0MTYsMy4zNzUsMy4zNzVzLTEuNTEzNjcsMy4zNzUtMy4zNzUsMy4zNzVjLTEuODYwODQsMC0z
+    LjM3NS0xLjUxNDE2LTMuMzc1LTMuMzc1WiIgZmlsbD0iI2UwMCIgc3Ryb2tlLXdpZHRoPSIwIi8+
+    PHBhdGggZD0ibTI3LDEzLjYyNWMxLjQ0NzI3LDAsMi42MjUtMS4xNzc3MywyLjYyNS0yLjYyNXMt
+    MS4xNzc3My0yLjYyNS0yLjYyNS0yLjYyNS0yLjYyNSwxLjE3NzczLTIuNjI1LDIuNjI1YzAsLjQ5
+    NjcuMTQ2NjEuOTU2NTQuMzg3MjcsMS4zNTMwM2wtMS4yMDQ2NSwxLjIwNTA4Yy0uMjQ0MTQuMjQ0
+    MTQtLjI0MzE2LjYzOTY1LjAwMDk4Ljg4Mzc5LjEyMTA5LjEyMjA3LjI4MTI1LjE4MzExLjQ0MTQx
+    LjE4MzExcy4zMjAzMS0uMDYxMDQuNDQyMzgtLjE4MzExbDEuMjA0MS0xLjIwNDQ3Yy4zOTY2MS4y
+    NDA5MS44NTY2My4zODc1NywxLjM1MzUyLjM4NzU3Wm0wLTRjLjc1NzgxLDAsMS4zNzUuNjE2Nywx
+    LjM3NSwxLjM3NXMtLjYxNzE5LDEuMzc1LTEuMzc1LDEuMzc1Yy0uMzc4MTEsMC0uNzIxMDctLjE1
+    MzY5LS45Njk5Ny0uNDAxNzMtLjAwMDczLS4wMDA3My0uMDAwOTgtLjAwMTgzLS4wMDE3MS0uMDAy
+    NTYtLjAwMDYxLS4wMDA2MS0uMDAxNTMtLjAwMDc5LS4wMDIxNC0uMDAxNC0uMjQ3NjItLjI0ODc4
+    LS40MDExOC0uNTkxMzctLjQwMTE4LS45NjkzLDAtLjc1ODMuNjE3MTktMS4zNzUsMS4zNzUtMS4z
+    NzVaIiBmaWxsPSIjZmZmIiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJtMTksOC4zNzVjLTEu
+    MTcxODgsMC0yLjEyNS45NTMxMi0yLjEyNSwyLjEyNXMuOTUzMTIsMi4xMjUsMi4xMjUsMi4xMjUs
+    Mi4xMjUtLjk1MzEyLDIuMTI1LTIuMTI1LS45NTMxMi0yLjEyNS0yLjEyNS0yLjEyNVptMCwzYy0u
+    NDgyNDIsMC0uODc1LS4zOTI1OC0uODc1LS44NzVzLjM5MjU4LS44NzUuODc1LS44NzUuODc1LjM5
+    MjU4Ljg3NS44NzUtLjM5MjU4Ljg3NS0uODc1Ljg3NVoiIGZpbGw9IiNmZmYiIHN0cm9rZS13aWR0
+    aD0iMCIvPjxwYXRoIGQ9Im0xOSwyNS4zNzVjLTEuMTcxODgsMC0yLjEyNS45NTMxMi0yLjEyNSwy
+    LjEyNXMuOTUzMTIsMi4xMjUsMi4xMjUsMi4xMjUsMi4xMjUtLjk1MzEyLDIuMTI1LTIuMTI1LS45
+    NTMxMi0yLjEyNS0yLjEyNS0yLjEyNVptMCwzYy0uNDgyNDIsMC0uODc1LS4zOTI1OC0uODc1LS44
+    NzVzLjM5MjU4LS44NzUuODc1LS44NzUuODc1LjM5MjU4Ljg3NS44NzUtLjM5MjU4Ljg3NS0uODc1
+    Ljg3NVoiIGZpbGw9IiNmZmYiIHN0cm9rZS13aWR0aD0iMCIvPjxwYXRoIGQ9Im0yNy41LDE2Ljg3
+    NWMtMS4xNzE4OCwwLTIuMTI1Ljk1MzEyLTIuMTI1LDIuMTI1cy45NTMxMiwyLjEyNSwyLjEyNSwy
+    LjEyNSwyLjEyNS0uOTUzMTIsMi4xMjUtMi4xMjUtLjk1MzEyLTIuMTI1LTIuMTI1LTIuMTI1Wm0w
+    LDNjLS40ODI0MiwwLS44NzUtLjM5MjU4LS44NzUtLjg3NXMuMzkyNTgtLjg3NS44NzUtLjg3NS44
+    NzUuMzkyNTguODc1Ljg3NS0uMzkyNTguODc1LS44NzUuODc1WiIgZmlsbD0iI2ZmZiIgc3Ryb2tl
+    LXdpZHRoPSIwIi8+PHBhdGggZD0ibTEyLjYyNSwxOWMwLTEuMTcxODgtLjk1MzEyLTIuMTI1LTIu
+    MTI1LTIuMTI1cy0yLjEyNS45NTMxMi0yLjEyNSwyLjEyNS45NTMxMiwyLjEyNSwyLjEyNSwyLjEy
+    NSwyLjEyNS0uOTUzMTIsMi4xMjUtMi4xMjVabS0zLDBjMC0uNDgyNDIuMzkyNTgtLjg3NS44NzUt
+    Ljg3NXMuODc1LjM5MjU4Ljg3NS44NzUtLjM5MjU4Ljg3NS0uODc1Ljg3NS0uODc1LS4zOTI1OC0u
+    ODc1LS44NzVaIiBmaWxsPSIjZmZmIiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJtMTMuMjM3
+    NDMsMTIuMzUzNjRjLjI0MDkxLS4zOTY2MS4zODc1Ny0uODU2NzUuMzg3NTctMS4zNTM2NCwwLTEu
+    NDQ3MjctMS4xNzc3My0yLjYyNS0yLjYyNS0yLjYyNXMtMi42MjUsMS4xNzc3My0yLjYyNSwyLjYy
+    NSwxLjE3NzczLDIuNjI1LDIuNjI1LDIuNjI1Yy40OTY4OSwwLC45NTcwMy0uMTQ2NjcsMS4zNTM2
+    NC0uMzg3NTdsMS4yMDQ0NywxLjIwNDQ3Yy4xMjIwNy4xMjIwNy4yODE3NC4xODMxMS40NDE4OS4x
+    ODMxMXMuMzE5ODItLjA2MTA0LjQ0MTg5LS4xODMxMWMuMjQ0MTQtLjI0NDE0LjI0NDE0LS42Mzk2
+    NSwwLS44ODM3OWwtMS4yMDQ0Ny0xLjIwNDQ3Wm0tMy42MTI0My0xLjM1MzY0YzAtLjc1ODMuNjE2
+    Ny0xLjM3NSwxLjM3NS0xLjM3NXMxLjM3NS42MTY3LDEuMzc1LDEuMzc1YzAsLjM3Nzk5LS4xNTM1
+    LjcyMDU4LS40MDExMi45NjkzNi0uMDAwNzkuMDAwNzktLjAwMTg5LjAwMTA0LS4wMDI2OS4wMDE4
+    M3MtLjAwMTA0LjAwMTg5LS4wMDE4My4wMDI2OWMtLjI0ODc4LjI0NzYyLS41OTEzNy40MDExMi0u
+    OTY5MzYuNDAxMTItLjc1ODMsMC0xLjM3NS0uNjE2Ny0xLjM3NS0xLjM3NVoiIGZpbGw9IiNmZmYi
+    IHN0cm9rZS13aWR0aD0iMCIvPjxwYXRoIGQ9Im0xMy41NTgxMSwyMy41NTgxMWwtMS4yMDQ0Nywx
+    LjIwNDQ3Yy0uMzk2NjEtLjI0MDkxLS44NTY3NS0uMzg3NTctMS4zNTM2NC0uMzg3NTctMS40NDcy
+    NywwLTIuNjI1LDEuMTc3NzMtMi42MjUsMi42MjVzMS4xNzc3MywyLjYyNSwyLjYyNSwyLjYyNSwy
+    LjYyNS0xLjE3NzczLDIuNjI1LTIuNjI1YzAtLjQ5Njg5LS4xNDY2Ny0uOTU3MDMtLjM4NzU3LTEu
+    MzUzNjRsMS4yMDQ0Ny0xLjIwNDQ3Yy4yNDQxNC0uMjQ0MTQuMjQ0MTQtLjYzOTY1LDAtLjg4Mzc5
+    cy0uNjM5NjUtLjI0NDE0LS44ODM3OSwwWm0tMi41NTgxMSw0LjgxNjg5Yy0uNzU4MywwLTEuMzc1
+    LS42MTY3LTEuMzc1LTEuMzc1cy42MTY3LTEuMzc1LDEuMzc1LTEuMzc1Yy4zNzg4NSwwLC43MjIy
+    OS4xNTM5OS45NzExOS40MDI1OS4wMDAyNC4wMDAyNC4wMDAyNC4wMDA0OS4wMDA0OS4wMDA3M3Mu
+    MDAwNDkuMDAwMjQuMDAwNzMuMDAwNDljLjI0ODYuMjQ4OS40MDI1OS41OTIzNS40MDI1OS45NzEx
+    OSwwLC43NTgzLS42MTY3LDEuMzc1LTEuMzc1LDEuMzc1WiIgZmlsbD0iI2ZmZiIgc3Ryb2tlLXdp
+    ZHRoPSIwIi8+PC9nPjwvc3ZnPgo=
+  introduction: |-
+    **Red Hat Developer Hub** (RHDH) is an enterprise-grade, open developer platform for building developer portals, containing a supported and opinionated framework, built on the CNCF project Backstage.
+
+    Red Hat Developer Hub is a Backstage distribution with batteries included:
+
+    * A **catalog** of all services, components, and more.
+    * **Golden Path Templates** provide your developers with an easy way to set up new projects with best practices.
+    * Preinstalled with **additional plugins**.
+    * Your developer portal is **extendable with plugins** from Backstage.
+
+    This **Red Hat Developer Hub Operator** has some additional features enabled by default:
+
+    * It uses [janus-idp/backstage-showcase](https://github.com/janus-idp/backstage-showcase/) that pre-loads many useful plugins and features.
+    * Automatically exposes a Route for easy access to the instance.
+    * And an OpenShift-compatible PostgreSQL database storage.
+  tasks:
+    - title: Install Red Hat Developer Hub Operator
+      description: |-
+        To install the Red Hat Developer Hub Operator:
+
+        1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
+        2. In the Administrator perspective, go to the **OperatorHub** from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
+        3. Search for **Red Hat Developer Hub**
+        4. Select the card **Red Hat Developer Hub** with the **Red Hat** badge and press **Install** to open a page to install the Operator.
+        5. **Optional:** Choice the correct version, update strategy, and if this operator should be available for all namespaces or just a specific namespace.
+        6. Press **Create** again to install the Red Hat Developer Hub Operator.
+      review:
+        instructions: |-
+          #### To verify that the operator was successfully installed:
+
+          1. From the **Administrator** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
+          2. The "Red Hat Developer Hub" operator should be shown in the list of Operators.
+          3. The **Status** column should show **Succeeded**.
+        failedTaskHelp: |-
+          Please try to install the operator again if the operator is missing.
+          
+          Otherwise, click on the operator and check the **Conditions** sections on the **Details** and **Subscription** tabs to investigate underlying issues.
+      summary:
+        success: You have installed the Red Hat Developer Hub operator!
+        failed: Try the steps again.
+    - title: Create a Red Hat Developer Hub instance
+      description: |-
+        To create a Red Hat Developer Hub instance, you should create a `Backstage` custom resource.
+
+        1. If needed, switch or create a new project from the **Project dropdown**.
+        2. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
+        3. In the Administrator perspective, go to the **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
+        4. Select the "Red Hat Developer Hub" operator and navigate to the **Backstage** tab.
+        5. Click on **Create Backstage** button in the top right corner of that tab view.
+        6. **Optional:** Change the default configuration via the **Form view** or **YAML view** based on your needs.
+           
+           You can update this configuration later as well. The next two tasks will give you some examples.
+        7. Press **Create** to create a new Red Hat Developer Hub instance.
+      review:
+        instructions: |-
+          #### To verify the application was successfully created:
+
+          1. You should now see a Helm Chart “backstage” with a "backstage" Deployment in your [Topology]{{highlight qs-nav-topology}} view.
+          2. After a few seconds, the Deployment should show a blue ring around the Janus IDP icon to indicate that the Janus IDP Pod is running.
+          3. Click on the URL decorator in the top-right corner of the "backstage" Deployment to open your Janus IDP instance.
+        failedTaskHelp: |-
+          You can also click in the navigation menu on [Helm]{{highlight qs-nav-helm}} and check the Helm Release status. The status column should show "Deployed".
+          
+          Click on the Helm Chart and open the **Resources** tab to see if any Kubernetes resources are pending or to investigate underlying issues.
+      summary:
+        success: You have installed Janus IDP!
+        failed: Try the steps again.
+    - title: "Add your Red Hat Developer Hub insance to the OpenShift Console Application menu"
+      description: |-
+        To add a new link to the application menu, you can create a `ConsoleLink` resource on your cluster.
+
+        This resource is not created automatically because you can have multiple Red Hat Developer Hub installations on one cluster.
+        And this way, you can also link a single Janus IDP from multiple OpenShift clusters.
+
+        1. Please copy the actual **Red Hat Developer Hub URL** from [Topology]{{highlight qs-nav-topology}}, or open it in another browser tab.
+        2. Click on the [Import YAML (plus icon)]{{highlight qs-masthead-import}} button at the top of the navigation.
+        3. **Insert the YAML** below into the YAML editor, add your Red Hat Developer Hub URL as `href`, and update the link `text` if needed.
+
+            ```
+            apiVersion: console.openshift.io/v1
+        kind: ConsoleLink
+        metadata:
+          name: developer-hub-link
+        spec:
+          location: ApplicationMenu
+          href: 
+          text: Red Hat Developer Hub
+        ```{{copy}}
+
+        3. Click **Create**.
+      review:
+        instructions: |-
+          #### To verify that the application menu link is shown
+
+          1. The [Application launcher]{{highlight qs-masthead-applications}} icon should be shown.
+          2. Click on the Application launcher icon and check if your application menu item is shown.
+          3. Verify that it opens your Janus IDP instance.
+        failedTaskHelp: |-
+          Doublecheck your `ConsoleLink` resource or try to reload the OpenShift Console.
+      summary:
+        success: You have upgraded Janus IDP!
+        failed: Try the steps again.
+  conclusion: |
+    Your Red Hat Developer Hub installation is deployed and ready.
