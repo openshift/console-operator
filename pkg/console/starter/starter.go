@@ -62,10 +62,6 @@ func tweakListOptionsForOAuthInformer(options *metav1.ListOptions) {
 	options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OAuthClientName).String()
 }
 
-func tweakListOptionsForCRDInformer(options *metav1.ListOptions) {
-	options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.ManagedProxyServiceResolverCRDName).String()
-}
-
 func RunOperator(ctx context.Context, controllerContext *controllercmd.ControllerContext) error {
 
 	kubeClient, err := kubernetes.NewForConfig(controllerContext.ProtoKubeConfig)
@@ -407,14 +403,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 			"CustomRouteSyncProgressing",
 			"DefaultRouteSyncDegraded",
 			"DefaultRouteSyncProgressing",
-
-			// Remove multicluster conditions until 4.15
-			"ThanosQuerierProxyServiceResolverSyncDegraded",
-			"ThanosQuerierProxyServiceResolverSyncProgressing",
-			"ManagedClusterSyncDegraded",
-			"ManagedClusterSyncProgressing",
-			"ManagedClusterConfigSyncDegraded",
-			"ManagedClusterConfigSyncProgressing",
 		},
 		operatorClient,
 		controllerContext.EventRecorder,
