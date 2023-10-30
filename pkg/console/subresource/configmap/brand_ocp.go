@@ -5,5 +5,5 @@ package configmap
 
 const (
 	DEFAULT_BRAND   = "ocp"
-	DEFAULT_DOC_URL = "https://access.redhat.com/documentation/en-us/openshift_container_platform/4.14/"
+	DEFAULT_DOC_URL = "https://access.redhat.com/documentation/en-us/openshift_container_platform/4.15/"
 )
