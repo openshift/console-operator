@@ -27,6 +27,7 @@ spec:
         kubernetes.io/os: linux
       terminationGracePeriodSeconds: 0
       securityContext:
+        readOnlyRootFilesystem: true
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
