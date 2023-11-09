@@ -209,12 +209,15 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		operatorClient,
 		oauthClient,
 		kubeClient.CoreV1(),
+		configClient.ConfigV1().Authentications(),
 		configInformers.Config().V1().Authentications(),
 		operatorConfigInformers.Operator().V1().Consoles(),
 		routesInformersNamespaced.Route().V1().Routes(),
 		configInformers.Config().V1().Ingresses(),
 		kubeInformersNamespaced.Core().V1().Secrets(),
 		kubeInformersConfigNamespaced.Core().V1().Secrets(),
+		kubeInformersNamespaced.Core().V1().ConfigMaps(),
+		kubeInformersNamespaced.Apps().V1().Deployments(),
 		recorder,
 	)
 
