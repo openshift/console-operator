@@ -77,7 +77,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	}
 
 	var authServerCAConfig *corev1.ConfigMap
-	if len(authnConfig.Spec.OIDCProviders) == 1 {
+	if authnConfig.Spec.Type == configv1.AuthenticationTypeOIDC && len(authnConfig.Spec.OIDCProviders) == 1 {
 		oidcProvider := authnConfig.Spec.OIDCProviders[0]
 		authServerCAConfig, err = co.configMapLister.ConfigMaps(api.OpenShiftConfigNamespace).Get(oidcProvider.Issuer.CertificateAuthority.Name)
 		if err != nil && !apierrors.IsNotFound(err) {
