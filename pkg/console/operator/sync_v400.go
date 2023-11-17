@@ -20,10 +20,11 @@ import (
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
 	v1 "github.com/openshift/api/console/v1"
+	oauthv1 "github.com/openshift/api/oauth/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
-	routev1listers "github.com/openshift/client-go/route/listers/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/crypto"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
@@ -61,7 +62,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		routeName = api.OpenshiftConsoleCustomRouteName
 	}
 
-	route, consoleURL, routeReasoneErr, routeErr := GetActiveRouteInfo(ctx, co.routeLister, routeName)
+	route, consoleURL, routeReasoneErr, routeErr := co.GetActiveRouteInfo(ctx, routeName)
 	// TODO: this controller is no longer responsible for syncing the route.
 	//   however, the route is essential for several of the components below.
 	//   - the loop should exit early and wait until the RouteSyncController creates the route.
@@ -118,10 +119,18 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(oauthServingCertErr)
 	}
 
-	clientSecret, secErr := co.secretsLister.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name)
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "FailedGet", secErr))
+	sec, secChanged, secErr := co.SyncSecret(ctx, set.Operator, controllerContext.Recorder())
+	toUpdate = toUpdate || secChanged
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "FailedApply", secErr))
 	if secErr != nil {
 		return statusHandler.FlushAndReturn(secErr)
+	}
+
+	oauthClient, oauthChanged, oauthErrReason, oauthErr := co.SyncOAuthClient(ctx, set.Operator, sec, consoleURL.String())
+	toUpdate = toUpdate || oauthChanged
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSync", oauthErrReason, oauthErr))
+	if oauthErr != nil {
+		return statusHandler.FlushAndReturn(oauthErr)
 	}
 
 	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(
@@ -131,7 +140,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		serviceCAConfigMap,
 		oauthServingCertConfigMap,
 		trustedCAConfigMap,
-		clientSecret,
+		sec,
 		set.Proxy,
 		set.Infrastructure,
 		customLogoCanMount,
@@ -201,6 +210,12 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		if serviceCAChanged {
 			klog.V(4).Infof("\t service-ca configmap changed: %v", serviceCAConfigMap.GetResourceVersion())
 		}
+		if secChanged {
+			klog.V(4).Infof("\t secret changed: %v", sec.GetResourceVersion())
+		}
+		if oauthChanged {
+			klog.V(4).Infof("\t oauth changed: %v", oauthClient.GetResourceVersion())
+		}
 		if depChanged {
 			klog.V(4).Infof("\t deployment changed: %v", actualDeployment.GetResourceVersion())
 		}
@@ -209,8 +224,8 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	return statusHandler.FlushAndReturn(nil)
 }
 
-func GetActiveRouteInfo(ctx context.Context, routeClient routev1listers.RouteLister, activeRouteName string) (route *routev1.Route, routeURL *url.URL, reason string, err error) {
-	route, routeErr := routeClient.Routes(api.TargetNamespace).Get(activeRouteName)
+func (co *consoleOperator) GetActiveRouteInfo(ctx context.Context, activeRouteName string) (route *routev1.Route, routeURL *url.URL, reason string, err error) {
+	route, routeErr := co.routeClient.Routes(api.TargetNamespace).Get(ctx, activeRouteName, metav1.GetOptions{})
 	if routeErr != nil {
 		return nil, nil, "FailedGet", routeErr
 	}
@@ -285,6 +300,39 @@ func (co *consoleOperator) SyncDeployment(
 	return deployment, deploymentChanged, "", nil
 }
 
+// applies changes to the oauthclient
+// should not be called until route & secret dependencies are verified
+func (co *consoleOperator) SyncOAuthClient(
+	ctx context.Context,
+	operatorConfig *operatorv1.Console,
+	sec *corev1.Secret,
+	consoleURL string,
+) (consoleoauthclient *oauthv1.OAuthClient, changed bool, reason string, err error) {
+	oauthClient, err := co.oauthClient.OAuthClients().Get(ctx, oauthsub.Stub().Name, metav1.GetOptions{})
+	if err != nil {
+		// at this point we must die & wait for someone to fix the lack of an outhclient. there is nothing we can do.
+		return nil, false, "FailedGet", errors.New(fmt.Sprintf("oauth client for console does not exist and cannot be created (%v)", err))
+	}
+	oauthsub.RegisterConsoleToOAuthClient(oauthClient, consoleURL, secretsub.GetSecretString(sec))
+	oauthClient, oauthChanged, oauthErr := oauthsub.CustomApplyOAuth(co.oauthClient, oauthClient, ctx)
+	if oauthErr != nil {
+		return nil, false, "FailedRegister", oauthErr
+	}
+	return oauthClient, oauthChanged, "", nil
+}
+
+func (co *consoleOperator) SyncSecret(ctx context.Context, operatorConfig *operatorv1.Console, recorder events.Recorder) (*corev1.Secret, bool, error) {
+	secret, err := co.secretsClient.Secrets(api.TargetNamespace).Get(ctx, secretsub.Stub().Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) == "" {
+		return resourceapply.ApplySecret(ctx, co.secretsClient, recorder, secretsub.DefaultSecret(operatorConfig, crypto.Random256BitsString()))
+	}
+	// any error should be returned & kill the sync loop
+	if err != nil {
+		return nil, false, err
+	}
+	return secret, false, nil
+}
+
 // apply configmap (needs route)
 // by the time we get to the configmap, we can assume the route exits & is configured properly
 // therefore no additional error handling is needed here.
@@ -310,7 +358,7 @@ func (co *consoleOperator) SyncConfigMap(
 	nodeArchitectures, nodeOperatingSystems := getNodeComputeEnvironments(nodeList)
 
 	inactivityTimeoutSeconds := 0
-	oauthClient, oacErr := co.oauthClientLister.Get(oauthsub.Stub().Name)
+	oauthClient, oacErr := co.oauthClient.OAuthClients().Get(ctx, oauthsub.Stub().Name, metav1.GetOptions{})
 	if oacErr != nil {
 		return nil, false, "FailedGetOAuthClient", oacErr
 	}
