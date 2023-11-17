@@ -27,7 +27,6 @@ spec:
         kubernetes.io/os: linux
       terminationGracePeriodSeconds: 0
       securityContext:
-        readOnlyRootFilesystem: true
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
@@ -47,6 +46,7 @@ spec:
             failureThreshold: 3
           name: download-server
           securityContext:
+            readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
               drop:
