@@ -18,7 +18,6 @@ import (
 	corev1 "k8s.io/client-go/informers/core/v1"
 	appsclientv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 
 	// openshift
@@ -28,13 +27,12 @@ import (
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
 	consoleinformersv1 "github.com/openshift/client-go/console/informers/externalversions/console/v1"
 	listerv1 "github.com/openshift/client-go/console/listers/console/v1"
+	oauthclientv1 "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
 	oauthinformersv1 "github.com/openshift/client-go/oauth/informers/externalversions/oauth/v1"
-	oauthlistersv1 "github.com/openshift/client-go/oauth/listers/oauth/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	operatorinformerv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
-	routev1listers "github.com/openshift/client-go/route/listers/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	consolestatus "github.com/openshift/console-operator/pkg/console/status"
@@ -49,6 +47,7 @@ import (
 	// operator
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
+	"github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
 	"github.com/openshift/console-operator/pkg/console/subresource/secret"
 )
 
@@ -64,16 +63,14 @@ type consoleOperator struct {
 	dynamicClient              dynamic.Interface
 	// core kube
 	secretsClient    coreclientv1.SecretsGetter
-	secretsLister    corev1listers.SecretLister
 	configMapClient  coreclientv1.ConfigMapsGetter
 	serviceClient    coreclientv1.ServicesGetter
 	nodeClient       coreclientv1.NodesGetter
 	deploymentClient appsclientv1.DeploymentsGetter
 	// openshift
-	oauthClientLister oauthlistersv1.OAuthClientLister
-	routeClient       routeclientv1.RoutesGetter
-	routeLister       routev1listers.RouteLister
-	versionGetter     status.VersionGetter
+	routeClient   routeclientv1.RoutesGetter
+	oauthClient   oauthclientv1.OAuthClientsGetter
+	versionGetter status.VersionGetter
 	// lister
 	consolePluginLister listerv1.ConsolePluginLister
 
@@ -99,11 +96,12 @@ func NewConsoleOperator(
 	// deployments
 	deploymentClient appsclientv1.DeploymentsGetter,
 	deploymentInformer appsinformersv1.DeploymentInformer,
-	// oauth API
-	oauthClientInformer oauthinformersv1.OAuthClientInformer,
 	// routes
 	routev1Client routeclientv1.RoutesGetter,
 	routeInformer routesinformersv1.RouteInformer,
+	// oauth
+	oauthv1Client oauthclientv1.OAuthClientsGetter,
+	oauthClients oauthinformersv1.OAuthClientInformer,
 	// plugins
 	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
 	// openshift managed
@@ -113,16 +111,6 @@ func NewConsoleOperator(
 	recorder events.Recorder,
 	resourceSyncer resourcesynccontroller.ResourceSyncer,
 ) factory.Controller {
-
-	secretsInformer := coreV1.Secrets()
-	configMapInformer := coreV1.ConfigMaps()
-	managedConfigMapInformer := managedCoreV1.ConfigMaps()
-	serviceInformer := coreV1.Services()
-	nodeInformer := coreV1.Nodes()
-	configV1Informers := configInformer.Config().V1()
-	configNameFilter := util.IncludeNamesFilter(api.ConfigResourceName)
-	targetNameFilter := util.IncludeNamesFilter(api.OpenShiftConsoleName)
-
 	c := &consoleOperator{
 		// configs
 		operatorClient:             operatorClient,
@@ -135,22 +123,29 @@ func NewConsoleOperator(
 		// console resources
 		// core kube
 		secretsClient:    corev1Client,
-		secretsLister:    secretsInformer.Lister(),
 		configMapClient:  corev1Client,
 		serviceClient:    corev1Client,
 		nodeClient:       corev1Client,
 		deploymentClient: deploymentClient,
 		dynamicClient:    dynamicClient,
 		// openshift
-		oauthClientLister: oauthClientInformer.Lister(),
-		routeClient:       routev1Client,
-		routeLister:       routeInformer.Lister(),
-		versionGetter:     versionGetter,
+		routeClient:   routev1Client,
+		oauthClient:   oauthv1Client,
+		versionGetter: versionGetter,
 		// plugins
 		consolePluginLister: consolePluginInformer.Lister(),
 
 		resourceSyncer: resourceSyncer,
 	}
+
+	secretsInformer := coreV1.Secrets()
+	configMapInformer := coreV1.ConfigMaps()
+	managedConfigMapInformer := managedCoreV1.ConfigMaps()
+	serviceInformer := coreV1.Services()
+	nodeInformer := coreV1.Nodes()
+	configV1Informers := configInformer.Config().V1()
+	configNameFilter := util.IncludeNamesFilter(api.ConfigResourceName)
+	targetNameFilter := util.IncludeNamesFilter(api.OpenShiftConsoleName)
 
 	informers := []factory.Informer{
 		configV1Informers.Consoles().Informer(),
@@ -185,6 +180,7 @@ func NewConsoleOperator(
 		deploymentInformer.Informer(),
 		routeInformer.Informer(),
 		serviceInformer.Informer(),
+		oauthClients.Informer(),
 	).WithInformers(
 		nodeInformer.Informer(),
 		consolePluginInformer.Informer(),
@@ -194,9 +190,6 @@ func NewConsoleOperator(
 	).WithFilteredEventsInformers(
 		util.IncludeNamesFilter(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName),
 		managedConfigMapInformer.Informer(),
-	).WithFilteredEventsInformers(
-		factory.NamesFilter(api.OAuthClientName),
-		oauthClientInformer.Informer(),
 	).WithFilteredEventsInformers(
 		util.IncludeNamesFilter(deployment.ConsoleOauthConfigName),
 		secretsInformer.Informer(),
@@ -343,7 +336,13 @@ func (c *consoleOperator) removeConsole(ctx context.Context, operatorConfig *ope
 	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(ctx, configmap.ServiceCAStub().Name, metav1.DeleteOptions{}))
 	// secret
 	errs = append(errs, c.secretsClient.Secrets(api.TargetNamespace).Delete(ctx, secret.Stub().Name, metav1.DeleteOptions{}))
-
+	// existingOAuthClient is not a delete, it is a deregister/neutralize
+	existingOAuthClient, getAuthErr := c.oauthClient.OAuthClients().Get(ctx, oauthclient.Stub().Name, metav1.GetOptions{})
+	errs = append(errs, getAuthErr)
+	if len(existingOAuthClient.RedirectURIs) != 0 {
+		_, updateAuthErr := c.oauthClient.OAuthClients().Update(ctx, oauthclient.DeRegisterConsoleFromOAuthClient(existingOAuthClient), metav1.UpdateOptions{})
+		errs = append(errs, updateAuthErr)
+	}
 	// deployment
 	// NOTE: CVO controls the deployment for downloads, console-operator cannot delete it.
 	errs = append(errs, c.deploymentClient.Deployments(api.TargetNamespace).Delete(ctx, deployment.Stub().Name, metav1.DeleteOptions{}))
