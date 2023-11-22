@@ -127,11 +127,8 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 
 	oauthErrReason, oauthErr := c.syncOAuthClient(ctx, clientSecret, consoleURL.String())
 	c.statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSync", oauthErrReason, oauthErr))
-	if oauthErr != nil {
-		return c.statusHandler.FlushAndReturn(oauthErr)
-	}
 
-	return nil
+	return c.statusHandler.FlushAndReturn(oauthErr)
 }
 
 // handleStatus returns whether sync should happen and any error encountering
