@@ -179,8 +179,9 @@ func (c *oauthClientsController) syncOAuthClient(
 		// at this point we must die & wait for someone to fix the lack of an outhclient. there is nothing we can do.
 		return "FailedGet", fmt.Errorf("oauth client for console does not exist and cannot be created (%w)", err)
 	}
-	oauthsub.RegisterConsoleToOAuthClient(oauthClient, consoleURL, secretsub.GetSecretString(sec))
-	_, _, oauthErr := oauthsub.CustomApplyOAuth(c.oauthClient, oauthClient, ctx)
+	clientCopy := oauthClient.DeepCopy()
+	oauthsub.RegisterConsoleToOAuthClient(clientCopy, consoleURL, secretsub.GetSecretString(sec))
+	_, _, oauthErr := oauthsub.CustomApplyOAuth(c.oauthClient, clientCopy, ctx)
 	if oauthErr != nil {
 		return "FailedRegister", oauthErr
 	}
