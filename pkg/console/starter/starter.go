@@ -322,6 +322,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeClient.CoreV1(),
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
+		configInformers,                     // Config
 		kubeInformersNamespaced.Core().V1(), // `openshift-console` namespace informers
 		routesInformersNamespaced.Route().V1().Routes(),
 		// events
