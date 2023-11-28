@@ -26,12 +26,14 @@ import (
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
+	configlistersv1 "github.com/openshift/client-go/config/listers/config/v1"
 	consoleinformersv1 "github.com/openshift/client-go/console/informers/externalversions/console/v1"
 	listerv1 "github.com/openshift/client-go/console/listers/console/v1"
 	oauthinformersv1 "github.com/openshift/client-go/oauth/informers/externalversions/oauth/v1"
 	oauthlistersv1 "github.com/openshift/client-go/oauth/listers/oauth/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	operatorinformerv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
+	operatorlistersv1 "github.com/openshift/client-go/operator/listers/operator/v1"
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	routev1listers "github.com/openshift/client-go/route/listers/route/v1"
@@ -54,14 +56,14 @@ import (
 
 type consoleOperator struct {
 	// configs
-	operatorClient             v1helpers.OperatorClient
-	operatorConfigClient       operatorclientv1.ConsoleInterface
-	consoleConfigClient        configclientv1.ConsoleInterface
-	infrastructureConfigClient configclientv1.InfrastructureInterface
-	ingressConfigClient        configclientv1.IngressInterface
-	proxyConfigClient          configclientv1.ProxyInterface
-	oauthConfigClient          configclientv1.OAuthInterface
-	dynamicClient              dynamic.Interface
+	operatorClient       v1helpers.OperatorClient
+	consoleConfigClient  configclientv1.ConsoleInterface
+	consoleConfigLister  configlistersv1.ConsoleLister
+	infrastructureLister configlistersv1.InfrastructureLister
+	ingressConfigLister  configlistersv1.IngressLister
+	proxyConfigLister    configlistersv1.ProxyLister
+	oauthConfigLister    configlistersv1.OAuthLister
+	dynamicClient        dynamic.Interface
 	// core kube
 	secretsClient    coreclientv1.SecretsGetter
 	secretsLister    corev1listers.SecretLister
@@ -70,10 +72,11 @@ type consoleOperator struct {
 	nodeClient       coreclientv1.NodesGetter
 	deploymentClient appsclientv1.DeploymentsGetter
 	// openshift
-	oauthClientLister oauthlistersv1.OAuthClientLister
-	routeClient       routeclientv1.RoutesGetter
-	routeLister       routev1listers.RouteLister
-	versionGetter     status.VersionGetter
+	oauthClientLister     oauthlistersv1.OAuthClientLister
+	consoleOperatorLister operatorlistersv1.ConsoleLister
+	routeClient           routeclientv1.RoutesGetter
+	routeLister           routev1listers.RouteLister
+	versionGetter         status.VersionGetter
 	// lister
 	consolePluginLister listerv1.ConsolePluginLister
 
@@ -125,13 +128,14 @@ func NewConsoleOperator(
 
 	c := &consoleOperator{
 		// configs
-		operatorClient:             operatorClient,
-		operatorConfigClient:       operatorConfigClient.Consoles(),
-		consoleConfigClient:        configClient.Consoles(),
-		infrastructureConfigClient: configClient.Infrastructures(),
-		ingressConfigClient:        configClient.Ingresses(),
-		proxyConfigClient:          configClient.Proxies(),
-		oauthConfigClient:          configClient.OAuths(),
+		operatorClient:        operatorClient,
+		consoleOperatorLister: operatorConfigInformer.Lister(),
+		consoleConfigClient:   configClient.Consoles(),
+		consoleConfigLister:   configInformer.Config().V1().Consoles().Lister(),
+		infrastructureLister:  configInformer.Config().V1().Infrastructures().Lister(),
+		ingressConfigLister:   configInformer.Config().V1().Ingresses().Lister(),
+		proxyConfigLister:     configInformer.Config().V1().Proxies().Lister(),
+		oauthConfigLister:     configInformer.Config().V1().OAuths().Lister(),
 		// console resources
 		// core kube
 		secretsClient:    corev1Client,
@@ -255,7 +259,7 @@ type configSet struct {
 }
 
 func (c *consoleOperator) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
-	operatorConfig, err := c.operatorConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := c.consoleOperatorLister.Get(api.ConfigResourceName)
 	if err != nil {
 		klog.Error("failed to retrieve operator config: %v", err)
 		return err
@@ -263,47 +267,49 @@ func (c *consoleOperator) Sync(ctx context.Context, controllerContext factory.Sy
 
 	startTime := time.Now()
 	klog.V(4).Infof("started syncing operator %q (%v)", operatorConfig.Name, startTime)
-	defer klog.V(4).Infof("finished syncing operator %q (%v)", operatorConfig.Name, time.Since(startTime))
+	defer func() {
+		klog.V(4).Infof("finished syncing operator %q (%v)", operatorConfig.Name, time.Since(startTime))
+	}()
 
 	// ensure we have top level console config
-	consoleConfig, err := c.consoleConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	consoleConfig, err := c.consoleConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		klog.Errorf("console config error: %v", err)
 		return err
 	}
 
 	// we need infrastructure config for apiServerURL
-	infrastructureConfig, err := c.infrastructureConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	infrastructureConfig, err := c.infrastructureLister.Get(api.ConfigResourceName)
 	if err != nil {
 		klog.Errorf("infrastructure config error: %v", err)
 		return err
 	}
 
-	proxyConfig, err := c.proxyConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	proxyConfig, err := c.proxyConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		klog.Errorf("proxy config error: %v", err)
 		return err
 	}
 
-	oauthConfig, err := c.oauthConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	oauthConfig, err := c.oauthConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		klog.Errorf("oauth config error: %v", err)
 		return err
 	}
 
-	ingressConfig, err := c.ingressConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	ingressConfig, err := c.ingressConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		klog.Errorf("ingress config error: %v", err)
 		return err
 	}
 
 	configs := configSet{
-		Console:        consoleConfig,
-		Operator:       operatorConfig,
-		Infrastructure: infrastructureConfig,
-		Proxy:          proxyConfig,
-		OAuth:          oauthConfig,
-		Ingress:        ingressConfig,
+		Console:        consoleConfig.DeepCopy(),
+		Operator:       operatorConfig.DeepCopy(),
+		Infrastructure: infrastructureConfig.DeepCopy(),
+		Proxy:          proxyConfig.DeepCopy(),
+		OAuth:          oauthConfig.DeepCopy(),
+		Ingress:        ingressConfig.DeepCopy(),
 	}
 
 	if err := c.handleSync(ctx, controllerContext, configs); err != nil {

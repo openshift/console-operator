@@ -14,10 +14,10 @@ import (
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
-	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
-	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
+	configlistersv1 "github.com/openshift/client-go/config/listers/config/v1"
 	operatorinformerv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
+	operatorlistersv1 "github.com/openshift/client-go/operator/listers/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/status"
 	"github.com/openshift/library-go/pkg/controller/factory"
@@ -33,18 +33,15 @@ import (
 type DownloadsDeploymentSyncController struct {
 	operatorClient v1helpers.OperatorClient
 	// configs
-	operatorConfigClient       operatorclientv1.ConsoleInterface
-	infrastructureConfigClient configclientv1.InfrastructureInterface
+	consoleOperatorLister operatorlistersv1.ConsoleLister
+	infrastructureLister  configlistersv1.InfrastructureLister
 	// core kube
 	deploymentClient appsclientv1.DeploymentsGetter
 }
 
 func NewDownloadsDeploymentSyncController(
-	// top level config
-	configClient configclientv1.ConfigV1Interface,
 	// clients
 	operatorClient v1helpers.OperatorClient,
-	operatorConfigClient operatorclientv1.ConsoleInterface,
 	// informer
 	configInformer configinformer.SharedInformerFactory,
 	operatorConfigInformer operatorinformerv1.ConsoleInformer,
@@ -58,9 +55,9 @@ func NewDownloadsDeploymentSyncController(
 
 	ctrl := &DownloadsDeploymentSyncController{
 		// configs
-		operatorClient:             operatorClient,
-		operatorConfigClient:       operatorConfigClient,
-		infrastructureConfigClient: configClient.Infrastructures(),
+		operatorClient:        operatorClient,
+		consoleOperatorLister: operatorConfigInformer.Lister(),
+		infrastructureLister:  configInformer.Config().V1().Infrastructures().Lister(),
 		// client
 		deploymentClient: deploymentClient,
 	}
@@ -81,13 +78,13 @@ func NewDownloadsDeploymentSyncController(
 }
 
 func (c *DownloadsDeploymentSyncController) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
-	operatorConfig, err := c.operatorConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := c.consoleOperatorLister.Get(api.ConfigResourceName)
 	if err != nil {
 		return err
 	}
-	updatedOperatorConfig := operatorConfig.DeepCopy()
+	operatorConfigCopy := operatorConfig.DeepCopy()
 
-	switch updatedOperatorConfig.Spec.ManagementState {
+	switch operatorConfigCopy.Spec.ManagementState {
 	case operatorv1.Managed:
 		klog.V(4).Infoln("console is in a managed state: syncing downloads deployment")
 	case operatorv1.Unmanaged:
@@ -97,17 +94,17 @@ func (c *DownloadsDeploymentSyncController) Sync(ctx context.Context, controller
 		klog.V(4).Infoln("console is in an removed state: removing synced downloads deployment")
 		return c.removeDownloadsDeployment(ctx)
 	default:
-		return fmt.Errorf("unknown state: %v", updatedOperatorConfig.Spec.ManagementState)
+		return fmt.Errorf("unknown state: %v", operatorConfigCopy.Spec.ManagementState)
 	}
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
-	infrastructureConfig, err := c.infrastructureConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	infrastructureConfig, err := c.infrastructureLister.Get(api.ConfigResourceName)
 	statusHandler.AddCondition(status.HandleDegraded("DownloadsDeploymentSync", "FailedInfrastructureConfigGet", err))
 	if err != nil {
 		return statusHandler.FlushAndReturn(err)
 	}
 
-	actualDownloadsDownloadsDeployment, _, downloadsDeploymentErr := c.SyncDownloadsDeployment(ctx, updatedOperatorConfig, infrastructureConfig, controllerContext)
+	actualDownloadsDownloadsDeployment, _, downloadsDeploymentErr := c.SyncDownloadsDeployment(ctx, operatorConfigCopy, infrastructureConfig, controllerContext)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DownloadsDeploymentSync", "FailedApply", downloadsDeploymentErr))
 	if downloadsDeploymentErr != nil {
 		return statusHandler.FlushAndReturn(downloadsDeploymentErr)
@@ -117,16 +114,15 @@ func (c *DownloadsDeploymentSyncController) Sync(ctx context.Context, controller
 	return statusHandler.FlushAndReturn(nil)
 }
 
-func (c *DownloadsDeploymentSyncController) SyncDownloadsDeployment(ctx context.Context, operatorConfig *operatorv1.Console, infrastructureConfig *configv1.Infrastructure, controllerContext factory.SyncContext) (*appsv1.Deployment, bool, error) {
+func (c *DownloadsDeploymentSyncController) SyncDownloadsDeployment(ctx context.Context, operatorConfigCopy *operatorv1.Console, infrastructureConfig *configv1.Infrastructure, controllerContext factory.SyncContext) (*appsv1.Deployment, bool, error) {
 
-	updatedOperatorConfig := operatorConfig.DeepCopy()
-	requiredDownloadsDeployment := deploymentsub.DefaultDownloadsDeployment(updatedOperatorConfig, infrastructureConfig)
+	requiredDownloadsDeployment := deploymentsub.DefaultDownloadsDeployment(operatorConfigCopy, infrastructureConfig)
 
 	return resourceapply.ApplyDeployment(ctx,
 		c.deploymentClient,
 		controllerContext.Recorder(),
 		requiredDownloadsDeployment,
-		resourcemerge.ExpectedDeploymentGeneration(requiredDownloadsDeployment, updatedOperatorConfig.Status.Generations),
+		resourcemerge.ExpectedDeploymentGeneration(requiredDownloadsDeployment, operatorConfigCopy.Status.Generations),
 	)
 }
 

@@ -217,11 +217,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	)
 
 	downloadsDeploymentController := downloadsdeployment.NewDownloadsDeploymentSyncController(
-		// top level config
-		configClient.ConfigV1(),
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(),
 		configInformers,
 		// operator
 		operatorConfigInformers.Operator().V1().Consoles(),
