@@ -46,6 +46,7 @@ spec:
             failureThreshold: 3
           name: download-server
           securityContext:
+            readOnlyRootFilesystem: false
             allowPrivilegeEscalation: false
             capabilities:
               drop:

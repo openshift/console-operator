@@ -43,6 +43,7 @@ spec:
       containers:
       - name: console-operator
         securityContext:
+          readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
           capabilities:
             drop: ["ALL"]
@@ -92,6 +93,7 @@ spec:
             scheme: HTTPS
       - name: conversion-webhook-server
         securityContext:
+          readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
           capabilities:
             drop: ["ALL"]
