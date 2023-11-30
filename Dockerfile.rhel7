@@ -16,7 +16,7 @@ COPY manifests /manifests/
 COPY quickstarts/*.yaml /manifests/
 
 # extensions manifests generated from openshift/api types
-COPY vendor/github.com/openshift/api/console/*/*.crd.yaml /manifests/
+COPY vendor/github.com/openshift/api/console/v1/*.crd.yaml /manifests/
 COPY vendor/github.com/openshift/api/operator/*/*console-operator*.crd.yaml /manifests/
 COPY vendor/github.com/openshift/api/helm/*/*crd.yaml /manifests/
 
