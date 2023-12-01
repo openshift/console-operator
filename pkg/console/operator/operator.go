@@ -320,7 +320,7 @@ func (c *consoleOperator) Sync(ctx context.Context, controllerContext factory.Sy
 }
 
 func (c *consoleOperator) handleSync(ctx context.Context, controllerContext factory.SyncContext, configs configSet) error {
-	updatedStatus := configs.Operator.DeepCopy()
+	updatedStatus := configs.Operator
 
 	switch updatedStatus.Spec.ManagementState {
 	case operatorsv1.Managed:

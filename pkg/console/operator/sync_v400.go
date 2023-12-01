@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 
 	// kube
@@ -22,14 +21,12 @@ import (
 	v1 "github.com/openshift/api/console/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
-	routev1listers "github.com/openshift/client-go/route/listers/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
-	"github.com/openshift/library-go/pkg/route/routeapihelpers"
 
 	// operator
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
@@ -61,7 +58,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		routeName = api.OpenshiftConsoleCustomRouteName
 	}
 
-	route, consoleURL, routeReasoneErr, routeErr := GetActiveRouteInfo(ctx, co.routeLister, routeName)
+	route, consoleURL, routeReasoneErr, routeErr := routesub.GetActiveRouteInfo(co.routeLister, routeName)
 	// TODO: this controller is no longer responsible for syncing the route.
 	//   however, the route is essential for several of the components below.
 	//   - the loop should exit early and wait until the RouteSyncController creates the route.
@@ -207,19 +204,6 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	}()
 
 	return statusHandler.FlushAndReturn(nil)
-}
-
-func GetActiveRouteInfo(ctx context.Context, routeClient routev1listers.RouteLister, activeRouteName string) (route *routev1.Route, routeURL *url.URL, reason string, err error) {
-	route, routeErr := routeClient.Routes(api.TargetNamespace).Get(activeRouteName)
-	if routeErr != nil {
-		return nil, nil, "FailedGet", routeErr
-	}
-	uri, _, uriErr := routeapihelpers.IngressURI(route, route.Spec.Host)
-	if uriErr != nil {
-		return nil, nil, "FailedIngress", uriErr
-	}
-
-	return route, uri, "", nil
 }
 
 func (co *consoleOperator) SyncConsoleConfig(ctx context.Context, consoleConfig *configv1.Console, consoleURL string) (*configv1.Console, error) {

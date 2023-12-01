@@ -28,7 +28,6 @@ import (
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/console-operator/pkg/console/status"
 	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
 	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
@@ -114,12 +113,12 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 		routeName = api.OpenshiftConsoleCustomRouteName
 	}
 
-	_, consoleURL, _, routeErr := operator.GetActiveRouteInfo(ctx, c.routesLister, routeName)
+	_, consoleURL, _, routeErr := routesub.GetActiveRouteInfo(c.routesLister, routeName)
 	if routeErr != nil {
 		return routeErr
 	}
 
-	clientSecret, _, secErr := c.syncSecret(ctx, operatorConfig, controllerContext.Recorder())
+	clientSecret, secErr := c.syncSecret(ctx, operatorConfig, controllerContext.Recorder())
 	c.statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "FailedApply", secErr))
 	if secErr != nil {
 		return c.statusHandler.FlushAndReturn(secErr)
@@ -155,16 +154,13 @@ func (c *oauthClientsController) handleStatus(ctx context.Context) (bool, error)
 	}
 }
 
-func (c *oauthClientsController) syncSecret(ctx context.Context, operatorConfig *operatorv1.Console, recorder events.Recorder) (*corev1.Secret, bool, error) {
+func (c *oauthClientsController) syncSecret(ctx context.Context, operatorConfig *operatorv1.Console, recorder events.Recorder) (*corev1.Secret, error) {
 	secret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name)
 	if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) == "" {
-		return resourceapply.ApplySecret(ctx, c.secretsClient, recorder, secretsub.DefaultSecret(operatorConfig, crypto.Random256BitsString()))
+		secret, _, err = resourceapply.ApplySecret(ctx, c.secretsClient, recorder, secretsub.DefaultSecret(operatorConfig, crypto.Random256BitsString()))
 	}
 	// any error should be returned & kill the sync loop
-	if err != nil {
-		return nil, false, err
-	}
-	return secret, false, nil
+	return secret, err
 }
 
 // applies changes to the oauthclient
@@ -190,7 +186,7 @@ func (c *oauthClientsController) syncOAuthClient(
 
 func (c *oauthClientsController) deregisterClient(ctx context.Context) error {
 	// existingOAuthClient is not a delete, it is a deregister/neutralize
-	existingOAuthClient, err := c.oauthClient.OAuthClients().Get(ctx, oauthsub.Stub().Name, metav1.GetOptions{})
+	existingOAuthClient, err := c.oauthClientLister.Get(oauthsub.Stub().Name)
 	if err != nil {
 		return err
 	}
@@ -199,7 +195,8 @@ func (c *oauthClientsController) deregisterClient(ctx context.Context) error {
 		return nil
 	}
 
-	_, err = c.oauthClient.OAuthClients().Update(ctx, oauthsub.DeRegisterConsoleFromOAuthClient(existingOAuthClient), metav1.UpdateOptions{})
+	updated := oauthsub.DeRegisterConsoleFromOAuthClient(existingOAuthClient.DeepCopy())
+	_, err = c.oauthClient.OAuthClients().Update(ctx, updated, metav1.UpdateOptions{})
 	return err
 
 }
