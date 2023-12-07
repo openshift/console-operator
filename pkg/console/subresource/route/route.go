@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"net/url"
 	"time"
 
 	// kube
@@ -18,8 +19,10 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	routeclient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
+	routev1listers "github.com/openshift/client-go/route/listers/route/v1"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
+	"github.com/openshift/library-go/pkg/route/routeapihelpers"
 
 	"github.com/openshift/console-operator/bindata"
 	"github.com/openshift/console-operator/pkg/api"
@@ -199,6 +202,19 @@ func ApplyRoute(client routeclient.RoutesGetter, required *routev1.Route) (*rout
 	existingCopy.Spec = required.Spec
 	actual, err := client.Routes(required.Namespace).Update(context.TODO(), existingCopy, metav1.UpdateOptions{})
 	return actual, true, err
+}
+
+func GetActiveRouteInfo(routeClient routev1listers.RouteLister, activeRouteName string) (route *routev1.Route, routeURL *url.URL, reason string, err error) {
+	route, routeErr := routeClient.Routes(api.TargetNamespace).Get(activeRouteName)
+	if routeErr != nil {
+		return nil, nil, "FailedGet", routeErr
+	}
+	uri, _, uriErr := routeapihelpers.IngressURI(route, route.Spec.Host)
+	if uriErr != nil {
+		return nil, nil, "FailedIngress", uriErr
+	}
+
+	return route, uri, "", nil
 }
 
 func GetCustomTLS(customCertSecret *corev1.Secret) (*CustomTLSCert, error) {

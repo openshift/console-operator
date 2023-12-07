@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
 	"github.com/openshift/console-operator/pkg/console/controllers/healthcheck"
+	"github.com/openshift/console-operator/pkg/console/controllers/oauthclients"
 	pdb "github.com/openshift/console-operator/pkg/console/controllers/poddisruptionbudget"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
@@ -188,12 +189,11 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// deployments
 		kubeClient.AppsV1(),
 		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
+		// oauth
+		oauthInformers.Oauth().V1().OAuthClients(),
 		// routes
 		routesClient.RouteV1(),
 		routesInformersNamespaced.Route().V1().Routes(), // Route
-		// oauth
-		oauthClient.OauthV1(),
-		oauthInformers.Oauth().V1().OAuthClients(), // OAuth clients
 		// plugins
 		consoleInformers.Console().V1().ConsolePlugins(),
 		// openshift managed
@@ -204,12 +204,21 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		resourceSyncer,
 	)
 
+	oauthClientController := oauthclients.NewOAuthClientsController(
+		operatorClient,
+		oauthClient.OauthV1(),
+		kubeClient.CoreV1(),
+		oauthInformers.Oauth().V1().OAuthClients(),
+		operatorConfigInformers.Operator().V1().Consoles(),
+		routesInformersNamespaced.Route().V1().Routes(),
+		configInformers.Config().V1().Ingresses(),
+		kubeInformersNamespaced.Core().V1().Secrets(),
+		recorder,
+	)
+
 	downloadsDeploymentController := downloadsdeployment.NewDownloadsDeploymentSyncController(
-		// top level config
-		configClient.ConfigV1(),
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(),
 		configInformers,
 		// operator
 		operatorConfigInformers.Operator().V1().Consoles(),
@@ -478,6 +487,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleRouteHealthCheckController,
 		consolePDBController,
 		downloadsPDBController,
+		oauthClientController,
 		upgradeNotificationController,
 		staleConditionsController,
 	} {
