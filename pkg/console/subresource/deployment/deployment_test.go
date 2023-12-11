@@ -39,6 +39,8 @@ func TestDefaultDeployment(t *testing.T) {
 		consoleConfig                  *corev1.ConfigMap
 		serviceCAConfigMap             *corev1.ConfigMap
 		localOAuthServingCertConfigMap *corev1.ConfigMap
+		authServerCAConfigMap          *corev1.ConfigMap
+		authnConfig                    *configv1.Authentication
 		trustedCAConfigMap             *corev1.ConfigMap
 		oAuthClientSecret              *corev1.Secret
 		proxyConfig                    *configv1.Proxy
@@ -168,10 +170,14 @@ func TestDefaultDeployment(t *testing.T) {
 	infrastructureConfigExternalTopologyMode := infrastructureConfigWithTopology(configv1.ExternalTopologyMode)
 	consoleDeploymentTemplate := resourceread.ReadDeploymentV1OrDie(bindata.MustAsset("assets/deployments/console-deployment.yaml"))
 	withConsoleContainerImage(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
-	withConsoleVolumes(consoleDeploymentTemplate, trustedCAConfigMapEmpty, false)
+	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMap{
+		Data: map[string]string{"ca-bundle.crt": "test"},
+	}, nil, trustedCAConfigMapEmpty, false)
 	consoleDeploymentContainer := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumes := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
-	withConsoleVolumes(consoleDeploymentTemplate, trustedCAConfigMapSet, false)
+	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMap{
+		Data: map[string]string{"ca-bundle.crt": "test"},
+	}, nil, trustedCAConfigMapSet, false)
 	consoleDeploymentContainerTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumesTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 
@@ -501,8 +507,9 @@ func TestDefaultDeployment(t *testing.T) {
 			if diff := deep.Equal(DefaultDeployment(
 				tt.args.consoleOperatorConfig,
 				tt.args.consoleConfig,
+				tt.args.serviceCAConfigMap,
 				tt.args.localOAuthServingCertConfigMap,
-				tt.args.consoleConfig,
+				tt.args.authServerCAConfigMap,
 				tt.args.trustedCAConfigMap,
 				tt.args.oAuthClientSecret,
 				tt.args.proxyConfig,
@@ -525,6 +532,8 @@ func TestWithConsoleAnnotations(t *testing.T) {
 		oAuthClientSecret         *corev1.Secret
 		proxyConfig               *configv1.Proxy
 		infrastructureConfig      *configv1.Infrastructure
+		authServerCAConfigMap     *corev1.ConfigMap
+		authnConfig               *configv1.Authentication
 	}
 
 	consoleConfigMap := &corev1.ConfigMap{
@@ -639,7 +648,7 @@ func TestWithConsoleAnnotations(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withConsoleAnnotations(tt.args.deployment, tt.args.consoleConfigMap, tt.args.serviceCAConfigMap, tt.args.oauthServingCertConfigMap, tt.args.trustedCAConfigMap, tt.args.oAuthClientSecret, tt.args.proxyConfig, tt.args.infrastructureConfig)
+			withConsoleAnnotations(tt.args.deployment, tt.args.consoleConfigMap, tt.args.serviceCAConfigMap, tt.args.oauthServingCertConfigMap, tt.args.trustedCAConfigMap, tt.args.oAuthClientSecret, tt.args.proxyConfig, tt.args.infrastructureConfig, tt.args.authServerCAConfigMap)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
 			}
@@ -863,20 +872,6 @@ func TestWithConsoleVolumes(t *testing.T) {
 		},
 	}
 
-	oauthServingCertVolume := corev1.Volume{
-		Name: api.OAuthServingCertConfigMapName,
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: api.OAuthServingCertConfigMapName,
-				},
-				Items:       nil,
-				DefaultMode: nil,
-				Optional:    nil,
-			},
-		},
-	}
-
 	customLogoVolume := corev1.Volume{
 		Name: api.OpenShiftCustomLogoConfigMapName,
 		VolumeSource: corev1.VolumeSource{
@@ -916,7 +911,6 @@ func TestWithConsoleVolumes(t *testing.T) {
 		consoleOauthConfigVolume,
 		consoleConfigVolume,
 		serviceCAVolume,
-		oauthServingCertVolume,
 	}
 	trustedVolumes := append(defaultVolumes, trustedCAVolume)
 	customLogoVolumes := append(defaultVolumes, customLogoVolume)
@@ -946,12 +940,6 @@ func TestWithConsoleVolumes(t *testing.T) {
 		MountPath: "/var/service-ca",
 	}
 
-	oauthServingCertVolumeMount := corev1.VolumeMount{
-		Name:      api.OAuthServingCertConfigMapName,
-		ReadOnly:  true,
-		MountPath: "/var/oauth-serving-cert",
-	}
-
 	trustedCAVolumeMount := corev1.VolumeMount{
 		Name:      api.TrustedCAConfigMapName,
 		ReadOnly:  true,
@@ -969,7 +957,6 @@ func TestWithConsoleVolumes(t *testing.T) {
 		consoleOauthConfigVolumeMount,
 		consoleConfigVolumeMount,
 		serviceCAVolumeMount,
-		oauthServingCertVolumeMount,
 	}
 	trustedVolumeMounts := append(defaultVolumeMounts, trustedCAVolumeMount)
 	customLogoVolumeMounts := append(defaultVolumeMounts, customLogoVolumeMount)
@@ -1077,6 +1064,8 @@ func TestWithConsoleVolumes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			withConsoleVolumes(
 				tt.args.deployment,
+				nil,
+				nil,
 				tt.args.trustedCAConfigMap,
 				tt.args.canMountCustomLogo,
 			)
