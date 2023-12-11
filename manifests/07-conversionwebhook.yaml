@@ -1,10 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: console-operator
+  name: console-conversion-webhook
   namespace: openshift-console-operator
   annotations:
-    config.openshift.io/inject-proxy: console-operator
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
     capability.openshift.io/name: Console
@@ -12,13 +11,13 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      name: console-operator
+      name: console-conversion-webhook
   template:
     metadata:
       annotations:
         target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
       labels:
-        name: console-operator
+        name: console-conversion-webhook
     spec:
       securityContext:
         runAsNonRoot: true
@@ -41,7 +40,7 @@ spec:
       priorityClassName: system-cluster-critical
       serviceAccountName: console-operator
       containers:
-        - name: console-operator
+        - name: conversion-webhook-server
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
@@ -50,55 +49,34 @@ spec:
           terminationMessagePolicy: FallbackToLogsOnError
           image: registry.svc.ci.openshift.org/openshift:console-operator
           ports:
-            - containerPort: 60000
-              name: metrics
+            - containerPort: 9443
+              name: webhook
           command:
             - console
-            - operator
+            - crdconvert
           args:
-            - "-v=2"
-            - "--config=/var/run/configmaps/config/controller-config.yaml"
+            - "--port=9443"
+            - "--tls-cert-file=/var/run/secrets/webhook-serving-cert/tls.crt"
+            - "--tls-private-key-file=/var/run/secrets/webhook-serving-cert/tls.key"
           imagePullPolicy: IfNotPresent
           volumeMounts:
-            - mountPath: /var/run/configmaps/config
-              name: config
-            - mountPath: /var/run/secrets/serving-cert
-              name: serving-cert
-          env:
-            - name: CONSOLE_IMAGE
-              value: registry.svc.ci.openshift.org/openshift:console
-            - name: DOWNLOADS_IMAGE
-              value: registry.svc.ci.openshift.org/openshift:cli-artifacts
-            - name: RELEASE_VERSION
-              value: "0.0.1-snapshot"
-            - name: OPERATOR_NAME
-              value: "console-operator"
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
+            - mountPath: /var/run/secrets/webhook-serving-cert
+              name: webhook-serving-cert
           resources:
             requests:
               memory: "100Mi"
               cpu: "10m"
           livenessProbe:
             httpGet:
-              path: /healthz
-              port: 8443
+              path: /readyz
+              port: 9443
               scheme: HTTPS
           readinessProbe:
             httpGet:
               path: /readyz
-              port: 8443
+              port: 9443
               scheme: HTTPS
       volumes:
-        - name: config
-          configMap:
-            name: console-operator-config
-        - name: serving-cert
-          secret:
-            secretName: serving-cert
-            optional: true
         - name: webhook-serving-cert
           secret:
             secretName: webhook-serving-cert

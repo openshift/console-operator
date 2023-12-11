@@ -5,55 +5,43 @@ metadata:
   annotations:
     config.openshift.io/inject-proxy: console-operator
     include.release.openshift.io/ibm-cloud-managed: "true"
-  name: console-operator
+  name: console-conversion-webhook
   namespace: openshift-console-operator
 spec:
   replicas: 1
   selector:
     matchLabels:
-      name: console-operator
+      name: console-conversion-webhook
   template:
     metadata:
       annotations:
         target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
       labels:
-        name: console-operator
+        name: console-conversion-webhook
     spec:
       containers:
       - args:
-        - -v=2
-        - --config=/var/run/configmaps/config/controller-config.yaml
+        - --port=9443
+        - --tls-cert-file=/var/run/secrets/webhook-serving-cert/tls.crt
+        - --tls-private-key-file=/var/run/secrets/webhook-serving-cert/tls.key
         command:
         - console
-        - operator
-        env:
-        - name: CONSOLE_IMAGE
-          value: registry.svc.ci.openshift.org/openshift:console
-        - name: DOWNLOADS_IMAGE
-          value: registry.svc.ci.openshift.org/openshift:cli-artifacts
-        - name: RELEASE_VERSION
-          value: 0.0.1-snapshot
-        - name: OPERATOR_NAME
-          value: console-operator
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
+        - crdconvert
         image: registry.svc.ci.openshift.org/openshift:console-operator
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /healthz
-            port: 8443
+            path: /readyz
+            port: 9443
             scheme: HTTPS
-        name: console-operator
+        name: conversion-webhook-server
         ports:
-        - containerPort: 60000
-          name: metrics
+        - containerPort: 9443
+          name: webhook
         readinessProbe:
           httpGet:
             path: /readyz
-            port: 8443
+            port: 9443
             scheme: HTTPS
         resources:
           requests:
@@ -67,10 +55,8 @@ spec:
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - mountPath: /var/run/configmaps/config
-          name: config
-        - mountPath: /var/run/secrets/serving-cert
-          name: serving-cert
+        - mountPath: /var/run/secrets/webhook-serving-cert
+          name: webhook-serving-cert
       priorityClassName: system-cluster-critical
       securityContext:
         runAsNonRoot: true
@@ -90,10 +76,7 @@ spec:
         operator: Exists
         tolerationSeconds: 120
       volumes:
-      - configMap:
-          name: console-operator-config
-        name: config
-      - name: serving-cert
+      - name: webhook-serving-cert
         secret:
           optional: true
-          secretName: serving-cert
+          secretName: webhook-serving-cert
