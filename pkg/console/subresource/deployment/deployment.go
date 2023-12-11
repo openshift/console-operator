@@ -36,6 +36,8 @@ const (
 	trustedCAConfigMapResourceVersionAnnotation        = "console.openshift.io/trusted-ca-config-version"
 	secretResourceVersionAnnotation                    = "console.openshift.io/oauth-secret-version"
 	consoleImageAnnotation                             = "console.openshift.io/image"
+	authnConfigVersionAnnotation                       = "console.openshift.io/authentication-config-version"
+	authnCATrustConfigMapResourceVersionAnnotation     = "console.openshift.io/authn-ca-trust-config-version"
 )
 
 var (
@@ -66,6 +68,7 @@ func DefaultDeployment(
 	consoleConfigMap *corev1.ConfigMap,
 	serviceCAConfigMap *corev1.ConfigMap,
 	localOAuthServingCertConfigMap *corev1.ConfigMap,
+	authServerCAConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
 	oAuthClientSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
@@ -85,9 +88,12 @@ func DefaultDeployment(
 		oAuthClientSecret,
 		proxyConfig,
 		infrastructureConfig,
+		authServerCAConfigMap,
 	)
 	withConsoleVolumes(
 		deployment,
+		localOAuthServingCertConfigMap,
+		authServerCAConfigMap,
 		trustedCAConfigMap,
 		canMountCustomLogo,
 	)
@@ -162,6 +168,9 @@ func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.
 	deployment.Spec.Strategy.RollingUpdate = rollingUpdateParams
 }
 
+// withConsoleAnnotations adds annotations in the console deployment which are used to track
+// resources that when updated, trigger a new deployment rollout; this happens when the resource
+// version changes.
 func withConsoleAnnotations(
 	deployment *appsv1.Deployment,
 	consoleConfigMap *corev1.ConfigMap,
@@ -171,17 +180,26 @@ func withConsoleAnnotations(
 	oAuthClientSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
+	authServerCAConfigMap *corev1.ConfigMap,
 ) {
 	deployment.ObjectMeta.Annotations = map[string]string{
-		configMapResourceVersionAnnotation:                 consoleConfigMap.GetResourceVersion(),
-		serviceCAConfigMapResourceVersionAnnotation:        serviceCAConfigMap.GetResourceVersion(),
-		oauthServingCertConfigMapResourceVersionAnnotation: oauthServingCertConfigMap.GetResourceVersion(),
-		trustedCAConfigMapResourceVersionAnnotation:        trustedCAConfigMap.GetResourceVersion(),
-		proxyConfigResourceVersionAnnotation:               proxyConfig.GetResourceVersion(),
-		infrastructureConfigResourceVersionAnnotation:      infrastructureConfig.GetResourceVersion(),
-		secretResourceVersionAnnotation:                    oAuthClientSecret.GetResourceVersion(),
-		consoleImageAnnotation:                             util.GetImageEnv("CONSOLE_IMAGE"),
+		configMapResourceVersionAnnotation:            consoleConfigMap.GetResourceVersion(),
+		serviceCAConfigMapResourceVersionAnnotation:   serviceCAConfigMap.GetResourceVersion(),
+		trustedCAConfigMapResourceVersionAnnotation:   trustedCAConfigMap.GetResourceVersion(),
+		proxyConfigResourceVersionAnnotation:          proxyConfig.GetResourceVersion(),
+		infrastructureConfigResourceVersionAnnotation: infrastructureConfig.GetResourceVersion(),
+		secretResourceVersionAnnotation:               oAuthClientSecret.GetResourceVersion(),
+		consoleImageAnnotation:                        util.GetImageEnv("CONSOLE_IMAGE"),
 	}
+
+	if oauthServingCertConfigMap != nil {
+		deployment.ObjectMeta.Annotations[oauthServingCertConfigMapResourceVersionAnnotation] = oauthServingCertConfigMap.GetResourceVersion()
+	}
+
+	if authServerCAConfigMap != nil {
+		deployment.ObjectMeta.Annotations[authnCATrustConfigMapResourceVersionAnnotation] = authServerCAConfigMap.GetResourceVersion()
+	}
+
 	podAnnotations := deployment.Spec.Template.ObjectMeta.Annotations
 	for k, v := range deployment.ObjectMeta.Annotations {
 		podAnnotations[k] = v
@@ -191,6 +209,8 @@ func withConsoleAnnotations(
 
 func withConsoleVolumes(
 	deployment *appsv1.Deployment,
+	oauthServingCert *corev1.ConfigMap,
+	authServerCAConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
 	canMountCustomLogo bool) {
 	volumeConfig := defaultVolumeConfig()
@@ -202,6 +222,15 @@ func withConsoleVolumes(
 	if canMountCustomLogo {
 		volumeConfig = append(volumeConfig, customLogoVolume())
 	}
+
+	if oauthServingCert != nil {
+		volumeConfig = append(volumeConfig, oauthServingCertVolumeConfig())
+	}
+
+	if authServerCAConfigMap != nil {
+		volumeConfig = append(volumeConfig, authServerCAVolumeConfig())
+	}
+
 	volMountList := make([]corev1.VolumeMount, len(volumeConfig))
 	for i, item := range volumeConfig {
 		volMountList[i] = corev1.VolumeMount{
@@ -413,12 +442,6 @@ func defaultVolumeConfig() []volumeConfig {
 			path:        "/var/service-ca",
 			isConfigMap: true,
 		},
-		{
-			name:        api.OAuthServingCertConfigMapName,
-			readOnly:    true,
-			path:        "/var/oauth-serving-cert",
-			isConfigMap: true,
-		},
 	}
 }
 
@@ -439,4 +462,22 @@ func customLogoVolume() volumeConfig {
 		name:        api.OpenShiftCustomLogoConfigMapName,
 		path:        "/var/logo/",
 		isConfigMap: true}
+}
+
+func oauthServingCertVolumeConfig() volumeConfig {
+	return volumeConfig{
+		name:        api.OAuthServingCertConfigMapName,
+		readOnly:    true,
+		path:        "/var/oauth-serving-cert",
+		isConfigMap: true,
+	}
+}
+
+func authServerCAVolumeConfig() volumeConfig {
+	return volumeConfig{
+		name:        api.AuthServerCAFileName,
+		path:        api.AuthServerCAMountDir,
+		readOnly:    true,
+		isConfigMap: true,
+	}
 }
