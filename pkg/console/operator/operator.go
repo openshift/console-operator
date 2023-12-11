@@ -63,6 +63,7 @@ type consoleOperator struct {
 	ingressConfigLister  configlistersv1.IngressLister
 	proxyConfigLister    configlistersv1.ProxyLister
 	oauthConfigLister    configlistersv1.OAuthLister
+	authnConfigLister    configlistersv1.AuthenticationLister
 	dynamicClient        dynamic.Interface
 	// core kube
 	secretsClient    coreclientv1.SecretsGetter
@@ -137,6 +138,7 @@ func NewConsoleOperator(
 		ingressConfigLister:   configInformer.Config().V1().Ingresses().Lister(),
 		proxyConfigLister:     configInformer.Config().V1().Proxies().Lister(),
 		oauthConfigLister:     configInformer.Config().V1().OAuths().Lister(),
+		authnConfigLister:     configV1Informers.Authentications().Lister(),
 		// console resources
 		// core kube
 		secretsClient:    corev1Client,
