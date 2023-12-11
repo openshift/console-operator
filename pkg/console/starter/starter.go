@@ -205,10 +205,11 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	)
 
 	oauthClientController := oauthclients.NewOAuthClientsController(
+		ctx,
 		operatorClient,
-		oauthClient.OauthV1(),
+		oauthClient,
 		kubeClient.CoreV1(),
-		oauthInformers.Oauth().V1().OAuthClients(),
+		configInformers.Config().V1().Authentications(),
 		operatorConfigInformers.Operator().V1().Consoles(),
 		routesInformersNamespaced.Route().V1().Routes(),
 		configInformers.Config().V1().Ingresses(),
@@ -463,8 +464,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleInformers,
 		configInformers,
 		routesInformersNamespaced,
-		oauthInformers,
 		dynamicInformers,
+		oauthInformers,
 	} {
 		informer.Start(ctx.Done())
 	}
