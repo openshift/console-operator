@@ -68,6 +68,7 @@ type consoleOperator struct {
 	secretsClient    coreclientv1.SecretsGetter
 	secretsLister    corev1listers.SecretLister
 	configMapClient  coreclientv1.ConfigMapsGetter
+	configMapLister  corev1listers.ConfigMapLister
 	serviceClient    coreclientv1.ServicesGetter
 	nodeClient       coreclientv1.NodesGetter
 	deploymentClient appsclientv1.DeploymentsGetter
@@ -141,6 +142,7 @@ func NewConsoleOperator(
 		secretsClient:    corev1Client,
 		secretsLister:    secretsInformer.Lister(),
 		configMapClient:  corev1Client,
+		configMapLister:  configMapInformer.Lister(),
 		serviceClient:    corev1Client,
 		nodeClient:       corev1Client,
 		deploymentClient: deploymentClient,
