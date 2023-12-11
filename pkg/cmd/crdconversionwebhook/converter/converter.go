@@ -11,7 +11,7 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 )
 
-func convertCRD(object *unstructured.Unstructured, toVersion string) (*unstructured.Unstructured, metav1.Status) {
+func convertConsolePlugin(object *unstructured.Unstructured, toVersion string) (*unstructured.Unstructured, metav1.Status) {
 	originalObject := object.DeepCopy()
 	fromVersion := object.GetAPIVersion()
 	convertedObject := &unstructured.Unstructured{}
