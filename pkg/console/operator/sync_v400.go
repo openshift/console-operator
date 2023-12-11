@@ -71,12 +71,28 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(routeErr)
 	}
 
+	authnConfig, err := co.authnConfigLister.Get(api.ConfigResourceName)
+	if err != nil {
+		return statusHandler.FlushAndReturn(err)
+	}
+
+	var authServerCAConfig *corev1.ConfigMap
+	if len(authnConfig.Spec.OIDCProviders) == 1 {
+		oidcProvider := authnConfig.Spec.OIDCProviders[0]
+		authServerCAConfig, err = co.configMapLister.ConfigMaps(api.OpenShiftConfigNamespace).Get(oidcProvider.Issuer.CertificateAuthority.Name)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return statusHandler.FlushAndReturn(err)
+		}
+	}
+
 	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(
 		ctx,
 		set.Operator,
 		set.Console,
 		set.Infrastructure,
 		set.OAuth,
+		authServerCAConfig,
+		authnConfig,
 		route,
 		controllerContext.Recorder(),
 	)
@@ -109,10 +125,17 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(customLogoError)
 	}
 
-	oauthServingCertConfigMap, oauthServingCertErrReason, oauthServingCertErr := co.ValidateOAuthServingCertConfigMap(ctx)
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthServingCertValidation", oauthServingCertErrReason, oauthServingCertErr))
-	if oauthServingCertErr != nil {
-		return statusHandler.FlushAndReturn(oauthServingCertErr)
+	var oauthServingCertConfigMap *corev1.ConfigMap
+	switch authnConfig.Spec.Type {
+	case "", configv1.AuthenticationTypeIntegratedOAuth:
+		var oauthServingCertErrReason string
+		var oauthServingCertErr error
+
+		oauthServingCertConfigMap, oauthServingCertErrReason, oauthServingCertErr = co.ValidateOAuthServingCertConfigMap(ctx)
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthServingCertValidation", oauthServingCertErrReason, oauthServingCertErr))
+		if oauthServingCertErr != nil {
+			return statusHandler.FlushAndReturn(oauthServingCertErr)
+		}
 	}
 
 	clientSecret, secErr := co.secretsLister.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name)
@@ -127,6 +150,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		cm,
 		serviceCAConfigMap,
 		oauthServingCertConfigMap,
+		authServerCAConfig,
 		trustedCAConfigMap,
 		clientSecret,
 		set.Proxy,
@@ -229,6 +253,7 @@ func (co *consoleOperator) SyncDeployment(
 	cm *corev1.ConfigMap,
 	serviceCAConfigMap *corev1.ConfigMap,
 	oauthServingCertConfigMap *corev1.ConfigMap,
+	authServerCAConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
 	sec *corev1.Secret,
 	proxyConfig *configv1.Proxy,
@@ -242,6 +267,7 @@ func (co *consoleOperator) SyncDeployment(
 		cm,
 		serviceCAConfigMap,
 		oauthServingCertConfigMap,
+		authServerCAConfigMap,
 		trustedCAConfigMap,
 		sec,
 		proxyConfig,
@@ -298,16 +324,20 @@ func (co *consoleOperator) SyncConfigMap(
 	}
 	nodeArchitectures, nodeOperatingSystems := getNodeComputeEnvironments(nodeList)
 
+	// TODO: currently there's no way to get this for authentication type OIDC
 	inactivityTimeoutSeconds := 0
-	oauthClient, oacErr := co.oauthClientLister.Get(oauthsub.Stub().Name)
-	if oacErr != nil {
-		return nil, false, "FailedGetOAuthClient", oacErr
-	}
-	if oauthClient.AccessTokenInactivityTimeoutSeconds != nil {
-		inactivityTimeoutSeconds = int(*oauthClient.AccessTokenInactivityTimeoutSeconds)
-	} else {
-		if oauthConfig.Spec.TokenConfig.AccessTokenInactivityTimeout != nil {
-			inactivityTimeoutSeconds = int(oauthConfig.Spec.TokenConfig.AccessTokenInactivityTimeout.Seconds())
+	switch authConfig.Spec.Type {
+	case "", configv1.AuthenticationTypeIntegratedOAuth:
+		oauthClient, oacErr := co.oauthClientLister.Get(oauthsub.Stub().Name)
+		if oacErr != nil {
+			return nil, false, "FailedGetOAuthClient", oacErr
+		}
+		if oauthClient.AccessTokenInactivityTimeoutSeconds != nil {
+			inactivityTimeoutSeconds = int(*oauthClient.AccessTokenInactivityTimeoutSeconds)
+		} else {
+			if oauthConfig.Spec.TokenConfig.AccessTokenInactivityTimeout != nil {
+				inactivityTimeoutSeconds = int(oauthConfig.Spec.TokenConfig.AccessTokenInactivityTimeout.Seconds())
+			}
 		}
 	}
 
@@ -335,6 +365,8 @@ func (co *consoleOperator) SyncConfigMap(
 	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(
 		operatorConfig,
 		consoleConfig,
+		authConfig,
+		authServerCAConfig,
 		managedConfig,
 		monitoringSharedConfig,
 		infrastructureConfig,
