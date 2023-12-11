@@ -99,7 +99,3 @@ spec:
           secret:
             secretName: serving-cert
             optional: true
-        - name: webhook-serving-cert
-          secret:
-            secretName: webhook-serving-cert
-            optional: true
