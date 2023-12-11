@@ -1,6 +1,8 @@
 package api
 
 const (
+	AuthServerCAMountDir                = "/var/auth-server-ca"
+	AuthServerCAFileName                = "ca-bundle.crt"
 	ClusterOperatorName                 = "console"
 	ConfigResourceName                  = "cluster"
 	ConsoleContainerPort                = 443
