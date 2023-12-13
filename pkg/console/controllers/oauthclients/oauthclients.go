@@ -35,6 +35,7 @@ import (
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 
 	"github.com/openshift/console-operator/pkg/api"
+	utilctrl "github.com/openshift/console-operator/pkg/console/controllers/util"
 	"github.com/openshift/console-operator/pkg/console/status"
 	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
@@ -61,7 +62,7 @@ type oauthClientsController struct {
 	targetNSConfigLister      corev1listers.ConfigMapLister
 
 	authStatusHandler          status.AuthStatusHandler
-	oauthClientsInformerSwitch *informerWithSwitch
+	oauthClientsInformerSwitch *utilctrl.InformerWithSwitch
 }
 
 func NewOAuthClientsController(
@@ -99,7 +100,7 @@ func NewOAuthClientsController(
 		targetNSDeploymentsLister: targetNSDeploymentsInformer.Lister(),
 
 		authStatusHandler:          status.NewAuthStatusHandler(authentication, api.OpenShiftConsoleName, api.TargetNamespace, api.OpenShiftConsoleOperator),
-		oauthClientsInformerSwitch: NewOAuthClientsInformerSwitch(ctx, oauthClientInformer),
+		oauthClientsInformerSwitch: utilctrl.NewInformerWithSwitch(ctx, oauthClientInformer),
 	}
 	defer c.oauthClientsInformerSwitch.EnsureRunning()
 
@@ -164,7 +165,7 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 
 		waitCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
-		if !cache.WaitForCacheSync(waitCtx.Done(), c.oauthClientsInformerSwitch.informer.HasSynced) {
+		if !cache.WaitForCacheSync(waitCtx.Done(), c.oauthClientsInformerSwitch.Informer().HasSynced) {
 			syncErr = fmt.Errorf("timed out waiting for OAuthClients cache sync")
 			break
 		}
@@ -358,37 +359,4 @@ func (c *oauthClientsController) deregisterClient(ctx context.Context) error {
 	_, err = c.oauthClient.OAuthClients().Update(ctx, updated, metav1.UpdateOptions{})
 	return err
 
-}
-
-type informerWithSwitch struct {
-	informer  cache.SharedIndexInformer
-	parentCtx context.Context
-	runCtx    context.Context
-	stopFunc  func()
-}
-
-func NewOAuthClientsInformerSwitch(ctx context.Context, informer cache.SharedIndexInformer) *informerWithSwitch {
-	return &informerWithSwitch{
-		informer:  informer,
-		parentCtx: ctx,
-	}
-}
-
-func (s *informerWithSwitch) EnsureRunning() {
-	if s.runCtx != nil {
-		return
-	}
-
-	s.runCtx, s.stopFunc = context.WithCancel(s.parentCtx)
-	go s.informer.Run(s.runCtx.Done())
-}
-
-func (s *informerWithSwitch) Stop() {
-	if s.runCtx == nil {
-		return
-	}
-
-	s.stopFunc()
-	s.runCtx = nil
-	s.stopFunc = nil
 }
