@@ -29,7 +29,6 @@ import (
 	configlistersv1 "github.com/openshift/client-go/config/listers/config/v1"
 	consoleinformersv1 "github.com/openshift/client-go/console/informers/externalversions/console/v1"
 	listerv1 "github.com/openshift/client-go/console/listers/console/v1"
-	oauthinformersv1 "github.com/openshift/client-go/oauth/informers/externalversions/oauth/v1"
 	oauthlistersv1 "github.com/openshift/client-go/oauth/listers/oauth/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	operatorinformerv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
@@ -49,6 +48,7 @@ import (
 	appsinformersv1 "k8s.io/client-go/informers/apps/v1"
 
 	// operator
+
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	"github.com/openshift/console-operator/pkg/console/subresource/secret"
@@ -89,6 +89,7 @@ type consoleOperator struct {
 }
 
 func NewConsoleOperator(
+	ctx context.Context,
 	// top level config
 	configClient configclientv1.ConfigV1Interface,
 	configInformer configinformer.SharedInformerFactory,
@@ -105,7 +106,7 @@ func NewConsoleOperator(
 	deploymentClient appsclientv1.DeploymentsGetter,
 	deploymentInformer appsinformersv1.DeploymentInformer,
 	// oauth API
-	oauthClientInformer oauthinformersv1.OAuthClientInformer,
+	oauthClientSwitchedInformer *util.InformerWithSwitch,
 	// routes
 	routev1Client routeclientv1.RoutesGetter,
 	routeInformer routesinformersv1.RouteInformer,
@@ -150,7 +151,7 @@ func NewConsoleOperator(
 		deploymentClient: deploymentClient,
 		dynamicClient:    dynamicClient,
 		// openshift
-		oauthClientLister: oauthClientInformer.Lister(),
+		oauthClientLister: oauthClientSwitchedInformer.Lister(),
 		routeClient:       routev1Client,
 		routeLister:       routeInformer.Lister(),
 		versionGetter:     versionGetter,
@@ -203,7 +204,7 @@ func NewConsoleOperator(
 		managedConfigMapInformer.Informer(),
 	).WithFilteredEventsInformers(
 		factory.NamesFilter(api.OAuthClientName),
-		oauthClientInformer.Informer(),
+		oauthClientSwitchedInformer.Informer(),
 	).WithFilteredEventsInformers(
 		util.IncludeNamesFilter(deployment.ConsoleOauthConfigName),
 		secretsInformer.Informer(),

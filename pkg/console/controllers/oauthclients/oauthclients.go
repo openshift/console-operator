@@ -21,7 +21,6 @@ import (
 	configv1lister "github.com/openshift/client-go/config/listers/config/v1"
 	oauthclient "github.com/openshift/client-go/oauth/clientset/versioned"
 	oauthv1client "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
-	oauthv1informers "github.com/openshift/client-go/oauth/informers/externalversions/oauth/v1"
 	oauthv1lister "github.com/openshift/client-go/oauth/listers/oauth/v1"
 	operatorv1informers "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	operatorv1listers "github.com/openshift/client-go/operator/listers/operator/v1"
@@ -35,7 +34,7 @@ import (
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 
 	"github.com/openshift/console-operator/pkg/api"
-	utilctrl "github.com/openshift/console-operator/pkg/console/controllers/util"
+	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	"github.com/openshift/console-operator/pkg/console/status"
 	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
@@ -50,19 +49,19 @@ type oauthClientsController struct {
 	operatorClient v1helpers.OperatorClient
 	secretsClient  corev1client.SecretsGetter
 
-	oauthClientLister         oauthv1lister.OAuthClientLister
-	authentication            configv1client.AuthenticationInterface
-	authnLister               configv1lister.AuthenticationLister
-	consoleOperatorLister     operatorv1listers.ConsoleLister
-	routesLister              routev1listers.RouteLister
-	ingressConfigLister       configv1lister.IngressLister
-	targetNSSecretsLister     corev1listers.SecretLister
-	configNSSecretsLister     corev1listers.SecretLister
-	targetNSDeploymentsLister appsv1listers.DeploymentLister
-	targetNSConfigLister      corev1listers.ConfigMapLister
+	oauthClientLister           oauthv1lister.OAuthClientLister
+	oauthClientSwitchedInformer *util.InformerWithSwitch
+	authentication              configv1client.AuthenticationInterface
+	authnLister                 configv1lister.AuthenticationLister
+	consoleOperatorLister       operatorv1listers.ConsoleLister
+	routesLister                routev1listers.RouteLister
+	ingressConfigLister         configv1lister.IngressLister
+	targetNSSecretsLister       corev1listers.SecretLister
+	configNSSecretsLister       corev1listers.SecretLister
+	targetNSDeploymentsLister   appsv1listers.DeploymentLister
+	targetNSConfigLister        corev1listers.ConfigMapLister
 
-	authStatusHandler          status.AuthStatusHandler
-	oauthClientsInformerSwitch *utilctrl.InformerWithSwitch
+	authStatusHandler status.AuthStatusHandler
 }
 
 func NewOAuthClientsController(
@@ -79,30 +78,28 @@ func NewOAuthClientsController(
 	configNSSecretsInformer corev1informers.SecretInformer,
 	targetNSConfigInformer corev1informers.ConfigMapInformer,
 	targetNSDeploymentsInformer appsv1informers.DeploymentInformer,
+	oauthClientSwitchedInformer *util.InformerWithSwitch,
 	recorder events.Recorder,
 ) factory.Controller {
-	oauthClientInformer := oauthv1informers.NewOAuthClientInformer(oauthClient, 10*time.Minute, nil)
-
 	c := oauthClientsController{
 		oauthClient:    oauthClient.OauthV1(),
 		operatorClient: operatorClient,
 		secretsClient:  secretsClient,
 
-		oauthClientLister:         oauthv1lister.NewOAuthClientLister(oauthClientInformer.GetIndexer()),
-		authentication:            authentication,
-		authnLister:               authnInformer.Lister(),
-		consoleOperatorLister:     consoleOperatorInformer.Lister(),
-		routesLister:              routeInformer.Lister(),
-		ingressConfigLister:       ingressConfigInformer.Lister(),
-		targetNSSecretsLister:     targetNSsecretsInformer.Lister(),
-		configNSSecretsLister:     configNSSecretsInformer.Lister(),
-		targetNSConfigLister:      targetNSConfigInformer.Lister(),
-		targetNSDeploymentsLister: targetNSDeploymentsInformer.Lister(),
+		oauthClientLister:           oauthClientSwitchedInformer.Lister(),
+		oauthClientSwitchedInformer: oauthClientSwitchedInformer,
+		authentication:              authentication,
+		authnLister:                 authnInformer.Lister(),
+		consoleOperatorLister:       consoleOperatorInformer.Lister(),
+		routesLister:                routeInformer.Lister(),
+		ingressConfigLister:         ingressConfigInformer.Lister(),
+		targetNSSecretsLister:       targetNSsecretsInformer.Lister(),
+		configNSSecretsLister:       configNSSecretsInformer.Lister(),
+		targetNSConfigLister:        targetNSConfigInformer.Lister(),
+		targetNSDeploymentsLister:   targetNSDeploymentsInformer.Lister(),
 
-		authStatusHandler:          status.NewAuthStatusHandler(authentication, api.OpenShiftConsoleName, api.TargetNamespace, api.OpenShiftConsoleOperator),
-		oauthClientsInformerSwitch: utilctrl.NewInformerWithSwitch(ctx, oauthClientInformer),
+		authStatusHandler: status.NewAuthStatusHandler(authentication, api.OpenShiftConsoleName, api.TargetNamespace, api.OpenShiftConsoleOperator),
 	}
-	defer c.oauthClientsInformerSwitch.EnsureRunning()
 
 	return factory.New().
 		WithSync(c.sync).
@@ -117,7 +114,7 @@ func NewOAuthClientsController(
 		).
 		WithFilteredEventsInformers(
 			factory.NamesFilter(api.OAuthClientName),
-			oauthClientInformer,
+			oauthClientSwitchedInformer.Informer(),
 		).
 		WithSyncDegradedOnError(operatorClient).
 		ToController("OAuthClientsController", recorder.WithComponentSuffix("oauth-clients-controller"))
@@ -161,11 +158,9 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 	var syncErr error
 	switch authnConfig.Spec.Type {
 	case "", configv1.AuthenticationTypeIntegratedOAuth:
-		c.oauthClientsInformerSwitch.EnsureRunning()
-
 		waitCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
-		if !cache.WaitForCacheSync(waitCtx.Done(), c.oauthClientsInformerSwitch.Informer().HasSynced) {
+		if !cache.WaitForCacheSync(waitCtx.Done(), c.oauthClientSwitchedInformer.Informer().HasSynced) {
 			syncErr = fmt.Errorf("timed out waiting for OAuthClients cache sync")
 			break
 		}
@@ -185,7 +180,6 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 		}
 
 	case configv1.AuthenticationTypeOIDC:
-		c.oauthClientsInformerSwitch.Stop()
 		syncErr = c.syncAuthTypeOIDC(ctx, controllerContext, statusHandler, operatorConfig, authnConfig)
 	}
 
