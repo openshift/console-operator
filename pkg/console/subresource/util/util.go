@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"golang.org/x/exp/slices"
 	yaml "gopkg.in/yaml.v2"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog/v2"
 
+	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	proxyv1alpha1 "open-cluster-management.io/cluster-proxy/pkg/apis/proxy/v1alpha1"
@@ -148,4 +150,21 @@ func RemoveDuplicateStr(strSlice []string) []string {
 		}
 	}
 	return list
+}
+
+func GetOIDCClientConfig(authnConfig *configv1.Authentication) *configv1.OIDCClientConfig {
+	if len(authnConfig.Spec.OIDCProviders) == 0 {
+		return nil
+	}
+
+	var oidcClientConfig *configv1.OIDCClientConfig
+	slices.IndexFunc[configv1.OIDCClientConfig](authnConfig.Spec.OIDCProviders[0].OIDCClients, func(oc configv1.OIDCClientConfig) bool {
+		if oc.ComponentNamespace == api.TargetNamespace && oc.ComponentName == api.OpenShiftConsoleName {
+			oidcClientConfig = &oc
+			return true
+		}
+		return false
+	})
+
+	return oidcClientConfig
 }
