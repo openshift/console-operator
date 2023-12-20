@@ -36,6 +36,7 @@ import (
 	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
 	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
+	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
 	"github.com/openshift/console-operator/pkg/crypto"
 )
 
@@ -50,6 +51,7 @@ type oauthClientsController struct {
 	routesLister          routev1listers.RouteLister
 	ingressConfigLister   configv1lister.IngressLister
 	targetNSSecretsLister corev1listers.SecretLister
+	configNSSecretsLister corev1listers.SecretLister
 
 	oauthClientsInformerSwitch *informerWithSwitch
 }
@@ -64,6 +66,7 @@ func NewOAuthClientsController(
 	routeInformer routev1informers.RouteInformer,
 	ingressConfigInformer configv1informers.IngressInformer,
 	targetNSsecretsInformer corev1informers.SecretInformer,
+	configNSSecretsInformer corev1informers.SecretInformer,
 	recorder events.Recorder,
 ) factory.Controller {
 	oauthClientInformer := oauthv1informers.NewOAuthClientInformer(oauthClient, 10*time.Minute, nil)
@@ -79,6 +82,7 @@ func NewOAuthClientsController(
 		routesLister:          routeInformer.Lister(),
 		ingressConfigLister:   ingressConfigInformer.Lister(),
 		targetNSSecretsLister: targetNSsecretsInformer.Lister(),
+		configNSSecretsLister: configNSSecretsInformer.Lister(),
 
 		oauthClientsInformerSwitch: NewOAuthClientsInformerSwitch(ctx, oauthClientInformer),
 	}
@@ -92,6 +96,7 @@ func NewOAuthClientsController(
 			routeInformer.Informer(),
 			ingressConfigInformer.Informer(),
 			targetNSsecretsInformer.Informer(),
+			configNSSecretsInformer.Informer(),
 		).
 		WithFilteredEventsInformers(
 			factory.NamesFilter(api.OAuthClientName),
@@ -104,7 +109,7 @@ func NewOAuthClientsController(
 func (c *oauthClientsController) sync(ctx context.Context, controllerContext factory.SyncContext) error {
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
-	if shouldSync, err := c.handleStatus(ctx); err != nil {
+	if shouldSync, err := c.handleManaged(ctx); err != nil {
 		return err
 	} else if !shouldSync {
 		return nil
@@ -158,18 +163,44 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 			return statusHandler.FlushAndReturn(oauthErr)
 		}
 		return nil
-	case "OIDC":
+
+	case configv1.AuthenticationTypeOIDC, configv1.AuthenticationTypeNone:
 		c.oauthClientsInformerSwitch.Stop()
-		return nil
+		return c.syncAuthTypeOIDC(ctx, controllerContext, operatorConfig, authnConfig)
+
 	default:
 		return nil
 	}
 }
 
+func (c *oauthClientsController) syncAuthTypeOIDC(ctx context.Context, controllerContext factory.SyncContext, operatorConfig *operatorv1.Console, authnConfig *configv1.Authentication) error {
+	oidcConfig := utilsub.GetOIDCClientConfig(authnConfig)
+	if oidcConfig == nil {
+		klog.Error("oidc client configuration not found")
+		return nil
+	}
+
+	clientSecret, err := c.configNSSecretsLister.Secrets(api.OpenShiftConfigNamespace).Get(oidcConfig.ClientSecret.Name)
+	if apierrors.IsNotFound(err) {
+		klog.Error("oauth client config secret not found")
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	secret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name)
+	expectedClientSecret := secretsub.GetSecretString(clientSecret)
+	if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) != expectedClientSecret {
+		_, _, err := resourceapply.ApplySecret(ctx, c.secretsClient, controllerContext.Recorder(), secretsub.DefaultSecret(operatorConfig, expectedClientSecret))
+		return err
+	}
+	return nil
+}
+
 // handleStatus returns whether sync should happen and any error encountering
 // determining the operator's management state
 // TODO: extract this logic to where it can be used for all controllers
-func (c *oauthClientsController) handleStatus(ctx context.Context) (bool, error) {
+func (c *oauthClientsController) handleManaged(ctx context.Context) (bool, error) {
 	operatorSpec, _, _, err := c.operatorClient.GetOperatorState()
 	if err != nil {
 		return false, fmt.Errorf("failed to retrieve operator config: %w", err)
