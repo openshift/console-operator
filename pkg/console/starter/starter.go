@@ -214,6 +214,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		routesInformersNamespaced.Route().V1().Routes(),
 		configInformers.Config().V1().Ingresses(),
 		kubeInformersNamespaced.Core().V1().Secrets(),
+		kubeInformersConfigNamespaced.Core().V1().Secrets(),
 		recorder,
 	)
 
