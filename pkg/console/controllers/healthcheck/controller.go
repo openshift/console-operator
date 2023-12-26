@@ -16,9 +16,11 @@ import (
 	"k8s.io/klog/v2"
 
 	// openshift
+	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
+	configinformer "github.com/openshift/client-go/config/informers/externalversions"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	v1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
@@ -39,6 +41,7 @@ type HealthCheckController struct {
 	// clients
 	operatorClient       v1helpers.OperatorClient
 	operatorConfigClient operatorclientv1.ConsoleInterface
+	infrastructureClient configclientv1.InfrastructureInterface
 	ingressClient        configclientv1.IngressInterface
 	routeClient          routeclientv1.RoutesGetter
 	configMapClient      coreclientv1.ConfigMapsGetter
@@ -54,6 +57,7 @@ func NewHealthCheckController(
 	configMapClient coreclientv1.ConfigMapsGetter,
 	// informers
 	operatorConfigInformer v1.ConsoleInformer,
+	configInformer configinformer.SharedInformerFactory,
 	coreInformer coreinformersv1.Interface,
 	routeInformer routesinformersv1.RouteInformer,
 	// events
@@ -62,18 +66,25 @@ func NewHealthCheckController(
 	ctrl := &HealthCheckController{
 		operatorClient:       operatorClient,
 		operatorConfigClient: operatorConfigClient,
+		infrastructureClient: configClient.Infrastructures(),
 		ingressClient:        configClient.Ingresses(),
 		routeClient:          routev1Client,
 		configMapClient:      configMapClient,
 	}
 
 	configMapInformer := coreInformer.ConfigMaps()
+	configV1Informers := configInformer.Config().V1()
 
 	return factory.New().
-		WithFilteredEventsInformers( // service
-			util.IncludeNamesFilter(api.TrustedCAConfigMapName, api.OAuthServingCertConfigMapName),
-			configMapInformer.Informer(),
-		).WithFilteredEventsInformers( // route
+		WithFilteredEventsInformers( // configs
+			util.IncludeNamesFilter(api.ConfigResourceName),
+			operatorConfigInformer.Informer(),
+			configV1Informers.Ingresses().Informer(),
+			configV1Informers.Infrastructures().Informer(),
+		).WithFilteredEventsInformers( // service
+		util.IncludeNamesFilter(api.TrustedCAConfigMapName, api.OAuthServingCertConfigMapName),
+		configMapInformer.Informer(),
+	).WithFilteredEventsInformers( // route
 		util.IncludeNamesFilter(api.OpenShiftConsoleRouteName, api.OpenshiftConsoleCustomRouteName),
 		routeInformer.Informer(),
 	).ResyncEvery(30*time.Second).WithSync(ctrl.Sync).
@@ -81,10 +92,13 @@ func NewHealthCheckController(
 }
 
 func (c *HealthCheckController) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
+	statusHandler := status.NewStatusHandler(c.operatorClient)
 	operatorConfig, err := c.operatorConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
-		return err
+		klog.Errorf("operator config error: %v", err)
+		return statusHandler.FlushAndReturn(err)
 	}
+
 	updatedOperatorConfig := operatorConfig.DeepCopy()
 
 	switch updatedOperatorConfig.Spec.ManagementState {
@@ -99,12 +113,21 @@ func (c *HealthCheckController) Sync(ctx context.Context, controllerContext fact
 	default:
 		return fmt.Errorf("unknown state: %v", updatedOperatorConfig.Spec.ManagementState)
 	}
-
-	statusHandler := status.NewStatusHandler(c.operatorClient)
-
 	ingressConfig, err := c.ingressClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
+		klog.Errorf("ingress config error: %v", err)
 		return statusHandler.FlushAndReturn(err)
+	}
+	infrastructureConfig, err := c.infrastructureClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("infrastructure config error: %v", err)
+		return statusHandler.FlushAndReturn(err)
+	}
+
+	// Disable the health check for external control plane topology (hypershift) and ingress NLB.
+	// This is to avoid an issue with internal NLB see https://issues.redhat.com/browse/OCPBUGS-23300
+	if isExternalControlPlaneWithNLB(infrastructureConfig, ingressConfig) {
+		return nil
 	}
 
 	activeRouteName := api.OpenShiftConsoleRouteName
@@ -188,4 +211,11 @@ func clientWithCA(caPool *x509.CertPool) *http.Client {
 			},
 		},
 	}
+}
+
+func isExternalControlPlaneWithNLB(infrastructureConfig *configv1.Infrastructure, ingressConfig *configv1.Ingress) bool {
+	return infrastructureConfig.Status.ControlPlaneTopology == configv1.ExternalTopologyMode &&
+		infrastructureConfig.Status.PlatformStatus.Type == configv1.AWSPlatformType &&
+		ingressConfig.Spec.LoadBalancer.Platform.Type == configv1.AWSPlatformType &&
+		ingressConfig.Spec.LoadBalancer.Platform.AWS.Type == configv1.NLB
 }
