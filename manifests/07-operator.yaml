@@ -56,7 +56,6 @@ spec:
             - console
             - operator
           args:
-            - "-v=2"
             - "--config=/var/run/configmaps/config/controller-config.yaml"
           imagePullPolicy: IfNotPresent
           volumeMounts:

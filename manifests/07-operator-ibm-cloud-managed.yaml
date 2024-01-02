@@ -21,7 +21,6 @@ spec:
     spec:
       containers:
       - args:
-        - -v=2
         - --config=/var/run/configmaps/config/controller-config.yaml
         command:
         - console
