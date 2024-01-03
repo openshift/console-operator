@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    config.openshift.io/inject-proxy: console-operator
+    config.openshift.io/inject-proxy: conversion-webhook-server
     include.release.openshift.io/ibm-cloud-managed: "true"
   name: console-conversion-webhook
   namespace: openshift-console-operator
