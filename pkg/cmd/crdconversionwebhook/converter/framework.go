@@ -1,7 +1,6 @@
 package converter
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -84,7 +83,7 @@ func serve(w http.ResponseWriter, r *http.Request, convert convertFunc) {
 		return
 	}
 
-	klog.V(4).Infof("Handling request body: \n%v", string(body))
+	klog.Infof("handling request: %v", body)
 	obj, gvk, err := serializer.Decode(body, nil, nil)
 	if err != nil {
 		msg := fmt.Sprintf("failed to deserialize body (%v) with error %v", string(body), err)
@@ -92,6 +91,7 @@ func serve(w http.ResponseWriter, r *http.Request, convert convertFunc) {
 		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
+
 	var responseObj runtime.Object
 	switch *gvk {
 	case v1.SchemeGroupVersion.WithKind("ConversionReview"):
@@ -104,6 +104,8 @@ func serve(w http.ResponseWriter, r *http.Request, convert convertFunc) {
 		}
 		convertReview.Response = doConversionV1(convertReview.Request, convert)
 		convertReview.Response.UID = convertReview.Request.UID
+		klog.Info(fmt.Sprintf("sending response: %v", convertReview.Response))
+
 		// reset the request, it is not needed in a response.
 		convertReview.Request = &v1.ConversionRequest{}
 		responseObj = convertReview
@@ -122,21 +124,17 @@ func serve(w http.ResponseWriter, r *http.Request, convert convertFunc) {
 		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
-
-	var responseBuffer bytes.Buffer
-	err = outSerializer.Encode(responseObj, &responseBuffer)
+	err = outSerializer.Encode(responseObj, w)
 	if err != nil {
 		klog.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	klog.V(4).Infof("Sending response: \n%v", responseBuffer.String())
-	w.Write(responseBuffer.Bytes())
 }
 
-// ServeConsolePluginConvert serves endpoint for the console converter defined as convertCRD function.
-func ServeConsolePluginConvert(w http.ResponseWriter, r *http.Request) {
-	serve(w, r, convertConsolePlugin)
+// ServeExampleConvert servers endpoint for the example converter defined as convertExampleCRD function.
+func ServeExampleConvert(w http.ResponseWriter, r *http.Request) {
+	serve(w, r, convertCRD)
 }
 
 type mediaType struct {

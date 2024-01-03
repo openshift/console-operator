@@ -290,7 +290,7 @@ spec:
 			unstructuredOriginalObject := getUnstructuredObject(t, tc.originalObject)
 			unstructuredWantedObject := getUnstructuredObject(t, tc.wantedObject)
 
-			convertedCR, status := convertConsolePlugin(unstructuredOriginalObject, unstructuredWantedObject.GetAPIVersion())
+			convertedCR, status := convertCRD(unstructuredOriginalObject, unstructuredWantedObject.GetAPIVersion())
 			if status.Status == metav1.StatusFailure {
 				t.Errorf("error converting object: %s", status.Message)
 			}

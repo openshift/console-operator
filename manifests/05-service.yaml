@@ -34,7 +34,7 @@ metadata:
     capability.openshift.io/name: Console
     service.beta.openshift.io/serving-cert-secret-name: webhook-serving-cert
   labels:
-    name: console-conversion-webhook
+    name: console-operator
   name: webhook
   namespace: openshift-console-operator
 spec:
@@ -44,6 +44,6 @@ spec:
       protocol: TCP
       targetPort: 9443
   selector:
-    name: console-conversion-webhook
+    name: console-operator
   sessionAffinity: None
   type: ClusterIP
