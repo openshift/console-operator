@@ -1,15 +1,11 @@
 package crdconversionwebhook
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
 
 	"github.com/spf13/cobra"
-	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	converter "github.com/openshift/console-operator/pkg/cmd/crdconversionwebhook/converter"
 )
@@ -35,63 +31,22 @@ func NewConverter() *cobra.Command {
 	return cmd
 }
 
+// Config contains the server (the webhook) cert and key.
+type Config struct {
+	CertFile string
+	KeyFile  string
+}
+
 func startServer() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	config := Config{CertFile: certFile, KeyFile: keyFile}
 
-	// Initialize klog
-	klog.InitFlags(nil)
-	log.SetLogger(klog.NewKlogr()) // controller-runtime/log will complain if we don't set this
-
-	// Log flag values for debugging
-	klog.Infof("Starting console conversion webhook server")
-	klog.V(4).Infof("Using flags:\n\t--tls-cert-file %s\n\t--tls-private-key-file %s\n\t--port %d", certFile, keyFile, port)
-
-	// Initialize a new cert watcher with cert/key pair
-	klog.V(4).Infof("Creating cert watcher")
-	watcher, err := certwatcher.New(certFile, keyFile)
-	if err != nil {
-		klog.Fatalf("Error creating cert watcher: %v", err)
-	}
-
-	// Start goroutine with certwatcher running fsnotify against supplied certdir
-	go func() {
-		klog.V(4).Infof("Starting cert watcher")
-		if err := watcher.Start(ctx); err != nil {
-			klog.Fatalf("Cert watcher failed: %v", err)
-		}
-	}()
-
-	// Setup TLS config using GetCertficate for fetching the cert when it changes
-	tlsConfig := &tls.Config{
-		GetCertificate: watcher.GetCertificate,
-		NextProtos:     []string{"http/1.1"}, // Disable HTTP/2
-	}
-
-	// Create TLS listener
-	klog.V(4).Infof("Creating TLS listener on port %d", port)
-	listener, err := tls.Listen("tcp", fmt.Sprintf(":%d", port), tlsConfig)
-	if err != nil {
-		klog.Fatalf("Error creating TLS listener: %v", err)
-	}
-
-	// Setup handlers and server
-	http.HandleFunc("/crdconvert", converter.ServeConsolePluginConvert)
+	http.HandleFunc("/crdconvert", converter.ServeExampleConvert)
 	http.HandleFunc("/readyz", func(w http.ResponseWriter, req *http.Request) { w.Write([]byte("ok")) })
-	server := &http.Server{}
-
-	// Shutdown server on context cancellation
-	go func() {
-		<-ctx.Done()
-		klog.V(4).Info("Shutting down server")
-		if err := server.Shutdown(context.Background()); err != nil {
-			klog.Fatalf("Error shutting down server: %v", err)
-		}
-	}()
-
-	// Serve
-	klog.Infof("Serving on %s", listener.Addr().String())
-	if err = server.Serve(listener); err != nil && err != http.ErrServerClosed {
-		klog.Fatalf("Error serving: %v", err)
+	clientset := getClient()
+	server := &http.Server{
+		Addr:         fmt.Sprintf(":%d", port),
+		TLSConfig:    configTLS(config, clientset),
+		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)), // disable HTTP/2
 	}
+	server.ListenAndServeTLS("", "")
 }
