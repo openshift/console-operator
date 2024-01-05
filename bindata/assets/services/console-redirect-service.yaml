@@ -10,8 +10,6 @@ metadata:
   namespace: openshift-console
   labels:
     app: console
-  annotations:
-    service.beta.openshift.io/serving-cert-secret-name: console-serving-cert
 spec:
   ports:
     - name: custom-route-redirect
