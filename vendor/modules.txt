@@ -261,9 +261,12 @@ github.com/openshift/client-go/config/applyconfigurations/config/v1
 github.com/openshift/client-go/config/applyconfigurations/config/v1alpha1
 github.com/openshift/client-go/config/applyconfigurations/internal
 github.com/openshift/client-go/config/clientset/versioned
+github.com/openshift/client-go/config/clientset/versioned/fake
 github.com/openshift/client-go/config/clientset/versioned/scheme
 github.com/openshift/client-go/config/clientset/versioned/typed/config/v1
+github.com/openshift/client-go/config/clientset/versioned/typed/config/v1/fake
 github.com/openshift/client-go/config/clientset/versioned/typed/config/v1alpha1
+github.com/openshift/client-go/config/clientset/versioned/typed/config/v1alpha1/fake
 github.com/openshift/client-go/config/informers/externalversions
 github.com/openshift/client-go/config/informers/externalversions/config
 github.com/openshift/client-go/config/informers/externalversions/config/v1
@@ -288,8 +291,10 @@ github.com/openshift/client-go/console/listers/console/v1alpha1
 github.com/openshift/client-go/oauth/applyconfigurations/internal
 github.com/openshift/client-go/oauth/applyconfigurations/oauth/v1
 github.com/openshift/client-go/oauth/clientset/versioned
+github.com/openshift/client-go/oauth/clientset/versioned/fake
 github.com/openshift/client-go/oauth/clientset/versioned/scheme
 github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1
+github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1/fake
 github.com/openshift/client-go/oauth/informers/externalversions
 github.com/openshift/client-go/oauth/informers/externalversions/internalinterfaces
 github.com/openshift/client-go/oauth/informers/externalversions/oauth
