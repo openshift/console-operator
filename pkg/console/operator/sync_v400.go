@@ -78,7 +78,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 
 	var authServerCAConfig *corev1.ConfigMap
 	switch authnConfig.Spec.Type {
-	case configv1.AuthenticationTypeOIDC, configv1.AuthenticationTypeNone:
+	case configv1.AuthenticationTypeOIDC:
 		if len(authnConfig.Spec.OIDCProviders) > 0 {
 			oidcProvider := authnConfig.Spec.OIDCProviders[0]
 			authServerCAConfig, err = co.configNSConfigMapLister.ConfigMaps(api.OpenShiftConfigNamespace).Get(oidcProvider.Issuer.CertificateAuthority.Name)
@@ -86,6 +86,8 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 				return statusHandler.FlushAndReturn(err)
 			}
 		}
+
+		sessionSecret := secretsub.Stub()
 	}
 
 	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(
