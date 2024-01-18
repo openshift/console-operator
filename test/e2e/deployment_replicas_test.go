@@ -34,7 +34,7 @@ func TestDeploymentsReplicas(t *testing.T) {
 	}
 
 	var expectedReplicas int32
-	if infrastructureConfig.Status.InfrastructureTopology == configv1.SingleReplicaTopologyMode {
+	if infrastructureConfig.Status.ControlPlaneTopology == configv1.SingleReplicaTopologyMode {
 		expectedReplicas = int32(deploymentsub.SingleNodeConsoleReplicas)
 	} else {
 		expectedReplicas = int32(deploymentsub.DefaultConsoleReplicas)

@@ -554,7 +554,7 @@ func TestWithConsoleAnnotations(t *testing.T) {
 			ResourceVersion: "12345",
 		},
 		Status: configv1.InfrastructureStatus{
-			InfrastructureTopology: configv1.SingleReplicaTopologyMode,
+			ControlPlaneTopology: configv1.SingleReplicaTopologyMode,
 		},
 	}
 
