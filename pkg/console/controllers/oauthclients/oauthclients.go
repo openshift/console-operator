@@ -8,6 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -122,6 +123,7 @@ func NewOAuthClientsController(
 			oauthClientSwitchedInformer.Informer(),
 		).
 		WithSyncDegradedOnError(operatorClient).
+		ResyncEvery(wait.Jitter(time.Minute, 1.0)).
 		ToController("OAuthClientsController", recorder.WithComponentSuffix("oauth-clients-controller"))
 }
 
