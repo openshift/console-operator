@@ -60,6 +60,7 @@ type oauthClientsController struct {
 	configNSSecretsLister       corev1listers.SecretLister
 	targetNSDeploymentsLister   appsv1listers.DeploymentLister
 	targetNSConfigLister        corev1listers.ConfigMapLister
+	featureGatesLister          configv1lister.FeatureGateLister
 
 	authStatusHandler status.AuthStatusHandler
 }
@@ -79,6 +80,7 @@ func NewOAuthClientsController(
 	targetNSConfigInformer corev1informers.ConfigMapInformer,
 	targetNSDeploymentsInformer appsv1informers.DeploymentInformer,
 	oauthClientSwitchedInformer *util.InformerWithSwitch,
+	featureGatesInformer configv1informers.FeatureGateInformer,
 	recorder events.Recorder,
 ) factory.Controller {
 	c := oauthClientsController{
@@ -97,6 +99,7 @@ func NewOAuthClientsController(
 		configNSSecretsLister:       configNSSecretsInformer.Lister(),
 		targetNSConfigLister:        targetNSConfigInformer.Lister(),
 		targetNSDeploymentsLister:   targetNSDeploymentsInformer.Lister(),
+		featureGatesLister:          featureGatesInformer.Lister(),
 
 		authStatusHandler: status.NewAuthStatusHandler(authentication, api.OpenShiftConsoleName, api.TargetNamespace, api.OpenShiftConsoleOperator),
 	}
@@ -144,6 +147,11 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 		return err
 	}
 
+	featureGates, err := c.featureGatesLister.Get(api.ConfigResourceName)
+	if err != nil {
+		return err
+	}
+
 	routeName := api.OpenShiftConsoleRouteName
 	routeConfig := routesub.NewRouteConfig(operatorConfig, ingressConfig, routeName)
 	if routeConfig.IsCustomHostnameSet() {
@@ -183,9 +191,13 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 		syncErr = c.syncAuthTypeOIDC(ctx, controllerContext, statusHandler, operatorConfig, authnConfig)
 	}
 
-	if err := c.authStatusHandler.Apply(ctx, authnConfig); err != nil {
-		statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthStatusHandler", "FailedApply", err))
-		return statusHandler.FlushAndReturn(err)
+	// AuthStatusHandler manages fields that are behind the CustomNoUpgrade and TechPreviewNoUpgrade featuregate sets
+	// call Apply() only if they are enabled, otherwise server-side apply will complain
+	if featureGates.Spec.FeatureSet == configv1.TechPreviewNoUpgrade || featureGates.Spec.FeatureSet == configv1.CustomNoUpgrade {
+		if err := c.authStatusHandler.Apply(ctx, authnConfig); err != nil {
+			statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthStatusHandler", "FailedApply", err))
+			return statusHandler.FlushAndReturn(err)
+		}
 	}
 
 	return statusHandler.FlushAndReturn(syncErr)

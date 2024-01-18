@@ -215,6 +215,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeInformersNamespaced.Core().V1().ConfigMaps(),
 		kubeInformersNamespaced.Apps().V1().Deployments(),
 		oauthClientsSwitchedInformer,
+		configInformers.Config().V1().FeatureGates(),
 		recorder,
 	)
 
