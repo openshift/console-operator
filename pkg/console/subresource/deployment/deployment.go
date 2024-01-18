@@ -114,7 +114,7 @@ func DefaultDownloadsDeployment(
 
 func withReplicas(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
 	replicas := int32(SingleNodeConsoleReplicas)
-	if infrastructureConfig.Status.InfrastructureTopology != configv1.SingleReplicaTopologyMode {
+	if infrastructureConfig.Status.ControlPlaneTopology != configv1.SingleReplicaTopologyMode {
 		replicas = int32(DefaultConsoleReplicas)
 	}
 	deployment.Spec.Replicas = &replicas
@@ -126,7 +126,7 @@ func withAffinity(
 	component string,
 ) {
 	affinity := &corev1.Affinity{}
-	if infrastructureConfig.Status.InfrastructureTopology != configv1.SingleReplicaTopologyMode {
+	if infrastructureConfig.Status.ControlPlaneTopology != configv1.SingleReplicaTopologyMode {
 		affinity = &corev1.Affinity{
 			PodAntiAffinity: &corev1.PodAntiAffinity{
 				RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
