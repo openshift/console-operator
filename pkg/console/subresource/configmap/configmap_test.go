@@ -115,6 +115,7 @@ clusterInfo:
   masterPublicURL: ` + mockAPIServer + `
   controlPlaneTopology: HighlyAvailable
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -171,6 +172,7 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -192,6 +194,7 @@ providers: {}
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -239,6 +242,7 @@ clusterInfo:
   nodeArchitectures:
   - amd64
   - arm64
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -260,6 +264,7 @@ providers: {}
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -307,6 +312,7 @@ clusterInfo:
   nodeOperatingSystems:
   - foo
   - bar
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -337,6 +343,7 @@ providers: {}
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -380,6 +387,7 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -415,6 +423,7 @@ providers: {}
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -458,6 +467,7 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -495,6 +505,7 @@ providers: {}
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -538,6 +549,7 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -601,6 +613,7 @@ clusterInfo:
   consoleBaseAddress: https://` + customHostname + `
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -659,6 +672,7 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -720,6 +734,7 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -822,6 +837,7 @@ clusterInfo:
   masterPublicURL: ` + mockAPIServer + `
   controlPlaneTopology: External
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -882,6 +898,7 @@ clusterInfo:
   controlPlaneTopology: External
   releaseVersion: ` + testReleaseVersion + `
   copiedCSVsDisabled: true
+session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -946,6 +963,7 @@ clusterInfo:
   masterPublicURL: ` + mockAPIServer + `
   controlPlaneTopology: HighlyAvailable
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -1228,6 +1246,7 @@ func Test_extractYAML(t *testing.T) {
 					},
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -1238,6 +1257,7 @@ customization:
 			},
 			want: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
