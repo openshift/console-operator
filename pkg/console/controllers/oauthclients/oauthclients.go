@@ -134,12 +134,12 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 		return nil
 	}
 
-	operatorConfig, err := c.consoleOperatorLister.Get("cluster")
+	operatorConfig, err := c.consoleOperatorLister.Get(api.ConfigResourceName)
 	if err != nil {
 		return err
 	}
 
-	ingressConfig, err := c.ingressConfigLister.Get("cluster")
+	ingressConfig, err := c.ingressConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		return err
 	}
