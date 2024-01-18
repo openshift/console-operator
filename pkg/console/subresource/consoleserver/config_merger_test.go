@@ -57,6 +57,7 @@ servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
+session: {}
 `,
 		},
 	}

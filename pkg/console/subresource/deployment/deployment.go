@@ -38,6 +38,7 @@ const (
 	consoleImageAnnotation                             = "console.openshift.io/image"
 	authnConfigVersionAnnotation                       = "console.openshift.io/authentication-config-version"
 	authnCATrustConfigMapResourceVersionAnnotation     = "console.openshift.io/authn-ca-trust-config-version"
+	sessionSecretRVAnnotation                          = "console.openshift.io/session-secret-version"
 )
 
 var (
@@ -71,6 +72,7 @@ func DefaultDeployment(
 	authServerCAConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
 	oAuthClientSecret *corev1.Secret,
+	sessionSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
 	canMountCustomLogo bool,
@@ -86,6 +88,7 @@ func DefaultDeployment(
 		localOAuthServingCertConfigMap,
 		trustedCAConfigMap,
 		oAuthClientSecret,
+		sessionSecret,
 		proxyConfig,
 		infrastructureConfig,
 		authServerCAConfigMap,
@@ -95,6 +98,7 @@ func DefaultDeployment(
 		localOAuthServingCertConfigMap,
 		authServerCAConfigMap,
 		trustedCAConfigMap,
+		sessionSecret,
 		canMountCustomLogo,
 	)
 	withConsoleContainerImage(deployment, operatorConfig, proxyConfig)
@@ -178,6 +182,7 @@ func withConsoleAnnotations(
 	oauthServingCertConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
 	oAuthClientSecret *corev1.Secret,
+	sessionSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
 	authServerCAConfigMap *corev1.ConfigMap,
@@ -200,6 +205,10 @@ func withConsoleAnnotations(
 		deployment.ObjectMeta.Annotations[authnCATrustConfigMapResourceVersionAnnotation] = authServerCAConfigMap.GetResourceVersion()
 	}
 
+	if sessionSecret != nil {
+		deployment.ObjectMeta.Annotations[sessionSecretRVAnnotation] = sessionSecret.GetResourceVersion()
+	}
+
 	podAnnotations := deployment.Spec.Template.ObjectMeta.Annotations
 	for k, v := range deployment.ObjectMeta.Annotations {
 		podAnnotations[k] = v
@@ -212,6 +221,7 @@ func withConsoleVolumes(
 	oauthServingCert *corev1.ConfigMap,
 	authServerCAConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
+	sessionSecret *corev1.Secret,
 	canMountCustomLogo bool) {
 	volumeConfig := defaultVolumeConfig()
 
@@ -229,6 +239,10 @@ func withConsoleVolumes(
 
 	if authServerCAConfigMap != nil {
 		volumeConfig = append(volumeConfig, authServerCAVolumeConfig())
+	}
+
+	if sessionSecret != nil {
+		volumeConfig = append(volumeConfig, sessionSecretVolumeConfig())
 	}
 
 	volMountList := make([]corev1.VolumeMount, len(volumeConfig))
@@ -287,6 +301,19 @@ func withConsoleContainerImage(
 	commands = withStatusPageFlag(operatorConfig.Spec.Providers, commands)
 	deployment.Spec.Template.Spec.Containers[0].Command = commands
 	deployment.Spec.Template.Spec.Containers[0].Env = setEnvironmentVariables(proxyConfig)
+	// console distinguishes cookie sessions by pod names in OIDC envs
+	deployment.Spec.Template.Spec.Containers[0].Env = append(
+		deployment.Spec.Template.Spec.Containers[0].Env,
+		corev1.EnvVar{
+			Name: "POD_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					APIVersion: "v1",
+					FieldPath:  "metadata.name",
+				},
+			},
+		},
+	)
 	deployment.Spec.Template.Spec.Containers[0].Image = util.GetImageEnv("CONSOLE_IMAGE")
 }
 
@@ -479,5 +506,14 @@ func authServerCAVolumeConfig() volumeConfig {
 		path:        api.AuthServerCAMountDir,
 		readOnly:    true,
 		isConfigMap: true,
+	}
+}
+
+func sessionSecretVolumeConfig() volumeConfig {
+	return volumeConfig{
+		name:     api.SessionSecretName,
+		path:     "/var/session-secret",
+		readOnly: true,
+		isSecret: true,
 	}
 }

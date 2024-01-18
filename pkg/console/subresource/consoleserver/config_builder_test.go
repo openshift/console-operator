@@ -225,6 +225,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
 						Categories: &[]DeveloperConsoleCatalogCategory{},
@@ -278,6 +279,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
 						Categories: &[]DeveloperConsoleCatalogCategory{
@@ -331,6 +333,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
 						Categories: nil,
@@ -364,6 +367,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
 						Categories: nil,
@@ -397,6 +401,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					ProjectAccess: ProjectAccess{
 						AvailableClusterRoles: []string{"View", "Edit", "Admin"},
@@ -429,6 +434,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					QuickStarts: QuickStarts{
 						Disabled: []string{"quick-start0", "quick-start1", "quick-start2"},
@@ -475,6 +481,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{
@@ -539,6 +546,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{ID: "perspective1",
@@ -602,6 +610,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{ID: "perspective1",
@@ -658,6 +667,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 					LogoutRedirect:   "https://foobar.com/logout",
 				},
+				Session: Session{},
 				Customization: Customization{
 					Branding:             "okd",
 					DocumentationBaseURL: "https://foobar.com/docs",
@@ -776,6 +786,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
+session: {}
 customization: {}
 providers: {}
 `,
@@ -817,6 +828,9 @@ auth:
   authType: oidc
   clientID: testing-id
   clientSecretFile: /var/oauth-config/clientSecret
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
 customization: {}
 providers: {}
 `,
@@ -847,6 +861,7 @@ auth:
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
   logoutRedirect: https://foobar.com/logout
+session: {}
 customization: {}
 providers: {}
 `,
@@ -867,6 +882,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
+session: {}
 customization: {}
 providers:
   statuspageID: status-12345
@@ -889,6 +905,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
+session: {}
 customization: {}
 providers: {}
 `,
@@ -912,6 +929,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
+session: {}
 customization:
   developerCatalog:
     categories: []
@@ -959,6 +977,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
+session: {}
 customization:
   developerCatalog:
     categories:
@@ -998,6 +1017,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
+session: {}
 customization:
   developerCatalog:
     categories: null
@@ -1028,6 +1048,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
+session: {}
 customization:
   developerCatalog:
     categories: null
@@ -1059,6 +1080,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
+session: {}
 customization:
   addPage:
     disabledActions:
@@ -1101,6 +1123,7 @@ auth:
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/auth-server-ca/ca-bundle.crt
   logoutRedirect: https://foobar.com/logout
+session: {}
 customization:
   branding: okd
   documentationBaseURL: https://foobar.com/docs
@@ -1135,6 +1158,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
+session: {}
 customization:
   quickStarts:
     disabled:
@@ -1176,6 +1200,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
+session: {}
 customization:
   perspectives:
   - id: perspective1
@@ -1241,6 +1266,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
+session: {}
 customization:
   perspectives:
   - id: perspective1
@@ -1310,6 +1336,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
+session: {}
 customization:
   perspectives:
   - id: perspective1
@@ -1359,6 +1386,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
+session: {}
 customization: {}
 providers: {}
 telemetry:

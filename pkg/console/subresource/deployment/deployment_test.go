@@ -43,6 +43,7 @@ func TestDefaultDeployment(t *testing.T) {
 		authnConfig                    *configv1.Authentication
 		trustedCAConfigMap             *corev1.ConfigMap
 		oAuthClientSecret              *corev1.Secret
+		sessionSecret                  *corev1.Secret
 		proxyConfig                    *configv1.Proxy
 		infrastructureConfig           *configv1.Infrastructure
 		canMountCustomLogo             bool
@@ -172,12 +173,12 @@ func TestDefaultDeployment(t *testing.T) {
 	withConsoleContainerImage(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
 	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMap{
 		Data: map[string]string{"ca-bundle.crt": "test"},
-	}, nil, trustedCAConfigMapEmpty, false)
+	}, nil, trustedCAConfigMapEmpty, nil, false)
 	consoleDeploymentContainer := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumes := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMap{
 		Data: map[string]string{"ca-bundle.crt": "test"},
-	}, nil, trustedCAConfigMapSet, false)
+	}, nil, trustedCAConfigMapSet, nil, false)
 	consoleDeploymentContainerTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumesTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 
@@ -512,6 +513,7 @@ func TestDefaultDeployment(t *testing.T) {
 				tt.args.authServerCAConfigMap,
 				tt.args.trustedCAConfigMap,
 				tt.args.oAuthClientSecret,
+				tt.args.sessionSecret,
 				tt.args.proxyConfig,
 				tt.args.infrastructureConfig,
 				tt.args.canMountCustomLogo,
@@ -530,6 +532,7 @@ func TestWithConsoleAnnotations(t *testing.T) {
 		oauthServingCertConfigMap *corev1.ConfigMap
 		trustedCAConfigMap        *corev1.ConfigMap
 		oAuthClientSecret         *corev1.Secret
+		sessionSecret             *corev1.Secret
 		proxyConfig               *configv1.Proxy
 		infrastructureConfig      *configv1.Infrastructure
 		authServerCAConfigMap     *corev1.ConfigMap
@@ -648,7 +651,7 @@ func TestWithConsoleAnnotations(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withConsoleAnnotations(tt.args.deployment, tt.args.consoleConfigMap, tt.args.serviceCAConfigMap, tt.args.oauthServingCertConfigMap, tt.args.trustedCAConfigMap, tt.args.oAuthClientSecret, tt.args.proxyConfig, tt.args.infrastructureConfig, tt.args.authServerCAConfigMap)
+			withConsoleAnnotations(tt.args.deployment, tt.args.consoleConfigMap, tt.args.serviceCAConfigMap, tt.args.oauthServingCertConfigMap, tt.args.trustedCAConfigMap, tt.args.oAuthClientSecret, tt.args.sessionSecret, tt.args.proxyConfig, tt.args.infrastructureConfig, tt.args.authServerCAConfigMap)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
 			}
@@ -797,6 +800,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 	type args struct {
 		deployment         *appsv1.Deployment
 		trustedCAConfigMap *corev1.ConfigMap
+		sessionSecret      *corev1.Secret
 		canMountCustomLogo bool
 	}
 
@@ -1067,6 +1071,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 				nil,
 				nil,
 				tt.args.trustedCAConfigMap,
+				tt.args.sessionSecret,
 				tt.args.canMountCustomLogo,
 			)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
@@ -1141,8 +1146,18 @@ func TestWithConsoleContainerImage(t *testing.T) {
 								{
 									Name:    "consoleContainer",
 									Command: expectedCommands,
-									Env:     setEnvironmentVariables(proxyConfig),
-									Image:   util.GetImageEnv("CONSOLE_IMAGE"),
+									Env: append(
+										setEnvironmentVariables(proxyConfig),
+										corev1.EnvVar{
+											Name: "POD_NAME",
+											ValueFrom: &corev1.EnvVarSource{
+												FieldRef: &corev1.ObjectFieldSelector{
+													APIVersion: "v1",
+													FieldPath:  "metadata.name",
+												},
+											},
+										}),
+									Image: util.GetImageEnv("CONSOLE_IMAGE"),
 								},
 							},
 						},

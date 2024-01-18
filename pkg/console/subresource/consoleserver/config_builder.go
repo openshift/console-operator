@@ -70,6 +70,8 @@ type ConsoleServerCLIConfigBuilder struct {
 	oidcExtraScopes            []string
 	oidcIssuerURL              string
 	authType                   string
+	sessionEncryptionFile      string
+	sessionAuthenticationFile  string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -175,6 +177,8 @@ func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authent
 		b.oidcIssuerURL = oidcProvider.Issuer.URL
 		b.oauthClientID = oidcConfig.ClientID
 		b.oidcExtraScopes = oidcConfig.ExtraScopes
+		b.sessionAuthenticationFile = "/var/session-secret/sessionAuthenticationKey"
+		b.sessionEncryptionFile = "/var/session-secret/sessionEncryptionKey"
 	}
 
 	return b
@@ -237,6 +241,7 @@ func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 		Kind:           "ConsoleConfig",
 		APIVersion:     "console.openshift.io/v1",
 		Auth:           b.auth(),
+		Session:        b.session(),
 		ClusterInfo:    b.clusterInfo(),
 		Customization:  b.customization(),
 		ServingInfo:    b.servingInfo(),
@@ -345,6 +350,14 @@ func (b *ConsoleServerCLIConfigBuilder) auth() Auth {
 	}
 	if len(b.logoutRedirectURL) > 0 {
 		conf.LogoutRedirect = b.logoutRedirectURL
+	}
+	return conf
+}
+
+func (b *ConsoleServerCLIConfigBuilder) session() Session {
+	conf := Session{
+		CookieAuthenticationKeyFile: b.sessionAuthenticationFile,
+		CookieEncryptionKeyFile:     b.sessionEncryptionFile,
 	}
 	return conf
 }

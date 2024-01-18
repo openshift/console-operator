@@ -76,7 +76,10 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(err)
 	}
 
-	var authServerCAConfig *corev1.ConfigMap
+	var (
+		authServerCAConfig *corev1.ConfigMap
+		sessionSecret      *corev1.Secret
+	)
 	switch authnConfig.Spec.Type {
 	case configv1.AuthenticationTypeOIDC:
 		if len(authnConfig.Spec.OIDCProviders) > 0 {
@@ -87,7 +90,10 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 			}
 		}
 
-		sessionSecret := secretsub.Stub()
+		sessionSecret, err = co.syncSessionSecret(ctx, updatedOperatorConfig, controllerContext.Recorder())
+		if err != nil {
+			return statusHandler.FlushAndReturn(err)
+		}
 	}
 
 	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(
@@ -158,6 +164,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		authServerCAConfig,
 		trustedCAConfigMap,
 		clientSecret,
+		sessionSecret,
 		set.Proxy,
 		set.Infrastructure,
 		customLogoCanMount,
@@ -261,6 +268,7 @@ func (co *consoleOperator) SyncDeployment(
 	authServerCAConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
 	sec *corev1.Secret,
+	sessionSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
 	canMountCustomLogo bool,
@@ -275,6 +283,7 @@ func (co *consoleOperator) SyncDeployment(
 		authServerCAConfigMap,
 		trustedCAConfigMap,
 		sec,
+		sessionSecret,
 		proxyConfig,
 		infrastructureConfig,
 		canMountCustomLogo,
@@ -586,4 +595,30 @@ func (co *consoleOperator) isCopiedCSVsDisabled(ctx context.Context) (bool, erro
 	}
 
 	return copiedCSVsDisabled, nil
+}
+
+func (co *consoleOperator) syncSessionSecret(
+	ctx context.Context,
+	operatorConfig *operatorv1.Console,
+	recorder events.Recorder,
+) (*corev1.Secret, error) {
+
+	sessionSecret, err := co.secretsLister.Secrets(api.TargetNamespace).Get(api.SessionSecretName)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+
+	var required *corev1.Secret
+	if sessionSecret == nil {
+		required = secretsub.DefaultSessionSecret(operatorConfig)
+	} else {
+		required = sessionSecret.DeepCopy()
+		changed := secretsub.ResetSessionSecretKeysIfNeeded(required)
+		if !changed {
+			return required, nil
+		}
+	}
+
+	secret, _, err := resourceapply.ApplySecret(ctx, co.secretsClient, recorder, required)
+	return secret, err
 }

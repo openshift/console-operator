@@ -22,6 +22,7 @@ type Config struct {
 	ServingInfo    `yaml:"servingInfo"`
 	ClusterInfo    `yaml:"clusterInfo"`
 	Auth           `yaml:"auth"`
+	Session        `yaml:"session"`
 	Customization  `yaml:"customization"`
 	Providers      `yaml:"providers"`
 	MonitoringInfo `yaml:"monitoringInfo,omitempty"`
@@ -88,6 +89,13 @@ type Auth struct {
 	OAuthEndpointCAFile      string   `yaml:"oauthEndpointCAFile,omitempty"`
 	LogoutRedirect           string   `yaml:"logoutRedirect,omitempty"`
 	InactivityTimeoutSeconds int      `yaml:"inactivityTimeoutSeconds,omitempty"`
+}
+
+// Session holds configuration for web-session related configuration
+type Session struct {
+	CookieEncryptionKeyFile     string `yaml:"cookieEncryptionKeyFile,omitempty"`
+	CookieAuthenticationKeyFile string `yaml:"cookieAuthenticationKeyFile,omitempty"`
+	// TODO: move InactivityTimeoutSeconds here
 }
 
 // Customization holds configuration such as what logo to use.
