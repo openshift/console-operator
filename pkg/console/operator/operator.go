@@ -197,8 +197,7 @@ func NewConsoleOperator(
 	).WithInformers(
 		nodeInformer.Informer(),
 		consolePluginInformer.Informer(),
-	).WithFilteredEventsInformers(
-		util.LabelFilter(map[string]string{"app": "console"}),
+	).WithInformers(
 		configMapInformer.Informer(),
 	).WithFilteredEventsInformers(
 		util.IncludeNamesFilter(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName),
