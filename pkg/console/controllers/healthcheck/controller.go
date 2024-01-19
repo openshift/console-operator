@@ -22,8 +22,8 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
-	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	v1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
+	operatorv1listers "github.com/openshift/client-go/operator/listers/operator/v1"
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	"github.com/openshift/library-go/pkg/controller/factory"
@@ -41,7 +41,7 @@ import (
 type HealthCheckController struct {
 	// clients
 	operatorClient       v1helpers.OperatorClient
-	operatorConfigClient operatorclientv1.ConsoleInterface
+	operatorConfigLister operatorv1listers.ConsoleLister
 	infrastructureClient configclientv1.InfrastructureInterface
 	ingressClient        configclientv1.IngressInterface
 	routeClient          routeclientv1.RoutesGetter
@@ -53,7 +53,6 @@ func NewHealthCheckController(
 	configClient configclientv1.ConfigV1Interface,
 	// clients
 	operatorClient v1helpers.OperatorClient,
-	operatorConfigClient operatorclientv1.ConsoleInterface,
 	routev1Client routeclientv1.RoutesGetter,
 	configMapClient coreclientv1.ConfigMapsGetter,
 	// informers
@@ -66,7 +65,7 @@ func NewHealthCheckController(
 ) factory.Controller {
 	ctrl := &HealthCheckController{
 		operatorClient:       operatorClient,
-		operatorConfigClient: operatorConfigClient,
+		operatorConfigLister: operatorConfigInformer.Lister(),
 		infrastructureClient: configClient.Infrastructures(),
 		ingressClient:        configClient.Ingresses(),
 		routeClient:          routev1Client,
@@ -94,7 +93,7 @@ func NewHealthCheckController(
 
 func (c *HealthCheckController) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
 	statusHandler := status.NewStatusHandler(c.operatorClient)
-	operatorConfig, err := c.operatorConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := c.operatorConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		klog.Errorf("operator config error: %v", err)
 		return statusHandler.FlushAndReturn(err)
