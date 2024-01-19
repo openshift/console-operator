@@ -238,7 +238,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configClient.ConfigV1(),
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1(),
 		consoleClient.ConsoleV1().ConsoleCLIDownloads(),
 		routesClient.RouteV1(),
 		// informers
@@ -257,8 +256,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configInformers,
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(), // operator config so we can update status
-		kubeClient.CoreV1(),                          // only needs to interact with the service resource
+		kubeClient.CoreV1(), // only needs to interact with the service resource
 		// informers
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
 		kubeInformersNamespaced.Core().V1().Services(),     // Services
@@ -273,8 +271,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configInformers,
 		operatorClient,
 		// clients
-		operatorConfigClient.OperatorV1().Consoles(), // operator config so we can update status
-		kubeClient.CoreV1(),                          // only needs to interact with the service resource
+		kubeClient.CoreV1(), // only needs to interact with the service resource
 		// informers
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
 		kubeInformersNamespaced.Core().V1().Services(),     // Services
@@ -291,7 +288,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configInformers,
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(),
 		routesClient.RouteV1(),
 		kubeClient.CoreV1(),
 		// route
@@ -311,7 +307,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configInformers,
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(),
 		routesClient.RouteV1(),
 		kubeClient.CoreV1(),
 		// route
@@ -327,7 +322,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configClient.ConfigV1(),
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(),
 		routesClient.RouteV1(),
 		kubeClient.CoreV1(),
 		// route
@@ -345,7 +339,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configInformers,
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(),
+		operatorConfigInformers.Operator().V1().Consoles(),
 		consoleClient.ConsoleV1().ConsoleNotifications(),
 		//events
 		recorder,
@@ -433,7 +427,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		api.OpenShiftConsoleName,
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(),
+		operatorConfigInformers.Operator().V1().Consoles(),
 		policyClient,
 		// informers
 		kubeInformersNamespaced.Policy().V1().PodDisruptionBudgets(),
@@ -445,7 +439,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		api.DownloadsResourceName,
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(),
+		operatorConfigInformers.Operator().V1().Consoles(),
 		policyClient,
 		// informers
 		kubeInformersNamespaced.Policy().V1().PodDisruptionBudgets(),
