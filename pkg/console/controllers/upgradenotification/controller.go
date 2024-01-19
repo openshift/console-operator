@@ -16,7 +16,8 @@ import (
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
 	configlistersv1 "github.com/openshift/client-go/config/listers/config/v1"
 	consoleclientv1 "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
-	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
+	operatorv1informers "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
+	operatorv1listers "github.com/openshift/client-go/operator/listers/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	"github.com/openshift/console-operator/pkg/console/status"
@@ -30,7 +31,7 @@ import (
 // and kick the sync loop
 type UpgradeNotificationController struct {
 	operatorClient       v1helpers.OperatorClient
-	operatorConfigClient operatorclientv1.ConsoleInterface
+	operatorConfigLister operatorv1listers.ConsoleLister
 
 	consoleNotificationClient consoleclientv1.ConsoleNotificationInterface
 
@@ -46,7 +47,7 @@ func NewUpgradeNotificationController(
 	configInformer configinformer.SharedInformerFactory,
 	// clients
 	operatorClient v1helpers.OperatorClient,
-	operatorConfigClient operatorclientv1.ConsoleInterface,
+	operatorConfigInformer operatorv1informers.ConsoleInformer,
 	consoleNotificationClient consoleclientv1.ConsoleNotificationInterface,
 
 	recorder events.Recorder,
@@ -54,7 +55,7 @@ func NewUpgradeNotificationController(
 
 	ctrl := &UpgradeNotificationController{
 		operatorClient:            operatorClient,
-		operatorConfigClient:      operatorConfigClient,
+		operatorConfigLister:      operatorConfigInformer.Lister(),
 		consoleNotificationClient: consoleNotificationClient,
 		clusterVersionLister:      configInformer.Config().V1().ClusterVersions().Lister(),
 	}
@@ -70,7 +71,7 @@ func NewUpgradeNotificationController(
 }
 
 func (c *UpgradeNotificationController) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
-	operatorConfig, err := c.operatorConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := c.operatorConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		return err
 	}
