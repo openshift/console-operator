@@ -66,19 +66,21 @@ type consoleOperator struct {
 	authnConfigLister    configlistersv1.AuthenticationLister
 	dynamicClient        dynamic.Interface
 	// core kube
-	secretsClient    coreclientv1.SecretsGetter
-	secretsLister    corev1listers.SecretLister
-	configMapClient  coreclientv1.ConfigMapsGetter
-	configMapLister  corev1listers.ConfigMapLister
-	serviceClient    coreclientv1.ServicesGetter
-	nodeClient       coreclientv1.NodesGetter
-	deploymentClient appsclientv1.DeploymentsGetter
+	secretsClient            coreclientv1.SecretsGetter
+	secretsLister            corev1listers.SecretLister
+	configMapClient          coreclientv1.ConfigMapsGetter
+	targetNSConfigMapLister  corev1listers.ConfigMapLister // for openshift-console namespace
+	managedNSConfigMapLister corev1listers.ConfigMapLister // for openshift-config-managed namespace
+	serviceClient            coreclientv1.ServicesGetter
+	nodeClient               coreclientv1.NodesGetter
+	deploymentClient         appsclientv1.DeploymentsGetter
 	// openshift
-	oauthClientLister     oauthlistersv1.OAuthClientLister
-	consoleOperatorLister operatorlistersv1.ConsoleLister
-	routeClient           routeclientv1.RoutesGetter
-	routeLister           routev1listers.RouteLister
-	versionGetter         status.VersionGetter
+	configNSConfigMapLister corev1listers.ConfigMapLister //for openshift-config namespace
+	oauthClientLister       oauthlistersv1.OAuthClientLister
+	consoleOperatorLister   operatorlistersv1.ConsoleLister
+	routeClient             routeclientv1.RoutesGetter
+	routeLister             routev1listers.RouteLister
+	versionGetter           status.VersionGetter
 	// lister
 	consolePluginLister listerv1.ConsolePluginLister
 
@@ -112,6 +114,8 @@ func NewConsoleOperator(
 	routeInformer routesinformersv1.RouteInformer,
 	// plugins
 	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
+	// openshift
+	configNSConfigMapInformer corev1.ConfigMapInformer,
 	// openshift managed
 	managedCoreV1 corev1.Interface,
 	// event handling
@@ -121,8 +125,8 @@ func NewConsoleOperator(
 ) factory.Controller {
 
 	secretsInformer := coreV1.Secrets()
-	configMapInformer := coreV1.ConfigMaps()
-	managedConfigMapInformer := managedCoreV1.ConfigMaps()
+	targetNSConfigMapInformer := coreV1.ConfigMaps()
+	managedNSConfigMapInformer := managedCoreV1.ConfigMaps()
 	serviceInformer := coreV1.Services()
 	nodeInformer := coreV1.Nodes()
 	configV1Informers := configInformer.Config().V1()
@@ -142,10 +146,14 @@ func NewConsoleOperator(
 		authnConfigLister:     configV1Informers.Authentications().Lister(),
 		// console resources
 		// core kube
-		secretsClient:    corev1Client,
-		secretsLister:    secretsInformer.Lister(),
-		configMapClient:  corev1Client,
-		configMapLister:  configMapInformer.Lister(),
+		secretsClient:   corev1Client,
+		secretsLister:   secretsInformer.Lister(),
+		configMapClient: corev1Client,
+
+		targetNSConfigMapLister:  targetNSConfigMapInformer.Lister(),
+		configNSConfigMapLister:  configNSConfigMapInformer.Lister(),
+		managedNSConfigMapLister: managedNSConfigMapInformer.Lister(),
+
 		serviceClient:    corev1Client,
 		nodeClient:       corev1Client,
 		deploymentClient: deploymentClient,
@@ -198,10 +206,10 @@ func NewConsoleOperator(
 		nodeInformer.Informer(),
 		consolePluginInformer.Informer(),
 	).WithInformers(
-		configMapInformer.Informer(),
+		targetNSConfigMapInformer.Informer(),
 	).WithFilteredEventsInformers(
 		util.IncludeNamesFilter(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName),
-		managedConfigMapInformer.Informer(),
+		managedNSConfigMapInformer.Informer(),
 	).WithFilteredEventsInformers(
 		factory.NamesFilter(api.OAuthClientName),
 		oauthClientSwitchedInformer.Informer(),

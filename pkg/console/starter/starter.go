@@ -192,6 +192,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		routesInformersNamespaced.Route().V1().Routes(), // Route
 		// plugins
 		consoleInformers.Console().V1().ConsolePlugins(),
+		// openshift
+		kubeInformersConfigNamespaced.Core().V1().ConfigMaps(), // openshift-config configMaps
 		// openshift managed
 		kubeInformersManagedNamespaced.Core().V1(), // Managed ConfigMaps
 		// event handling

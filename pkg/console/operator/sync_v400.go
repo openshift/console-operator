@@ -81,7 +81,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	case configv1.AuthenticationTypeOIDC, configv1.AuthenticationTypeNone:
 		if len(authnConfig.Spec.OIDCProviders) > 0 {
 			oidcProvider := authnConfig.Spec.OIDCProviders[0]
-			authServerCAConfig, err = co.configMapLister.ConfigMaps(api.OpenShiftConfigNamespace).Get(oidcProvider.Issuer.CertificateAuthority.Name)
+			authServerCAConfig, err = co.configNSConfigMapLister.ConfigMaps(api.OpenShiftConfigNamespace).Get(oidcProvider.Issuer.CertificateAuthority.Name)
 			if err != nil && !apierrors.IsNotFound(err) {
 				return statusHandler.FlushAndReturn(err)
 			}
@@ -313,7 +313,7 @@ func (co *consoleOperator) SyncConfigMap(
 	recorder events.Recorder,
 ) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
 
-	managedConfig, mcErr := co.configMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName)
+	managedConfig, mcErr := co.managedNSConfigMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName)
 	if mcErr != nil {
 		if !apierrors.IsNotFound(mcErr) {
 			return nil, false, "FailedGetManagedConfig", mcErr
@@ -346,7 +346,7 @@ func (co *consoleOperator) SyncConfigMap(
 
 	availablePlugins := co.GetAvailablePlugins(operatorConfig.Spec.Plugins)
 
-	monitoringSharedConfig, mscErr := co.configMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftMonitoringConfigMapName)
+	monitoringSharedConfig, mscErr := co.managedNSConfigMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftMonitoringConfigMapName)
 	if mscErr != nil {
 		if !apierrors.IsNotFound(mscErr) {
 			return nil, false, "FailedGetMonitoringSharedConfig", mscErr
@@ -398,7 +398,7 @@ func (co *consoleOperator) SyncConfigMap(
 func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorConfig *operatorv1.Console) (consoleCM *corev1.ConfigMap, changed bool, reason string, err error) {
 	required := configmapsub.DefaultServiceCAConfigMap(operatorConfig)
 	// we can't use `resourceapply.ApplyConfigMap` since it compares data, and the service serving cert operator injects the data
-	existing, err := co.configMapLister.ConfigMaps(required.Namespace).Get(required.Name)
+	existing, err := co.targetNSConfigMapLister.ConfigMaps(required.Namespace).Get(required.Name)
 	if apierrors.IsNotFound(err) {
 		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
 		if err == nil {
@@ -430,7 +430,7 @@ func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorC
 
 func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorConfig *operatorv1.Console) (trustedCA *corev1.ConfigMap, changed bool, reason string, err error) {
 	required := configmapsub.DefaultTrustedCAConfigMap(operatorConfig)
-	existing, err := co.configMapLister.ConfigMaps(required.Namespace).Get(required.Name)
+	existing, err := co.targetNSConfigMapLister.ConfigMaps(required.Namespace).Get(required.Name)
 	if apierrors.IsNotFound(err) {
 		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
 		if err != nil {
@@ -471,7 +471,7 @@ func (co *consoleOperator) SyncCustomLogoConfigMap(ctx context.Context, operator
 }
 
 func (co *consoleOperator) ValidateOAuthServingCertConfigMap(ctx context.Context) (oauthServingCert *corev1.ConfigMap, reason string, err error) {
-	oauthServingCertConfigMap, err := co.configMapLister.ConfigMaps(api.OpenShiftConsoleNamespace).Get(api.OAuthServingCertConfigMapName)
+	oauthServingCertConfigMap, err := co.targetNSConfigMapLister.ConfigMaps(api.OpenShiftConsoleNamespace).Get(api.OAuthServingCertConfigMapName)
 	if err != nil {
 		klog.V(4).Infoln("oauth-serving-cert configmap not found")
 		return nil, "FailedGet", fmt.Errorf("oauth-serving-cert configmap not found")
@@ -519,7 +519,7 @@ func (co *consoleOperator) ValidateCustomLogo(ctx context.Context, operatorConfi
 		klog.V(4).Infoln("no custom logo configured")
 		return false, "", nil
 	}
-	logoConfigMap, err := co.configMapLister.ConfigMaps(api.OpenShiftConfigNamespace).Get(logoConfigMapName)
+	logoConfigMap, err := co.configNSConfigMapLister.ConfigMaps(api.OpenShiftConfigNamespace).Get(logoConfigMapName)
 	// If we 404, the logo file may not have been created yet.
 	if err != nil {
 		klog.V(4).Infof("custom logo file %v not found", logoConfigMapName)
