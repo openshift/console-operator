@@ -20,8 +20,8 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
-	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	v1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
+	operatorv1listers "github.com/openshift/client-go/operator/listers/operator/v1"
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	"github.com/openshift/library-go/pkg/controller/factory"
@@ -41,10 +41,9 @@ type RouteSyncController struct {
 	isHealthCheckEnabled bool
 	// clients
 	operatorClient       v1helpers.OperatorClient
-	operatorConfigClient operatorclientv1.ConsoleInterface
+	operatorConfigLister operatorv1listers.ConsoleLister
 	ingressClient        configclientv1.IngressInterface
 	routeClient          routeclientv1.RoutesGetter
-	configMapClient      coreclientv1.ConfigMapsGetter
 	secretClient         coreclientv1.SecretsGetter
 }
 
@@ -56,7 +55,6 @@ func NewRouteSyncController(
 	configInformer configinformer.SharedInformerFactory,
 	// clients
 	operatorClient v1helpers.OperatorClient,
-	operatorConfigClient operatorclientv1.ConsoleInterface,
 	routev1Client routeclientv1.RoutesGetter,
 	secretClient coreclientv1.SecretsGetter,
 	// informers
@@ -70,7 +68,7 @@ func NewRouteSyncController(
 		routeName:            routeName,
 		isHealthCheckEnabled: isHealthCheckEnabled,
 		operatorClient:       operatorClient,
-		operatorConfigClient: operatorConfigClient,
+		operatorConfigLister: operatorConfigInformer.Lister(),
 		ingressClient:        configClient.Ingresses(),
 		routeClient:          routev1Client,
 		secretClient:         secretClient,
@@ -94,7 +92,7 @@ func NewRouteSyncController(
 }
 
 func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
-	operatorConfig, err := c.operatorConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := c.operatorConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		return err
 	}

@@ -35,15 +35,23 @@ rules:
   - apiGroups:
       - config.openshift.io
     resources:
+      - authentications
       - oauths
       - infrastructures
       - ingresses
       - proxies
       - clusterversions
+      - featuregates
     verbs:
       - get
       - list
       - watch
+  - apiGroups:
+      - config.openshift.io
+    resources:
+      - authentications/status
+    verbs:
+      - patch
   - apiGroups:
       - config.openshift.io
     resources:

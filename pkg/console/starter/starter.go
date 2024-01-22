@@ -9,7 +9,6 @@ import (
 	// kube
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
@@ -21,6 +20,7 @@ import (
 	"github.com/openshift/api/oauth"
 	operatorv1 "github.com/openshift/api/operator"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/clientwrapper"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
 	"github.com/openshift/console-operator/pkg/console/controllers/healthcheck"
@@ -29,6 +29,7 @@ import (
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
 	upgradenotification "github.com/openshift/console-operator/pkg/console/controllers/upgradenotification"
+	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/managementstatecontroller"
@@ -43,7 +44,6 @@ import (
 	configinformers "github.com/openshift/client-go/config/informers/externalversions"
 
 	authclient "github.com/openshift/client-go/oauth/clientset/versioned"
-	oauthinformers "github.com/openshift/client-go/oauth/informers/externalversions"
 
 	operatorversionedclient "github.com/openshift/client-go/operator/clientset/versioned"
 	operatorinformers "github.com/openshift/client-go/operator/informers/externalversions"
@@ -54,14 +54,9 @@ import (
 	consolev1client "github.com/openshift/client-go/console/clientset/versioned"
 	consoleinformers "github.com/openshift/client-go/console/informers/externalversions"
 
-	"github.com/openshift/console-operator/pkg/console/clientwrapper"
 	"github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/library-go/pkg/operator/loglevel"
 )
-
-func tweakListOptionsForOAuthInformer(options *metav1.ListOptions) {
-	options.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.OAuthClientName).String()
-}
 
 func RunOperator(ctx context.Context, controllerContext *controllercmd.ControllerContext) error {
 
@@ -137,13 +132,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		routesinformers.WithNamespace(api.TargetNamespace),
 	)
 
-	// oauthclients are not namespaced
-	oauthInformers := oauthinformers.NewSharedInformerFactoryWithOptions(
-		oauthClient,
-		resync,
-		oauthinformers.WithTweakListOptions(tweakListOptionsForOAuthInformer),
-	)
-
 	consoleInformers := consoleinformers.NewSharedInformerFactory(
 		consoleClient,
 		resync,
@@ -166,6 +154,13 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 	resourceSyncerInformers, resourceSyncer := getResourceSyncer(controllerContext, clientwrapper.WithoutSecret(kubeClient), operatorClient)
 
+	oauthClientsSwitchedInformer := util.NewSwitchedInformer(ctx,
+		oauthClient,
+		resync,
+		configInformers.Config().V1().Authentications(),
+		recorder,
+	)
+
 	err = startStaticResourceSyncing(resourceSyncer)
 	if err != nil {
 		return err
@@ -173,6 +168,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 	// TODO: rearrange these into informer,client pairs, NOT separated.
 	consoleOperator := operator.NewConsoleOperator(
+		ctx,
 		// top level config
 		configClient.ConfigV1(),
 		configInformers,
@@ -190,12 +186,14 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeClient.AppsV1(),
 		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
 		// oauth
-		oauthInformers.Oauth().V1().OAuthClients(),
+		oauthClientsSwitchedInformer,
 		// routes
 		routesClient.RouteV1(),
 		routesInformersNamespaced.Route().V1().Routes(), // Route
 		// plugins
 		consoleInformers.Console().V1().ConsolePlugins(),
+		// openshift
+		kubeInformersConfigNamespaced.Core().V1().ConfigMaps(), // openshift-config configMaps
 		// openshift managed
 		kubeInformersManagedNamespaced.Core().V1(), // Managed ConfigMaps
 		// event handling
@@ -205,14 +203,21 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	)
 
 	oauthClientController := oauthclients.NewOAuthClientsController(
+		ctx,
 		operatorClient,
-		oauthClient.OauthV1(),
+		oauthClient,
 		kubeClient.CoreV1(),
-		oauthInformers.Oauth().V1().OAuthClients(),
+		configClient.ConfigV1().Authentications(),
+		configInformers.Config().V1().Authentications(),
 		operatorConfigInformers.Operator().V1().Consoles(),
 		routesInformersNamespaced.Route().V1().Routes(),
 		configInformers.Config().V1().Ingresses(),
 		kubeInformersNamespaced.Core().V1().Secrets(),
+		kubeInformersConfigNamespaced.Core().V1().Secrets(),
+		kubeInformersNamespaced.Core().V1().ConfigMaps(),
+		kubeInformersNamespaced.Apps().V1().Deployments(),
+		oauthClientsSwitchedInformer,
+		configInformers.Config().V1().FeatureGates(),
 		recorder,
 	)
 
@@ -233,7 +238,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configClient.ConfigV1(),
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1(),
 		consoleClient.ConsoleV1().ConsoleCLIDownloads(),
 		routesClient.RouteV1(),
 		// informers
@@ -252,8 +256,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configInformers,
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(), // operator config so we can update status
-		kubeClient.CoreV1(),                          // only needs to interact with the service resource
+		kubeClient.CoreV1(), // only needs to interact with the service resource
 		// informers
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
 		kubeInformersNamespaced.Core().V1().Services(),     // Services
@@ -268,8 +271,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configInformers,
 		operatorClient,
 		// clients
-		operatorConfigClient.OperatorV1().Consoles(), // operator config so we can update status
-		kubeClient.CoreV1(),                          // only needs to interact with the service resource
+		kubeClient.CoreV1(), // only needs to interact with the service resource
 		// informers
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
 		kubeInformersNamespaced.Core().V1().Services(),     // Services
@@ -286,7 +288,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configInformers,
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(),
 		routesClient.RouteV1(),
 		kubeClient.CoreV1(),
 		// route
@@ -306,7 +307,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configInformers,
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(),
 		routesClient.RouteV1(),
 		kubeClient.CoreV1(),
 		// route
@@ -322,7 +322,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configClient.ConfigV1(),
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(),
 		routesClient.RouteV1(),
 		kubeClient.CoreV1(),
 		// route
@@ -340,7 +339,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configInformers,
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(),
+		operatorConfigInformers.Operator().V1().Consoles(),
 		consoleClient.ConsoleV1().ConsoleNotifications(),
 		//events
 		recorder,
@@ -428,7 +427,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		api.OpenShiftConsoleName,
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(),
+		operatorConfigInformers.Operator().V1().Consoles(),
 		policyClient,
 		// informers
 		kubeInformersNamespaced.Policy().V1().PodDisruptionBudgets(),
@@ -440,7 +439,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		api.DownloadsResourceName,
 		// clients
 		operatorClient,
-		operatorConfigClient.OperatorV1().Consoles(),
+		operatorConfigInformers.Operator().V1().Consoles(),
 		policyClient,
 		// informers
 		kubeInformersNamespaced.Policy().V1().PodDisruptionBudgets(),
@@ -463,8 +462,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleInformers,
 		configInformers,
 		routesInformersNamespaced,
-		oauthInformers,
 		dynamicInformers,
+		oauthClientsSwitchedInformer,
 	} {
 		informer.Start(ctx.Done())
 	}

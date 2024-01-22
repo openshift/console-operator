@@ -50,9 +50,11 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ
 func TestDefaultConfigMap(t *testing.T) {
 	type args struct {
 		operatorConfig           *operatorv1.Console
+		authConfig               *configv1.Authentication
 		consoleConfig            *configv1.Console
 		managedConfig            *corev1.ConfigMap
 		monitoringSharedConfig   *corev1.ConfigMap
+		authServerCAConfig       *corev1.ConfigMap
 		infrastructureConfig     *configv1.Infrastructure
 		rt                       *routev1.Route
 		inactivityTimeoutSeconds int
@@ -70,6 +72,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		{
 			name: "Test default configmap, no customization",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig:  &corev1.ConfigMap{},
@@ -103,6 +106,7 @@ func TestDefaultConfigMap(t *testing.T) {
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
 auth:
+  authType: openshift
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
@@ -111,6 +115,7 @@ clusterInfo:
   masterPublicURL: ` + mockAPIServer + `
   controlPlaneTopology: HighlyAvailable
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -126,6 +131,7 @@ providers: {}
 		{
 			name: "Test configmap with oauth-serving-cert",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig:  &corev1.ConfigMap{},
@@ -158,6 +164,7 @@ providers: {}
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
 auth:
+  authType: openshift
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
@@ -165,6 +172,7 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -180,11 +188,13 @@ providers: {}
 		{
 			name: "Test managed config to override default config",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -221,6 +231,7 @@ customization:
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
 auth:
+  authType: openshift
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
@@ -231,6 +242,7 @@ clusterInfo:
   nodeArchitectures:
   - amd64
   - arm64
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -246,11 +258,13 @@ providers: {}
 		{
 			name: "Test nodeOperatingSystems config",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -287,6 +301,7 @@ customization:
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
 auth:
+  authType: openshift
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
@@ -297,6 +312,7 @@ clusterInfo:
   nodeOperatingSystems:
   - foo
   - bar
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -312,6 +328,7 @@ providers: {}
 		{
 			name: "Test operator config overriding default config and managed config",
 			args: args{
+				authConfig: &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{
 					Spec: operatorv1.ConsoleSpec{
 						OperatorSpec: operatorv1.OperatorSpec{},
@@ -326,6 +343,7 @@ providers: {}
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -361,6 +379,7 @@ customization:
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
 auth:
+  authType: openshift
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
@@ -368,6 +387,7 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -383,6 +403,7 @@ providers: {}
 		{
 			name: "Test operator config with Custom Branding Values",
 			args: args{
+				authConfig: &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{
 					Spec: operatorv1.ConsoleSpec{
 						OperatorSpec: operatorv1.OperatorSpec{},
@@ -402,6 +423,7 @@ providers: {}
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -437,6 +459,7 @@ customization:
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
 auth:
+  authType: openshift
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
@@ -444,6 +467,7 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -461,6 +485,7 @@ providers: {}
 		{
 			name: "Test operator config with Statuspage pageID",
 			args: args{
+				authConfig: &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{
 					Spec: operatorv1.ConsoleSpec{
 						OperatorSpec: operatorv1.OperatorSpec{},
@@ -480,6 +505,7 @@ providers: {}
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -515,6 +541,7 @@ customization:
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
 auth:
+  authType: openshift
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
@@ -522,6 +549,7 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -538,6 +566,7 @@ providers:
 		{
 			name: "Test operator config with custom route hostname",
 			args: args{
+				authConfig: &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{
 					Spec: operatorv1.ConsoleSpec{
 						Route: operatorv1.ConsoleConfigRoute{
@@ -576,6 +605,7 @@ providers:
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
 auth:
+  authType: openshift
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
@@ -583,6 +613,7 @@ clusterInfo:
   consoleBaseAddress: https://` + customHostname + `
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -599,6 +630,7 @@ providers: {}
 		{
 			name: "Test operator config, with inactivityTimeoutSeconds set",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig:  &corev1.ConfigMap{},
@@ -631,6 +663,7 @@ providers: {}
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
 auth:
+  authType: openshift
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   inactivityTimeoutSeconds: 60
@@ -639,6 +672,7 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -654,6 +688,7 @@ providers: {}
 		{
 			name: "Test operator config, with enabledPlugins set",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig:  &corev1.ConfigMap{},
@@ -691,6 +726,7 @@ providers: {}
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
 auth:
+  authType: openshift
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
@@ -698,6 +734,7 @@ clusterInfo:
   consoleBaseAddress: https://` + host + `
   masterPublicURL: ` + mockAPIServer + `
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -757,6 +794,7 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 		{
 			name: "Test operator config, with 'External' ControlPlaneTopology",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig:  &corev1.ConfigMap{},
@@ -790,6 +828,7 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
 auth:
+  authType: openshift
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
@@ -798,6 +837,7 @@ clusterInfo:
   masterPublicURL: ` + mockAPIServer + `
   controlPlaneTopology: External
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -813,6 +853,7 @@ providers: {}
 		{
 			name: "Test operator config, with CopiedCSVsDisabled",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig:  &corev1.ConfigMap{},
@@ -847,6 +888,7 @@ providers: {}
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
 auth:
+  authType: openshift
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
@@ -856,6 +898,7 @@ clusterInfo:
   controlPlaneTopology: External
   releaseVersion: ` + testReleaseVersion + `
   copiedCSVsDisabled: true
+session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -871,6 +914,7 @@ providers: {}
 		{
 			name: "Test default configmap with monitoring config",
 			args: args{
+				authConfig:     &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{},
 				consoleConfig:  &configv1.Console{},
 				managedConfig:  &corev1.ConfigMap{},
@@ -910,6 +954,7 @@ providers: {}
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
 auth:
+  authType: openshift
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
@@ -918,6 +963,7 @@ clusterInfo:
   masterPublicURL: ` + mockAPIServer + `
   controlPlaneTopology: HighlyAvailable
   releaseVersion: ` + testReleaseVersion + `
+session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -939,6 +985,8 @@ providers: {}
 			cm, _, _ := DefaultConfigMap(
 				tt.args.operatorConfig,
 				tt.args.consoleConfig,
+				tt.args.authConfig,
+				tt.args.authServerCAConfig,
 				tt.args.managedConfig,
 				tt.args.monitoringSharedConfig,
 				tt.args.infrastructureConfig,
@@ -1198,6 +1246,7 @@ func Test_extractYAML(t *testing.T) {
 					},
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -1208,6 +1257,7 @@ customization:
 			},
 			want: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
+session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/

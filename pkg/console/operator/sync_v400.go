@@ -71,12 +71,39 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(routeErr)
 	}
 
+	authnConfig, err := co.authnConfigLister.Get(api.ConfigResourceName)
+	if err != nil {
+		return statusHandler.FlushAndReturn(err)
+	}
+
+	var (
+		authServerCAConfig *corev1.ConfigMap
+		sessionSecret      *corev1.Secret
+	)
+	switch authnConfig.Spec.Type {
+	case configv1.AuthenticationTypeOIDC:
+		if len(authnConfig.Spec.OIDCProviders) > 0 {
+			oidcProvider := authnConfig.Spec.OIDCProviders[0]
+			authServerCAConfig, err = co.configNSConfigMapLister.ConfigMaps(api.OpenShiftConfigNamespace).Get(oidcProvider.Issuer.CertificateAuthority.Name)
+			if err != nil && !apierrors.IsNotFound(err) {
+				return statusHandler.FlushAndReturn(err)
+			}
+		}
+
+		sessionSecret, err = co.syncSessionSecret(ctx, updatedOperatorConfig, controllerContext.Recorder())
+		if err != nil {
+			return statusHandler.FlushAndReturn(err)
+		}
+	}
+
 	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(
 		ctx,
 		set.Operator,
 		set.Console,
 		set.Infrastructure,
 		set.OAuth,
+		authServerCAConfig,
+		authnConfig,
 		route,
 		controllerContext.Recorder(),
 	)
@@ -109,10 +136,17 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(customLogoError)
 	}
 
-	oauthServingCertConfigMap, oauthServingCertErrReason, oauthServingCertErr := co.ValidateOAuthServingCertConfigMap(ctx)
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthServingCertValidation", oauthServingCertErrReason, oauthServingCertErr))
-	if oauthServingCertErr != nil {
-		return statusHandler.FlushAndReturn(oauthServingCertErr)
+	var oauthServingCertConfigMap *corev1.ConfigMap
+	switch authnConfig.Spec.Type {
+	case "", configv1.AuthenticationTypeIntegratedOAuth:
+		var oauthServingCertErrReason string
+		var oauthServingCertErr error
+
+		oauthServingCertConfigMap, oauthServingCertErrReason, oauthServingCertErr = co.ValidateOAuthServingCertConfigMap(ctx)
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthServingCertValidation", oauthServingCertErrReason, oauthServingCertErr))
+		if oauthServingCertErr != nil {
+			return statusHandler.FlushAndReturn(oauthServingCertErr)
+		}
 	}
 
 	clientSecret, secErr := co.secretsLister.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name)
@@ -127,8 +161,10 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		cm,
 		serviceCAConfigMap,
 		oauthServingCertConfigMap,
+		authServerCAConfig,
 		trustedCAConfigMap,
 		clientSecret,
+		sessionSecret,
 		set.Proxy,
 		set.Infrastructure,
 		customLogoCanMount,
@@ -229,8 +265,10 @@ func (co *consoleOperator) SyncDeployment(
 	cm *corev1.ConfigMap,
 	serviceCAConfigMap *corev1.ConfigMap,
 	oauthServingCertConfigMap *corev1.ConfigMap,
+	authServerCAConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
 	sec *corev1.Secret,
+	sessionSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
 	canMountCustomLogo bool,
@@ -242,8 +280,10 @@ func (co *consoleOperator) SyncDeployment(
 		cm,
 		serviceCAConfigMap,
 		oauthServingCertConfigMap,
+		authServerCAConfigMap,
 		trustedCAConfigMap,
 		sec,
+		sessionSecret,
 		proxyConfig,
 		infrastructureConfig,
 		canMountCustomLogo,
@@ -278,13 +318,18 @@ func (co *consoleOperator) SyncConfigMap(
 	consoleConfig *configv1.Console,
 	infrastructureConfig *configv1.Infrastructure,
 	oauthConfig *configv1.OAuth,
+	authServerCAConfig *corev1.ConfigMap,
+	authConfig *configv1.Authentication,
 	activeConsoleRoute *routev1.Route,
 	recorder events.Recorder,
 ) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
 
-	managedConfig, mcErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(ctx, api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
-	if mcErr != nil && !apierrors.IsNotFound(mcErr) {
-		return nil, false, "FailedGetManagedConfig", mcErr
+	managedConfig, mcErr := co.managedNSConfigMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName)
+	if mcErr != nil {
+		if !apierrors.IsNotFound(mcErr) {
+			return nil, false, "FailedGetManagedConfig", mcErr
+		}
+		managedConfig = &corev1.ConfigMap{}
 	}
 
 	nodeList, nodeListErr := co.nodeClient.Nodes().List(ctx, metav1.ListOptions{})
@@ -293,24 +338,31 @@ func (co *consoleOperator) SyncConfigMap(
 	}
 	nodeArchitectures, nodeOperatingSystems := getNodeComputeEnvironments(nodeList)
 
+	// TODO: currently there's no way to get this for authentication type OIDC
 	inactivityTimeoutSeconds := 0
-	oauthClient, oacErr := co.oauthClientLister.Get(oauthsub.Stub().Name)
-	if oacErr != nil {
-		return nil, false, "FailedGetOAuthClient", oacErr
-	}
-	if oauthClient.AccessTokenInactivityTimeoutSeconds != nil {
-		inactivityTimeoutSeconds = int(*oauthClient.AccessTokenInactivityTimeoutSeconds)
-	} else {
-		if oauthConfig.Spec.TokenConfig.AccessTokenInactivityTimeout != nil {
-			inactivityTimeoutSeconds = int(oauthConfig.Spec.TokenConfig.AccessTokenInactivityTimeout.Seconds())
+	switch authConfig.Spec.Type {
+	case "", configv1.AuthenticationTypeIntegratedOAuth:
+		oauthClient, oacErr := co.oauthClientLister.Get(oauthsub.Stub().Name)
+		if oacErr != nil {
+			return nil, false, "FailedGetOAuthClient", oacErr
+		}
+		if oauthClient.AccessTokenInactivityTimeoutSeconds != nil {
+			inactivityTimeoutSeconds = int(*oauthClient.AccessTokenInactivityTimeoutSeconds)
+		} else {
+			if oauthConfig.Spec.TokenConfig.AccessTokenInactivityTimeout != nil {
+				inactivityTimeoutSeconds = int(oauthConfig.Spec.TokenConfig.AccessTokenInactivityTimeout.Seconds())
+			}
 		}
 	}
 
 	availablePlugins := co.GetAvailablePlugins(operatorConfig.Spec.Plugins)
 
-	monitoringSharedConfig, mscErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(ctx, api.OpenShiftMonitoringConfigMapName, metav1.GetOptions{})
-	if mscErr != nil && !apierrors.IsNotFound(mscErr) {
-		return nil, false, "FailedGetMonitoringSharedConfig", mscErr
+	monitoringSharedConfig, mscErr := co.managedNSConfigMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftMonitoringConfigMapName)
+	if mscErr != nil {
+		if !apierrors.IsNotFound(mscErr) {
+			return nil, false, "FailedGetMonitoringSharedConfig", mscErr
+		}
+		monitoringSharedConfig = &corev1.ConfigMap{}
 	}
 
 	var (
@@ -327,6 +379,8 @@ func (co *consoleOperator) SyncConfigMap(
 	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(
 		operatorConfig,
 		consoleConfig,
+		authConfig,
+		authServerCAConfig,
 		managedConfig,
 		monitoringSharedConfig,
 		infrastructureConfig,
@@ -355,7 +409,7 @@ func (co *consoleOperator) SyncConfigMap(
 func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorConfig *operatorv1.Console) (consoleCM *corev1.ConfigMap, changed bool, reason string, err error) {
 	required := configmapsub.DefaultServiceCAConfigMap(operatorConfig)
 	// we can't use `resourceapply.ApplyConfigMap` since it compares data, and the service serving cert operator injects the data
-	existing, err := co.configMapClient.ConfigMaps(required.Namespace).Get(ctx, required.Name, metav1.GetOptions{})
+	existing, err := co.targetNSConfigMapLister.ConfigMaps(required.Namespace).Get(required.Name)
 	if apierrors.IsNotFound(err) {
 		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
 		if err == nil {
@@ -387,7 +441,7 @@ func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorC
 
 func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorConfig *operatorv1.Console) (trustedCA *corev1.ConfigMap, changed bool, reason string, err error) {
 	required := configmapsub.DefaultTrustedCAConfigMap(operatorConfig)
-	existing, err := co.configMapClient.ConfigMaps(required.Namespace).Get(ctx, required.Name, metav1.GetOptions{})
+	existing, err := co.targetNSConfigMapLister.ConfigMaps(required.Namespace).Get(required.Name)
 	if apierrors.IsNotFound(err) {
 		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
 		if err != nil {
@@ -428,7 +482,7 @@ func (co *consoleOperator) SyncCustomLogoConfigMap(ctx context.Context, operator
 }
 
 func (co *consoleOperator) ValidateOAuthServingCertConfigMap(ctx context.Context) (oauthServingCert *corev1.ConfigMap, reason string, err error) {
-	oauthServingCertConfigMap, err := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, api.OAuthServingCertConfigMapName, metav1.GetOptions{})
+	oauthServingCertConfigMap, err := co.targetNSConfigMapLister.ConfigMaps(api.OpenShiftConsoleNamespace).Get(api.OAuthServingCertConfigMapName)
 	if err != nil {
 		klog.V(4).Infoln("oauth-serving-cert configmap not found")
 		return nil, "FailedGet", fmt.Errorf("oauth-serving-cert configmap not found")
@@ -476,7 +530,7 @@ func (co *consoleOperator) ValidateCustomLogo(ctx context.Context, operatorConfi
 		klog.V(4).Infoln("no custom logo configured")
 		return false, "", nil
 	}
-	logoConfigMap, err := co.configMapClient.ConfigMaps(api.OpenShiftConfigNamespace).Get(ctx, logoConfigMapName, metav1.GetOptions{})
+	logoConfigMap, err := co.configNSConfigMapLister.ConfigMaps(api.OpenShiftConfigNamespace).Get(logoConfigMapName)
 	// If we 404, the logo file may not have been created yet.
 	if err != nil {
 		klog.V(4).Infof("custom logo file %v not found", logoConfigMapName)
@@ -541,4 +595,30 @@ func (co *consoleOperator) isCopiedCSVsDisabled(ctx context.Context) (bool, erro
 	}
 
 	return copiedCSVsDisabled, nil
+}
+
+func (co *consoleOperator) syncSessionSecret(
+	ctx context.Context,
+	operatorConfig *operatorv1.Console,
+	recorder events.Recorder,
+) (*corev1.Secret, error) {
+
+	sessionSecret, err := co.secretsLister.Secrets(api.TargetNamespace).Get(api.SessionSecretName)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+
+	var required *corev1.Secret
+	if sessionSecret == nil {
+		required = secretsub.DefaultSessionSecret(operatorConfig)
+	} else {
+		required = sessionSecret.DeepCopy()
+		changed := secretsub.ResetSessionSecretKeysIfNeeded(required)
+		if !changed {
+			return required, nil
+		}
+	}
+
+	secret, _, err := resourceapply.ApplySecret(ctx, co.secretsClient, recorder, required)
+	return secret, err
 }

@@ -17,6 +17,7 @@ import (
 	// openshift
 	v1 "github.com/openshift/api/console/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
+	operatorv1listers "github.com/openshift/client-go/operator/listers/operator/v1"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
@@ -32,7 +33,6 @@ import (
 
 	// clients
 	consoleclientv1 "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
-	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 
 	// operator
@@ -49,7 +49,7 @@ type CLIDownloadsSyncController struct {
 	consoleCliDownloadsClient consoleclientv1.ConsoleCLIDownloadInterface
 	ingressClient             configclientv1.IngressInterface
 	routeClient               routeclientv1.RoutesGetter
-	operatorConfigClient      operatorclientv1.ConsoleInterface
+	operatorConfigLister      operatorv1listers.ConsoleLister
 }
 
 func NewCLIDownloadsSyncController(
@@ -57,7 +57,6 @@ func NewCLIDownloadsSyncController(
 	configClient configclientv1.ConfigV1Interface,
 	// clients
 	operatorClient v1helpers.OperatorClient,
-	operatorConfigClient operatorclientv1.OperatorV1Interface,
 	cliDownloadsInterface consoleclientv1.ConsoleCLIDownloadInterface,
 	routeClient routeclientv1.RoutesGetter,
 	// informers
@@ -75,7 +74,7 @@ func NewCLIDownloadsSyncController(
 		consoleCliDownloadsClient: cliDownloadsInterface,
 		ingressClient:             configClient.Ingresses(),
 		routeClient:               routeClient,
-		operatorConfigClient:      operatorConfigClient.Consoles(),
+		operatorConfigLister:      operatorConfigInformer.Lister(),
 	}
 
 	configV1Informers := configInformer.Config().V1()
@@ -95,7 +94,7 @@ func NewCLIDownloadsSyncController(
 }
 
 func (c *CLIDownloadsSyncController) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
-	operatorConfig, err := c.operatorConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := c.operatorConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		return err
 	}
