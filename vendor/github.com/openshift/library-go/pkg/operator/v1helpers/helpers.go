@@ -52,19 +52,32 @@ func FindOperandVersion(versions []configv1.OperandVersion, name string) *config
 }
 
 func SetOperatorCondition(conditions *[]operatorv1.OperatorCondition, newCondition operatorv1.OperatorCondition) {
+	shouldLog := newCondition.Type == "OAuthClientSyncDegraded" // it's always this one
+
 	if conditions == nil {
 		conditions = &[]operatorv1.OperatorCondition{}
 	}
 	existingCondition := FindOperatorCondition(*conditions, newCondition.Type)
 	if existingCondition == nil {
+		if shouldLog{
+			klog.Infof("#### OAuthClientSyncDegraded wasn't found, setting for the first time")
+		}
 		newCondition.LastTransitionTime = metav1.NewTime(time.Now())
 		*conditions = append(*conditions, newCondition)
 		return
 	}
 
 	if existingCondition.Status != newCondition.Status {
+		if shouldLog{
+			klog.Infof("#### OAuthClientSyncDegraded previous status was %v, new status is %v, setting time", existingCondition.Status, newCondition.Status)
+		}
+
 		existingCondition.Status = newCondition.Status
 		existingCondition.LastTransitionTime = metav1.NewTime(time.Now())
+	} else{
+		if shouldLog{
+			klog.Infof("#### OAuthClientSyncDegraded previous and current status are the same, should not reset time %v", newCondition.Status)
+		}
 	}
 
 	existingCondition.Reason = newCondition.Reason
