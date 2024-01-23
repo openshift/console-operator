@@ -2,12 +2,17 @@ package v1helpers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"sort"
 	"strings"
 	"time"
+
+	patch "github.com/evanphx/json-patch"
+
+	"k8s.io/klog/v2"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -160,6 +165,7 @@ func UpdateStatus(ctx context.Context, client OperatorClient, updateFuncs ...Upd
 	updated := false
 	var updatedOperatorStatus *operatorv1.OperatorStatus
 	numberOfAttempts := 0
+	previousResourceVersion := "0"
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		defer func() {
 			numberOfAttempts++
@@ -168,12 +174,15 @@ func UpdateStatus(ctx context.Context, client OperatorClient, updateFuncs ...Upd
 		var resourceVersion string
 		var err error
 
-		if numberOfAttempts < 1 { // prefer lister if we haven't already failed.
-			_, oldStatus, resourceVersion, err = client.GetOperatorState()
-
-		} else { // if we have failed enough times (chose 1 as a starting point, do a live GET
+		// prefer lister if we haven't already failed.
+		_, oldStatus, resourceVersion, err = client.GetOperatorState()
+		if resourceVersion == previousResourceVersion {
+			listerResourceVersion := resourceVersion
+			// this indicates that we've had a conflict and the lister has not caught up, so do a live GET
 			_, oldStatus, resourceVersion, err = client.GetOperatorStateWithQuorum(ctx)
+			klog.V(2).Infof("lister was stale at resourceVersion=%d, live get showed resourceVersion=%d", listerResourceVersion, resourceVersion)
 		}
+		previousResourceVersion = resourceVersion
 		if err != nil {
 			return err
 		}
@@ -190,6 +199,9 @@ func UpdateStatus(ctx context.Context, client OperatorClient, updateFuncs ...Upd
 			updatedOperatorStatus = newStatus
 			return nil
 		}
+		if klog.V(2).Enabled() {
+			klog.Infof("Operator status changed: %v", operatorStatusJSONPatchNoError(oldStatus, newStatus))
+		}
 
 		updatedOperatorStatus, err = client.UpdateOperatorStatus(ctx, resourceVersion, newStatus)
 		updated = err == nil
@@ -197,6 +209,31 @@ func UpdateStatus(ctx context.Context, client OperatorClient, updateFuncs ...Upd
 	})
 
 	return updatedOperatorStatus, updated, err
+}
+
+func operatorStatusJSONPatchNoError(original, modified *operatorv1.OperatorStatus) string {
+	if original == nil {
+		return "original object is nil"
+	}
+	if modified == nil {
+		return "modified object is nil"
+	}
+
+	originalJSON, err := json.Marshal(original)
+	if err != nil {
+		return fmt.Sprintf("error encoding original: %v", err)
+	}
+	modifiedJSON, err := json.Marshal(modified)
+	if err != nil {
+		return fmt.Sprintf("error encoding modified: %v", err)
+	}
+
+	patchBytes, err := patch.CreateMergePatch(originalJSON, modifiedJSON)
+	if err != nil {
+		return fmt.Sprintf("unable to create JSON patch: %v", err)
+	}
+
+	return string(patchBytes)
 }
 
 // UpdateConditionFn returns a func to update a condition.
@@ -215,6 +252,7 @@ func UpdateStaticPodStatus(ctx context.Context, client StaticPodOperatorClient, 
 	updated := false
 	var updatedOperatorStatus *operatorv1.StaticPodOperatorStatus
 	numberOfAttempts := 0
+	previousResourceVersion := "0"
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		defer func() {
 			numberOfAttempts++
@@ -223,12 +261,15 @@ func UpdateStaticPodStatus(ctx context.Context, client StaticPodOperatorClient, 
 		var resourceVersion string
 		var err error
 
-		if numberOfAttempts < 1 { // prefer lister if we haven't already failed.
-			_, oldStatus, resourceVersion, err = client.GetStaticPodOperatorState()
-
-		} else { // if we have failed enough times (chose 1 as a starting point, do a live GET
+		// prefer lister if we haven't already failed.
+		_, oldStatus, resourceVersion, err = client.GetStaticPodOperatorState()
+		if resourceVersion == previousResourceVersion {
+			listerResourceVersion := resourceVersion
+			// this indicates that we've had a conflict and the lister has not caught up, so do a live GET
 			_, oldStatus, resourceVersion, err = client.GetStaticPodOperatorStateWithQuorum(ctx)
+			klog.V(2).Infof("lister was stale at resourceVersion=%d, live get showed resourceVersion=%d", listerResourceVersion, resourceVersion)
 		}
+		previousResourceVersion = resourceVersion
 		if err != nil {
 			return err
 		}
@@ -245,6 +286,9 @@ func UpdateStaticPodStatus(ctx context.Context, client StaticPodOperatorClient, 
 			updatedOperatorStatus = newStatus
 			return nil
 		}
+		if klog.V(2).Enabled() {
+			klog.Infof("Operator status changed: %v", staticPodOperatorStatusJSONPatchNoError(oldStatus, newStatus))
+		}
 
 		updatedOperatorStatus, err = client.UpdateStaticPodOperatorStatus(ctx, resourceVersion, newStatus)
 		updated = err == nil
@@ -252,6 +296,31 @@ func UpdateStaticPodStatus(ctx context.Context, client StaticPodOperatorClient, 
 	})
 
 	return updatedOperatorStatus, updated, err
+}
+
+func staticPodOperatorStatusJSONPatchNoError(original, modified *operatorv1.StaticPodOperatorStatus) string {
+	if original == nil {
+		return "original object is nil"
+	}
+	if modified == nil {
+		return "modified object is nil"
+	}
+
+	originalJSON, err := json.Marshal(original)
+	if err != nil {
+		return fmt.Sprintf("error encoding original: %v", err)
+	}
+	modifiedJSON, err := json.Marshal(modified)
+	if err != nil {
+		return fmt.Sprintf("error encoding modified: %v", err)
+	}
+
+	patchBytes, err := patch.CreateMergePatch(originalJSON, modifiedJSON)
+	if err != nil {
+		return fmt.Sprintf("unable to create JSON patch: %v", err)
+	}
+
+	return string(patchBytes)
 }
 
 // UpdateStaticPodConditionFn returns a func to update a condition.
