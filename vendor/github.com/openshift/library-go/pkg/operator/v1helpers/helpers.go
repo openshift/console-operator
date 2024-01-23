@@ -193,7 +193,7 @@ func UpdateStatus(ctx context.Context, client OperatorClient, updateFuncs ...Upd
 			listerResourceVersion := resourceVersion
 			// this indicates that we've had a conflict and the lister has not caught up, so do a live GET
 			_, oldStatus, resourceVersion, err = client.GetOperatorStateWithQuorum(ctx)
-			klog.V(2).Infof("lister was stale at resourceVersion=%d, live get showed resourceVersion=%d", listerResourceVersion, resourceVersion)
+			klog.V(2).Infof("lister was stale at resourceVersion=%v, live get showed resourceVersion=%v", listerResourceVersion, resourceVersion)
 		}
 		previousResourceVersion = resourceVersion
 		if err != nil {
@@ -280,7 +280,7 @@ func UpdateStaticPodStatus(ctx context.Context, client StaticPodOperatorClient, 
 			listerResourceVersion := resourceVersion
 			// this indicates that we've had a conflict and the lister has not caught up, so do a live GET
 			_, oldStatus, resourceVersion, err = client.GetStaticPodOperatorStateWithQuorum(ctx)
-			klog.V(2).Infof("lister was stale at resourceVersion=%d, live get showed resourceVersion=%d", listerResourceVersion, resourceVersion)
+			klog.V(2).Infof("lister was stale at resourceVersion=%v, live get showed resourceVersion=%v", listerResourceVersion, resourceVersion)
 		}
 		previousResourceVersion = resourceVersion
 		if err != nil {
