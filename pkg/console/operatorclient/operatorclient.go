@@ -71,3 +71,12 @@ func (c *OperatorClient) UpdateOperatorStatus(ctx context.Context, resourceVersi
 
 	return &ret.Status.OperatorStatus, nil
 }
+
+func (c OperatorClient) GetOperatorStateWithQuorum(ctx context.Context) (*operatorv1.OperatorSpec, *operatorv1.OperatorStatus, string, error) {
+	instance, err := c.Client.Consoles().Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	return &instance.Spec.OperatorSpec, &instance.Status.OperatorStatus, instance.GetResourceVersion(), nil
+}

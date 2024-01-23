@@ -261,7 +261,7 @@ type configSet struct {
 func (c *consoleOperator) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
 	operatorConfig, err := c.consoleOperatorLister.Get(api.ConfigResourceName)
 	if err != nil {
-		klog.Error("failed to retrieve operator config: %v", err)
+		klog.Errorf("failed to retrieve operator config: %v", err)
 		return err
 	}
 
