@@ -24,8 +24,8 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	v1helpers "github.com/openshift/library-go/pkg/operator/v1helpers"
 
+	authnsub "github.com/openshift/console-operator/pkg/console/subresource/authentication"
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
-	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
 // oauthClientSecretController behaves differently based on authentication/cluster .spec.type:
@@ -87,7 +87,7 @@ func NewOAuthClientSecretController(
 }
 
 func (c *oauthClientSecretController) sync(ctx context.Context, syncCtx factory.SyncContext) error {
-	if shouldSync, err := c.handleManaged(ctx); err != nil {
+	if shouldSync, err := c.handleManaged(); err != nil {
 		return err
 	} else if !shouldSync {
 		return nil
@@ -116,7 +116,7 @@ func (c *oauthClientSecretController) sync(ctx context.Context, syncCtx factory.
 			secretString = crypto.Random256BitsString()
 		}
 	case configv1.AuthenticationTypeOIDC:
-		clientConfig := utilsub.GetOIDCClientConfig(authConfig)
+		clientConfig := authnsub.GetOIDCClientConfig(authConfig, api.TargetNamespace, api.OpenShiftConsoleName)
 		if clientConfig == nil {
 			// no config, flush the condition and return
 			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "", nil))
@@ -166,7 +166,7 @@ func (c *oauthClientSecretController) syncSecret(ctx context.Context, clientSecr
 // handleStatus returns whether sync should happen and any error encountering
 // determining the operator's management state
 // TODO: extract this logic to where it can be used for all controllers
-func (c *oauthClientSecretController) handleManaged(ctx context.Context) (bool, error) {
+func (c *oauthClientSecretController) handleManaged() (bool, error) {
 	operatorSpec, _, _, err := c.operatorClient.GetOperatorState()
 	if err != nil {
 		return false, fmt.Errorf("failed to retrieve operator config: %w", err)

@@ -29,8 +29,8 @@ import (
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
+	authnsub "github.com/openshift/console-operator/pkg/console/subresource/authentication"
 	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
-	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
 // oidcSetupController:
@@ -105,7 +105,7 @@ func NewOIDCSetupController(
 func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncContext) error {
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
-	if shouldSync, err := c.handleManaged(ctx); err != nil {
+	if shouldSync, err := c.handleManaged(); err != nil {
 		return err
 	} else if !shouldSync {
 		return nil
@@ -126,11 +126,6 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 		return statusHandler.FlushAndReturn(nil)
 	}
 
-	operatorConfig, err := c.consoleOperatorLister.Get(api.ConfigResourceName)
-	if err != nil {
-		return err
-	}
-
 	authnConfig, err := c.authnLister.Get(api.ConfigResourceName)
 	if err != nil {
 		return err
@@ -148,7 +143,7 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 	// we need to keep track of errors during the sync so that we can requeue
 	// if any occur
 	var errs []error
-	syncErr := c.syncAuthTypeOIDC(ctx, syncCtx, statusHandler, operatorConfig, authnConfig)
+	syncErr := c.syncAuthTypeOIDC(authnConfig)
 	statusHandler.AddConditions(
 		status.HandleProgressingOrDegraded(
 			"OIDCClientConfig", "OIDCConfigSyncFailed",
@@ -171,15 +166,9 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 	return statusHandler.FlushAndReturn(nil)
 }
 
-func (c *oidcSetupController) syncAuthTypeOIDC(
-	ctx context.Context,
-	controllerContext factory.SyncContext,
-	statusHandler status.StatusHandler,
-	operatorConfig *operatorv1.Console,
-	authnConfig *configv1.Authentication,
-) error {
+func (c *oidcSetupController) syncAuthTypeOIDC(authnConfig *configv1.Authentication) error {
 
-	clientConfig := utilsub.GetOIDCClientConfig(authnConfig)
+	clientConfig := authnsub.GetOIDCClientConfig(authnConfig, api.TargetNamespace, api.OpenShiftConsoleName)
 	if clientConfig == nil {
 		c.authStatusHandler.WithCurrentOIDCClient("")
 		c.authStatusHandler.Unavailable("OIDCClientConfig", "no OIDC client found")
@@ -256,7 +245,7 @@ func (c *oidcSetupController) checkClientConfigStatus(authnConfig *configv1.Auth
 // handleStatus returns whether sync should happen and any error encountering
 // determining the operator's management state
 // TODO: extract this logic to where it can be used for all controllers
-func (c *oidcSetupController) handleManaged(ctx context.Context) (bool, error) {
+func (c *oidcSetupController) handleManaged() (bool, error) {
 	operatorSpec, _, _, err := c.operatorClient.GetOperatorState()
 	if err != nil {
 		return false, fmt.Errorf("failed to retrieve operator config: %w", err)

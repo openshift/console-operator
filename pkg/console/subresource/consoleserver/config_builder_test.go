@@ -54,7 +54,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: ""}}, nil).
+					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: ""}}, nil, "").
 					Config()
 			},
 			output: Config{
@@ -88,7 +88,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}}, &corev1.ConfigMap{Data: map[string]string{"ca-bundle.crt": "real PEM content"}}).
+					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}}, &corev1.ConfigMap{Data: map[string]string{"ca-bundle.crt": "real PEM content"}}, "").
 					Config()
 			},
 			output: Config{
@@ -122,7 +122,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}}, &corev1.ConfigMap{Data: map[string]string{"ca-bundle.crt": "real PEM content"}}).
+					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}}, &corev1.ConfigMap{Data: map[string]string{"ca-bundle.crt": "real PEM content"}}, "").
 					Config()
 			},
 			output: Config{
@@ -814,7 +814,7 @@ providers: {}
 								},
 							},
 						},
-					}, nil,
+					}, nil, "",
 				).ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
@@ -843,7 +843,7 @@ providers: {}
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: configv1.AuthenticationTypeIntegratedOAuth}}, nil).
+					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: configv1.AuthenticationTypeIntegratedOAuth}}, nil, "").
 					ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
@@ -1105,7 +1105,7 @@ providers: {}
 						"plugin2": "plugin2_url",
 					}).
 					I18nNamespaces([]string{"plugin__plugin1"}).
-					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}}, &corev1.ConfigMap{Data: map[string]string{"ca-bundle.crt": "real PEM content"}})
+					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}}, &corev1.ConfigMap{Data: map[string]string{"ca-bundle.crt": "real PEM content"}}, "")
 				return b.ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
