@@ -153,9 +153,7 @@ func (c *StatusHandler) AddCondition(newStatusFunc v1helpers.UpdateStatusFunc) {
 }
 
 func (c *StatusHandler) AddConditions(newStatusFuncs []v1helpers.UpdateStatusFunc) {
-	for _, newStatusFunc := range newStatusFuncs {
-		c.statusFuncs = append(c.statusFuncs, newStatusFunc)
-	}
+	c.statusFuncs = append(c.statusFuncs, newStatusFuncs...)
 }
 
 func (c *StatusHandler) FlushAndReturn(returnErr error) error {
