@@ -3,6 +3,8 @@ package starter
 import (
 	"context"
 	"fmt"
+	"github.com/openshift/library-go/pkg/operator/genericoperatorclient"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"os"
 	"time"
 
@@ -10,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	policyv1client "k8s.io/client-go/kubernetes/typed/policy/v1"
@@ -30,7 +31,6 @@ import (
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
 	upgradenotification "github.com/openshift/console-operator/pkg/console/controllers/upgradenotification"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
-	"github.com/openshift/console-operator/pkg/console/operatorclient"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/managementstatecontroller"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
@@ -137,15 +137,14 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		resync,
 	)
 
-	dynamicInformers := dynamicinformer.NewDynamicSharedInformerFactory(
-		dynamicClient,
-		resync,
-	)
-
-	operatorClient := &operatorclient.OperatorClient{
-		Informers: operatorConfigInformers,
-		Client:    operatorConfigClient.OperatorV1(),
-		Context:   ctx,
+	operatorClient, dynamicInformers, err := genericoperatorclient.NewClusterScopedOperatorClient(controllerContext.KubeConfig,
+		schema.GroupVersionResource{
+			Group:    "operator.openshift.io",
+			Version:  "v1",
+			Resource: "consoles",
+		})
+	if err != nil {
+		return err
 	}
 
 	recorder := controllerContext.EventRecorder
