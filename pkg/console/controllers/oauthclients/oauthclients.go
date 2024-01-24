@@ -6,6 +6,9 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apiexensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiexensionsv1informers "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensions/v1"
+	apiexensionsv1listers "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -55,6 +58,7 @@ type oauthClientsController struct {
 	authentication              configv1client.AuthenticationInterface
 	authnLister                 configv1lister.AuthenticationLister
 	consoleOperatorLister       operatorv1listers.ConsoleLister
+	crdLister                   apiexensionsv1listers.CustomResourceDefinitionLister
 	routesLister                routev1listers.RouteLister
 	ingressConfigLister         configv1lister.IngressLister
 	targetNSSecretsLister       corev1listers.SecretLister
@@ -70,6 +74,7 @@ func NewOAuthClientsController(
 	operatorClient v1helpers.OperatorClient,
 	oauthClient oauthclient.Interface,
 	secretsClient corev1client.SecretsGetter,
+	crdInformer apiexensionsv1informers.CustomResourceDefinitionInformer,
 	authentication configv1client.AuthenticationInterface,
 	authnInformer configv1informers.AuthenticationInformer,
 	consoleOperatorInformer operatorv1informers.ConsoleInformer,
@@ -98,6 +103,7 @@ func NewOAuthClientsController(
 		configNSSecretsLister:       configNSSecretsInformer.Lister(),
 		targetNSConfigLister:        targetNSConfigInformer.Lister(),
 		targetNSDeploymentsLister:   targetNSDeploymentsInformer.Lister(),
+		crdLister:                   crdInformer.Lister(),
 
 		authStatusHandler: status.NewAuthStatusHandler(authentication, api.OpenShiftConsoleName, api.TargetNamespace, api.OpenShiftConsoleOperator),
 	}
@@ -116,6 +122,10 @@ func NewOAuthClientsController(
 		WithFilteredEventsInformers(
 			factory.NamesFilter(api.OAuthClientName),
 			oauthClientSwitchedInformer.Informer(),
+		).
+		WithFilteredEventsInformers(
+			factory.NamesFilter("authentications.config.openshift.io"),
+			crdInformer.Informer(),
 		).
 		WithSyncDegradedOnError(operatorClient).
 		ResyncEvery(wait.Jitter(time.Minute, 1.0)).
@@ -163,47 +173,42 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 		waitCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 		if !cache.WaitForCacheSync(waitCtx.Done(), c.oauthClientSwitchedInformer.Informer().HasSynced) {
-			syncErr = fmt.Errorf("timed out waiting for OAuthClients cache sync")
-			break
+			return statusHandler.FlushAndReturn(fmt.Errorf("timed out waiting for OAuthClients cache sync"))
 		}
 
 		clientSecret, secErr := c.syncSecret(ctx, operatorConfig, controllerContext.Recorder())
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "FailedApply", secErr))
 		if secErr != nil {
-			syncErr = secErr
-			break
+			return statusHandler.FlushAndReturn(secErr)
 		}
 
 		oauthErrReason, oauthErr := c.syncOAuthClient(ctx, clientSecret, consoleURL.String())
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSync", oauthErrReason, oauthErr))
 		if oauthErr != nil {
-			syncErr = oauthErr
-			break
+			return statusHandler.FlushAndReturn(oauthErr)
 		}
 
 	case configv1.AuthenticationTypeOIDC:
 		syncErr = c.syncAuthTypeOIDC(ctx, controllerContext, statusHandler, operatorConfig, authnConfig)
 		if syncErr != nil {
-			break
-		}
-
-		// FIXME: once we're able to distinguish featuregates for HCP (on by default)
-		// and OCP (currently only in TechPreview), move this outside of the switch.
-		// If you don't, GitOps people will give you a lot of hate - the API validation
-		// does not allow setting the OIDC providers' client in the provider if it
-		// doesn't already appear in the status, which is what the following does.
-		// This means that you cannot get to the desired state in a single update
-		// as you first need to set the Authn type to OIDC, wait for the operator to
-		// set the client, and only then you can configure the client in the provider.
-		applyErr := c.authStatusHandler.Apply(ctx, authnConfig)
-		statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthStatusHandler", "FailedApply", applyErr))
-		if applyErr != nil {
-			syncErr = applyErr
-			break
+			return statusHandler.FlushAndReturn(syncErr)
 		}
 	}
 
-	return statusHandler.FlushAndReturn(syncErr)
+	oidcClientsSchema, err := authnConfigHasOIDCFields(c.crdLister)
+	if err != nil {
+		return statusHandler.FlushAndReturn(err)
+	}
+
+	if oidcClientsSchema {
+		applyErr := c.authStatusHandler.Apply(ctx, authnConfig)
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthStatusHandler", "FailedApply", applyErr))
+		if applyErr != nil {
+			return statusHandler.FlushAndReturn(applyErr)
+		}
+	}
+
+	return statusHandler.FlushAndReturn(nil)
 }
 
 func (c *oauthClientsController) syncAuthTypeOIDC(
@@ -367,5 +372,30 @@ func (c *oauthClientsController) deregisterClient(ctx context.Context) error {
 	updated := oauthsub.DeRegisterConsoleFromOAuthClient(existingOAuthClient.DeepCopy())
 	_, err = c.oauthClient.OAuthClients().Update(ctx, updated, metav1.UpdateOptions{})
 	return err
+
+}
+
+func authnConfigHasOIDCFields(crdLister apiexensionsv1listers.CustomResourceDefinitionLister) (bool, error) {
+	authnCRD, err := crdLister.Get("authentications.config.openshift.io")
+	if err != nil {
+		return false, err
+	}
+
+	var authnV1Config *apiexensionsv1.CustomResourceDefinitionVersion
+	for _, version := range authnCRD.Spec.Versions {
+		if version.Name == "v1" && version.Served && version.Storage {
+			authnV1Config = &version
+			break
+		}
+	}
+
+	if authnV1Config == nil {
+		return false, fmt.Errorf("authentications.config.openshift.io is not served or stored as v1")
+	}
+
+	schema := authnV1Config.Schema.OpenAPIV3Schema
+	_, clientsExist := schema.Properties["status"].Properties["oidcClients"]
+
+	return clientsExist, nil
 
 }
