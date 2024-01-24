@@ -6,6 +6,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog/v2"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/cache"
@@ -74,6 +75,51 @@ func (c syncContext) eventHandler(queueKeysFunc ObjectQueueKeysFunc, filter Even
 				utilruntime.HandleError(fmt.Errorf("updated object %+v is not runtime Object", runtimeObj))
 				return
 			}
+			c.enqueueKeys(queueKeysFunc(runtimeObj)...)
+		},
+	}
+	if filter == nil {
+		return resourceEventHandler
+	}
+	return cache.FilteringResourceEventHandler{
+		FilterFunc: filter,
+		Handler:    resourceEventHandler,
+	}
+}
+
+// eventHandler provides default event handler that is added to an informers passed to controller factory.
+func (c syncContext) loggingEventHandler(queueKeysFunc ObjectQueueKeysFunc, filter EventFilterFunc) cache.ResourceEventHandler {
+	resourceEventHandler := cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			runtimeObj, ok := obj.(runtime.Object)
+			if !ok {
+				utilruntime.HandleError(fmt.Errorf("added object %+v is not runtime Object", obj))
+				return
+			}
+			klog.Infof("#### that controller is adding from %T", runtimeObj)
+			c.enqueueKeys(queueKeysFunc(runtimeObj)...)
+		},
+		UpdateFunc: func(old, new interface{}) {
+			runtimeObj, ok := new.(runtime.Object)
+			if !ok {
+				utilruntime.HandleError(fmt.Errorf("updated object %+v is not runtime Object", runtimeObj))
+				return
+			}
+			klog.Infof("#### that controller is updating from %T", runtimeObj)
+			c.enqueueKeys(queueKeysFunc(runtimeObj)...)
+		},
+		DeleteFunc: func(obj interface{}) {
+			runtimeObj, ok := obj.(runtime.Object)
+			if !ok {
+				if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+					c.enqueueKeys(queueKeysFunc(tombstone.Obj.(runtime.Object))...)
+
+					return
+				}
+				utilruntime.HandleError(fmt.Errorf("updated object %+v is not runtime Object", runtimeObj))
+				return
+			}
+			klog.Infof("#### that controller is deleting from %T", runtimeObj)
 			c.enqueueKeys(queueKeysFunc(runtimeObj)...)
 		},
 	}

@@ -288,10 +288,18 @@ func (f *Factory) ToController(name string, eventRecorder events.Recorder) Contr
 		}
 	}
 
+	shouldLog := false
+	if name == "OAuthClientsController" {
+		shouldLog = true
+	}
 	for i := range f.informers {
 		for d := range f.informers[i].informers {
 			informer := f.informers[i].informers[d]
-			informer.AddEventHandler(c.syncContext.(syncContext).eventHandler(DefaultQueueKeysFunc, f.informers[i].filter))
+			if shouldLog{
+				informer.AddEventHandler(c.syncContext.(syncContext).loggingEventHandler(DefaultQueueKeysFunc, f.informers[i].filter))
+			} else{
+				informer.AddEventHandler(c.syncContext.(syncContext).eventHandler(DefaultQueueKeysFunc, f.informers[i].filter))
+			}
 			c.cachesToSync = append(c.cachesToSync, informer.HasSynced)
 		}
 	}
