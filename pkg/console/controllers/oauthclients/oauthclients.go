@@ -63,7 +63,6 @@ type oauthClientsController struct {
 	targetNSConfigLister        corev1listers.ConfigMapLister
 	featureGatesLister          configv1lister.FeatureGateLister
 
-	statusHandler     status.StatusHandler
 	authStatusHandler status.AuthStatusHandler
 }
 
@@ -103,7 +102,6 @@ func NewOAuthClientsController(
 		targetNSDeploymentsLister:   targetNSDeploymentsInformer.Lister(),
 		featureGatesLister:          featureGatesInformer.Lister(),
 
-		statusHandler:     status.NewStatusHandler(operatorClient),
 		authStatusHandler: status.NewAuthStatusHandler(authentication, api.OpenShiftConsoleName, api.TargetNamespace, api.OpenShiftConsoleOperator),
 	}
 
@@ -128,6 +126,8 @@ func NewOAuthClientsController(
 }
 
 func (c *oauthClientsController) sync(ctx context.Context, controllerContext factory.SyncContext) error {
+	statusHandler := status.NewStatusHandler(c.operatorClient)
+
 	if shouldSync, err := c.handleManaged(ctx); err != nil {
 		return err
 	} else if !shouldSync {
@@ -176,36 +176,43 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 		}
 
 		clientSecret, secErr := c.syncSecret(ctx, operatorConfig, controllerContext.Recorder())
-		c.statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "FailedApply", secErr))
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "FailedApply", secErr))
 		if secErr != nil {
 			syncErr = secErr
 			break
 		}
 
 		oauthErrReason, oauthErr := c.syncOAuthClient(ctx, clientSecret, consoleURL.String())
-		c.statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSync", oauthErrReason, oauthErr))
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSync", oauthErrReason, oauthErr))
 		if oauthErr != nil {
 			syncErr = oauthErr
 			break
 		}
 
 	case configv1.AuthenticationTypeOIDC:
-		syncErr = c.syncAuthTypeOIDC(ctx, controllerContext, operatorConfig, authnConfig)
+		syncErr = c.syncAuthTypeOIDC(ctx, controllerContext, statusHandler, operatorConfig, authnConfig)
 	}
 
 	// AuthStatusHandler manages fields that are behind the CustomNoUpgrade and TechPreviewNoUpgrade featuregate sets
 	// call Apply() only if they are enabled, otherwise server-side apply will complain
 	if featureGates.Spec.FeatureSet == configv1.TechPreviewNoUpgrade || featureGates.Spec.FeatureSet == configv1.CustomNoUpgrade {
 		if err := c.authStatusHandler.Apply(ctx, authnConfig); err != nil {
-			c.statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthStatusHandler", "FailedApply", err))
-			return c.statusHandler.FlushAndReturn(err)
+			statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthStatusHandler", "FailedApply", err))
+			return statusHandler.FlushAndReturn(err)
 		}
 	}
 
-	return c.statusHandler.FlushAndReturn(syncErr)
+	return statusHandler.FlushAndReturn(syncErr)
 }
 
-func (c *oauthClientsController) syncAuthTypeOIDC(ctx context.Context, controllerContext factory.SyncContext, operatorConfig *operatorv1.Console, authnConfig *configv1.Authentication) error {
+func (c *oauthClientsController) syncAuthTypeOIDC(
+	ctx context.Context,
+	controllerContext factory.SyncContext,
+	statusHandler status.StatusHandler,
+	operatorConfig *operatorv1.Console,
+	authnConfig *configv1.Authentication,
+) error {
+
 	clientConfig := utilsub.GetOIDCClientConfig(authnConfig)
 	if clientConfig == nil {
 		c.authStatusHandler.WithCurrentOIDCClient("")
@@ -215,8 +222,8 @@ func (c *oauthClientsController) syncAuthTypeOIDC(ctx context.Context, controlle
 
 	if len(clientConfig.ClientID) == 0 {
 		err := fmt.Errorf("no ID set on OIDC client")
-		c.statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCClientConfig", "MissingID", err))
-		return c.statusHandler.FlushAndReturn(err)
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCClientConfig", "MissingID", err))
+		return statusHandler.FlushAndReturn(err)
 	}
 	c.authStatusHandler.WithCurrentOIDCClient(clientConfig.ClientID)
 
@@ -236,7 +243,7 @@ func (c *oauthClientsController) syncAuthTypeOIDC(ctx context.Context, controlle
 	if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) != expectedClientSecret {
 		secret, _, err = resourceapply.ApplySecret(ctx, c.secretsClient, controllerContext.Recorder(), secretsub.DefaultSecret(operatorConfig, expectedClientSecret))
 		if err != nil {
-			c.statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCClientSecretSync", "FailedApply", err))
+			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCClientSecretSync", "FailedApply", err))
 			return err
 		}
 	}
