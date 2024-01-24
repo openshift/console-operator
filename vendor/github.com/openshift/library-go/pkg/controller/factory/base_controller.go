@@ -198,6 +198,9 @@ func (c *baseController) runWorker(queueCtx context.Context) {
 
 // reconcile wraps the sync() call and if operator client is set, it handle the degraded condition if sync() returns an error.
 func (c *baseController) reconcile(ctx context.Context, syncCtx SyncContext) error {
+	if c.name == "OAuthClientsController"{
+		klog.Infof("#### sync called")
+	}
 	err := c.sync(ctx, syncCtx)
 	degradedErr := c.reportDegraded(ctx, err)
 	if apierrors.IsNotFound(degradedErr) && management.IsOperatorRemovable() {
@@ -260,7 +263,7 @@ func (c *baseController) processNextWorkItem(queueCtx context.Context) {
 	if err := c.reconcile(queueCtx, syncCtx); err != nil {
 		if err == SyntheticRequeueError {
 			// logging this helps detecting wedged controllers with missing pre-requirements
-			klog.V(5).Infof("%q controller requested synthetic requeue with key %q", c.name, key)
+			klog.Infof("%q controller requested synthetic requeue with key %q", c.name, key)
 		} else {
 			if klog.V(4).Enabled() || key != "key" {
 				utilruntime.HandleError(fmt.Errorf("%q controller failed to sync %q, err: %w", c.name, key, err))
