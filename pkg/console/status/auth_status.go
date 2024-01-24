@@ -27,6 +27,9 @@ type AuthStatusHandler struct {
 	currentClientID    string
 }
 
+// NewAuthStatusHandler creates a handler for updating the Authentication.config.openshift.io
+// status with information about the expected and currently used OIDC client.
+// Not thread safe, only use in controllers with a single worker!
 func NewAuthStatusHandler(authnClient configv1client.AuthenticationInterface, componentName, componentNamespace, fieldManager string) AuthStatusHandler {
 	return AuthStatusHandler{
 		client:             authnClient,
@@ -83,6 +86,10 @@ func (c *AuthStatusHandler) WithCurrentOIDCClient(currentClientID string) {
 }
 
 func (c *AuthStatusHandler) Apply(ctx context.Context, authnConfig *configv1.Authentication) error {
+	defer func() {
+		c.conditionsToApply = map[string]*metav1.Condition{}
+	}()
+
 	applyConfig, err := configv1ac.ExtractAuthenticationStatus(authnConfig, c.fieldManager)
 	if err != nil {
 		return err
