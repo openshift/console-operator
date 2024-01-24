@@ -57,7 +57,8 @@ func FindOperandVersion(versions []configv1.OperandVersion, name string) *config
 }
 
 func SetOperatorCondition(conditions *[]operatorv1.OperatorCondition, newCondition operatorv1.OperatorCondition) {
-	shouldLog := newCondition.Type == "OAuthClientSyncDegraded" // it's always this one
+	//shouldLog := newCondition.Type == "OAuthClientSyncDegraded" // it's always this one
+	shouldLog := true
 
 	if conditions == nil {
 		conditions = &[]operatorv1.OperatorCondition{}
@@ -65,7 +66,7 @@ func SetOperatorCondition(conditions *[]operatorv1.OperatorCondition, newConditi
 	existingCondition := FindOperatorCondition(*conditions, newCondition.Type)
 	if existingCondition == nil {
 		if shouldLog{
-			klog.Infof("#### OAuthClientSyncDegraded wasn't found, setting for the first time")
+			klog.Infof("#### %v wasn't found, setting for the first time", newCondition.Type)
 		}
 		newCondition.LastTransitionTime = metav1.NewTime(time.Now())
 		*conditions = append(*conditions, newCondition)
@@ -74,15 +75,15 @@ func SetOperatorCondition(conditions *[]operatorv1.OperatorCondition, newConditi
 
 	if existingCondition.Status != newCondition.Status {
 		if shouldLog{
-			klog.Infof("#### OAuthClientSyncDegraded previous status was %v, new status is %v, setting time", existingCondition.Status, newCondition.Status)
+			klog.Infof("#### %v previous status was %v, new status is %v, setting time", newCondition.Type, existingCondition.Status, newCondition.Status)
 		}
 
 		existingCondition.Status = newCondition.Status
 		existingCondition.LastTransitionTime = metav1.NewTime(time.Now())
 	} else{
-		if shouldLog{
-			klog.Infof("#### OAuthClientSyncDegraded previous and current status are the same, should not reset time %v", newCondition.Status)
-		}
+		//if shouldLog{
+		//	klog.Infof("#### OAuthClientSyncDegraded previous and current status are the same, should not reset time %v", newCondition.Status)
+		//}
 	}
 
 	existingCondition.Reason = newCondition.Reason
@@ -214,6 +215,20 @@ func UpdateStatus(ctx context.Context, client OperatorClient, updateFuncs ...Upd
 		}
 		if klog.V(2).Enabled() {
 			klog.Infof("Operator status changed: %v", operatorStatusJSONPatchNoError(oldStatus, newStatus))
+		}
+
+		// check them all
+		for _, newCondition := range newStatus.Conditions{
+			oldCondition := FindOperatorCondition(oldStatus.Conditions, newCondition.Type)
+			if oldCondition == nil{
+				continue
+			}
+			if oldCondition.Status != newCondition.Status{
+				continue
+			}
+			if oldCondition.LastTransitionTime != newCondition.LastTransitionTime{
+				klog.Infof("#### condition %v is changing the last transition time, but is not changing status!", newCondition.Type)
+			}
 		}
 
 		updatedOperatorStatus, err = client.UpdateOperatorStatus(ctx, resourceVersion, newStatus)
