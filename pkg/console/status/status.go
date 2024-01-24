@@ -144,22 +144,39 @@ func setConditionValue(conditionType string, err error) operatorsv1.ConditionSta
 }
 
 type StatusHandler struct {
-	client      v1helpers.OperatorClient
+	client v1helpers.OperatorClient
+	// conditionUpdates are keyed by condition type so that we always choose the latest as authoritative
+	conditionUpdates map[string]v1helpers.UpdateStatusFunc
+
 	statusFuncs []v1helpers.UpdateStatusFunc
 }
 
-func (c *StatusHandler) AddCondition(newStatusFunc v1helpers.UpdateStatusFunc) {
-	c.statusFuncs = append(c.statusFuncs, newStatusFunc)
+type ConditionUpdate struct {
+	ConditionType  string
+	StatusUpdateFn v1helpers.UpdateStatusFunc
 }
 
-func (c *StatusHandler) AddConditions(newStatusFuncs []v1helpers.UpdateStatusFunc) {
-	for _, newStatusFunc := range newStatusFuncs {
-		c.statusFuncs = append(c.statusFuncs, newStatusFunc)
+func (c *StatusHandler) AddCondition(conditionUpdate ConditionUpdate) {
+	c.conditionUpdates[conditionUpdate.ConditionType] = conditionUpdate.StatusUpdateFn
+}
+
+func (c *StatusHandler) AddConditions(conditionUpdates []ConditionUpdate) {
+	for i := range conditionUpdates {
+		conditionUpdate := conditionUpdates[i]
+		c.conditionUpdates[conditionUpdate.ConditionType] = conditionUpdate.StatusUpdateFn
 	}
 }
 
 func (c *StatusHandler) FlushAndReturn(returnErr error) error {
-	if _, _, updateErr := v1helpers.UpdateStatus(context.TODO(), c.client, c.statusFuncs...); updateErr != nil {
+	allStatusFns := []v1helpers.UpdateStatusFunc{}
+	for i := range c.statusFuncs {
+		allStatusFns = append(allStatusFns, c.statusFuncs[i])
+	}
+	for k := range c.conditionUpdates {
+		allStatusFns = append(allStatusFns, c.conditionUpdates[k])
+	}
+
+	if _, _, updateErr := v1helpers.UpdateStatus(context.TODO(), c.client, allStatusFns...); updateErr != nil {
 		return updateErr
 	}
 	return returnErr
@@ -191,7 +208,8 @@ func (c *StatusHandler) UpdateDeploymentGeneration(actualDeployment *appsv1.Depl
 
 func NewStatusHandler(client v1helpers.OperatorClient) StatusHandler {
 	return StatusHandler{
-		client: client,
+		client:           client,
+		conditionUpdates: map[string]v1helpers.UpdateStatusFunc{},
 	}
 }
 
