@@ -45,8 +45,6 @@ type oauthClientsController struct {
 	routesLister          routev1listers.RouteLister
 	ingressConfigLister   configv1lister.IngressLister
 	targetNSSecretsLister corev1listers.SecretLister
-
-	statusHandler status.StatusHandler
 }
 
 func NewOAuthClientsController(
@@ -70,8 +68,6 @@ func NewOAuthClientsController(
 		routesLister:          routeInformer.Lister(),
 		ingressConfigLister:   ingressConfigInformer.Lister(),
 		targetNSSecretsLister: targetNSsecretsInformer.Lister(),
-
-		statusHandler: status.NewStatusHandler(operatorClient),
 	}
 
 	return factory.New().
@@ -91,6 +87,8 @@ func NewOAuthClientsController(
 }
 
 func (c *oauthClientsController) sync(ctx context.Context, controllerContext factory.SyncContext) error {
+	statusHandler := status.NewStatusHandler(c.operatorClient)
+
 	if shouldSync, err := c.handleStatus(ctx); err != nil {
 		return err
 	} else if !shouldSync {
@@ -119,15 +117,15 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 	}
 
 	clientSecret, secErr := c.syncSecret(ctx, operatorConfig, controllerContext.Recorder())
-	c.statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "FailedApply", secErr))
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "FailedApply", secErr))
 	if secErr != nil {
-		return c.statusHandler.FlushAndReturn(secErr)
+		return statusHandler.FlushAndReturn(secErr)
 	}
 
 	oauthErrReason, oauthErr := c.syncOAuthClient(ctx, clientSecret, consoleURL.String())
-	c.statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSync", oauthErrReason, oauthErr))
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSync", oauthErrReason, oauthErr))
 
-	return c.statusHandler.FlushAndReturn(oauthErr)
+	return statusHandler.FlushAndReturn(oauthErr)
 }
 
 // handleStatus returns whether sync should happen and any error encountering

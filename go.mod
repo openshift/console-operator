@@ -12,7 +12,7 @@ require (
 	github.com/openshift/api v0.0.0-20231129134630-a782d1c1541c
 	github.com/openshift/build-machinery-go v0.0.0-20220913142420-e25cf57ea46d
 	github.com/openshift/client-go v0.0.0-20230926161409-848405da69e1
-	github.com/openshift/library-go v0.0.0-20240117151256-95b334bccb5d
+	github.com/openshift/library-go v0.0.0-20240126152712-771c6734dc24
 	github.com/spf13/cobra v1.7.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.28.2

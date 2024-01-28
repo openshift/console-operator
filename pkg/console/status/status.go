@@ -40,32 +40,44 @@ import (
 //     Message: error string value is used as message
 //
 // all degraded suffix conditions will be aggregated into a final "Degraded" status that will be set on the console ClusterOperator
-func HandleDegraded(typePrefix string, reason string, err error) v1helpers.UpdateStatusFunc {
+func HandleDegraded(typePrefix string, reason string, err error) ConditionUpdate {
 	conditionType := typePrefix + operatorsv1.OperatorStatusTypeDegraded
 	condition := handleCondition(conditionType, reason, err)
-	return v1helpers.UpdateConditionFn(condition)
+	return ConditionUpdate{
+		ConditionType:  conditionType,
+		StatusUpdateFn: v1helpers.UpdateConditionFn(condition),
+	}
 }
 
-func HandleProgressing(typePrefix string, reason string, err error) v1helpers.UpdateStatusFunc {
+func HandleProgressing(typePrefix string, reason string, err error) ConditionUpdate {
 	conditionType := typePrefix + operatorsv1.OperatorStatusTypeProgressing
 	condition := handleCondition(conditionType, reason, err)
-	return v1helpers.UpdateConditionFn(condition)
+	return ConditionUpdate{
+		ConditionType:  conditionType,
+		StatusUpdateFn: v1helpers.UpdateConditionFn(condition),
+	}
 }
 
-func HandleAvailable(typePrefix string, reason string, err error) v1helpers.UpdateStatusFunc {
+func HandleAvailable(typePrefix string, reason string, err error) ConditionUpdate {
 	conditionType := typePrefix + operatorsv1.OperatorStatusTypeAvailable
 	condition := handleCondition(conditionType, reason, err)
-	return v1helpers.UpdateConditionFn(condition)
+	return ConditionUpdate{
+		ConditionType:  conditionType,
+		StatusUpdateFn: v1helpers.UpdateConditionFn(condition),
+	}
 }
 
-func HandleUpgradable(typePrefix string, reason string, err error) v1helpers.UpdateStatusFunc {
+func HandleUpgradable(typePrefix string, reason string, err error) ConditionUpdate {
 	conditionType := typePrefix + operatorsv1.OperatorStatusTypeUpgradeable
 	condition := handleCondition(conditionType, reason, err)
-	return v1helpers.UpdateConditionFn(condition)
+	return ConditionUpdate{
+		ConditionType:  conditionType,
+		StatusUpdateFn: v1helpers.UpdateConditionFn(condition),
+	}
 }
 
-func (c *StatusHandler) ResetConditions(conditions []operatorsv1.OperatorCondition) []v1helpers.UpdateStatusFunc {
-	updateStatusFuncs := []v1helpers.UpdateStatusFunc{}
+func (c *StatusHandler) ResetConditions(conditions []operatorsv1.OperatorCondition) []ConditionUpdate {
+	updateStatusFuncs := []ConditionUpdate{}
 	for _, condition := range conditions {
 		klog.V(2).Info("\nresetting condition: ", condition.Type)
 		if strings.HasSuffix(condition.Type, operatorsv1.OperatorStatusTypeDegraded) {
@@ -101,8 +113,8 @@ func (c *StatusHandler) ResetConditions(conditions []operatorsv1.OperatorConditi
 // - Type suffix will be set to Degraded
 // TODO: when we eliminate the special case SyncError, this helper can go away.
 // When we do that, however, we must make sure to register deprecated conditions with NewRemoveStaleConditions()
-func HandleProgressingOrDegraded(typePrefix string, reason string, err error) []v1helpers.UpdateStatusFunc {
-	updateStatusFuncs := []v1helpers.UpdateStatusFunc{}
+func HandleProgressingOrDegraded(typePrefix string, reason string, err error) []ConditionUpdate {
+	updateStatusFuncs := []ConditionUpdate{}
 	if errors.IsSyncError(err) {
 		updateStatusFuncs = append(updateStatusFuncs, HandleDegraded(typePrefix, reason, nil))
 		updateStatusFuncs = append(updateStatusFuncs, HandleProgressing(typePrefix, reason, err))
@@ -144,22 +156,39 @@ func setConditionValue(conditionType string, err error) operatorsv1.ConditionSta
 }
 
 type StatusHandler struct {
-	client      v1helpers.OperatorClient
+	client v1helpers.OperatorClient
+	// conditionUpdates are keyed by condition type so that we always choose the latest as authoritative
+	conditionUpdates map[string]v1helpers.UpdateStatusFunc
+
 	statusFuncs []v1helpers.UpdateStatusFunc
 }
 
-func (c *StatusHandler) AddCondition(newStatusFunc v1helpers.UpdateStatusFunc) {
-	c.statusFuncs = append(c.statusFuncs, newStatusFunc)
+type ConditionUpdate struct {
+	ConditionType  string
+	StatusUpdateFn v1helpers.UpdateStatusFunc
 }
 
-func (c *StatusHandler) AddConditions(newStatusFuncs []v1helpers.UpdateStatusFunc) {
-	for _, newStatusFunc := range newStatusFuncs {
-		c.statusFuncs = append(c.statusFuncs, newStatusFunc)
+func (c *StatusHandler) AddCondition(conditionUpdate ConditionUpdate) {
+	c.conditionUpdates[conditionUpdate.ConditionType] = conditionUpdate.StatusUpdateFn
+}
+
+func (c *StatusHandler) AddConditions(conditionUpdates []ConditionUpdate) {
+	for i := range conditionUpdates {
+		conditionUpdate := conditionUpdates[i]
+		c.conditionUpdates[conditionUpdate.ConditionType] = conditionUpdate.StatusUpdateFn
 	}
 }
 
 func (c *StatusHandler) FlushAndReturn(returnErr error) error {
-	if _, _, updateErr := v1helpers.UpdateStatus(context.TODO(), c.client, c.statusFuncs...); updateErr != nil {
+	allStatusFns := []v1helpers.UpdateStatusFunc{}
+	for i := range c.statusFuncs {
+		allStatusFns = append(allStatusFns, c.statusFuncs[i])
+	}
+	for k := range c.conditionUpdates {
+		allStatusFns = append(allStatusFns, c.conditionUpdates[k])
+	}
+
+	if _, _, updateErr := v1helpers.UpdateStatus(context.TODO(), c.client, allStatusFns...); updateErr != nil {
 		return updateErr
 	}
 	return returnErr
@@ -191,7 +220,8 @@ func (c *StatusHandler) UpdateDeploymentGeneration(actualDeployment *appsv1.Depl
 
 func NewStatusHandler(client v1helpers.OperatorClient) StatusHandler {
 	return StatusHandler{
-		client: client,
+		client:           client,
+		conditionUpdates: map[string]v1helpers.UpdateStatusFunc{},
 	}
 }
 
