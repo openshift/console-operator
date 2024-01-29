@@ -61,7 +61,6 @@ type oauthClientsController struct {
 	configNSSecretsLister       corev1listers.SecretLister
 	targetNSDeploymentsLister   appsv1listers.DeploymentLister
 	targetNSConfigLister        corev1listers.ConfigMapLister
-	featureGatesLister          configv1lister.FeatureGateLister
 
 	authStatusHandler status.AuthStatusHandler
 }
@@ -81,7 +80,6 @@ func NewOAuthClientsController(
 	targetNSConfigInformer corev1informers.ConfigMapInformer,
 	targetNSDeploymentsInformer appsv1informers.DeploymentInformer,
 	oauthClientSwitchedInformer *util.InformerWithSwitch,
-	featureGatesInformer configv1informers.FeatureGateInformer,
 	recorder events.Recorder,
 ) factory.Controller {
 	c := oauthClientsController{
@@ -100,7 +98,6 @@ func NewOAuthClientsController(
 		configNSSecretsLister:       configNSSecretsInformer.Lister(),
 		targetNSConfigLister:        targetNSConfigInformer.Lister(),
 		targetNSDeploymentsLister:   targetNSDeploymentsInformer.Lister(),
-		featureGatesLister:          featureGatesInformer.Lister(),
 
 		authStatusHandler: status.NewAuthStatusHandler(authentication, api.OpenShiftConsoleName, api.TargetNamespace, api.OpenShiftConsoleOperator),
 	}
@@ -149,11 +146,6 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 		return err
 	}
 
-	featureGates, err := c.featureGatesLister.Get(api.ConfigResourceName)
-	if err != nil {
-		return err
-	}
-
 	routeName := api.OpenShiftConsoleRouteName
 	routeConfig := routesub.NewRouteConfig(operatorConfig, ingressConfig, routeName)
 	if routeConfig.IsCustomHostnameSet() {
@@ -191,11 +183,18 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 
 	case configv1.AuthenticationTypeOIDC:
 		syncErr = c.syncAuthTypeOIDC(ctx, controllerContext, statusHandler, operatorConfig, authnConfig)
-	}
+		if syncErr != nil {
+			break
+		}
 
-	// AuthStatusHandler manages fields that are behind the CustomNoUpgrade and TechPreviewNoUpgrade featuregate sets
-	// call Apply() only if they are enabled, otherwise server-side apply will complain
-	if featureGates.Spec.FeatureSet == configv1.TechPreviewNoUpgrade || featureGates.Spec.FeatureSet == configv1.CustomNoUpgrade {
+		// FIXME: once we're able to distinguish featuregates for HCP (on by default)
+		// and OCP (currently only in TechPreview), move this outside of the switch.
+		// If you don't, GitOps people will give you a lot of hate - the API validation
+		// does not allow setting the OIDC providers' client in the provider if it
+		// doesn't already appear in the status, which is what the following does.
+		// This means that you cannot get to the desired state in a single update
+		// as you first need to set the Authn type to OIDC, wait for the operator to
+		// set the client, and only then you can configure the client in the provider.
 		if err := c.authStatusHandler.Apply(ctx, authnConfig); err != nil {
 			statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthStatusHandler", "FailedApply", err))
 			return statusHandler.FlushAndReturn(err)
