@@ -28,17 +28,16 @@ const (
 )
 
 const (
-	configMapResourceVersionAnnotation                 = "console.openshift.io/console-config-version"
-	proxyConfigResourceVersionAnnotation               = "console.openshift.io/proxy-config-version"
-	infrastructureConfigResourceVersionAnnotation      = "console.openshift.io/infrastructure-config-version"
-	serviceCAConfigMapResourceVersionAnnotation        = "console.openshift.io/service-ca-config-version"
-	oauthServingCertConfigMapResourceVersionAnnotation = "console.openshift.io/oauth-serving-cert-config-version"
-	trustedCAConfigMapResourceVersionAnnotation        = "console.openshift.io/trusted-ca-config-version"
-	secretResourceVersionAnnotation                    = "console.openshift.io/oauth-secret-version"
-	consoleImageAnnotation                             = "console.openshift.io/image"
-	authnConfigVersionAnnotation                       = "console.openshift.io/authentication-config-version"
-	authnCATrustConfigMapResourceVersionAnnotation     = "console.openshift.io/authn-ca-trust-config-version"
-	sessionSecretRVAnnotation                          = "console.openshift.io/session-secret-version"
+	configMapResourceVersionAnnotation             = "console.openshift.io/console-config-version"
+	proxyConfigResourceVersionAnnotation           = "console.openshift.io/proxy-config-version"
+	infrastructureConfigResourceVersionAnnotation  = "console.openshift.io/infrastructure-config-version"
+	serviceCAConfigMapResourceVersionAnnotation    = "console.openshift.io/service-ca-config-version"
+	trustedCAConfigMapResourceVersionAnnotation    = "console.openshift.io/trusted-ca-config-version"
+	secretResourceVersionAnnotation                = "console.openshift.io/oauth-secret-version"
+	consoleImageAnnotation                         = "console.openshift.io/image"
+	authnConfigVersionAnnotation                   = "console.openshift.io/authentication-config-version"
+	authnCATrustConfigMapResourceVersionAnnotation = "console.openshift.io/authn-ca-trust-config-version"
+	sessionSecretRVAnnotation                      = "console.openshift.io/session-secret-version"
 )
 
 var (
@@ -47,7 +46,7 @@ var (
 		proxyConfigResourceVersionAnnotation,
 		infrastructureConfigResourceVersionAnnotation,
 		serviceCAConfigMapResourceVersionAnnotation,
-		oauthServingCertConfigMapResourceVersionAnnotation,
+		authnCATrustConfigMapResourceVersionAnnotation,
 		trustedCAConfigMapResourceVersionAnnotation,
 		secretResourceVersionAnnotation,
 		consoleImageAnnotation,
@@ -77,6 +76,11 @@ func DefaultDeployment(
 	infrastructureConfig *configv1.Infrastructure,
 	canMountCustomLogo bool,
 ) *appsv1.Deployment {
+	authnCATrustConfigMap := localOAuthServingCertConfigMap
+	if authnCATrustConfigMap == nil {
+		authnCATrustConfigMap = authServerCAConfigMap
+	}
+
 	deployment := resourceread.ReadDeploymentV1OrDie(bindata.MustAsset("assets/deployments/console-deployment.yaml"))
 	withReplicas(deployment, infrastructureConfig)
 	withAffinity(deployment, infrastructureConfig, "ui")
@@ -85,13 +89,12 @@ func DefaultDeployment(
 		deployment,
 		consoleConfigMap,
 		serviceCAConfigMap,
-		localOAuthServingCertConfigMap,
+		authnCATrustConfigMap,
 		trustedCAConfigMap,
 		oAuthClientSecret,
 		sessionSecret,
 		proxyConfig,
 		infrastructureConfig,
-		authServerCAConfigMap,
 	)
 	withConsoleVolumes(
 		deployment,
@@ -179,13 +182,12 @@ func withConsoleAnnotations(
 	deployment *appsv1.Deployment,
 	consoleConfigMap *corev1.ConfigMap,
 	serviceCAConfigMap *corev1.ConfigMap,
-	oauthServingCertConfigMap *corev1.ConfigMap,
+	authServerCAConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
 	oAuthClientSecret *corev1.Secret,
 	sessionSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
-	authServerCAConfigMap *corev1.ConfigMap,
 ) {
 	deployment.ObjectMeta.Annotations = map[string]string{
 		configMapResourceVersionAnnotation:            consoleConfigMap.GetResourceVersion(),
@@ -195,10 +197,6 @@ func withConsoleAnnotations(
 		infrastructureConfigResourceVersionAnnotation: infrastructureConfig.GetResourceVersion(),
 		secretResourceVersionAnnotation:               oAuthClientSecret.GetResourceVersion(),
 		consoleImageAnnotation:                        util.GetImageEnv("CONSOLE_IMAGE"),
-	}
-
-	if oauthServingCertConfigMap != nil {
-		deployment.ObjectMeta.Annotations[oauthServingCertConfigMapResourceVersionAnnotation] = oauthServingCertConfigMap.GetResourceVersion()
 	}
 
 	if authServerCAConfigMap != nil {
