@@ -166,9 +166,12 @@ func TestDefaultDeployment(t *testing.T) {
 		},
 	}
 
-	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
-	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
-	infrastructureConfigExternalTopologyMode := infrastructureConfigWithTopology(configv1.ExternalTopologyMode)
+	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode,
+		configv1.HighlyAvailableTopologyMode)
+	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode,
+		configv1.SingleReplicaTopologyMode)
+	infrastructureConfigExternalTopologyMode := infrastructureConfigWithTopology(configv1.ExternalTopologyMode,
+		configv1.HighlyAvailableTopologyMode)
 	consoleDeploymentTemplate := resourceread.ReadDeploymentV1OrDie(bindata.MustAsset("assets/deployments/console-deployment.yaml"))
 	withConsoleContainerImage(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
 	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMap{
@@ -669,8 +672,14 @@ func TestWithReplicas(t *testing.T) {
 		infrastructureConfig *configv1.Infrastructure
 	}
 
-	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
-	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
+	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode,
+		configv1.HighlyAvailableTopologyMode)
+	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode,
+		configv1.SingleReplicaTopologyMode)
+	infrastructureConfigExternalCPSingleReplica := infrastructureConfigWithTopology(configv1.ExternalTopologyMode,
+		configv1.SingleReplicaTopologyMode)
+	infrastructureConfigExternalCPHighlyAvailable := infrastructureConfigWithTopology(configv1.ExternalTopologyMode,
+		configv1.HighlyAvailableTopologyMode)
 
 	tests := []struct {
 		name string
@@ -705,6 +714,34 @@ func TestWithReplicas(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Test External CP with Single Replica workers",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Spec: appsv1.DeploymentSpec{},
+				},
+				infrastructureConfig: infrastructureConfigExternalCPSingleReplica,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &singleNodeReplicaCount,
+				},
+			},
+		},
+		{
+			name: "Test External CP with Highly Available workers",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Spec: appsv1.DeploymentSpec{},
+				},
+				infrastructureConfig: infrastructureConfigExternalCPHighlyAvailable,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &defaultReplicaCount,
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -723,8 +760,12 @@ func TestWithAffinity(t *testing.T) {
 		component            string
 	}
 
-	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
-	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
+	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode, configv1.HighlyAvailableTopologyMode)
+	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode, configv1.SingleReplicaTopologyMode)
+	infrastructureConfigExternalCPSingleReplica := infrastructureConfigWithTopology(configv1.ExternalTopologyMode,
+		configv1.SingleReplicaTopologyMode)
+	infrastructureConfigExternalCPHighlyAvailable := infrastructureConfigWithTopology(configv1.ExternalTopologyMode,
+		configv1.HighlyAvailableTopologyMode)
 
 	tests := []struct {
 		name string
@@ -757,6 +798,59 @@ func TestWithAffinity(t *testing.T) {
 					Spec: appsv1.DeploymentSpec{},
 				},
 				infrastructureConfig: infrastructureConfigHighlyAvailable,
+				component:            "foobar",
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Affinity: &corev1.Affinity{
+								PodAntiAffinity: &corev1.PodAntiAffinity{
+									RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+										LabelSelector: &metav1.LabelSelector{
+											MatchExpressions: []metav1.LabelSelectorRequirement{
+												{
+													Key:      "component",
+													Operator: metav1.LabelSelectorOpIn,
+													Values:   []string{"foobar"},
+												},
+											},
+										},
+										TopologyKey: "kubernetes.io/hostname",
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Test Single Replica Affinity in externalized control plane with Single Replica workers",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Spec: appsv1.DeploymentSpec{},
+				},
+				infrastructureConfig: infrastructureConfigExternalCPSingleReplica,
+				component:            "ui",
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Affinity: &corev1.Affinity{},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Test Highly Available Affinity in externalized control plane with Highly Available workers",
+			args: args{
+				deployment: &appsv1.Deployment{
+					Spec: appsv1.DeploymentSpec{},
+				},
+				infrastructureConfig: infrastructureConfigExternalCPHighlyAvailable,
 				component:            "foobar",
 			},
 			want: &appsv1.Deployment{
@@ -1181,8 +1275,10 @@ func TestWithStrategy(t *testing.T) {
 		infrastructureConfig *configv1.Infrastructure
 	}
 
-	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
-	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
+	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode, configv1.HighlyAvailableTopologyMode)
+	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode, configv1.SingleReplicaTopologyMode)
+	infrastructureConfigExternalTopologyHighlyAvailable := infrastructureConfigWithTopology(configv1.ExternalTopologyMode, configv1.HighlyAvailableTopologyMode)
+	infrastructureConfigExternalTopologySingleReplica := infrastructureConfigWithTopology(configv1.ExternalTopologyMode, configv1.SingleReplicaTopologyMode)
 
 	singleReplicaStrategy := appsv1.RollingUpdateDeployment{}
 	highAvailStrategy := appsv1.RollingUpdateDeployment{
@@ -1227,6 +1323,34 @@ func TestWithStrategy(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Test Single Replica Strategy in externalized control plane with Single Replica workers",
+			args: args{
+				deployment:           &appsv1.Deployment{},
+				infrastructureConfig: infrastructureConfigExternalTopologySingleReplica,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Strategy: appsv1.DeploymentStrategy{
+						RollingUpdate: &singleReplicaStrategy,
+					},
+				},
+			},
+		},
+		{
+			name: "Test Highly Available Strategy in externalized control plane with Highly Available workers",
+			args: args{
+				deployment:           &appsv1.Deployment{},
+				infrastructureConfig: infrastructureConfigExternalTopologyHighlyAvailable,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Strategy: appsv1.DeploymentStrategy{
+						RollingUpdate: &highAvailStrategy,
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1244,9 +1368,10 @@ func TestWithConsoleNodeSelector(t *testing.T) {
 		infrastructureConfig *configv1.Infrastructure
 	}
 
-	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
-	infrastructureConfigExternalTopology := infrastructureConfigSingleReplica
-	infrastructureConfigExternalTopology.Status.ControlPlaneTopology = configv1.ExternalTopologyMode
+	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode,
+		configv1.SingleReplicaTopologyMode)
+	infrastructureConfigExternalTopology := infrastructureConfigWithTopology(configv1.ExternalTopologyMode,
+		configv1.SingleReplicaTopologyMode)
 	defaultDeployment := appsv1.Deployment{
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
@@ -1343,8 +1468,10 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 		Finalizers:                 nil,
 	}
 
-	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode)
-	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode)
+	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode,
+		configv1.HighlyAvailableTopologyMode)
+	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode,
+		configv1.SingleReplicaTopologyMode)
 
 	downloadsDeploymentPodSpecSingleReplica := corev1.PodSpec{
 		NodeSelector: map[string]string{
@@ -1790,13 +1917,13 @@ func TestIsAvailableAndUpdated(t *testing.T) {
 
 }
 
-func infrastructureConfigWithTopology(topologyMode configv1.TopologyMode) *configv1.Infrastructure {
+func infrastructureConfigWithTopology(controlPlaneTopologyMode, infrastructureTopologyMode configv1.TopologyMode) *configv1.Infrastructure {
 	return &configv1.Infrastructure{
 		TypeMeta:   metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{},
 		Status: configv1.InfrastructureStatus{
-			InfrastructureTopology: topologyMode,
-			ControlPlaneTopology:   topologyMode,
+			InfrastructureTopology: infrastructureTopologyMode,
+			ControlPlaneTopology:   controlPlaneTopologyMode,
 		},
 	}
 }

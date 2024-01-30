@@ -125,9 +125,18 @@ func DefaultDownloadsDeployment(
 	return downloadsDeployment
 }
 
+// ShouldDeployHA returns true if the console should be deployed in HA mode.
+// If the control plane is externalized, the console should be deployed in HA mode based on the InfrastructureTopology,
+// otherwise it should be deployed in HA mode based on the ControlPlaneTopology.
+func ShouldDeployHA(infrastructureConfig *configv1.Infrastructure) bool {
+	return infrastructureConfig.Status.ControlPlaneTopology == configv1.HighlyAvailableTopologyMode ||
+		(infrastructureConfig.Status.ControlPlaneTopology == configv1.ExternalTopologyMode &&
+			infrastructureConfig.Status.InfrastructureTopology == configv1.HighlyAvailableTopologyMode)
+}
+
 func withReplicas(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
 	replicas := int32(SingleNodeConsoleReplicas)
-	if infrastructureConfig.Status.ControlPlaneTopology != configv1.SingleReplicaTopologyMode {
+	if ShouldDeployHA(infrastructureConfig) {
 		replicas = int32(DefaultConsoleReplicas)
 	}
 	deployment.Spec.Replicas = &replicas
@@ -139,7 +148,7 @@ func withAffinity(
 	component string,
 ) {
 	affinity := &corev1.Affinity{}
-	if infrastructureConfig.Status.ControlPlaneTopology != configv1.SingleReplicaTopologyMode {
+	if ShouldDeployHA(infrastructureConfig) {
 		affinity = &corev1.Affinity{
 			PodAntiAffinity: &corev1.PodAntiAffinity{
 				RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
@@ -162,7 +171,7 @@ func withAffinity(
 
 func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
 	rollingUpdateParams := &appsv1.RollingUpdateDeployment{}
-	if infrastructureConfig.Status.InfrastructureTopology != configv1.SingleReplicaTopologyMode {
+	if ShouldDeployHA(infrastructureConfig) {
 		rollingUpdateParams = &appsv1.RollingUpdateDeployment{
 			MaxSurge: &intstr.IntOrString{
 				IntVal: int32(3),

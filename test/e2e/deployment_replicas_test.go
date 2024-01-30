@@ -7,7 +7,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 
-	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -34,10 +33,10 @@ func TestDeploymentsReplicas(t *testing.T) {
 	}
 
 	var expectedReplicas int32
-	if infrastructureConfig.Status.ControlPlaneTopology == configv1.SingleReplicaTopologyMode {
-		expectedReplicas = int32(deploymentsub.SingleNodeConsoleReplicas)
-	} else {
+	if deploymentsub.ShouldDeployHA(infrastructureConfig) {
 		expectedReplicas = int32(deploymentsub.DefaultConsoleReplicas)
+	} else {
+		expectedReplicas = int32(deploymentsub.SingleNodeConsoleReplicas)
 	}
 
 	consoleDeployment, err := framework.GetConsoleDeployment(client)
