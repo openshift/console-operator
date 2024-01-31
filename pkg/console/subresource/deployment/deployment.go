@@ -245,7 +245,7 @@ func withConsoleVolumes(
 	}
 
 	if authServerCAConfigMap != nil {
-		volumeConfig = append(volumeConfig, authServerCAVolumeConfig())
+		volumeConfig = append(volumeConfig, authServerCAVolumeConfig(authServerCAConfigMap.Name))
 	}
 
 	if sessionSecret != nil {
@@ -507,9 +507,9 @@ func oauthServingCertVolumeConfig() volumeConfig {
 	}
 }
 
-func authServerCAVolumeConfig() volumeConfig {
+func authServerCAVolumeConfig(cmName string) volumeConfig {
 	return volumeConfig{
-		name:        api.AuthServerCAFileName,
+		name:        cmName,
 		path:        api.AuthServerCAMountDir,
 		readOnly:    true,
 		isConfigMap: true,
