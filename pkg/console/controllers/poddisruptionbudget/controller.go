@@ -15,7 +15,8 @@ import (
 
 	// openshift
 	operatorsv1 "github.com/openshift/api/operator/v1"
-	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
+	operatorv1informers "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
+	operatorv1listers "github.com/openshift/client-go/operator/listers/operator/v1"
 	"github.com/openshift/console-operator/bindata"
 	"github.com/openshift/console-operator/pkg/console/status"
 	"github.com/openshift/library-go/pkg/controller/factory"
@@ -33,7 +34,7 @@ import (
 type PodDisruptionBudgetController struct {
 	pdbName              string
 	operatorClient       v1helpers.OperatorClient
-	operatorConfigClient operatorclientv1.ConsoleInterface
+	operatorConfigLister operatorv1listers.ConsoleLister
 	pdbClient            policyv1client.PodDisruptionBudgetsGetter
 }
 
@@ -42,7 +43,7 @@ func NewPodDisruptionBudgetController(
 	pdbName string,
 	// clients
 	operatorClient v1helpers.OperatorClient,
-	operatorConfigClient operatorclientv1.ConsoleInterface,
+	operatorConfigInformer operatorv1informers.ConsoleInformer,
 	pdbClient policyv1client.PodDisruptionBudgetsGetter,
 	// informer
 	pdbInformer policyv1.PodDisruptionBudgetInformer,
@@ -53,7 +54,7 @@ func NewPodDisruptionBudgetController(
 	ctrl := &PodDisruptionBudgetController{
 		pdbName:              pdbName,
 		operatorClient:       operatorClient,
-		operatorConfigClient: operatorConfigClient,
+		operatorConfigLister: operatorConfigInformer.Lister(),
 		pdbClient:            pdbClient,
 	}
 
@@ -61,12 +62,17 @@ func NewPodDisruptionBudgetController(
 		WithFilteredEventsInformers(
 			util.IncludeNamesFilter(pdbName),
 			pdbInformer.Informer(),
-		).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
+		).
+		WithFilteredEventsInformers( // configs
+			util.IncludeNamesFilter(api.ConfigResourceName),
+			operatorConfigInformer.Informer(),
+		).
+		ResyncEvery(time.Minute).WithSync(ctrl.Sync).
 		ToController("PodDisruptionBudgetController", recorder.WithComponentSuffix(fmt.Sprintf("%s-pdb-controller", pdbName)))
 }
 
 func (c *PodDisruptionBudgetController) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
-	operatorConfig, err := c.operatorConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := c.operatorConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		return err
 	}

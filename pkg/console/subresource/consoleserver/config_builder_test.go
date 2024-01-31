@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
+	"github.com/google/go-cmp/cmp"
+	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	v1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
@@ -38,22 +40,21 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ConsoleBasePath: "",
 				},
 				Auth: Auth{
-					ClientID:            api.OpenShiftConsoleName,
-					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
 				},
 				Customization: Customization{},
 				Providers:     Providers{},
 			},
 		}, {
-			name: "Config builder should handle cluster info",
+			name: "Config builder should handle cluster info with internal OAuth",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
 				return b.
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					OAuthServingCert().
+					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: ""}}, nil).
 					Config()
 			},
 			output: Config{
@@ -70,9 +71,44 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					MasterPublicURL:    "https://foobar.com/api",
 				},
 				Auth: Auth{
+					AuthType:            "openshift",
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
+					OAuthEndpointCAFile: "/var/oauth-serving-cert/ca-bundle.crt",
+					LogoutRedirect:      "https://foobar.com/logout",
+				},
+				Customization: Customization{},
+				Providers:     Providers{},
+			},
+		}, {
+			name: "Config builder should handle cluster info with external OIDC",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				return b.
+					APIServerURL("https://foobar.com/api").
+					Host("https://foobar.com/host").
+					LogoutURL("https://foobar.com/logout").
+					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}}, &corev1.ConfigMap{Data: map[string]string{"ca-bundle.crt": "real PEM content"}}).
+					Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath:    "",
+					ConsoleBaseAddress: "https://foobar.com/host",
+					MasterPublicURL:    "https://foobar.com/api",
+				},
+				Auth: Auth{
+					AuthType:            "disabled",
+					ClientID:            api.OpenShiftConsoleName,
+					ClientSecretFile:    clientSecretFilePath,
+					OAuthEndpointCAFile: "/var/auth-server-ca/ca-bundle.crt",
 					LogoutRedirect:      "https://foobar.com/logout",
 				},
 				Customization: Customization{},
@@ -86,7 +122,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					OAuthServingCert().
+					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}}, &corev1.ConfigMap{Data: map[string]string{"ca-bundle.crt": "real PEM content"}}).
 					Config()
 			},
 			output: Config{
@@ -103,9 +139,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					MasterPublicURL:    "https://foobar.com/api",
 				},
 				Auth: Auth{
+					AuthType:            "disabled",
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
+					OAuthEndpointCAFile: "/var/auth-server-ca/ca-bundle.crt",
 					LogoutRedirect:      "https://foobar.com/logout",
 				},
 				Customization: Customization{},
@@ -129,9 +166,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ConsoleBasePath: "",
 				},
 				Auth: Auth{
-					ClientID:            api.OpenShiftConsoleName,
-					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
 				},
 				Customization: Customization{},
 				Providers: Providers{
@@ -158,9 +194,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ConsoleBasePath: "",
 				},
 				Auth: Auth{
-					ClientID:            api.OpenShiftConsoleName,
-					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
 				},
 				Customization: Customization{},
 				Providers:     Providers{},
@@ -187,10 +222,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ConsoleBasePath: "",
 				},
 				Auth: Auth{
-					ClientID:            api.OpenShiftConsoleName,
-					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
 						Categories: &[]DeveloperConsoleCatalogCategory{},
@@ -241,10 +276,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ConsoleBasePath: "",
 				},
 				Auth: Auth{
-					ClientID:            api.OpenShiftConsoleName,
-					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
 						Categories: &[]DeveloperConsoleCatalogCategory{
@@ -295,10 +330,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ConsoleBasePath: "",
 				},
 				Auth: Auth{
-					ClientID:            api.OpenShiftConsoleName,
-					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
 						Categories: nil,
@@ -329,10 +364,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ConsoleBasePath: "",
 				},
 				Auth: Auth{
-					ClientID:            api.OpenShiftConsoleName,
-					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
 						Categories: nil,
@@ -363,10 +398,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ConsoleBasePath: "",
 				},
 				Auth: Auth{
-					ClientID:            api.OpenShiftConsoleName,
-					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					ProjectAccess: ProjectAccess{
 						AvailableClusterRoles: []string{"View", "Edit", "Admin"},
@@ -396,10 +431,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ConsoleBasePath: "",
 				},
 				Auth: Auth{
-					ClientID:            api.OpenShiftConsoleName,
-					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					QuickStarts: QuickStarts{
 						Disabled: []string{"quick-start0", "quick-start1", "quick-start2"},
@@ -443,10 +478,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ConsoleBasePath: "",
 				},
 				Auth: Auth{
-					ClientID:            api.OpenShiftConsoleName,
-					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{
@@ -508,10 +543,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ConsoleBasePath: "",
 				},
 				Auth: Auth{
-					ClientID:            api.OpenShiftConsoleName,
-					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{ID: "perspective1",
@@ -572,10 +607,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ConsoleBasePath: "",
 				},
 				Auth: Auth{
-					ClientID:            api.OpenShiftConsoleName,
-					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{ID: "perspective1",
@@ -628,11 +663,11 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					MasterPublicURL: "https://foobar.com/api",
 				},
 				Auth: Auth{
-					ClientID:            api.OpenShiftConsoleName,
-					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
-					LogoutRedirect:      "https://foobar.com/logout",
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
+					LogoutRedirect:   "https://foobar.com/logout",
 				},
+				Session: Session{},
 				Customization: Customization{
 					Branding:             "okd",
 					DocumentationBaseURL: "https://foobar.com/docs",
@@ -668,9 +703,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ConsoleBasePath: "",
 				},
 				Auth: Auth{
-					ClientID:            api.OpenShiftConsoleName,
-					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
 				},
 				Customization: Customization{},
 				Providers:     Providers{},
@@ -703,9 +737,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ConsoleBasePath: "",
 				},
 				Auth: Auth{
-					ClientID:            api.OpenShiftConsoleName,
-					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: oauthServingCertFilePath,
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
 				},
 				Customization: Customization{},
 				Providers:     Providers{},
@@ -753,7 +786,51 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+session: {}
+customization: {}
+providers: {}
+`,
+		},
+		{
+			name: "Config builder should return modified client ID if overriden by user",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				return b.AuthConfig(
+					&configv1.Authentication{
+						Spec: configv1.AuthenticationSpec{
+							Type: configv1.AuthenticationTypeOIDC,
+							OIDCProviders: []configv1.OIDCProvider{
+								{
+									OIDCClients: []configv1.OIDCClientConfig{
+										{
+											ComponentNamespace: "openshift-console",
+											ComponentName:      "console",
+											ClientID:           "testing-id",
+											ClientSecret: configv1.SecretNameReference{
+												Name: "testing-oidc-client-secret",
+											},
+										},
+									},
+								},
+							},
+						},
+					}, nil,
+				).ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo: {}
+auth:
+  authType: oidc
+  clientID: testing-id
+  clientSecretFile: /var/oauth-config/clientSecret
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
 customization: {}
 providers: {}
 `,
@@ -766,7 +843,7 @@ providers: {}
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					OAuthServingCert().
+					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: configv1.AuthenticationTypeIntegratedOAuth}}, nil).
 					ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
@@ -779,10 +856,12 @@ clusterInfo:
   consoleBaseAddress: https://foobar.com/host
   masterPublicURL: https://foobar.com/api
 auth:
+  authType: openshift
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
   logoutRedirect: https://foobar.com/logout
+session: {}
 customization: {}
 providers: {}
 `,
@@ -803,7 +882,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+session: {}
 customization: {}
 providers:
   statuspageID: status-12345
@@ -826,7 +905,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+session: {}
 customization: {}
 providers: {}
 `,
@@ -850,7 +929,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+session: {}
 customization:
   developerCatalog:
     categories: []
@@ -898,7 +977,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+session: {}
 customization:
   developerCatalog:
     categories:
@@ -938,7 +1017,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+session: {}
 customization:
   developerCatalog:
     categories: null
@@ -969,7 +1048,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+session: {}
 customization:
   developerCatalog:
     categories: null
@@ -1001,7 +1080,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+session: {}
 customization:
   addPage:
     disabledActions:
@@ -1026,7 +1105,7 @@ providers: {}
 						"plugin2": "plugin2_url",
 					}).
 					I18nNamespaces([]string{"plugin__plugin1"}).
-					OAuthServingCert()
+					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}}, &corev1.ConfigMap{Data: map[string]string{"ca-bundle.crt": "real PEM content"}})
 				return b.ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
@@ -1039,10 +1118,12 @@ servingInfo:
 clusterInfo:
   masterPublicURL: https://foobar.com/api
 auth:
+  authType: disabled
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+  oauthEndpointCAFile: /var/auth-server-ca/ca-bundle.crt
   logoutRedirect: https://foobar.com/logout
+session: {}
 customization:
   branding: okd
   documentationBaseURL: https://foobar.com/docs
@@ -1077,7 +1158,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+session: {}
 customization:
   quickStarts:
     disabled:
@@ -1119,7 +1200,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+session: {}
 customization:
   perspectives:
   - id: perspective1
@@ -1185,7 +1266,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+session: {}
 customization:
   perspectives:
   - id: perspective1
@@ -1255,7 +1336,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+session: {}
 customization:
   perspectives:
   - id: perspective1
@@ -1305,7 +1386,7 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+session: {}
 customization: {}
 providers: {}
 telemetry:
@@ -1317,7 +1398,7 @@ telemetry:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			input, _ := tt.input()
-			if diff := deep.Equal(string(input), tt.output); diff != nil {
+			if diff := cmp.Diff(tt.output, string(input)); len(diff) > 0 {
 				t.Error(diff)
 			}
 		})

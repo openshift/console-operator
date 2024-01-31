@@ -15,8 +15,8 @@ import (
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
-	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	operatorinformersv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
+	operatorv1listers "github.com/openshift/client-go/operator/listers/operator/v1"
 	"github.com/openshift/console-operator/bindata"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
@@ -35,7 +35,7 @@ import (
 type ServiceSyncController struct {
 	serviceName          string
 	operatorClient       v1helpers.OperatorClient
-	operatorConfigClient operatorclientv1.ConsoleInterface
+	operatorConfigLister operatorv1listers.ConsoleLister
 	ingressClient        configclientv1.IngressInterface
 	// live clients, we dont need listers w/caches
 	serviceClient coreclientv1.ServicesGetter
@@ -50,7 +50,6 @@ func NewServiceSyncController(
 	configInformer configinformer.SharedInformerFactory,
 	// clients
 	operatorClient v1helpers.OperatorClient,
-	operatorConfigClient operatorclientv1.ConsoleInterface,
 	corev1Client coreclientv1.CoreV1Interface,
 	// informers
 	operatorConfigInformer operatorinformersv1.ConsoleInformer,
@@ -62,7 +61,7 @@ func NewServiceSyncController(
 	ctrl := &ServiceSyncController{
 		serviceName:          serviceName,
 		operatorClient:       operatorClient,
-		operatorConfigClient: operatorConfigClient,
+		operatorConfigLister: operatorConfigInformer.Lister(),
 		ingressClient:        configClient.Ingresses(),
 		serviceClient:        corev1Client,
 	}
@@ -82,7 +81,7 @@ func NewServiceSyncController(
 }
 
 func (c *ServiceSyncController) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
-	operatorConfig, err := c.operatorConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	operatorConfig, err := c.operatorConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		return err
 	}

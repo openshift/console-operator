@@ -2,6 +2,7 @@ package consoleserver
 
 import (
 	"os"
+	"path"
 	"strings"
 
 	configv1 "github.com/openshift/api/config/v1"
@@ -65,6 +66,12 @@ type ConsoleServerCLIConfigBuilder struct {
 	nodeArchitectures          []string
 	nodeOperatingSystems       []string
 	copiedCSVsDisabled         bool
+	oauthClientID              string
+	oidcExtraScopes            []string
+	oidcIssuerURL              string
+	authType                   string
+	sessionEncryptionFile      string
+	sessionAuthenticationFile  string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -135,8 +142,45 @@ func (b *ConsoleServerCLIConfigBuilder) StatusPageID(id string) *ConsoleServerCL
 	return b
 }
 
-func (b *ConsoleServerCLIConfigBuilder) OAuthServingCert() *ConsoleServerCLIConfigBuilder {
-	b.CAFile = oauthServingCertFilePath
+func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authentication, caConfigMap *corev1.ConfigMap) *ConsoleServerCLIConfigBuilder {
+	switch authnConfig.Spec.Type {
+	case "", configv1.AuthenticationTypeIntegratedOAuth:
+		b.authType = "openshift"
+		b.oauthClientID = api.OAuthClientName
+		b.CAFile = oauthServingCertFilePath
+		return b
+
+	case configv1.AuthenticationTypeNone:
+		b.authType = "disabled"
+		return b
+
+	case configv1.AuthenticationTypeOIDC:
+		if caConfigMap != nil {
+			if _, ok := caConfigMap.Data["ca-bundle.crt"]; ok {
+				b.CAFile = path.Join(api.AuthServerCAMountDir, api.AuthServerCAFileName)
+			}
+		}
+
+		if len(authnConfig.Spec.OIDCProviders) == 0 {
+			b.authType = "disabled"
+			return b
+		}
+
+		oidcProvider := authnConfig.Spec.OIDCProviders[0]
+		oidcConfig := util.GetOIDCClientConfig(authnConfig)
+		if oidcConfig == nil {
+			b.authType = "disabled"
+			return b
+		}
+
+		b.authType = "oidc"
+		b.oidcIssuerURL = oidcProvider.Issuer.URL
+		b.oauthClientID = oidcConfig.ClientID
+		b.oidcExtraScopes = oidcConfig.ExtraScopes
+		b.sessionAuthenticationFile = "/var/session-secret/sessionAuthenticationKey"
+		b.sessionEncryptionFile = "/var/session-secret/sessionEncryptionKey"
+	}
+
 	return b
 }
 
@@ -197,6 +241,7 @@ func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 		Kind:           "ConsoleConfig",
 		APIVersion:     "console.openshift.io/v1",
 		Auth:           b.auth(),
+		Session:        b.session(),
 		ClusterInfo:    b.clusterInfo(),
 		Customization:  b.customization(),
 		ServingInfo:    b.servingInfo(),
@@ -290,19 +335,29 @@ func (b *ConsoleServerCLIConfigBuilder) monitoringInfo() MonitoringInfo {
 }
 
 func (b *ConsoleServerCLIConfigBuilder) auth() Auth {
-	// we need this fallback due to the way our unit test are structured,
-	// where the ConsoleServerCLIConfigBuilder object is being instantiated empty
-	if b.CAFile == "" {
-		b.CAFile = oauthServingCertFilePath
+	clientID := api.OAuthClientName
+	if clientIDOverride := b.oauthClientID; len(clientIDOverride) > 0 {
+		clientID = clientIDOverride
 	}
 	conf := Auth{
-		ClientID:                 api.OpenShiftConsoleName,
+		AuthType:                 b.authType,
+		OIDCIssuer:               b.oidcIssuerURL,
+		ClientID:                 clientID,
 		ClientSecretFile:         clientSecretFilePath,
 		OAuthEndpointCAFile:      b.CAFile,
 		InactivityTimeoutSeconds: b.inactivityTimeoutSeconds,
+		OIDCExtraScopes:          b.oidcExtraScopes,
 	}
 	if len(b.logoutRedirectURL) > 0 {
 		conf.LogoutRedirect = b.logoutRedirectURL
+	}
+	return conf
+}
+
+func (b *ConsoleServerCLIConfigBuilder) session() Session {
+	conf := Session{
+		CookieAuthenticationKeyFile: b.sessionAuthenticationFile,
+		CookieEncryptionKeyFile:     b.sessionEncryptionFile,
 	}
 	return conf
 }

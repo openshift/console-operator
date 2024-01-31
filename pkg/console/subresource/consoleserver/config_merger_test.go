@@ -3,7 +3,7 @@ package consoleserver
 import (
 	"testing"
 
-	"github.com/go-test/deep"
+	"github.com/google/go-cmp/cmp"
 	v1 "github.com/openshift/api/operator/v1"
 )
 
@@ -44,7 +44,6 @@ auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   logoutRedirect: https://foobar.com/logout
-  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
 clusterInfo:
   consoleBaseAddress: https://console-openshift-console.apps.foobar.com
   masterPublicURL: https://foobar.com/api
@@ -58,6 +57,7 @@ servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
+session: {}
 `,
 		},
 	}
@@ -65,7 +65,7 @@ servingInfo:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			input, _ := tt.input()
-			if diff := deep.Equal(string(input), tt.output); diff != nil {
+			if diff := cmp.Diff(tt.output, string(input)); len(diff) > 0 {
 				t.Error(diff)
 			}
 		})
