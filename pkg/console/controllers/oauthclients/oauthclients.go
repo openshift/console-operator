@@ -195,9 +195,11 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 		// This means that you cannot get to the desired state in a single update
 		// as you first need to set the Authn type to OIDC, wait for the operator to
 		// set the client, and only then you can configure the client in the provider.
-		if err := c.authStatusHandler.Apply(ctx, authnConfig); err != nil {
-			statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthStatusHandler", "FailedApply", err))
-			return statusHandler.FlushAndReturn(err)
+		applyErr := c.authStatusHandler.Apply(ctx, authnConfig)
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthStatusHandler", "FailedApply", applyErr))
+		if applyErr != nil {
+			syncErr = applyErr
+			break
 		}
 	}
 
