@@ -8,6 +8,8 @@ import (
 
 	// kube
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	apiexensionsinformers "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
@@ -202,11 +204,18 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		resourceSyncer,
 	)
 
+	apiextensionsClient, err := apiextensionsclient.NewForConfig(controllerContext.KubeConfig)
+	if err != nil {
+		return err
+	}
+	apiextensionsInformers := apiexensionsinformers.NewSharedInformerFactory(apiextensionsClient, resync)
+
 	oauthClientController := oauthclients.NewOAuthClientsController(
 		ctx,
 		operatorClient,
 		oauthClient,
 		kubeClient.CoreV1(),
+		apiextensionsInformers.Apiextensions().V1().CustomResourceDefinitions(),
 		configClient.ConfigV1().Authentications(),
 		configInformers.Config().V1().Authentications(),
 		operatorConfigInformers.Operator().V1().Consoles(),
@@ -453,6 +462,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	for _, informer := range []interface {
 		Start(stopCh <-chan struct{})
 	}{
+		apiextensionsInformers,
 		kubeInformersNamespaced,
 		kubeInformersConfigNamespaced,
 		kubeInformersManagedNamespaced,
