@@ -178,6 +178,7 @@ func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorCo
 	return "", nil
 }
 
+// TEST
 func (c *HealthCheckController) getCA(ctx context.Context, tls *routev1.TLSConfig) (*x509.CertPool, error) {
 	caCertPool := x509.NewCertPool()
 
