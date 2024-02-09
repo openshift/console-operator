@@ -1,0 +1,60 @@
+apiVersion: console.openshift.io/v1
+kind: ConsoleQuickStart
+metadata:
+  annotations:
+    capability.openshift.io/name: Console
+    include.release.openshift.io/ibm-cloud-managed: 'true'
+    include.release.openshift.io/self-managed-high-availability: 'true'
+    include.release.openshift.io/single-node-developer: 'true'
+  name: user-impersonation
+spec:
+  accessReviewResources:
+    - group: authorization.k8s.io
+      resource: users
+      verb: impersonate
+  durationMinutes: 5
+  displayName: Impersonating the system:admin user
+  description: >-
+    Impersonate a user and perform any action as if you are that user.
+  icon: >-
+    data:image/svg+xml;base64,
+    77u/PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/Pg0KPHN2ZyBjbGFzcz0icGYtdjUtc3ZnIiB2aWV3Qm94PSIwIDAgNjQwIDUxMiIgZmlsbD0iY3VycmVudENvbG9yIiBhcmlhLWhpZGRlbj0idHJ1ZSIgcm9sZT0iaW1nIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBjb2xvcj0idmFyKC0tcGYtdjUtZ2xvYmFsLS1Db2xvci0tMTAwKSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNOTYgMjI0YzM1LjMgMCA2NC0yOC43IDY0LTY0cy0yOC43LTY0LTY0LTY0LTY0IDI4LjctNjQgNjQgMjguNyA2NCA2NCA2NHptNDQ4IDBjMzUuMyAwIDY0LTI4LjcgNjQtNjRzLTI4LjctNjQtNjQtNjQtNjQgMjguNy02NCA2NCAyOC43IDY0IDY0IDY0em0zMiAzMmgtNjRjLTE3LjYgMC0zMy41IDcuMS00NS4xIDE4LjYgNDAuMyAyMi4xIDY4LjkgNjIgNzUuMSAxMDkuNGg2NmMxNy43IDAgMzItMTQuMyAzMi0zMnYtMzJjMC0zNS4zLTI4LjctNjQtNjQtNjR6bS0yNTYgMGM2MS45IDAgMTEyLTUwLjEgMTEyLTExMlMzODEuOSAzMiAzMjAgMzIgMjA4IDgyLjEgMjA4IDE0NHM1MC4xIDExMiAxMTIgMTEyem03Ni44IDMyaC04LjNjLTIwLjggMTAtNDMuOSAxNi02OC41IDE2cy00Ny42LTYtNjguNS0xNmgtOC4zQzE3OS42IDI4OCAxMjggMzM5LjYgMTI4IDQwMy4yVjQzMmMwIDI2LjUgMjEuNSA0OCA0OCA0OGgyODhjMjYuNSAwIDQ4LTIxLjUgNDgtNDh2LTI4LjhjMC02My42LTUxLjYtMTE1LjItMTE1LjItMTE1LjJ6bS0yMjMuNy0xMy40QzE2MS41IDI2My4xIDE0NS42IDI1NiAxMjggMjU2SDY0Yy0zNS4zIDAtNjQgMjguNy02NCA2NHYzMmMwIDE3LjcgMTQuMyAzMiAzMiAzMmg2NS45YzYuMy00Ny40IDM0LjktODcuMyA3NS4yLTEwOS40eiI+PC9wYXRoPjwvc3ZnPg==
+  introduction: >-
+    You can grant a user cluster administrator permissions by giving them permission to impersonate **system:admin**. For more information, see [User impersonation](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#user-impersonation).
+  tasks:
+    - title:  Select the system:admin user to impersonate
+      description: >
+        You must explicitly have the `impersonate` privilege to impersonate other users:
+
+        1. From the **Administrator** perspective, go to the **RoleBindings** page in the [User Management]{{highlight qs-nav-usermanagement}} section of the navigation.
+
+        1. Sort by **Subject Kind** and locate the **system:admin** user you want to impersonate. Then click its associated kebab menu and select **Impersonate User "system:admin"**.
+      review:
+        failedTaskHelp: >-
+          This task isn’t verified yet. Try the task again.
+        instructions: >-
+          Verify the notification at the top of the page displays:
+
+          <p>"Impersonating User<br />
+          You are impersonating **system:admin**. You are viewing all resources and roles this User can access. Stop impersonation"</p>
+      summary:
+        failed: Try the steps again.
+        success: You have successfully impersonated a user.
+    - title:  Stop impersonation
+      description: >
+        Stop impersonating the system:admin user:
+
+        1.  Click the **Stop Impersonating** link in the notification.
+      review:
+        failedTaskHelp: >-
+          This task isn’t verified yet. Try the task again.
+        instructions: >-
+          Verify the notification does not display:
+
+          <p>"Impersonating User<br />
+          You are impersonating **system:admin**. You are viewing all resources and roles this User can access. Stop impersonation"</p>
+      summary:
+        failed: Try the steps again.
+        success: You have successfully stopped impersonation.
+  conclusion: >-
+    You have successfully completed the impersonation workflow and functionality quick start. You can now impersonate a user and perform any action as if you are that user.
