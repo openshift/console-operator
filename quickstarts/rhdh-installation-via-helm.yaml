@@ -14,7 +14,6 @@ spec:
   tags:
     - rhdh
     - developer-hub
-    - janus
     - backstage
     - idp
     - developer-portal
@@ -103,7 +102,7 @@ spec:
 
     This **Red Hat Developer Hub Helm Chart** has some additional features enabled by default:
 
-    * It uses [janus-idp/backstage-showcase](https://github.com/janus-idp/backstage-showcase/) that pre-loads many useful plugins and features.
+    * It pre-loads many useful plugins and features.
     * Automatically exposes a Route for easy access to the instance.
     * And an OpenShift-compatible PostgreSQL database storage.
   tasks:
@@ -183,7 +182,7 @@ spec:
            
            This could be configured under **Root Schema > OpenShift Route parameters > TLS**.
 
-           Additional information can be found in the [Helm Chart README](https://github.com/janus-idp/helm-backstage/blob/main/charts/backstage/README.md).
+           Additional information can be found in the [Helm Chart README](https://github.com/redhat-developer/rhdh-chart).
         6. Press **Upgrade**.
       review:
         instructions: |-
@@ -202,7 +201,7 @@ spec:
         To add a new link to the application menu, you can create a `ConsoleLink` resource on your cluster.
 
         This resource is not created automatically because you can have multiple Red Hat Developer Hub installations on one cluster.
-        And this way, you can also link a single Janus IDP from multiple OpenShift clusters.
+        And this way, you can also link a single RHDH instance from multiple OpenShift clusters.
 
         1. Please copy the actual **Red Hat Developer Hub URL** from [Topology]{{highlight qs-nav-topology}}, or open it in another browser tab.
         2. Click on the [Import YAML (plus icon)]{{highlight qs-masthead-import}} button at the top of the navigation.
@@ -226,11 +225,11 @@ spec:
 
           1. The [Application launcher]{{highlight qs-masthead-applications}} icon should be shown.
           2. Click on the Application launcher icon and check if your application menu item is shown.
-          3. Verify that it opens your Janus IDP instance.
+          3. Verify that it opens your RHDH instance.
         failedTaskHelp: |-
           Doublecheck your `ConsoleLink` resource or try to reload the OpenShift Console.
       summary:
-        success: You have upgraded Janus IDP!
+        success: You have upgraded your RHDH instance!
         failed: Try the steps again.
   conclusion: |
     Your Red Hat Developer Hub installation is deployed and ready.
