@@ -6,18 +6,15 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	corev1informers "k8s.io/client-go/informers/core/v1"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
-	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	configv1informers "github.com/openshift/client-go/config/informers/externalversions/config/v1"
 	configv1lister "github.com/openshift/client-go/config/listers/config/v1"
 	oauthclient "github.com/openshift/client-go/oauth/clientset/versioned"
@@ -29,7 +26,6 @@ import (
 	routev1listers "github.com/openshift/client-go/route/listers/route/v1"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
-	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	"github.com/openshift/console-operator/pkg/api"
@@ -38,17 +34,14 @@ import (
 	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
 	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
-	"github.com/openshift/console-operator/pkg/crypto"
 )
 
 type oauthClientsController struct {
 	oauthClient    oauthv1client.OAuthClientsGetter
 	operatorClient v1helpers.OperatorClient
-	secretsClient  corev1client.SecretsGetter
 
 	oauthClientLister           oauthv1lister.OAuthClientLister
 	oauthClientSwitchedInformer *util.InformerWithSwitch
-	authentication              configv1client.AuthenticationInterface
 	authnLister                 configv1lister.AuthenticationLister
 	consoleOperatorLister       operatorv1listers.ConsoleLister
 	routesLister                routev1listers.RouteLister
@@ -61,8 +54,6 @@ type oauthClientsController struct {
 func NewOAuthClientsController(
 	operatorClient v1helpers.OperatorClient,
 	oauthClient oauthclient.Interface,
-	secretsClient corev1client.SecretsGetter,
-	authentication configv1client.AuthenticationInterface,
 	authnInformer configv1informers.AuthenticationInformer,
 	consoleOperatorInformer operatorv1informers.ConsoleInformer,
 	routeInformer routev1informers.RouteInformer,
@@ -74,18 +65,14 @@ func NewOAuthClientsController(
 	c := oauthClientsController{
 		oauthClient:    oauthClient.OauthV1(),
 		operatorClient: operatorClient,
-		secretsClient:  secretsClient,
 
 		oauthClientLister:           oauthClientSwitchedInformer.Lister(),
 		oauthClientSwitchedInformer: oauthClientSwitchedInformer,
-		authentication:              authentication,
 		authnLister:                 authnInformer.Lister(),
 		consoleOperatorLister:       consoleOperatorInformer.Lister(),
 		routesLister:                routeInformer.Lister(),
 		ingressConfigLister:         ingressConfigInformer.Lister(),
 		targetNSSecretsLister:       targetNSsecretsInformer.Lister(),
-
-		authStatusHandler: status.NewAuthStatusHandler(authentication, api.OpenShiftConsoleName, api.TargetNamespace, api.OpenShiftConsoleOperator),
 	}
 
 	return factory.New().
@@ -156,10 +143,9 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 		return statusHandler.FlushAndReturn(fmt.Errorf("timed out waiting for OAuthClients cache sync"))
 	}
 
-	clientSecret, err := c.syncSecret(ctx, operatorConfig, controllerContext.Recorder())
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "FailedApply", err))
+	clientSecret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get("console-oauth-config")
 	if err != nil {
-		return statusHandler.FlushAndReturn(err)
+		return err
 	}
 
 	oauthErrReason, err := c.syncOAuthClient(ctx, clientSecret, consoleURL.String())
@@ -193,15 +179,6 @@ func (c *oauthClientsController) handleManaged(ctx context.Context) (bool, error
 	default:
 		return false, fmt.Errorf("console is in an unknown state: %v", managementState)
 	}
-}
-
-func (c *oauthClientsController) syncSecret(ctx context.Context, operatorConfig *operatorv1.Console, recorder events.Recorder) (*corev1.Secret, error) {
-	secret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name)
-	if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) == "" {
-		secret, _, err = resourceapply.ApplySecret(ctx, c.secretsClient, recorder, secretsub.DefaultSecret(operatorConfig, crypto.Random256BitsString()))
-	}
-	// any error should be returned & kill the sync loop
-	return secret, err
 }
 
 // applies changes to the oauthclient
