@@ -10,11 +10,9 @@ import (
 	apiexensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiexensionsv1informers "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensions/v1"
 	apiexensionsv1listers "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	appsv1informers "k8s.io/client-go/informers/apps/v1"
 	corev1informers "k8s.io/client-go/informers/core/v1"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
@@ -29,20 +27,16 @@ import (
 	"github.com/openshift/console-operator/pkg/console/status"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
-	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
-	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
 	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
 type oidcSetupController struct {
 	operatorClient v1helpers.OperatorClient
-	secretsClient  corev1client.SecretsGetter
 
 	authnLister               configv1listers.AuthenticationLister
-	configNSSecretsLister     corev1listers.SecretLister
 	crdLister                 apiexensionsv1listers.CustomResourceDefinitionLister
 	consoleOperatorLister     operatorv1listers.ConsoleLister
 	targetNSSecretsLister     corev1listers.SecretLister
@@ -54,12 +48,10 @@ type oidcSetupController struct {
 
 func NewOIDCSetupController(
 	operatorClient v1helpers.OperatorClient,
-	secretsClient corev1client.SecretsGetter,
 	authnInformer configv1informers.AuthenticationInformer,
 	authenticationClient configv1client.AuthenticationInterface,
 	consoleOperatorInformer operatorv1informers.ConsoleInformer,
 	crdInformer apiexensionsv1informers.CustomResourceDefinitionInformer,
-	configNSSecretsInformer corev1informers.SecretInformer,
 	targetNSsecretsInformer corev1informers.SecretInformer,
 	targetNSConfigMapInformer corev1informers.ConfigMapInformer,
 	targetNSDeploymentsInformer appsv1informers.DeploymentInformer,
@@ -67,11 +59,9 @@ func NewOIDCSetupController(
 ) factory.Controller {
 	c := &oidcSetupController{
 		operatorClient: operatorClient,
-		secretsClient:  secretsClient,
 
 		authnLister:               authnInformer.Lister(),
 		consoleOperatorLister:     consoleOperatorInformer.Lister(),
-		configNSSecretsLister:     configNSSecretsInformer.Lister(),
 		crdLister:                 crdInformer.Lister(),
 		targetNSSecretsLister:     targetNSsecretsInformer.Lister(),
 		targetNSDeploymentsLister: targetNSDeploymentsInformer.Lister(),
@@ -90,7 +80,6 @@ func NewOIDCSetupController(
 			authnInformer.Informer(),
 			consoleOperatorInformer.Informer(),
 			targetNSsecretsInformer.Informer(),
-			configNSSecretsInformer.Informer(),
 			targetNSDeploymentsInformer.Informer(),
 			targetNSConfigMapInformer.Informer(),
 		).
@@ -166,23 +155,13 @@ func (c *oidcSetupController) syncAuthTypeOIDC(
 		return nil
 	}
 
-	clientSecret, err := c.configNSSecretsLister.Secrets(api.OpenShiftConfigNamespace).Get(clientConfig.ClientSecret.Name)
+	clientSecret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get("console-oauth-config")
 	if err != nil {
 		c.authStatusHandler.Degraded("OIDCClientSecretGet", err.Error())
 		return err
 	}
 
-	secret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name)
-	expectedClientSecret := secretsub.GetSecretString(clientSecret)
-	if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) != expectedClientSecret {
-		secret, _, err = resourceapply.ApplySecret(ctx, c.secretsClient, controllerContext.Recorder(), secretsub.DefaultSecret(operatorConfig, expectedClientSecret))
-		if err != nil {
-			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCClientSecretSync", "FailedApply", err))
-			return err
-		}
-	}
-
-	if valid, msg, err := c.checkClientConfigStatus(authnConfig, secret); err != nil {
+	if valid, msg, err := c.checkClientConfigStatus(authnConfig, clientSecret); err != nil {
 		c.authStatusHandler.Degraded("DeploymentOIDCConfig", err.Error())
 		return err
 
