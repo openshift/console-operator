@@ -95,6 +95,21 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 		return nil
 	}
 
+	oidcClientsSchema, err := authnConfigHasOIDCFields(c.crdLister)
+	if err != nil {
+		return statusHandler.FlushAndReturn(err)
+	}
+
+	// the schema is feature-gating this controller, we assume API validation won't
+	// allow authentication/cluster 'Type=OIDC' if the `.status.oidcClients` field
+	// does not exist
+	if !oidcClientsSchema {
+		// reset all conditions set by this controller
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCClientConfig", "", nil))
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthStatusHandler", "", nil))
+		return statusHandler.FlushAndReturn(nil)
+	}
+
 	operatorConfig, err := c.consoleOperatorLister.Get(api.ConfigResourceName)
 	if err != nil {
 		return err
@@ -105,29 +120,31 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 		return err
 	}
 
+	// we need to keep track of errors during the sync so that we can requeue
+	// if any occur
+	var errs []error
 	if authnConfig.Spec.Type == configv1.AuthenticationTypeOIDC {
-		err = c.syncAuthTypeOIDC(ctx, syncCtx, statusHandler, operatorConfig, authnConfig)
-		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCClientConfig", "MissingID", err))
-		if err != nil {
-			return statusHandler.FlushAndReturn(err)
-		}
-	} else {
-		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCClientConfig", "", nil))
-	}
-
-	oidcClientsSchema, err := authnConfigHasOIDCFields(c.crdLister)
-	if err != nil {
-		return statusHandler.FlushAndReturn(err)
-	}
-
-	if oidcClientsSchema {
-		applyErr := c.authStatusHandler.Apply(ctx, authnConfig)
-		statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthStatusHandler", "FailedApply", applyErr))
-		if applyErr != nil {
-			return statusHandler.FlushAndReturn(applyErr)
+		syncErr := c.syncAuthTypeOIDC(ctx, syncCtx, statusHandler, operatorConfig, authnConfig)
+		statusHandler.AddConditions(
+			status.HandleProgressingOrDegraded(
+				"OIDCClientConfig", "OIDCConfigSyncFailed",
+				syncErr,
+			),
+		)
+		if syncErr != nil {
+			errs = append(errs, syncErr)
 		}
 	}
 
+	applyErr := c.authStatusHandler.Apply(ctx, authnConfig)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthStatusHandler", "FailedApply", applyErr))
+	if applyErr != nil {
+		errs = append(errs, applyErr)
+	}
+
+	if len(errs) > 0 {
+		return statusHandler.FlushAndReturn(factory.SyntheticRequeueError)
+	}
 	return statusHandler.FlushAndReturn(nil)
 }
 
