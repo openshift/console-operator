@@ -36,6 +36,14 @@ import (
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
 )
 
+// oauthClientsController:
+//
+//	updates:
+//	- oauthclient.oauth.openshift.io/console (created by CVO)
+//	writes:
+//	- consoles.operator.openshift.io/cluster .status.conditions:
+//		- type=OAuthClientSyncProgressing
+//		- type=OAuthClientSyncDegraded
 type oauthClientsController struct {
 	oauthClient    oauthv1client.OAuthClientsGetter
 	operatorClient v1helpers.OperatorClient
@@ -47,8 +55,6 @@ type oauthClientsController struct {
 	routesLister                routev1listers.RouteLister
 	ingressConfigLister         configv1lister.IngressLister
 	targetNSSecretsLister       corev1listers.SecretLister
-
-	authStatusHandler *status.AuthStatusHandler
 }
 
 func NewOAuthClientsController(

@@ -36,6 +36,14 @@ import (
 //   - None - do nothing
 //
 // The secret written is 'openshift-console/console-oauth-config' in .Data['clientSecret']
+//
+// ==========
+//
+//	writes:
+//	- secrets.console-oauth-config -n openshift-console .Data['clientSecret']
+//	- consoles.operator.openshift.io/cluster .status.conditions:
+//		- type=OAuthClientSecretSyncProgressing
+//		- type=OAuthClientSecretSyncDegraded
 type oauthClientSecretController struct {
 	operatorClient v1helpers.OperatorClient
 	secretsClient  corev1clients.SecretsGetter
