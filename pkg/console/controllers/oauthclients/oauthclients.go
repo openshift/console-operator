@@ -111,7 +111,6 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 	case "", configv1.AuthenticationTypeIntegratedOAuth:
 	default:
 		// if we're not using integrated oauth, reset all degraded conditions
-		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "", nil))
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSync", "", nil))
 		return statusHandler.FlushAndReturn(nil)
 	}

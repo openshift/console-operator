@@ -133,7 +133,8 @@ func (c *oauthClientSecretController) sync(ctx context.Context, syncCtx factory.
 		}
 	default:
 		klog.V(2).Infof("unknown authentication type: %s", authConfig.Spec.Type)
-		return nil
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "", nil))
+		return statusHandler.FlushAndReturn(nil)
 	}
 
 	err = c.syncSecret(ctx, secretString, syncCtx.Recorder())
@@ -148,7 +149,7 @@ func (c *oauthClientSecretController) syncSecret(ctx context.Context, clientSecr
 	}
 
 	secret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get("console-oauth-config")
-	if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) == clientSecret {
+	if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) != clientSecret {
 		_, _, err = resourceapply.ApplySecret(ctx, c.secretsClient, recorder, secretsub.DefaultSecret(operatorConfig, clientSecret))
 	}
 	return err
