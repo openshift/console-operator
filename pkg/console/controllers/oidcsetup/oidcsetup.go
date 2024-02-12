@@ -107,9 +107,12 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 
 	if authnConfig.Spec.Type == configv1.AuthenticationTypeOIDC {
 		err = c.syncAuthTypeOIDC(ctx, syncCtx, statusHandler, operatorConfig, authnConfig)
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCClientConfig", "MissingID", err))
 		if err != nil {
 			return statusHandler.FlushAndReturn(err)
 		}
+	} else {
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCClientConfig", "", nil))
 	}
 
 	oidcClientsSchema, err := authnConfigHasOIDCFields(c.crdLister)
@@ -144,9 +147,7 @@ func (c *oidcSetupController) syncAuthTypeOIDC(
 	}
 
 	if len(clientConfig.ClientID) == 0 {
-		err := fmt.Errorf("no ID set on OIDC client")
-		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCClientConfig", "MissingID", err))
-		return statusHandler.FlushAndReturn(err)
+		return fmt.Errorf("no ID set on console's OIDC client")
 	}
 	c.authStatusHandler.WithCurrentOIDCClient(clientConfig.ClientID)
 
