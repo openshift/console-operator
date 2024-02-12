@@ -33,6 +33,22 @@ import (
 	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
+// oidcSetupController:
+//
+//	writes:
+//	- authentication.config.openshift.io/cluster .status.oidcClients:
+//		- componentName=console
+//		- componentNamespace=openshift-console
+//		- currentOIDCClients
+//		- conditions:
+//			- Available
+//			- Progressing
+//			- Degraded
+//	- consoles.operator.openshift.io/cluster .status.conditions:
+//		- type=OIDCClientConfigProgressing
+//		- type=OIDCClientConfigDegraded
+//		- type=AuthStatusHandlerProgressing
+//		- type=AuthStatusHandlerDegraded
 type oidcSetupController struct {
 	operatorClient v1helpers.OperatorClient
 
