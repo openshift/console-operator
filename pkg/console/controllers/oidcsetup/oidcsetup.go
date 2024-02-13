@@ -136,20 +136,27 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 		return err
 	}
 
+	if authnConfig.Spec.Type != configv1.AuthenticationTypeOIDC {
+		applyErr := c.authStatusHandler.Apply(ctx, authnConfig)
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthStatusHandler", "FailedApply", applyErr))
+
+		// reset the other condition set by this controller
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCClientConfig", "", nil))
+		return statusHandler.FlushAndReturn(applyErr)
+	}
+
 	// we need to keep track of errors during the sync so that we can requeue
 	// if any occur
 	var errs []error
-	if authnConfig.Spec.Type == configv1.AuthenticationTypeOIDC {
-		syncErr := c.syncAuthTypeOIDC(ctx, syncCtx, statusHandler, operatorConfig, authnConfig)
-		statusHandler.AddConditions(
-			status.HandleProgressingOrDegraded(
-				"OIDCClientConfig", "OIDCConfigSyncFailed",
-				syncErr,
-			),
-		)
-		if syncErr != nil {
-			errs = append(errs, syncErr)
-		}
+	syncErr := c.syncAuthTypeOIDC(ctx, syncCtx, statusHandler, operatorConfig, authnConfig)
+	statusHandler.AddConditions(
+		status.HandleProgressingOrDegraded(
+			"OIDCClientConfig", "OIDCConfigSyncFailed",
+			syncErr,
+		),
+	)
+	if syncErr != nil {
+		errs = append(errs, syncErr)
 	}
 
 	applyErr := c.authStatusHandler.Apply(ctx, authnConfig)
