@@ -3,6 +3,7 @@ kind: ClusterRoleBinding
 metadata:
   name: console-operator
   annotations:
+    include.release.openshift.io/hypershift: "true"
     include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
@@ -21,6 +22,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: console-extensions-reader
   annotations:
+    include.release.openshift.io/hypershift: "true"
     include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
@@ -39,6 +41,7 @@ kind: ClusterRoleBinding
 metadata:
   name: console-operator-auth-delegator
   annotations:
+    include.release.openshift.io/hypershift: "true"
     include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
@@ -60,6 +63,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: console
   annotations:
+    include.release.openshift.io/hypershift: "true"
     include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
@@ -81,6 +85,7 @@ metadata:
   name: helm-chartrepos-view
   annotations:
     "release.openshift.io/create-only": "true"
+    include.release.openshift.io/hypershift: "true"
     include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
@@ -99,6 +104,7 @@ kind: ClusterRoleBinding
 metadata:
   name: console-auth-delegator
   annotations:
+    include.release.openshift.io/hypershift: "true"
     include.release.openshift.io/ibm-cloud-managed: "true"
     include.release.openshift.io/self-managed-high-availability: "true"
     include.release.openshift.io/single-node-developer: "true"
