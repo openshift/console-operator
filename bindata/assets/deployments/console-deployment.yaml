@@ -70,11 +70,15 @@ spec:
               path: /health
               port: 8443
               scheme: HTTPS
-            initialDelaySeconds: 150
-            timeoutSeconds: 1
+            failureThreshold: 1
             periodSeconds: 10
-            successThreshold: 1
-            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8443
+              scheme: HTTPS
+            periodSeconds: 10
+            failureThreshold: 30
           ports:
             - name: https
               containerPort: 8443
