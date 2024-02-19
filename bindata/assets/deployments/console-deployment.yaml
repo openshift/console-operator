@@ -38,15 +38,6 @@ spec:
             requests:
               cpu: 10m
               memory: 100Mi
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8443
-              scheme: HTTPS
-            timeoutSeconds: 1
-            periodSeconds: 10
-            successThreshold: 1
-            failureThreshold: 3
           lifecycle:
             preStop:
               exec:
@@ -65,16 +56,36 @@ spec:
             - "--public-dir=/opt/bridge/static"
             - "--config=/var/console-config/console-config.yaml"
             - "--service-ca-file=/var/service-ca/service-ca.crt"
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8443
+              scheme: HTTPS
+            failureThreshold: 30
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 10
           livenessProbe:
             httpGet:
               path: /health
               port: 8443
               scheme: HTTPS
-            initialDelaySeconds: 150
-            timeoutSeconds: 1
+            failureThreshold: 1
+            initialDelaySeconds: 0
             periodSeconds: 10
             successThreshold: 1
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8443
+              scheme: HTTPS
             failureThreshold: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           ports:
             - name: https
               containerPort: 8443
