@@ -150,7 +150,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	}
 
 	clientSecret, secErr := co.secretsLister.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name)
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "FailedGet", secErr))
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretGet", "FailedGet", secErr))
 	if secErr != nil {
 		return statusHandler.FlushAndReturn(secErr)
 	}

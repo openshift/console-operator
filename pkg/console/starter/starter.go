@@ -27,6 +27,8 @@ import (
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
 	"github.com/openshift/console-operator/pkg/console/controllers/healthcheck"
 	"github.com/openshift/console-operator/pkg/console/controllers/oauthclients"
+	"github.com/openshift/console-operator/pkg/console/controllers/oauthclientsecret"
+	"github.com/openshift/console-operator/pkg/console/controllers/oidcsetup"
 	pdb "github.com/openshift/console-operator/pkg/console/controllers/poddisruptionbudget"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
@@ -211,21 +213,36 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	apiextensionsInformers := apiexensionsinformers.NewSharedInformerFactory(apiextensionsClient, resync)
 
 	oauthClientController := oauthclients.NewOAuthClientsController(
-		ctx,
 		operatorClient,
 		oauthClient,
-		kubeClient.CoreV1(),
-		apiextensionsInformers.Apiextensions().V1().CustomResourceDefinitions(),
-		configClient.ConfigV1().Authentications(),
 		configInformers.Config().V1().Authentications(),
 		operatorConfigInformers.Operator().V1().Consoles(),
 		routesInformersNamespaced.Route().V1().Routes(),
 		configInformers.Config().V1().Ingresses(),
 		kubeInformersNamespaced.Core().V1().Secrets(),
+		oauthClientsSwitchedInformer,
+		recorder,
+	)
+
+	oauthClientSecretController := oauthclientsecret.NewOAuthClientSecretController(
+		operatorClient,
+		kubeClient.CoreV1(),
+		configInformers.Config().V1().Authentications(),
+		operatorConfigInformers.Operator().V1().Consoles(),
 		kubeInformersConfigNamespaced.Core().V1().Secrets(),
+		kubeInformersNamespaced.Core().V1().Secrets(),
+		recorder,
+	)
+
+	oidcSetupController := oidcsetup.NewOIDCSetupController(
+		operatorClient,
+		configInformers.Config().V1().Authentications(),
+		configClient.ConfigV1().Authentications(),
+		operatorConfigInformers.Operator().V1().Consoles(),
+		apiextensionsInformers.Apiextensions().V1().CustomResourceDefinitions(),
+		kubeInformersNamespaced.Core().V1().Secrets(),
 		kubeInformersNamespaced.Core().V1().ConfigMaps(),
 		kubeInformersNamespaced.Apps().V1().Deployments(),
-		oauthClientsSwitchedInformer,
 		recorder,
 	)
 
@@ -496,6 +513,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consolePDBController,
 		downloadsPDBController,
 		oauthClientController,
+		oauthClientSecretController,
+		oidcSetupController,
 		upgradeNotificationController,
 		staleConditionsController,
 	} {
