@@ -25,6 +25,7 @@ import (
 const (
 	workloadManagementAnnotation      = "target.workload.openshift.io/management"
 	workloadManagementAnnotationValue = `{"effect": "PreferredDuringScheduling"}`
+	requiredSCCAnnotation             = "openshift.io/required-scc"
 )
 
 func TestDefaultDeployment(t *testing.T) {
@@ -128,15 +129,16 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 
 	consoleDeploymentTemplateAnnotations := map[string]string{
-		configMapResourceVersionAnnotation:                 "",
-		secretResourceVersionAnnotation:                    "",
-		oauthServingCertConfigMapResourceVersionAnnotation: "",
-		serviceCAConfigMapResourceVersionAnnotation:        "",
-		trustedCAConfigMapResourceVersionAnnotation:        "",
-		proxyConfigResourceVersionAnnotation:               "",
-		infrastructureConfigResourceVersionAnnotation:      "",
-		consoleImageAnnotation:                             "",
-		workloadManagementAnnotation:                       workloadManagementAnnotationValue,
+		configMapResourceVersionAnnotation:             "",
+		secretResourceVersionAnnotation:                "",
+		authnCATrustConfigMapResourceVersionAnnotation: "",
+		serviceCAConfigMapResourceVersionAnnotation:    "",
+		trustedCAConfigMapResourceVersionAnnotation:    "",
+		proxyConfigResourceVersionAnnotation:           "",
+		infrastructureConfigResourceVersionAnnotation:  "",
+		consoleImageAnnotation:                         "",
+		workloadManagementAnnotation:                   workloadManagementAnnotationValue,
+		requiredSCCAnnotation:                          "restricted-v2",
 	}
 
 	consoleDeploymentAffinity := &corev1.Affinity{
@@ -1616,6 +1618,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 							Labels: labels,
 							Annotations: map[string]string{
 								workloadManagementAnnotation: workloadManagementAnnotationValue,
+								requiredSCCAnnotation:        "restricted-v2",
 							},
 						},
 						Spec: downloadsDeploymentPodSpecSingleReplica,
@@ -1658,6 +1661,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 							Labels: labels,
 							Annotations: map[string]string{
 								workloadManagementAnnotation: workloadManagementAnnotationValue,
+								requiredSCCAnnotation:        "restricted-v2",
 							},
 						},
 						Spec: *downloadsDeploymentPodSpecHighAvail,

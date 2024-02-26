@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: console-conversion-webhook
+  namespace: openshift-console-operator
+  annotations:
+    include.release.openshift.io/self-managed-high-availability: "true"
+    include.release.openshift.io/single-node-developer: "true"
+    capability.openshift.io/name: Console
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: console-conversion-webhook
+  template:
+    metadata:
+      annotations:
+        target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
+        openshift.io/required-scc: restricted-v2
+      labels:
+        name: console-conversion-webhook
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      nodeSelector:
+        node-role.kubernetes.io/master: ""
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: "NoSchedule"
+        - key: "node.kubernetes.io/unreachable"
+          operator: "Exists"
+          effect: "NoExecute"
+          tolerationSeconds: 120
+        - key: "node.kubernetes.io/not-ready"
+          operator: "Exists"
+          effect: "NoExecute"
+          tolerationSeconds: 120
+      priorityClassName: system-cluster-critical
+      serviceAccountName: console-operator
+      containers:
+        - name: conversion-webhook-server
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          terminationMessagePolicy: FallbackToLogsOnError
+          image: registry.svc.ci.openshift.org/openshift:console-operator
+          ports:
+            - containerPort: 9443
+              name: webhook
+          command:
+            - console
+            - crdconvert
+          args:
+            - "--port=9443"
+            - "--tls-cert-file=/var/run/secrets/webhook-serving-cert/tls.crt"
+            - "--tls-private-key-file=/var/run/secrets/webhook-serving-cert/tls.key"
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - mountPath: /var/run/secrets/webhook-serving-cert
+              name: webhook-serving-cert
+          resources:
+            requests:
+              memory: "100Mi"
+              cpu: "10m"
+          livenessProbe:
+            httpGet:
+              path: /readyz
+              port: 9443
+              scheme: HTTPS
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 9443
+              scheme: HTTPS
+      volumes:
+        - name: webhook-serving-cert
+          secret:
+            secretName: webhook-serving-cert
+            optional: true
