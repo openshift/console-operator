@@ -16,16 +16,9 @@ COPY manifests /manifests/
 COPY quickstarts/*.yaml /manifests/
 
 # extensions manifests generated from openshift/api types
-COPY vendor/github.com/openshift/api/console/v1/0000_10_consoleclidownload.crd.yaml /manifests/
-COPY vendor/github.com/openshift/api/console/v1/0000_10_consoleexternalloglink.crd.yaml /manifests/
-COPY vendor/github.com/openshift/api/console/v1/0000_10_consolelink.crd.yaml /manifests/
-COPY vendor/github.com/openshift/api/console/v1/0000_10_consolenotification.crd.yaml /manifests/
-COPY vendor/github.com/openshift/api/console/v1/0000_10_consoleplugin.crd.yaml /manifests/08-a-consoleplugin.crd.yaml
-COPY vendor/github.com/openshift/api/console/v1/0000_10_consolequickstart.crd.yaml /manifests/
-COPY vendor/github.com/openshift/api/console/v1/0000_10_consoleyamlsample.crd.yaml /manifests/
-COPY vendor/github.com/openshift/api/operator/v1/0000_70_console-operator.crd.yaml /manifests/
-COPY vendor/github.com/openshift/api/helm/v1beta1/0000_10-helm-chart-repository.crd.yaml /manifests/
-COPY vendor/github.com/openshift/api/helm/v1beta1/0000_10-project-helm-chart-repository.crd.yaml /manifests/
+COPY vendor/github.com/openshift/api/console/v1/*.crd.yaml /manifests/
+COPY vendor/github.com/openshift/api/operator/*/*console-operator*.crd.yaml /manifests/
+COPY vendor/github.com/openshift/api/helm/*/*crd.yaml /manifests/
 
 LABEL io.k8s.display-name="OpenShift console-operator" \
       io.k8s.description="This is a component of OpenShift Container Platform and manages the lifecycle of the web console." \
