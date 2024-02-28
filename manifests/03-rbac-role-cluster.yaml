@@ -57,6 +57,16 @@ rules:
     resources:
       - consoles
       - consoles/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
+  - apiGroups:
+      - config.openshift.io
+    resources:
       - clusteroperators
       - clusteroperators/status
     verbs:
@@ -66,6 +76,8 @@ rules:
       - create
       - update
       - delete
+    resourceNames:
+      - console
   - apiGroups:
       - operator.openshift.io
     resources:
