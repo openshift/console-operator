@@ -20,7 +20,7 @@ func GetOIDCOCLoginCommand(authConfig *config.Authentication, apiServerURL strin
 		extraScopes = fmt.Sprintf(" --extra-scopes %s", strings.Join(clientConfig.ExtraScopes, ","))
 	}
 
-	return fmt.Sprintf("oc login %s --exec-plugin oc-oidc --client-id %s%s", apiServerURL, clientConfig.ClientID, extraScopes)
+	return fmt.Sprintf("oc login --issuer-url %s --exec-plugin oc-oidc --client-id %s%s", apiServerURL, clientConfig.ClientID, extraScopes)
 }
 
 func GetOIDCClientConfig(authnConfig *config.Authentication, componentNamespace, componentName string) *config.OIDCClientConfig {
