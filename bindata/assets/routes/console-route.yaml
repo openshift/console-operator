@@ -7,6 +7,10 @@ metadata:
   namespace: openshift-console
   annotations:
     haproxy.router.openshift.io/timeout: 5m
+    haproxy.router.openshift.io/rate-limit-connections: "true"
+    haproxy.router.openshift.io/rate-limit-connections.concurrent-tcp: 3
+    haproxy.router.openshift.io/rate-limit-connections.rate-http: 3
+    haproxy.router.openshift.io/rate-limit-connections.rate-tcp: 3
   labels:
     app: console
 spec:
