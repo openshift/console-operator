@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	coreinformersv1 "k8s.io/client-go/informers/core/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 
 	// openshift
@@ -149,32 +150,45 @@ func (c *HealthCheckController) Sync(ctx context.Context, controllerContext fact
 }
 
 func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorConfig *operatorsv1.Console, route *routev1.Route) (string, error) {
-	url, _, err := routeapihelpers.IngressURI(route, route.Spec.Host)
-	if err != nil {
-		return "RouteNotAdmitted", fmt.Errorf("console route is not admitted")
-	}
+	var reason string
+	err := retry.OnError(
+		retry.DefaultRetry,
+		func(err error) bool { return err != nil },
+		func() error {
+			url, _, err := routeapihelpers.IngressURI(route, route.Spec.Host)
+			if err != nil {
+				reason = "RouteNotAdmitted"
+				return fmt.Errorf("console route is not admitted")
+			}
 
-	caPool, err := c.getCA(ctx, route.Spec.TLS)
-	if err != nil {
-		return "FailedLoadCA", fmt.Errorf("failed to read CA to check route health: %v", err)
-	}
-	client := clientWithCA(caPool)
+			caPool, err := c.getCA(ctx, route.Spec.TLS)
+			if err != nil {
+				reason = "FailedLoadCA"
+				return fmt.Errorf("failed to read CA to check route health: %v", err)
+			}
+			client := clientWithCA(caPool)
 
-	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
-	if err != nil {
-		return "FailedRequest", fmt.Errorf("failed to build request to route (%s): %v", url, err)
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "FailedGet", fmt.Errorf("failed to GET route (%s): %v", url, err)
-	}
-	defer resp.Body.Close()
+			req, err := http.NewRequest(http.MethodGet, url.String(), nil)
+			if err != nil {
+				reason = "FailedRequest"
+				return fmt.Errorf("failed to build request to route (%s): %v", url, err)
+			}
+			resp, err := client.Do(req)
+			if err != nil {
+				reason = "FailedGet"
+				return fmt.Errorf("failed to GET route (%s): %v", url, err)
+			}
+			defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return "StatusError", fmt.Errorf("route not yet available, %s returns '%s'", url, resp.Status)
-	}
-
-	return "", nil
+			if resp.StatusCode != http.StatusOK {
+				reason = "StatusError"
+				return fmt.Errorf("route not yet available, %s returns '%s'", url, resp.Status)
+			}
+			reason = ""
+			return nil
+		},
+	)
+	return reason, err
 }
 
 func (c *HealthCheckController) getCA(ctx context.Context, tls *routev1.TLSConfig) (*x509.CertPool, error) {
