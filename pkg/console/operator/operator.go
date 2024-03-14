@@ -66,14 +66,15 @@ type consoleOperator struct {
 	authnConfigLister    configlistersv1.AuthenticationLister
 	dynamicClient        dynamic.Interface
 	// core kube
-	secretsClient            coreclientv1.SecretsGetter
-	secretsLister            corev1listers.SecretLister
-	configMapClient          coreclientv1.ConfigMapsGetter
-	targetNSConfigMapLister  corev1listers.ConfigMapLister // for openshift-console namespace
-	managedNSConfigMapLister corev1listers.ConfigMapLister // for openshift-config-managed namespace
-	serviceClient            coreclientv1.ServicesGetter
-	nodeClient               coreclientv1.NodesGetter
-	deploymentClient         appsclientv1.DeploymentsGetter
+	secretsClient                      coreclientv1.SecretsGetter
+	secretsLister                      corev1listers.SecretLister
+	configMapClient                    coreclientv1.ConfigMapsGetter
+	targetNSConfigMapLister            corev1listers.ConfigMapLister // for openshift-console namespace
+	managedNSConfigMapLister           corev1listers.ConfigMapLister // for openshift-config-managed namespace
+	openshiftMonitoringConfigMapLister corev1listers.ConfigMapLister // for openshift-monitoring namespace
+	serviceClient                      coreclientv1.ServicesGetter
+	nodeClient                         coreclientv1.NodesGetter
+	deploymentClient                   appsclientv1.DeploymentsGetter
 	// openshift
 	configNSConfigMapLister corev1listers.ConfigMapLister //for openshift-config namespace
 	oauthClientLister       oauthlistersv1.OAuthClientLister
@@ -114,10 +115,12 @@ func NewConsoleOperator(
 	routeInformer routesinformersv1.RouteInformer,
 	// plugins
 	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
-	// openshift
+	// openshift config
 	configNSConfigMapInformer corev1.ConfigMapInformer,
-	// openshift managed
+	// openshift config managed
 	managedCoreV1 corev1.Interface,
+	// openshift monitoring
+	openshiftMonitoringCoreInformers corev1.Interface,
 	// event handling
 	versionGetter status.VersionGetter,
 	recorder events.Recorder,
@@ -150,9 +153,10 @@ func NewConsoleOperator(
 		secretsLister:   secretsInformer.Lister(),
 		configMapClient: corev1Client,
 
-		targetNSConfigMapLister:  targetNSConfigMapInformer.Lister(),
-		configNSConfigMapLister:  configNSConfigMapInformer.Lister(),
-		managedNSConfigMapLister: managedNSConfigMapInformer.Lister(),
+		targetNSConfigMapLister:            targetNSConfigMapInformer.Lister(),
+		configNSConfigMapLister:            configNSConfigMapInformer.Lister(),
+		managedNSConfigMapLister:           managedNSConfigMapInformer.Lister(),
+		openshiftMonitoringConfigMapLister: openshiftMonitoringCoreInformers.ConfigMaps().Lister(),
 
 		serviceClient:    corev1Client,
 		nodeClient:       corev1Client,
@@ -216,6 +220,9 @@ func NewConsoleOperator(
 	).WithFilteredEventsInformers(
 		util.IncludeNamesFilter(deployment.ConsoleOauthConfigName),
 		secretsInformer.Informer(),
+	).WithFilteredEventsInformers(
+		util.IncludeNamesFilter(api.OpenShiftMonitoringConfigMapName),
+		openshiftMonitoringCoreInformers.ConfigMaps().Informer(),
 	).ResyncEvery(time.Minute).WithSync(c.Sync).
 		ToController("ConsoleOperator", recorder.WithComponentSuffix("console-operator"))
 }
