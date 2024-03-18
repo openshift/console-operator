@@ -157,7 +157,7 @@ github.com/open-cluster-management/api/client/cluster/listers/cluster/v1
 github.com/open-cluster-management/api/client/cluster/listers/cluster/v1alpha1
 github.com/open-cluster-management/api/cluster/v1
 github.com/open-cluster-management/api/cluster/v1alpha1
-# github.com/openshift/api v0.0.0-20221018124113-7edcfe3c76cb
+# github.com/openshift/api v0.0.0-20240103200955-7ca3a4634e46
 ## explicit; go 1.18
 github.com/openshift/api
 github.com/openshift/api/apiserver
@@ -237,7 +237,7 @@ github.com/openshift/build-machinery-go/make/targets/golang
 github.com/openshift/build-machinery-go/make/targets/openshift
 github.com/openshift/build-machinery-go/make/targets/openshift/operator
 github.com/openshift/build-machinery-go/scripts
-# github.com/openshift/client-go v0.0.0-20221019135458-c867144964db
+# github.com/openshift/client-go v0.0.0-20221019143426-16aed247da5c
 ## explicit; go 1.18
 github.com/openshift/client-go/config/applyconfigurations/config/v1
 github.com/openshift/client-go/config/applyconfigurations/config/v1alpha1
@@ -301,8 +301,8 @@ github.com/openshift/client-go/route/informers/externalversions/internalinterfac
 github.com/openshift/client-go/route/informers/externalversions/route
 github.com/openshift/client-go/route/informers/externalversions/route/v1
 github.com/openshift/client-go/route/listers/route/v1
-# github.com/openshift/library-go v0.0.0-20220823205642-e2ef049de560
-## explicit; go 1.17
+# github.com/openshift/library-go v0.0.0-20231120144800-ba257b06bf7b
+## explicit; go 1.18
 github.com/openshift/library-go/pkg/authorization/hardcodedauthorizer
 github.com/openshift/library-go/pkg/config/client
 github.com/openshift/library-go/pkg/config/clusteroperator/v1helpers
@@ -475,16 +475,16 @@ go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
-# golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd
-## explicit; go 1.17
+# golang.org/x/crypto v0.18.0
+## explicit; go 1.18
 golang.org/x/crypto/cryptobyte
 golang.org/x/crypto/cryptobyte/asn1
+golang.org/x/crypto/internal/alias
 golang.org/x/crypto/internal/poly1305
-golang.org/x/crypto/internal/subtle
 golang.org/x/crypto/nacl/secretbox
 golang.org/x/crypto/salsa20/salsa
-# golang.org/x/net v0.0.0-20220909164309-bea034e7d591
-## explicit; go 1.17
+# golang.org/x/net v0.20.0
+## explicit; go 1.18
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 golang.org/x/net/http/httpguts
@@ -501,18 +501,17 @@ golang.org/x/oauth2/internal
 # golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 ## explicit
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10
-## explicit; go 1.17
+# golang.org/x/sys v0.16.0
+## explicit; go 1.18
 golang.org/x/sys/cpu
-golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
-## explicit; go 1.17
+# golang.org/x/term v0.16.0
+## explicit; go 1.18
 golang.org/x/term
-# golang.org/x/text v0.3.7
-## explicit; go 1.17
+# golang.org/x/text v0.14.0
+## explicit; go 1.18
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
