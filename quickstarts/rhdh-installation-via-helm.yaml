@@ -8,9 +8,9 @@ metadata:
     include.release.openshift.io/single-node-developer: "true"
     capability.openshift.io/name: Console
 spec:
-  displayName: Install Red Hat Developer Hub (RHDH) with a Helm Chart
+  displayName: Install Red Hat Developer Hub (RHDH) using Helm Chart
   description: Install RHDH, a enterprise-grade, open developer platform for building developer portals, build on Backstage.
-  durationMinutes: 10
+  durationMinutes: 30
   tags:
     - rhdh
     - developer-hub
@@ -95,8 +95,8 @@ spec:
 
     Red Hat Developer Hub is a Backstage distribution with batteries included:
 
-    * A **catalog** of all services, components, and more.
-    * **Golden Path Templates** provide your developers with an easy way to set up new projects with best practices.
+    * A **catalog** of all your services, components, and more.
+    * **Software Templates** provide your developers an easy way to set up new projects with best practices.
     * Preinstalled with **additional plugins**.
     * Your developer portal is **extendable with plugins** from Backstage.
 
@@ -110,7 +110,7 @@ spec:
       description: |-
         To install Red Hat Developer Hub via Helm:
 
-        1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select Developer.
+        1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Developer**.
         2. In the navigation menu, click [Add]{{highlight qs-nav-add}} and then select **Helm Chart**.
         3. If needed, switch or create a new project from the **Project dropdown**.
         4. Search for **Red Hat Developer Hub**
