@@ -22,7 +22,7 @@ type ClusterMonitoringConfiguration struct {
 func GetTelemeterClientConfig(cm *v1.ConfigMap) *TelemeterClientConfig {
 	cfg := &ClusterMonitoringConfiguration{}
 
-	if cm == nil || cm.Data == nil {
+	if cm.Data == nil {
 		return nil
 	}
 
@@ -40,6 +40,11 @@ func GetTelemeterClientConfig(cm *v1.ConfigMap) *TelemeterClientConfig {
 }
 
 func TelemeterClientIsEnabled(cm *v1.ConfigMap) bool {
+	// If no config exists that is disabling or overriding the telemeter client, assume it's enabled
+	if cm == nil {
+		return true
+	}
+
 	c := GetTelemeterClientConfig(cm)
 	if c == nil {
 		return false
