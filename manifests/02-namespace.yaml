@@ -12,6 +12,9 @@ metadata:
   labels:
     network.openshift.io/policy-group: "console"
     openshift.io/cluster-monitoring: "true"
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
 ---
 apiVersion: v1
 kind: Namespace
@@ -26,6 +29,9 @@ metadata:
     capability.openshift.io/name: Console
   labels:
     openshift.io/cluster-monitoring: "true"
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
 ---
 apiVersion: v1
 kind: Namespace
@@ -38,3 +44,7 @@ metadata:
     openshift.io/node-selector: ""
     workload.openshift.io/allowed: "management"
     capability.openshift.io/name: Console
+  labels:
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
