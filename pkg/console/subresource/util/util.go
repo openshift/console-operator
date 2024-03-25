@@ -158,7 +158,7 @@ func GetOIDCClientConfig(authnConfig *configv1.Authentication) *configv1.OIDCCli
 	}
 
 	var oidcClientConfig *configv1.OIDCClientConfig
-	slices.IndexFunc[configv1.OIDCClientConfig](authnConfig.Spec.OIDCProviders[0].OIDCClients, func(oc configv1.OIDCClientConfig) bool {
+	slices.IndexFunc(authnConfig.Spec.OIDCProviders[0].OIDCClients, func(oc configv1.OIDCClientConfig) bool {
 		if oc.ComponentNamespace == api.TargetNamespace && oc.ComponentName == api.OpenShiftConsoleName {
 			oidcClientConfig = &oc
 			return true
