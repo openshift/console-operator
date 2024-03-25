@@ -53,8 +53,8 @@ type oidcSetupController struct {
 	operatorClient v1helpers.OperatorClient
 
 	authnLister               configv1listers.AuthenticationLister
-	crdLister                 apiexensionsv1listers.CustomResourceDefinitionLister
 	consoleOperatorLister     operatorv1listers.ConsoleLister
+	crdLister                 apiexensionsv1listers.CustomResourceDefinitionLister
 	targetNSSecretsLister     corev1listers.SecretLister
 	targetNSConfigMapLister   corev1listers.ConfigMapLister
 	targetNSDeploymentsLister appsv1listers.DeploymentLister
@@ -105,7 +105,7 @@ func NewOIDCSetupController(
 func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncContext) error {
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
-	if shouldSync, err := c.handleManaged(ctx); err != nil {
+	if shouldSync, err := c.handleManaged(); err != nil {
 		return err
 	} else if !shouldSync {
 		return nil
@@ -126,11 +126,6 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 		return statusHandler.FlushAndReturn(nil)
 	}
 
-	operatorConfig, err := c.consoleOperatorLister.Get(api.ConfigResourceName)
-	if err != nil {
-		return err
-	}
-
 	authnConfig, err := c.authnLister.Get(api.ConfigResourceName)
 	if err != nil {
 		return err
@@ -148,7 +143,7 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 	// we need to keep track of errors during the sync so that we can requeue
 	// if any occur
 	var errs []error
-	syncErr := c.syncAuthTypeOIDC(ctx, syncCtx, statusHandler, operatorConfig, authnConfig)
+	syncErr := c.syncAuthTypeOIDC(authnConfig)
 	statusHandler.AddConditions(
 		status.HandleProgressingOrDegraded(
 			"OIDCClientConfig", "OIDCConfigSyncFailed",
@@ -171,13 +166,7 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 	return statusHandler.FlushAndReturn(nil)
 }
 
-func (c *oidcSetupController) syncAuthTypeOIDC(
-	ctx context.Context,
-	controllerContext factory.SyncContext,
-	statusHandler status.StatusHandler,
-	operatorConfig *operatorv1.Console,
-	authnConfig *configv1.Authentication,
-) error {
+func (c *oidcSetupController) syncAuthTypeOIDC(authnConfig *configv1.Authentication) error {
 
 	clientConfig := utilsub.GetOIDCClientConfig(authnConfig)
 	if clientConfig == nil {
@@ -256,7 +245,7 @@ func (c *oidcSetupController) checkClientConfigStatus(authnConfig *configv1.Auth
 // handleStatus returns whether sync should happen and any error encountering
 // determining the operator's management state
 // TODO: extract this logic to where it can be used for all controllers
-func (c *oidcSetupController) handleManaged(ctx context.Context) (bool, error) {
+func (c *oidcSetupController) handleManaged() (bool, error) {
 	operatorSpec, _, _, err := c.operatorClient.GetOperatorState()
 	if err != nil {
 		return false, fmt.Errorf("failed to retrieve operator config: %w", err)

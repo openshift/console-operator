@@ -87,7 +87,7 @@ func NewOAuthClientSecretController(
 }
 
 func (c *oauthClientSecretController) sync(ctx context.Context, syncCtx factory.SyncContext) error {
-	if shouldSync, err := c.handleManaged(ctx); err != nil {
+	if shouldSync, err := c.handleManaged(); err != nil {
 		return err
 	} else if !shouldSync {
 		return nil
@@ -166,7 +166,7 @@ func (c *oauthClientSecretController) syncSecret(ctx context.Context, clientSecr
 // handleStatus returns whether sync should happen and any error encountering
 // determining the operator's management state
 // TODO: extract this logic to where it can be used for all controllers
-func (c *oauthClientSecretController) handleManaged(ctx context.Context) (bool, error) {
+func (c *oauthClientSecretController) handleManaged() (bool, error) {
 	operatorSpec, _, _, err := c.operatorClient.GetOperatorState()
 	if err != nil {
 		return false, fmt.Errorf("failed to retrieve operator config: %w", err)
