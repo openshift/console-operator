@@ -47,7 +47,6 @@ func DefaultConfigMap(
 	authServerCAConfig *corev1.ConfigMap,
 	managedConfig *corev1.ConfigMap,
 	monitoringSharedConfig *corev1.ConfigMap,
-	clusterMonitoringConfig *corev1.ConfigMap,
 	infrastructureConfig *configv1.Infrastructure,
 	activeConsoleRoute *routev1.Route,
 	inactivityTimeoutSeconds int,
@@ -55,6 +54,7 @@ func DefaultConfigMap(
 	nodeArchitectures []string,
 	nodeOperatingSystems []string,
 	copiedCSVsDisabled bool,
+	telemeterClientIsAvailable bool,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
@@ -97,7 +97,7 @@ func DefaultConfigMap(
 		Perspectives(operatorConfig.Spec.Customization.Perspectives).
 		StatusPageID(statusPageId(operatorConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
-		TelemetryConfiguration(GetTelemetryConfiguration(operatorConfig, clusterMonitoringConfig)).
+		TelemetryConfiguration(GetTelemetryConfiguration(operatorConfig, telemeterClientIsAvailable)).
 		ReleaseVersion().
 		NodeArchitectures(nodeArchitectures).
 		NodeOperatingSystems(nodeOperatingSystems).
@@ -178,7 +178,7 @@ func getPluginsProxyServices(availablePlugins []*v1.ConsolePlugin) []consoleserv
 	return proxyServices
 }
 
-func GetTelemetryConfiguration(operatorConfig *operatorv1.Console, clusterMonitoringConfig *corev1.ConfigMap) map[string]string {
+func GetTelemetryConfiguration(operatorConfig *operatorv1.Console, telemeterClientIsAvailable bool) map[string]string {
 	telemetry := make(map[string]string)
 	if len(operatorConfig.Annotations) > 0 {
 		for k, v := range operatorConfig.Annotations {
@@ -188,8 +188,7 @@ func GetTelemetryConfiguration(operatorConfig *operatorv1.Console, clusterMonito
 		}
 	}
 
-	telemeterClientEnabled := TelemeterClientIsEnabled(clusterMonitoringConfig)
-	if !telemeterClientEnabled {
+	if !telemeterClientIsAvailable {
 		telemetry["telemeterClientDisabled"] = "true"
 	}
 	return telemetry

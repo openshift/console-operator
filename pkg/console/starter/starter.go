@@ -35,6 +35,7 @@ import (
 	upgradenotification "github.com/openshift/console-operator/pkg/console/controllers/upgradenotification"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
+	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/managementstatecontroller"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
@@ -122,7 +123,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	kubeInformersMonitoringNamespaced := informers.NewSharedInformerFactoryWithOptions(
 		kubeClient,
 		resync,
-		informers.WithNamespace(api.OpenShiftMonitoringNamespace),
+		informers.WithNamespace(deployment.TelemeterClientDeploymentNamespace),
 	)
 
 	//configs are all named "cluster", but our clusteroperator is named "console"
@@ -188,13 +189,13 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		operatorClient,
 		operatorConfigClient.OperatorV1(),
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
-
 		// core resources
 		kubeClient.CoreV1(),                 // Secrets, ConfigMaps, Service
 		kubeInformersNamespaced.Core().V1(), // Secrets, ConfigMaps, Service
 		// deployments
 		kubeClient.AppsV1(),
 		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
+		kubeInformersMonitoringNamespaced.Apps().V1().Deployments(),
 		// oauth
 		oauthClientsSwitchedInformer,
 		// routes
@@ -206,8 +207,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeInformersConfigNamespaced.Core().V1().ConfigMaps(), // openshift-config configMaps
 		// openshift managed
 		kubeInformersManagedNamespaced.Core().V1(), // Managed ConfigMaps
-		// openshift monitoring
-		kubeInformersMonitoringNamespaced.Core().V1(), // Managed ConfigMaps
 		// event handling
 		versionGetter,
 		recorder,

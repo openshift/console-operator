@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/client-go/informers/core/v1"
 	appsclientv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 
@@ -66,15 +67,14 @@ type consoleOperator struct {
 	authnConfigLister    configlistersv1.AuthenticationLister
 	dynamicClient        dynamic.Interface
 	// core kube
-	secretsClient                      coreclientv1.SecretsGetter
-	secretsLister                      corev1listers.SecretLister
-	configMapClient                    coreclientv1.ConfigMapsGetter
-	targetNSConfigMapLister            corev1listers.ConfigMapLister // for openshift-console namespace
-	managedNSConfigMapLister           corev1listers.ConfigMapLister // for openshift-config-managed namespace
-	openshiftMonitoringConfigMapLister corev1listers.ConfigMapLister // for openshift-monitoring namespace
-	serviceClient                      coreclientv1.ServicesGetter
-	nodeClient                         coreclientv1.NodesGetter
-	deploymentClient                   appsclientv1.DeploymentsGetter
+	secretsClient            coreclientv1.SecretsGetter
+	secretsLister            corev1listers.SecretLister
+	configMapClient          coreclientv1.ConfigMapsGetter
+	targetNSConfigMapLister  corev1listers.ConfigMapLister // for openshift-console namespace
+	managedNSConfigMapLister corev1listers.ConfigMapLister // for openshift-config-managed namespace
+	serviceClient            coreclientv1.ServicesGetter
+	nodeClient               coreclientv1.NodesGetter
+	deploymentClient         appsclientv1.DeploymentsGetter
 	// openshift
 	configNSConfigMapLister corev1listers.ConfigMapLister //for openshift-config namespace
 	oauthClientLister       oauthlistersv1.OAuthClientLister
@@ -89,6 +89,8 @@ type consoleOperator struct {
 
 	// used to keep track of OLM capability
 	isOLMDisabled bool
+
+	monitoringDeploymentLister appsv1listers.DeploymentLister
 }
 
 func NewConsoleOperator(
@@ -108,6 +110,7 @@ func NewConsoleOperator(
 	// deployments
 	deploymentClient appsclientv1.DeploymentsGetter,
 	deploymentInformer appsinformersv1.DeploymentInformer,
+	monitoringDeploymentInformer appsinformersv1.DeploymentInformer,
 	// oauth API
 	oauthClientSwitchedInformer *util.InformerWithSwitch,
 	// routes
@@ -119,8 +122,6 @@ func NewConsoleOperator(
 	configNSConfigMapInformer corev1.ConfigMapInformer,
 	// openshift config managed
 	managedCoreV1 corev1.Interface,
-	// openshift monitoring
-	openshiftMonitoringCoreInformers corev1.Interface,
 	// event handling
 	versionGetter status.VersionGetter,
 	recorder events.Recorder,
@@ -153,10 +154,9 @@ func NewConsoleOperator(
 		secretsLister:   secretsInformer.Lister(),
 		configMapClient: corev1Client,
 
-		targetNSConfigMapLister:            targetNSConfigMapInformer.Lister(),
-		configNSConfigMapLister:            configNSConfigMapInformer.Lister(),
-		managedNSConfigMapLister:           managedNSConfigMapInformer.Lister(),
-		openshiftMonitoringConfigMapLister: openshiftMonitoringCoreInformers.ConfigMaps().Lister(),
+		targetNSConfigMapLister:  targetNSConfigMapInformer.Lister(),
+		configNSConfigMapLister:  configNSConfigMapInformer.Lister(),
+		managedNSConfigMapLister: managedNSConfigMapInformer.Lister(),
 
 		serviceClient:    corev1Client,
 		nodeClient:       corev1Client,
@@ -171,6 +171,8 @@ func NewConsoleOperator(
 		consolePluginLister: consolePluginInformer.Lister(),
 
 		resourceSyncer: resourceSyncer,
+
+		monitoringDeploymentLister: monitoringDeploymentInformer.Lister(),
 	}
 
 	informers := []factory.Informer{
@@ -221,8 +223,8 @@ func NewConsoleOperator(
 		util.IncludeNamesFilter(deployment.ConsoleOauthConfigName),
 		secretsInformer.Informer(),
 	).WithFilteredEventsInformers(
-		util.IncludeNamesFilter(api.OpenShiftMonitoringConfigMapName),
-		openshiftMonitoringCoreInformers.ConfigMaps().Informer(),
+		util.IncludeNamesFilter(deployment.TelemeterClientDeploymentName),
+		monitoringDeploymentInformer.Informer(),
 	).ResyncEvery(time.Minute).WithSync(c.Sync).
 		ToController("ConsoleOperator", recorder.WithComponentSuffix("console-operator"))
 }

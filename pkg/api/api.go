@@ -3,8 +3,6 @@ package api
 const (
 	AuthServerCAMountDir                = "/var/auth-server-ca"
 	AuthServerCAFileName                = "ca-bundle.crt"
-	ClusterMonitoringConfigMapKey       = "config.yaml"
-	ClusterMonitoringConfigName         = "cluster-monitoring-config"
 	ClusterOperatorName                 = "console"
 	ConfigResourceName                  = "cluster"
 	ConsoleContainerPort                = 443
@@ -33,7 +31,6 @@ const (
 	OpenShiftConsolePublicConfigMapName = "console-public"
 	OpenShiftCustomLogoConfigMapName    = "custom-logo"
 	OpenShiftMonitoringConfigMapName    = "monitoring-shared-config"
-	OpenShiftMonitoringNamespace        = "openshift-monitoring"
 	OpenshiftConsoleCustomRouteName     = "console-custom"
 	OpenshiftDownloadsCustomRouteName   = "downloads-custom"
 	OpenshiftConsoleRedirectServiceName = "console-redirect"

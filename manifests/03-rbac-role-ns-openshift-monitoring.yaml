@@ -10,10 +10,12 @@ metadata:
     capability.openshift.io/name: Console
 rules:
   - apiGroups:
-      - ""
+      - apps
     resources:
-      - configmaps
+      - deployments
     verbs:
       - get
       - list
       - watch
+    resourceNames:
+      - telemeter-client

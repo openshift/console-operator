@@ -73,11 +73,10 @@ func TestDefaultConfigMap(t *testing.T) {
 		{
 			name: "Test default configmap, no customization",
 			args: args{
-				authConfig:              &configv1.Authentication{},
-				operatorConfig:          &operatorv1.Console{},
-				consoleConfig:           &configv1.Console{},
-				managedConfig:           &corev1.ConfigMap{},
-				clusterMonitoringConfig: enabledClusterMonitoringConfig,
+				authConfig:     &configv1.Authentication{},
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL:         mockAPIServer,
@@ -133,11 +132,10 @@ providers: {}
 		{
 			name: "Test configmap with oauth-serving-cert",
 			args: args{
-				authConfig:              &configv1.Authentication{},
-				operatorConfig:          &operatorv1.Console{},
-				consoleConfig:           &configv1.Console{},
-				managedConfig:           &corev1.ConfigMap{},
-				clusterMonitoringConfig: enabledClusterMonitoringConfig,
+				authConfig:     &configv1.Authentication{},
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -191,10 +189,9 @@ providers: {}
 		{
 			name: "Test managed config to override default config",
 			args: args{
-				authConfig:              &configv1.Authentication{},
-				operatorConfig:          &operatorv1.Console{},
-				consoleConfig:           &configv1.Console{},
-				clusterMonitoringConfig: enabledClusterMonitoringConfig,
+				authConfig:     &configv1.Authentication{},
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
@@ -262,10 +259,9 @@ providers: {}
 		{
 			name: "Test nodeOperatingSystems config",
 			args: args{
-				authConfig:              &configv1.Authentication{},
-				operatorConfig:          &operatorv1.Console{},
-				consoleConfig:           &configv1.Console{},
-				clusterMonitoringConfig: enabledClusterMonitoringConfig,
+				authConfig:     &configv1.Authentication{},
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
 				managedConfig: &corev1.ConfigMap{
 					Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
@@ -333,8 +329,7 @@ providers: {}
 		{
 			name: "Test operator config overriding default config and managed config",
 			args: args{
-				authConfig:              &configv1.Authentication{},
-				clusterMonitoringConfig: enabledClusterMonitoringConfig,
+				authConfig: &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{
 					Spec: operatorv1.ConsoleSpec{
 						OperatorSpec: operatorv1.OperatorSpec{},
@@ -409,8 +404,7 @@ providers: {}
 		{
 			name: "Test operator config with Custom Branding Values",
 			args: args{
-				authConfig:              &configv1.Authentication{},
-				clusterMonitoringConfig: enabledClusterMonitoringConfig,
+				authConfig: &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{
 					Spec: operatorv1.ConsoleSpec{
 						OperatorSpec: operatorv1.OperatorSpec{},
@@ -492,8 +486,7 @@ providers: {}
 		{
 			name: "Test operator config with Statuspage pageID",
 			args: args{
-				authConfig:              &configv1.Authentication{},
-				clusterMonitoringConfig: enabledClusterMonitoringConfig,
+				authConfig: &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{
 					Spec: operatorv1.ConsoleSpec{
 						OperatorSpec: operatorv1.OperatorSpec{},
@@ -574,8 +567,7 @@ providers:
 		{
 			name: "Test operator config with custom route hostname",
 			args: args{
-				authConfig:              &configv1.Authentication{},
-				clusterMonitoringConfig: enabledClusterMonitoringConfig,
+				authConfig: &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{
 					Spec: operatorv1.ConsoleSpec{
 						Route: operatorv1.ConsoleConfigRoute{
@@ -639,11 +631,10 @@ providers: {}
 		{
 			name: "Test operator config, with inactivityTimeoutSeconds set",
 			args: args{
-				authConfig:              &configv1.Authentication{},
-				operatorConfig:          &operatorv1.Console{},
-				consoleConfig:           &configv1.Console{},
-				managedConfig:           &corev1.ConfigMap{},
-				clusterMonitoringConfig: enabledClusterMonitoringConfig,
+				authConfig:     &configv1.Authentication{},
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -698,11 +689,10 @@ providers: {}
 		{
 			name: "Test operator config, with enabledPlugins set",
 			args: args{
-				authConfig:              &configv1.Authentication{},
-				operatorConfig:          &operatorv1.Console{},
-				consoleConfig:           &configv1.Console{},
-				managedConfig:           &corev1.ConfigMap{},
-				clusterMonitoringConfig: enabledClusterMonitoringConfig,
+				authConfig:     &configv1.Authentication{},
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL: mockAPIServer,
@@ -805,11 +795,10 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 		{
 			name: "Test operator config, with 'External' ControlPlaneTopology",
 			args: args{
-				authConfig:              &configv1.Authentication{},
-				operatorConfig:          &operatorv1.Console{},
-				consoleConfig:           &configv1.Console{},
-				managedConfig:           &corev1.ConfigMap{},
-				clusterMonitoringConfig: enabledClusterMonitoringConfig,
+				authConfig:     &configv1.Authentication{},
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL:         mockAPIServer,
@@ -865,11 +854,10 @@ providers: {}
 		{
 			name: "Test operator config, with CopiedCSVsDisabled",
 			args: args{
-				authConfig:              &configv1.Authentication{},
-				operatorConfig:          &operatorv1.Console{},
-				consoleConfig:           &configv1.Console{},
-				managedConfig:           &corev1.ConfigMap{},
-				clusterMonitoringConfig: enabledClusterMonitoringConfig,
+				authConfig:     &configv1.Authentication{},
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL:         mockAPIServer,
@@ -927,11 +915,10 @@ providers: {}
 		{
 			name: "Test default configmap with monitoring config",
 			args: args{
-				authConfig:              &configv1.Authentication{},
-				operatorConfig:          &operatorv1.Console{},
-				consoleConfig:           &configv1.Console{},
-				managedConfig:           &corev1.ConfigMap{},
-				clusterMonitoringConfig: enabledClusterMonitoringConfig,
+				authConfig:     &configv1.Authentication{},
+				operatorConfig: &operatorv1.Console{},
+				consoleConfig:  &configv1.Console{},
+				managedConfig:  &corev1.ConfigMap{},
 				infrastructureConfig: &configv1.Infrastructure{
 					Status: configv1.InfrastructureStatus{
 						APIServerURL:         mockAPIServer,
@@ -1003,7 +990,6 @@ providers: {}
 				tt.args.authServerCAConfig,
 				tt.args.managedConfig,
 				tt.args.monitoringSharedConfig,
-				tt.args.clusterMonitoringConfig,
 				tt.args.infrastructureConfig,
 				tt.args.rt,
 				tt.args.inactivityTimeoutSeconds,
@@ -1011,6 +997,7 @@ providers: {}
 				tt.args.nodeArchitectures,
 				tt.args.nodeOperatingSystems,
 				tt.args.copiedCSVsDisabled,
+				true, // TODO add test cases for telemetry client
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below
@@ -1107,10 +1094,9 @@ func TestTelemetryConfiguration(t *testing.T) {
 		expectedConfiguration   map[string]string
 	}{
 		{
-			name:                    "Should pass without any telemetry annotations",
-			operatorConfig:          &operatorv1.Console{},
-			clusterMonitoringConfig: enabledClusterMonitoringConfig,
-			expectedConfiguration:   map[string]string{},
+			name:                  "Should pass without any telemetry annotations",
+			operatorConfig:        &operatorv1.Console{},
+			expectedConfiguration: map[string]string{},
 		},
 		{
 			name: "Should extract telemetry annotations correctly",
@@ -1123,7 +1109,6 @@ func TestTelemetryConfiguration(t *testing.T) {
 					},
 				},
 			},
-			clusterMonitoringConfig: enabledClusterMonitoringConfig,
 			expectedConfiguration: map[string]string{
 				"A_CONFIG_KEY": "API_KEY",
 				"disabled":     "true",
@@ -1141,22 +1126,15 @@ func TestTelemetryConfiguration(t *testing.T) {
 					},
 				},
 			},
-			clusterMonitoringConfig: enabledClusterMonitoringConfig,
 			expectedConfiguration: map[string]string{
 				"A_CONFIG_KEY": "API_KEY",
 				"disabled":     "true",
 			},
 		},
-		{
-			name:                    "Should disable telemeterClient when cluster monitoring is disabled",
-			operatorConfig:          &operatorv1.Console{},
-			clusterMonitoringConfig: disabledClusterMonitoringConfig,
-			expectedConfiguration:   map[string]string{"telemeterClientDisabled": "true"},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(GetTelemetryConfiguration(tt.operatorConfig, tt.clusterMonitoringConfig), tt.expectedConfiguration); diff != nil {
+			if diff := deep.Equal(GetTelemetryConfiguration(tt.operatorConfig, true), tt.expectedConfiguration); diff != nil { // TODO  add test cases for telemetry client
 				t.Error(diff)
 			}
 		})

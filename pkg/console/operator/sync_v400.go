@@ -365,12 +365,9 @@ func (co *consoleOperator) SyncConfigMap(
 		monitoringSharedConfig = &corev1.ConfigMap{}
 	}
 
-	// TODO (jon): the "openshift-monitoring" namespace and "cluster-monitioring-config" name are
-	// default values. These can be changed via the cluster monitoring operator configuration, which
-	// would break this.
-	clusterMonitoringConfig, err := co.openshiftMonitoringConfigMapLister.ConfigMaps(api.OpenShiftMonitoringNamespace).Get(api.ClusterMonitoringConfigName)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return nil, false, "FailedGetClusterMonitoringConfig", err
+	telemeterClientIsAvailable, err := deploymentsub.IsTelemeterClientAvailable(co.monitoringDeploymentLister)
+	if err != nil {
+		return nil, false, "FailedTelemeterClientCheck", err
 	}
 
 	var (
@@ -391,7 +388,6 @@ func (co *consoleOperator) SyncConfigMap(
 		authServerCAConfig,
 		managedConfig,
 		monitoringSharedConfig,
-		clusterMonitoringConfig,
 		infrastructureConfig,
 		activeConsoleRoute,
 		inactivityTimeoutSeconds,
@@ -399,6 +395,7 @@ func (co *consoleOperator) SyncConfigMap(
 		nodeArchitectures,
 		nodeOperatingSystems,
 		copiedCSVsDisabled,
+		telemeterClientIsAvailable,
 	)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
