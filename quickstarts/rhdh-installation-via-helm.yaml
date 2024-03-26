@@ -118,7 +118,7 @@ spec:
         6. **Optional:** Change the default configuration via the form (click on Root Schema to expand the configuration) or YAML based on your needs.
            
            You can update the configuration later as well.
-        7. Press **Create** to install the Red Hat Developer Hub Helm Chart.
+        7. Click **Create** to install the Red Hat Developer Hub Helm Chart.
       review:
         instructions: |-
           #### To verify the application was successfully created:
@@ -137,7 +137,7 @@ spec:
       description: |-
         **Red Hat** maintains the **Red Hat Developer Hub Helm Chart** and will update it regularly.
 
-        But your installation will not update automatically. If you need automatic updates, you can install Red Hat Developer Hub via an operator.
+        But your installation will not update automatically. If you need automatic updates, you can install Red Hat Developer Hub via an Operator.
 
         To update your Red Hat Developer Hub installation:
 

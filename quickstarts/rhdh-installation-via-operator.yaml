@@ -106,52 +106,53 @@ spec:
     * Automatically exposes a Route for easy access to the instance.
     * And an OpenShift-compatible PostgreSQL database storage.
   tasks:
-    - title: Install Red Hat Developer Hub operator
+    - title: Install Red Hat Developer Hub Operator
       description: |-
-        To install the Red Hat Developer Hub operator:
+        To install the Red Hat Developer Hub Operator:
 
         1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
-        2. In the Administrator perspective, go to the **OperatorHub** from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
+        2. In the Administrator perspective, go to the **OperatorHub** page from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
         3. Search for **Red Hat Developer Hub**
-        4. Select the card **Red Hat Developer Hub** with the **Red Hat** badge and press **Install** to open a page to install the operator.
-        5. **Optional:** Choice the correct version, update strategy, and if this operator should be available for all namespaces or just a specific namespace.
-        6. Press **Create** again to install the Red Hat Developer Hub operator.
+        4. Select the card **Red Hat Developer Hub** with the **Red Hat** badge and press **Install** to open a page to install the Operator.
+        5. **Optional:** Choice the correct version, update strategy, and if this Operator should be available for all namespaces or just a specific namespace.
+        6. Press **Create** again to install the Red Hat Developer Hub Operator.
 
         > <small>
-        > For enhanced security, you should deploy the Red Hat Developer Hub operator in a dedicated default namespace such as `rhdh-operator`.
-        > The cluster administrator can restrict other users' access to the operator resources through role bindings or cluster role bindings.
-        > You can choose to deploy the operator in the `openshift-operators` namespace instead,
-        > however, you should note that the Red Hat Developer Hub operator shares the namespace with other operators,
-        > and therefore any users who can create workloads in that namespace can get their privileges escalated from all operators' service accounts.
+        > For enhanced security, you should deploy the Red Hat Developer Hub Operator in a dedicated default namespace such as `rhdh-operator`.
+        > The cluster administrator can restrict access to the Operator resources through role bindings or cluster role bindings.
+        > You can choose to deploy the Operator in the `openshift-operators` namespace instead,
+        > but, note the Red Hat Developer Hub Operator shares the namespace with other Operators.
+        > Any users who can create workloads in that namespace can get their privileges escalated from the Operator service account.
         > </small>
       review:
         instructions: |-
-          #### To verify that the operator was successfully installed:
+          #### To verify that the Operator was successfully installed:
 
           1. From the **Administrator** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
-          2. The "Red Hat Developer Hub" operator should be shown in the list of operators.
+          2. The "Red Hat Developer Hub" Operator should be shown in the list of Operators.
           3. The **Status** column should show **Succeeded**.
         failedTaskHelp: |-
-          Please try to install the operator again if the operator is missing.
+          Please try to install the Operator again if the Operator is missing.
           
-          Otherwise, click on the operator and check the **Conditions** sections on the **Details** and **Subscription** tabs to investigate underlying issues.
+          Otherwise, click on the Operator and check the **Conditions** sections on the **Details** and **Subscription** tabs to investigate underlying issues.
       summary:
-        success: You have installed the Red Hat Developer Hub operator!
+        success: You have installed the Red Hat Developer Hub Operator!
         failed: Try the steps again.
     - title: Create a Red Hat Developer Hub instance
       description: |-
         To create a Red Hat Developer Hub instance, you should create a `Backstage` custom resource.
 
         1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
-        2. In the Administrator perspective, go to the **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
+        2. In the Administrator perspective, go to the **Installed Operators** page from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
         3. If needed, switch or create a new project from the **Project dropdown**.
-        4. Select the "Red Hat Developer Hub" operator and navigate to the **Backstage** tab.
+        4. Select the "Red Hat Developer Hub" Operator and navigate to the **Red Hat Developer Hub** tab.
         5. Click on **Create Backstage** button in the top right corner of that tab view.
         6. **Optional:** Change the default configuration via the **Form view** or **YAML view** based on your needs.
+        7. Click **Create** to create a new Red Hat Developer Hub instance.
 
-        **Alternative:** You can apply this YAML configuration also via the [Import YAML (plus icon)]{{highlight qs-masthead-import}} button at the top of the navigation.
+        **Alternative:** You can also apply this YAML configuration with the [Import YAML (plus icon)]{{highlight qs-masthead-import}} button.
 
-        A minimal YAML configuration could look like this:
+        For example, a minimal YAML configuration could be:
 
         ```
         apiVersion: rhdh.redhat.com/v1alpha1
@@ -161,29 +162,25 @@ spec:
           labels:
             app.kubernetes.io/instance: my-rhdh
             app.kubernetes.io/name: backstage
-        spec:
-          application:
-            image: quay.io/rhdh/rhdh-hub-rhel9
+        spec: {}
         ```{{copy}}
         <br/>
 
-        The following steps will give you some examples of how to customize your RHDH instance.
+        **Note:** The RHDH installation might take a couple of minutes to complete.
 
-        Press **Create** to create a new Red Hat Developer Hub instance.
-
-        **Note:** The installation could take multiple minutes until the RHDH installation is completed.
+        The following tasks will give you some examples of how to customize your RHDH instance.
       review:
         instructions: |-
           #### To verify the application was successfully created:
 
-          1. In the **Administrator** perspective you should now see a RHDH "backstage-my-rhdh” Deployment now under Workloads > Deployments,
-             or in the **Developer** perspective in your [Topology]{{highlight qs-nav-topology}} view.
-          2. It might take multiple minutes until your Deployment status changes to "Running".
-          3. In the **Administrator** perspective you can find the actual URL of your RHDH instance under Networking > Routes.
-             In the **Developer** perspective Topology you can click on the URL decorator in the top-right corner of the Deployment to open your RHDH instance.
+          1. In the **Administrator** perspective you should now see a RHDH "backstage-my-rhdh” Deployment under Workloads > Deployments,
+             or in the [Topology]{{highlight qs-nav-topology}} view of the **Developer** perspective.
+          2. It might take a moment for your deployment status to update to "Running".
+          3. In the **Administrator** perspective, you can find the URL of your RHDH instance under Networking > Routes.
+             In the **Developer** perspective Topology, you can click on the URL decorator in the Deployment to open your RHDH instance.
           4. You should see a RHDH instance that lets you select a sign-in method.
         failedTaskHelp: |-
-          Open the Deployment details page and check the Pod status or the Pod log to investigate underlying issues.
+          Open the **Deployment details** page and check the Pod status or the Pod log to investigate underlying issues.
       summary:
         success: You have installed RHDH!
         failed: Try the steps again.
@@ -192,15 +189,15 @@ spec:
         To customize your Red Hat Developer Hub instance, you can extend your `Backstage` resource
         by adding additional `app-config` options to your RHDH instance.
 
-        You can `Backstage` in the Administrator perspective under **Installed Operators** > **Red Hat Developer Hub** > **Backstage**
-        or by clicking on [Search]{{highlight qs-nav-search}} and selecting Backstage from the resource dropdown.
+        You can extend your `Backstage` resource in the **Administrator** perspective under **Installed Operators** > **Red Hat Developer Hub** > **Red Hat Developer Hub**
+        or by clicking on [Search]{{highlight qs-nav-search}} and selecting **Backstage** from the resource list.
 
-        **Tipp:** You can also pin the resource list in the developer perspective to your navigation.
+        **Tip:** You can also pin the resource list in the developer perspective to your navigation.
 
-        The default configuration will be overridden as soon as you configure a custom `app-config`.
+        The default configuration will override as soon as you configure a custom `app-config`.
         For that reason, it's also required to configure a backend auth key.
 
-        1. To **create a random secret** for the backend auth key, you can use this command:
+        1. To **create a random secret** for the backend auth key, use this command:
 
             ```
         node -p 'require("crypto").randomBytes(24).toString("base64")'
@@ -225,7 +222,7 @@ spec:
               - secret: "${BACKEND_SECRET}"
         ```{{copy}}
 
-        4. **Update the `Backstage` resource** and use the new Secret and ConfigMap by adding additional options like this:
+        4. **Update the `Backstage` resource** and use the new Secret and ConfigMap by adding additional options like:
 
             ```
         ...
@@ -281,7 +278,6 @@ spec:
             app.kubernetes.io/name: backstage
         spec:
           application:
-            image: quay.io/rhdh/rhdh-hub-rhel9
             appConfig:
               configMaps:
                 - name: my-rhdh-app-config
@@ -294,12 +290,12 @@ spec:
         instructions: |-
           #### To verify the application was successfully created:
 
-          1. In the **Administrator** perspective you should now see a RHDH "backstage-my-rhdh” Deployment now under Workloads > Deployments,
-             or in the **Developer** perspective in your [Topology]{{highlight qs-nav-topology}} view.
-          2. It might take some moments to update your Deployment. Check that the status of the Pods changes to "Running".
+          1. In the **Administrator** perspective you should now see a RHDH "backstage-my-rhdh” Deployment under Workloads > Deployments,
+             or in the [Topology]{{highlight qs-nav-topology}} view of the **Developer** perspective.
+          2. It might take a moment for your Deployment to update. Check that the status of the Pods changes to "Running".
           3. You should see a RHDH instance that let you select a sign-in method and your updated RHDH title in your browser tab and organization name on the catalog page.
         failedTaskHelp: |-
-          Open the Deployment details page and check the Pod status or the Pod log to investigate underlying issues.
+          Open the **Deployment details** page and check the Pod status or the Pod log to investigate underlying issues.
       summary:
         success: You have installed RHDH!
         failed: Try the steps again.
