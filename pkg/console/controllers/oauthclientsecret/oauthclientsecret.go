@@ -116,7 +116,7 @@ func (c *oauthClientSecretController) sync(ctx context.Context, syncCtx factory.
 			secretString = crypto.Random256BitsString()
 		}
 	case configv1.AuthenticationTypeOIDC:
-		clientConfig := utilsub.GetOIDCClientConfig(authConfig)
+		_, clientConfig := utilsub.GetOIDCClientConfig(authConfig)
 		if clientConfig == nil {
 			// no config, flush the condition and return
 			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "", nil))
@@ -139,6 +139,7 @@ func (c *oauthClientSecretController) sync(ctx context.Context, syncCtx factory.
 			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "ClientSecretKeyMissing", fmt.Errorf("missing the 'clientSecret' key in the client secret secret %q", clientConfig.ClientSecret.Name)))
 			return statusHandler.FlushAndReturn(nil)
 		}
+
 	default:
 		klog.V(2).Infof("unknown authentication type: %s", authConfig.Spec.Type)
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "", nil))
