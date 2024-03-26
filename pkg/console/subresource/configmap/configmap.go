@@ -100,7 +100,7 @@ func DefaultConfigMap(
 		ReleaseVersion().
 		NodeArchitectures(nodeArchitectures).
 		NodeOperatingSystems(nodeOperatingSystems).
-		AuthConfig(authConfig, authServerCAConfig).
+		AuthConfig(authConfig).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate user defined console-config config: %v", err)

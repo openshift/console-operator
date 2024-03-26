@@ -152,19 +152,23 @@ func RemoveDuplicateStr(strSlice []string) []string {
 	return list
 }
 
-func GetOIDCClientConfig(authnConfig *configv1.Authentication) *configv1.OIDCClientConfig {
+func GetOIDCClientConfig(authnConfig *configv1.Authentication) (*configv1.OIDCProvider, *configv1.OIDCClientConfig) {
 	if len(authnConfig.Spec.OIDCProviders) == 0 {
-		return nil
+		return nil, nil
 	}
 
-	var oidcClientConfig *configv1.OIDCClientConfig
-	slices.IndexFunc(authnConfig.Spec.OIDCProviders[0].OIDCClients, func(oc configv1.OIDCClientConfig) bool {
-		if oc.ComponentNamespace == api.TargetNamespace && oc.ComponentName == api.OpenShiftConsoleName {
-			oidcClientConfig = &oc
-			return true
+	var clientIdx int
+	for i := 0; i < len(authnConfig.Spec.OIDCProviders); i++ {
+		clientIdx = slices.IndexFunc(authnConfig.Spec.OIDCProviders[i].OIDCClients, func(oc configv1.OIDCClientConfig) bool {
+			if oc.ComponentNamespace == api.TargetNamespace && oc.ComponentName == api.OpenShiftConsoleName {
+				return true
+			}
+			return false
+		})
+		if clientIdx != -1 {
+			return &authnConfig.Spec.OIDCProviders[i], &authnConfig.Spec.OIDCProviders[i].OIDCClients[clientIdx]
 		}
-		return false
-	})
+	}
 
-	return oidcClientConfig
+	return nil, nil
 }

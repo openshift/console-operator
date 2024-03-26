@@ -236,10 +236,12 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 	oidcSetupController := oidcsetup.NewOIDCSetupController(
 		operatorClient,
+		kubeClient.CoreV1(),
 		configInformers.Config().V1().Authentications(),
 		configClient.ConfigV1().Authentications(),
 		operatorConfigInformers.Operator().V1().Consoles(),
 		apiextensionsInformers.Apiextensions().V1().CustomResourceDefinitions(),
+		kubeInformersConfigNamespaced.Core().V1().ConfigMaps(),
 		kubeInformersNamespaced.Core().V1().Secrets(),
 		kubeInformersNamespaced.Core().V1().ConfigMaps(),
 		kubeInformersNamespaced.Apps().V1().Deployments(),
