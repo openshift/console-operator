@@ -1,11 +1,13 @@
 package secret
 
 import (
-	"github.com/go-test/deep"
 	"testing"
+
+	"github.com/go-test/deep"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
@@ -40,6 +42,11 @@ func TestDefaultSecret(t *testing.T) {
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "operator.openshift.io/v1",
+						Kind:       "Console",
+						Controller: ptr.To(true),
+					}},
 				},
 				Data:       map[string][]byte{"clientSecret": {99, 108, 105, 101, 110, 116, 83, 101, 99, 114, 101, 116}},
 				StringData: nil,
