@@ -7,6 +7,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
@@ -41,8 +42,12 @@ func TestDefaultServiceCAConfigMap(t *testing.T) {
 					DeletionGracePeriodSeconds: nil,
 					Labels:                     map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations:                map[string]string{injectCABundleAnnotation: "true"},
-					OwnerReferences:            nil,
-					Finalizers:                 nil,
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "operator.openshift.io/v1",
+						Kind:       "Console",
+						Controller: ptr.To(true),
+					}},
+					Finalizers: nil,
 				},
 			},
 		},
