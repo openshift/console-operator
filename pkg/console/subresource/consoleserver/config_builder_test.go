@@ -54,7 +54,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: ""}}, nil).
+					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: ""}}).
 					Config()
 			},
 			output: Config{
@@ -88,7 +88,23 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}}, &corev1.ConfigMap{Data: map[string]string{"ca-bundle.crt": "real PEM content"}}).
+					AuthConfig(&configv1.Authentication{
+						Spec: configv1.AuthenticationSpec{
+							Type: "OIDC",
+							OIDCProviders: []configv1.OIDCProvider{
+								{
+									Issuer: configv1.TokenIssuer{
+										CertificateAuthority: configv1.ConfigMapNameReference{
+											Name: "auth-server-ca",
+										},
+									},
+									OIDCClients: []configv1.OIDCClientConfig{
+										{ComponentName: "console", ComponentNamespace: "openshift-console"},
+									},
+								},
+							},
+						},
+					}).
 					Config()
 			},
 			output: Config{
@@ -105,11 +121,15 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					MasterPublicURL:    "https://foobar.com/api",
 				},
 				Auth: Auth{
-					AuthType:            "disabled",
+					AuthType:            "oidc",
 					ClientID:            api.OpenShiftConsoleName,
 					ClientSecretFile:    clientSecretFilePath,
 					OAuthEndpointCAFile: "/var/auth-server-ca/ca-bundle.crt",
 					LogoutRedirect:      "https://foobar.com/logout",
+				},
+				Session: Session{
+					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
 				},
 				Customization: Customization{},
 				Providers:     Providers{},
@@ -122,7 +142,20 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}}, &corev1.ConfigMap{Data: map[string]string{"ca-bundle.crt": "real PEM content"}}).
+					AuthConfig(&configv1.Authentication{
+						Spec: configv1.AuthenticationSpec{
+							Type: "OIDC",
+							OIDCProviders: []configv1.OIDCProvider{
+								{
+									Issuer: configv1.TokenIssuer{
+										CertificateAuthority: configv1.ConfigMapNameReference{
+											Name: "auth-server-ca",
+										},
+									},
+								},
+							},
+						},
+					}).
 					Config()
 			},
 			output: Config{
@@ -139,11 +172,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					MasterPublicURL:    "https://foobar.com/api",
 				},
 				Auth: Auth{
-					AuthType:            "disabled",
-					ClientID:            api.OpenShiftConsoleName,
-					ClientSecretFile:    clientSecretFilePath,
-					OAuthEndpointCAFile: "/var/auth-server-ca/ca-bundle.crt",
-					LogoutRedirect:      "https://foobar.com/logout",
+					AuthType:         "disabled",
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
+					LogoutRedirect:   "https://foobar.com/logout",
 				},
 				Customization: Customization{},
 				Providers:     Providers{},
@@ -814,7 +846,7 @@ providers: {}
 								},
 							},
 						},
-					}, nil,
+					},
 				).ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
@@ -843,7 +875,7 @@ providers: {}
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: configv1.AuthenticationTypeIntegratedOAuth}}, nil).
+					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: configv1.AuthenticationTypeIntegratedOAuth}}).
 					ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
@@ -1105,7 +1137,7 @@ providers: {}
 						"plugin2": "plugin2_url",
 					}).
 					I18nNamespaces([]string{"plugin__plugin1"}).
-					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}}, &corev1.ConfigMap{Data: map[string]string{"ca-bundle.crt": "real PEM content"}})
+					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}})
 				return b.ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
@@ -1121,7 +1153,6 @@ auth:
   authType: disabled
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/auth-server-ca/ca-bundle.crt
   logoutRedirect: https://foobar.com/logout
 session: {}
 customization:
