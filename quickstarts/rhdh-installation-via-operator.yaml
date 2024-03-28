@@ -8,9 +8,9 @@ metadata:
     include.release.openshift.io/single-node-developer: "true"
     capability.openshift.io/name: Console
 spec:
-  displayName: Install Red Hat Developer Hub (RHDH) with an Operator
+  displayName: Install Red Hat Developer Hub (RHDH) using the Operator
   description: Install RHDH, a enterprise-grade, open developer platform for building developer portals, build on Backstage.
-  durationMinutes: 10
+  durationMinutes: 30
   tags:
     - rhdh
     - developer-hub
@@ -95,8 +95,8 @@ spec:
 
     Red Hat Developer Hub is a Backstage distribution with batteries included:
 
-    * A **catalog** of all services, components, and more.
-    * **Golden Path Templates** provide your developers with an easy way to set up new projects with best practices.
+    * A **catalog** of all your services, components, and more.
+    * **Software Templates** provide your developers an easy way to set up new projects with best practices.
     * Preinstalled with **additional plugins**.
     * Your developer portal is **extendable with plugins** from Backstage.
 
@@ -111,54 +111,191 @@ spec:
         To install the Red Hat Developer Hub Operator:
 
         1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
-        2. In the Administrator perspective, go to the **OperatorHub** from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
+        2. In the Administrator perspective, go to the **OperatorHub** page from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
         3. Search for **Red Hat Developer Hub**
         4. Select the card **Red Hat Developer Hub** with the **Red Hat** badge and press **Install** to open a page to install the Operator.
-
-            > <small>**Note:** If the Red Hat Developer Hub (RHDH) Operator is not available in the **OperatorHub**, you can use a Helm Chart in Red Hat OpenShift to install RHDH.
-            > 
-            > For more information, see [Installing Red Hat Developer Hub using Helm Chart] (https://access.redhat.com/documentation/en-us/red_hat_developer_hub/1.0/html/getting_started_with_red_hat_developer_hub/proc-install-rhdh-helm_rhdh-getting-started).</small>
-
-        5. **Optional:** Choice the correct version, update strategy, and if this operator should be available for all namespaces or just a specific namespace.
+        5. **Optional:** Choice the correct version, update strategy, and if this Operator should be available for all namespaces or just a specific namespace.
         6. Press **Create** again to install the Red Hat Developer Hub Operator.
+
+        > <small>
+        > For enhanced security, you should deploy the Red Hat Developer Hub Operator in a dedicated default namespace such as `rhdh-operator`.
+        > The cluster administrator can restrict access to the Operator resources through role bindings or cluster role bindings.
+        > You can choose to deploy the Operator in the `openshift-operators` namespace instead,
+        > but, note the Red Hat Developer Hub Operator shares the namespace with other Operators.
+        > Any users who can create workloads in that namespace can get their privileges escalated from the Operator service account.
+        > </small>
       review:
         instructions: |-
-          #### To verify that the operator was successfully installed:
+          #### To verify that the Operator was successfully installed:
 
           1. From the **Administrator** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
-          2. The "Red Hat Developer Hub" operator should be shown in the list of Operators.
+          2. The "Red Hat Developer Hub" Operator should be shown in the list of Operators.
           3. The **Status** column should show **Succeeded**.
         failedTaskHelp: |-
-          Please try to install the operator again if the operator is missing.
+          Please try to install the Operator again if the Operator is missing.
           
-          Otherwise, click on the operator and check the **Conditions** sections on the **Details** and **Subscription** tabs to investigate underlying issues.
+          Otherwise, click on the Operator and check the **Conditions** sections on the **Details** and **Subscription** tabs to investigate underlying issues.
       summary:
-        success: You have installed the Red Hat Developer Hub operator!
+        success: You have installed the Red Hat Developer Hub Operator!
         failed: Try the steps again.
     - title: Create a Red Hat Developer Hub instance
       description: |-
         To create a Red Hat Developer Hub instance, you should create a `Backstage` custom resource.
 
-        1. If needed, switch or create a new project from the **Project dropdown**.
-        2. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
-        3. In the Administrator perspective, go to the **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
-        4. Select the "Red Hat Developer Hub" operator and navigate to the **Backstage** tab.
+        1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
+        2. In the Administrator perspective, go to the **Installed Operators** page from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
+        3. If needed, switch or create a new project from the **Project dropdown**.
+        4. Select the "Red Hat Developer Hub" Operator and navigate to the **Red Hat Developer Hub** tab.
         5. Click on **Create Backstage** button in the top right corner of that tab view.
         6. **Optional:** Change the default configuration via the **Form view** or **YAML view** based on your needs.
-           
-           You can update this configuration later as well. The next two tasks will give you some examples.
-        7. Press **Create** to create a new Red Hat Developer Hub instance.
+        7. Click **Create** to create a new Red Hat Developer Hub instance.
+
+        **Alternative:** You can also apply this YAML configuration with the [Import YAML (plus icon)]{{highlight qs-masthead-import}} button.
+
+        For example, a minimal YAML configuration could be:
+
+        ```
+        apiVersion: rhdh.redhat.com/v1alpha1
+        kind: Backstage
+        metadata:
+          name: my-rhdh
+          labels:
+            app.kubernetes.io/instance: my-rhdh
+            app.kubernetes.io/name: backstage
+        spec: {}
+        ```{{copy}}
+        <br/>
+
+        **Note:** The RHDH installation might take a couple of minutes to complete.
+
+        The following tasks will give you some examples of how to customize your RHDH instance.
       review:
         instructions: |-
           #### To verify the application was successfully created:
 
-          1. You should now see a Helm Chart “backstage” with a "backstage" Deployment in your [Topology]{{highlight qs-nav-topology}} view.
-          2. After a few seconds, the Deployment should show a blue ring around the RHDH icon to indicate that the RHDH Pod is running.
-          3. Click on the URL decorator in the top-right corner of the "backstage" Deployment to open your RHDH instance.
+          1. In the **Administrator** perspective you should now see a RHDH "backstage-my-rhdh” Deployment under Workloads > Deployments,
+             or in the [Topology]{{highlight qs-nav-topology}} view of the **Developer** perspective.
+          2. It might take a moment for your deployment status to update to "Running".
+          3. In the **Administrator** perspective, you can find the URL of your RHDH instance under Networking > Routes.
+             In the **Developer** perspective Topology, you can click on the URL decorator in the Deployment to open your RHDH instance.
+          4. You should see a RHDH instance that lets you select a sign-in method.
         failedTaskHelp: |-
-          You can also click in the navigation menu on [Helm]{{highlight qs-nav-helm}} and check the Helm Release status. The status column should show "Deployed".
-          
-          Click on the Helm Chart and open the **Resources** tab to see if any Kubernetes resources are pending or to investigate underlying issues.
+          Open the **Deployment details** page and check the Pod status or the Pod log to investigate underlying issues.
+      summary:
+        success: You have installed RHDH!
+        failed: Try the steps again.
+    - title: Change the Red Hat Developer Hub configuration
+      description: |-
+        To customize your Red Hat Developer Hub instance, you can extend your `Backstage` resource
+        by adding additional `app-config` options to your RHDH instance.
+
+        You can extend your `Backstage` resource in the **Administrator** perspective under **Installed Operators** > **Red Hat Developer Hub** > **Red Hat Developer Hub**
+        or by clicking on [Search]{{highlight qs-nav-search}} and selecting **Backstage** from the resource list.
+
+        **Tip:** You can also pin the resource list in the developer perspective to your navigation.
+
+        The default configuration will override as soon as you configure a custom `app-config`.
+        For that reason, it's also required to configure a backend auth key.
+
+        1. To **create a random secret** for the backend auth key, use this command:
+
+            ```
+        node -p 'require("crypto").randomBytes(24).toString("base64")'
+        ```{{copy}}
+
+        2. Create a Secret by clicking on Secrets > Create Secret > **Create key/value Secret**.
+           
+           Enter Secret name `my-rhdh-secrets`, key `BACKEND_SECRET` and the previously generated secret.
+
+        3. Create a ConfigMap by clicking ConfigMap > **Create ConfigMap**.
+
+           Enter ConfigMap name `my-rhdh-app-config`, key `app-config-extras.yaml` and the following `app-config` YAML:
+
+            ```
+        app:
+          title: Acme Inc. Developer Hub
+        organization:
+          name: Acme Inc.
+        backend:
+          auth:
+            keys:
+              - secret: "${BACKEND_SECRET}"
+        ```{{copy}}
+
+        4. **Update the `Backstage` resource** and use the new Secret and ConfigMap by adding additional options like:
+
+            ```
+        ...
+        spec:
+          ...
+          application:
+            ...
+            appConfig:
+              configMaps:
+                - name: my-rhdh-app-config
+            extraEnvs:
+              secrets:
+                - name: my-rhdh-secrets
+        ```{{copy}}
+
+        Here is the complete YAML configuration:
+
+        ```
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: my-rhdh-secrets
+          labels:
+            app.kubernetes.io/instance: my-rhdh
+            app.kubernetes.io/name: backstage
+        stringData:
+          BACKEND_SECRET: "changeme!!!"
+        ---
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: my-rhdh-app-config
+          labels:
+            app.kubernetes.io/instance: my-rhdh
+            app.kubernetes.io/name: backstage
+        data:
+          app-config-extras.yaml: |
+            app:
+              title: Acme Inc. Developer Hub
+            organization:
+              name: Acme Inc.
+            backend:
+              auth:
+                keys:
+                  - secret: "${BACKEND_SECRET}"
+        ---
+        apiVersion: rhdh.redhat.com/v1alpha1
+        kind: Backstage
+        metadata:
+          name: my-rhdh
+          labels:
+            app.kubernetes.io/instance: my-rhdh
+            app.kubernetes.io/name: backstage
+        spec:
+          application:
+            appConfig:
+              configMaps:
+                - name: my-rhdh-app-config
+            extraEnvs:
+              secrets:
+                - name: my-rhdh-secrets
+        ```{{copy}}
+
+      review:
+        instructions: |-
+          #### To verify the application was successfully created:
+
+          1. In the **Administrator** perspective you should now see a RHDH "backstage-my-rhdh” Deployment under Workloads > Deployments,
+             or in the [Topology]{{highlight qs-nav-topology}} view of the **Developer** perspective.
+          2. It might take a moment for your Deployment to update. Check that the status of the Pods changes to "Running".
+          3. You should see a RHDH instance that let you select a sign-in method and your updated RHDH title in your browser tab and organization name on the catalog page.
+        failedTaskHelp: |-
+          Open the **Deployment details** page and check the Pod status or the Pod log to investigate underlying issues.
       summary:
         success: You have installed RHDH!
         failed: Try the steps again.
@@ -167,7 +304,7 @@ spec:
         To add a new link to the application menu, you can create a `ConsoleLink` resource on your cluster.
 
         This resource is not created automatically because you can have multiple Red Hat Developer Hub installations on one cluster.
-        And this way, you can also link a single RHDH instance from multiple OpenShift clusters.
+        This way, you can also link a single RHDH instance from multiple OpenShift clusters.
 
         1. Please copy the actual **Red Hat Developer Hub URL** from [Topology]{{highlight qs-nav-topology}}, or open it in another browser tab.
         2. Click on the [Import YAML (plus icon)]{{highlight qs-masthead-import}} button at the top of the navigation.
@@ -190,7 +327,7 @@ spec:
           #### To verify that the application menu link is shown
 
           1. The [Application launcher]{{highlight qs-masthead-applications}} icon should be shown.
-          2. Click on the Application launcher icon and check if your application menu item is shown.
+          2. Click the Application launcher icon to check if your application menu item is shown.
           3. Verify that it opens your RHDH instance.
         failedTaskHelp: |-
           Doublecheck your `ConsoleLink` resource or try to reload the OpenShift Console.
