@@ -142,7 +142,7 @@ func (b *ConsoleServerCLIConfigBuilder) StatusPageID(id string) *ConsoleServerCL
 	return b
 }
 
-func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authentication, caConfigMap *corev1.ConfigMap) *ConsoleServerCLIConfigBuilder {
+func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authentication) *ConsoleServerCLIConfigBuilder {
 	switch authnConfig.Spec.Type {
 	case "", configv1.AuthenticationTypeIntegratedOAuth:
 		b.authType = "openshift"
@@ -155,19 +155,12 @@ func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authent
 		return b
 
 	case configv1.AuthenticationTypeOIDC:
-		if caConfigMap != nil {
-			if _, ok := caConfigMap.Data["ca-bundle.crt"]; ok {
-				b.CAFile = path.Join(api.AuthServerCAMountDir, api.AuthServerCAFileName)
-			}
-		}
-
 		if len(authnConfig.Spec.OIDCProviders) == 0 {
 			b.authType = "disabled"
 			return b
 		}
 
-		oidcProvider := authnConfig.Spec.OIDCProviders[0]
-		oidcConfig := util.GetOIDCClientConfig(authnConfig)
+		oidcProvider, oidcConfig := util.GetOIDCClientConfig(authnConfig)
 		if oidcConfig == nil {
 			b.authType = "disabled"
 			return b
@@ -179,6 +172,10 @@ func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authent
 		b.oidcExtraScopes = oidcConfig.ExtraScopes
 		b.sessionAuthenticationFile = "/var/session-secret/sessionAuthenticationKey"
 		b.sessionEncryptionFile = "/var/session-secret/sessionEncryptionKey"
+
+		if len(oidcProvider.Issuer.CertificateAuthority.Name) > 0 {
+			b.CAFile = path.Join(api.AuthServerCAMountDir, api.AuthServerCAFileName)
+		}
 	}
 
 	return b

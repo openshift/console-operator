@@ -108,23 +108,19 @@ func TestOwnerRefFrom(t *testing.T) {
 			name: "Test owner ref from when cr is not null",
 			args: args{
 				cr: &operatorv1.Console{
-					TypeMeta: metav1.TypeMeta{
-						Kind:       "Console",
-						APIVersion: "4.0",
-					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "Test",
-						UID:  "",
+						UID:  "50",
 					},
 					Spec:   operatorv1.ConsoleSpec{},
 					Status: operatorv1.ConsoleStatus{},
 				},
 			},
 			want: &metav1.OwnerReference{
-				APIVersion: "4.0",
+				APIVersion: "operator.openshift.io/v1",
 				Kind:       "Console",
 				Name:       "Test",
-				UID:        "",
+				UID:        "50",
 				Controller: &truthy,
 			},
 		},
