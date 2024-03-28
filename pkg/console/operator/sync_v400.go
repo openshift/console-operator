@@ -186,11 +186,11 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 
 	statusHandler.AddCondition(status.HandleProgressing("SyncLoopRefresh", "InProgress", func() error {
 		if toUpdate {
-			return errors.New("Changes made during sync updates, additional sync expected.")
+			return errors.New("changes made during sync updates, additional sync expected")
 		}
 		version := os.Getenv("RELEASE_VERSION")
 		if !deploymentsub.IsAvailableAndUpdated(actualDeployment) {
-			return errors.New(fmt.Sprintf("Working toward version %s, %v replicas available", version, actualDeployment.Status.AvailableReplicas))
+			return fmt.Errorf("working toward version %s, %v replicas available", version, actualDeployment.Status.AvailableReplicas)
 		}
 
 		if co.versionGetter.GetVersions()["operator"] != version {
@@ -202,7 +202,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	statusHandler.AddCondition(status.HandleAvailable(func() (prefix string, reason string, err error) {
 		prefix = "Deployment"
 		if !deploymentsub.IsAvailable(actualDeployment) {
-			return prefix, "InsufficientReplicas", errors.New(fmt.Sprintf("%v replicas available for console deployment", actualDeployment.Status.ReadyReplicas))
+			return prefix, "InsufficientReplicas", fmt.Errorf("%v replicas available for console deployment", actualDeployment.Status.ReadyReplicas)
 		}
 		return prefix, "", nil
 	}()))
@@ -365,6 +365,14 @@ func (co *consoleOperator) SyncConfigMap(
 		monitoringSharedConfig = &corev1.ConfigMap{}
 	}
 
+	// TODO (jon): the "openshift-monitoring" namespace and "cluster-monitioring-config" name are
+	// default values. These can be changed via the cluster monitoring operator configuration, which
+	// would break this.
+	clusterMonitoringConfig, err := co.openshiftMonitoringConfigMapLister.ConfigMaps(api.OpenShiftMonitoringNamespace).Get(api.ClusterMonitoringConfigName)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, false, "FailedGetClusterMonitoringConfig", err
+	}
+
 	var (
 		copiedCSVsDisabled bool
 		ccdErr             error
@@ -383,6 +391,7 @@ func (co *consoleOperator) SyncConfigMap(
 		authServerCAConfig,
 		managedConfig,
 		monitoringSharedConfig,
+		clusterMonitoringConfig,
 		infrastructureConfig,
 		activeConsoleRoute,
 		inactivityTimeoutSeconds,

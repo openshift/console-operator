@@ -119,6 +119,12 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		informers.WithNamespace(api.OpenShiftConfigNamespace),
 	)
 
+	kubeInformersMonitoringNamespaced := informers.NewSharedInformerFactoryWithOptions(
+		kubeClient,
+		resync,
+		informers.WithNamespace(api.OpenShiftMonitoringNamespace),
+	)
+
 	//configs are all named "cluster", but our clusteroperator is named "console"
 	configInformers := configinformers.NewSharedInformerFactoryWithOptions(
 		configClient,
@@ -200,6 +206,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeInformersConfigNamespaced.Core().V1().ConfigMaps(), // openshift-config configMaps
 		// openshift managed
 		kubeInformersManagedNamespaced.Core().V1(), // Managed ConfigMaps
+		// openshift monitoring
+		kubeInformersMonitoringNamespaced.Core().V1(), // Managed ConfigMaps
 		// event handling
 		versionGetter,
 		recorder,
@@ -483,6 +491,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeInformersNamespaced,
 		kubeInformersConfigNamespaced,
 		kubeInformersManagedNamespaced,
+		kubeInformersMonitoringNamespaced,
 		resourceSyncerInformers,
 		operatorConfigInformers,
 		consoleInformers,
