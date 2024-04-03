@@ -17,5 +17,3 @@ rules:
       - get
       - list
       - watch
-    resourceNames:
-      - telemeter-client
