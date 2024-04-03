@@ -189,7 +189,7 @@ func GetTelemetryConfiguration(operatorConfig *operatorv1.Console, telemeterClie
 	}
 
 	if !telemeterClientIsAvailable {
-		telemetry["telemeterClientDisabled"] = "true"
+		telemetry["TELEMETER_CLIENT_DISABLED"] = "true"
 	}
 	return telemetry
 }
