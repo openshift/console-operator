@@ -55,6 +55,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		consoleConfig            *configv1.Console
 		managedConfig            *corev1.ConfigMap
 		monitoringSharedConfig   *corev1.ConfigMap
+		clusterMonitoringConfig  *corev1.ConfigMap
 		authServerCAConfig       *corev1.ConfigMap
 		infrastructureConfig     *configv1.Infrastructure
 		rt                       *routev1.Route
@@ -1062,6 +1063,7 @@ providers: {}
 				tt.args.nodeArchitectures,
 				tt.args.nodeOperatingSystems,
 				tt.args.copiedCSVsDisabled,
+				true, // TODO add test cases for telemetry client
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below
@@ -1152,9 +1154,10 @@ func testPluginsWithI18nPreloadType(pluginName, serviceName, serviceNamespace st
 
 func TestTelemetryConfiguration(t *testing.T) {
 	tests := []struct {
-		name                  string
-		operatorConfig        *operatorv1.Console
-		expectedConfiguration map[string]string
+		name                    string
+		operatorConfig          *operatorv1.Console
+		clusterMonitoringConfig *corev1.ConfigMap
+		expectedConfiguration   map[string]string
 	}{
 		{
 			name:                  "Should pass without any telemetry annotations",
@@ -1197,7 +1200,7 @@ func TestTelemetryConfiguration(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(GetTelemetryConfiguration(tt.operatorConfig), tt.expectedConfiguration); diff != nil {
+			if diff := deep.Equal(GetTelemetryConfiguration(tt.operatorConfig, true), tt.expectedConfiguration); diff != nil { // TODO  add test cases for telemetry client
 				t.Error(diff)
 			}
 		})

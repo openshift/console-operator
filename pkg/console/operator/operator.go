@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/client-go/informers/core/v1"
 	appsclientv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 
@@ -88,6 +89,8 @@ type consoleOperator struct {
 
 	// used to keep track of OLM capability
 	isOLMDisabled bool
+
+	monitoringDeploymentLister appsv1listers.DeploymentLister
 }
 
 func NewConsoleOperator(
@@ -107,6 +110,7 @@ func NewConsoleOperator(
 	// deployments
 	deploymentClient appsclientv1.DeploymentsGetter,
 	deploymentInformer appsinformersv1.DeploymentInformer,
+	monitoringDeploymentInformer appsinformersv1.DeploymentInformer,
 	// oauth API
 	oauthClientSwitchedInformer *util.InformerWithSwitch,
 	// routes
@@ -114,9 +118,9 @@ func NewConsoleOperator(
 	routeInformer routesinformersv1.RouteInformer,
 	// plugins
 	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
-	// openshift
+	// openshift config
 	configNSConfigMapInformer corev1.ConfigMapInformer,
-	// openshift managed
+	// openshift config managed
 	managedCoreV1 corev1.Interface,
 	// event handling
 	versionGetter status.VersionGetter,
@@ -167,6 +171,8 @@ func NewConsoleOperator(
 		consolePluginLister: consolePluginInformer.Lister(),
 
 		resourceSyncer: resourceSyncer,
+
+		monitoringDeploymentLister: monitoringDeploymentInformer.Lister(),
 	}
 
 	informers := []factory.Informer{
@@ -216,6 +222,9 @@ func NewConsoleOperator(
 	).WithFilteredEventsInformers(
 		util.IncludeNamesFilter(deployment.ConsoleOauthConfigName),
 		secretsInformer.Informer(),
+	).WithFilteredEventsInformers(
+		util.IncludeNamesFilter(deployment.TelemeterClientDeploymentName),
+		monitoringDeploymentInformer.Informer(),
 	).ResyncEvery(time.Minute).WithSync(c.Sync).
 		ToController("ConsoleOperator", recorder.WithComponentSuffix("console-operator"))
 }
