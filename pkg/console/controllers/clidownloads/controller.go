@@ -4,6 +4,7 @@ import (
 	// standard lib
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	// kube
@@ -114,25 +115,37 @@ func (c *CLIDownloadsSyncController) Sync(ctx context.Context, controllerContext
 	}
 
 	statusHandler := status.NewStatusHandler(c.operatorClient)
-	ingressConfig, err := c.ingressConfigLister.Get(api.ConfigResourceName)
-	if err != nil {
-		return statusHandler.FlushAndReturn(err)
-	}
 
-	activeRouteName := api.OpenShiftConsoleDownloadsRouteName
-	routeConfig := routesub.NewRouteConfig(updatedOperatorConfig, ingressConfig, activeRouteName)
-	if routeConfig.IsCustomHostnameSet() {
-		activeRouteName = api.OpenshiftDownloadsCustomRouteName
-	}
+	var (
+		downloadsURI *url.URL
+		downloadsErr error
+	)
+	if len(operatorConfig.Spec.Ingress.ClientDownloadsURL) == 0 {
+		ingressConfig, err := c.ingressConfigLister.Get(api.ConfigResourceName)
+		if err != nil {
+			return statusHandler.FlushAndReturn(err)
+		}
 
-	downloadsRoute, downloadsRouteErr := c.routeLister.Routes(api.TargetNamespace).Get(activeRouteName)
-	if downloadsRouteErr != nil {
-		return downloadsRouteErr
-	}
+		activeRouteName := api.OpenShiftConsoleDownloadsRouteName
+		routeConfig := routesub.NewRouteConfig(updatedOperatorConfig, ingressConfig, activeRouteName)
+		if routeConfig.IsCustomHostnameSet() {
+			activeRouteName = api.OpenshiftDownloadsCustomRouteName
+		}
 
-	downloadsURI, _, downloadsRouteErr := routeapihelpers.IngressURI(downloadsRoute, downloadsRoute.Spec.Host)
-	if downloadsRouteErr != nil {
-		return downloadsRouteErr
+		downloadsRoute, downloadsRouteErr := c.routeLister.Routes(api.TargetNamespace).Get(activeRouteName)
+		if downloadsRouteErr != nil {
+			return downloadsRouteErr
+		}
+
+		downloadsURI, _, downloadsErr = routeapihelpers.IngressURI(downloadsRoute, downloadsRoute.Spec.Host)
+		if downloadsErr != nil {
+			return downloadsErr
+		}
+	} else {
+		downloadsURI, downloadsErr = url.Parse(operatorConfig.Spec.Ingress.ClientDownloadsURL)
+		if downloadsErr != nil {
+			return fmt.Errorf("failed to parse downloads url: %w", downloadsErr)
+		}
 	}
 
 	ocConsoleCLIDownloads := PlatformBasedOCConsoleCLIDownloads(downloadsURI.String(), api.OCCLIDownloadsCustomResourceName)
