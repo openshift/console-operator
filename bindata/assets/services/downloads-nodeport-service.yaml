@@ -1,0 +1,18 @@
+# This 'downloads' service manifest is used when the ingress cluster capability is disabled.
+# Service will be exposed using a NodePort to enable the alternative ingress.
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: openshift-console
+  name: downloads
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: console
+    component: downloads
+  type: NodePort
+  sessionAffinity: None

@@ -1,0 +1,20 @@
+# This 'console' service manifest is used when the ingress cluster capability is disabled.
+# Service will be exposed using a NodePort to enable the alternative ingress.
+apiVersion: v1
+kind: Service
+metadata:
+  name: console
+  namespace: openshift-console
+  labels:
+    app: console
+spec:
+  ports:
+    - name: https
+      protocol: TCP
+      port: 443
+      targetPort: 8443
+  selector:
+    app: console
+    component: ui
+  type: NodePort
+  sessionAffinity: None
