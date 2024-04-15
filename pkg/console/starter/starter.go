@@ -410,7 +410,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	)
 
 	versionRecorder := status.NewVersionGetter()
-	versionRecorder.SetVersion("operator", os.Getenv("RELEASE_VERSION"))
+	versionRecorder.SetVersion("operator", os.Getenv("OPERATOR_IMAGE_VERSION"))
 
 	clusterOperatorStatus := status.NewClusterOperatorStatusController(
 		api.ClusterOperatorName,

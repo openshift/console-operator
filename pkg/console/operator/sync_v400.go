@@ -188,7 +188,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		if toUpdate {
 			return errors.New("changes made during sync updates, additional sync expected")
 		}
-		version := os.Getenv("RELEASE_VERSION")
+		version := os.Getenv("OPERATOR_IMAGE_VERSION")
 		if !deploymentsub.IsAvailableAndUpdated(actualDeployment) {
 			return fmt.Errorf("working toward version %s, %v replicas available", version, actualDeployment.Status.AvailableReplicas)
 		}
