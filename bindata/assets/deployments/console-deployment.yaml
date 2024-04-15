@@ -22,6 +22,9 @@ spec:
       annotations:
         target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
         openshift.io/required-scc: restricted-v2
+    volumes:
+      - name: shared-data
+        emptyDir: {}
     spec:
       nodeSelector:
         node-role.kubernetes.io/master: ""
@@ -111,6 +114,9 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
+          volumeMounts:
+            - name: shared-data
+              mountPath: /tmp
           imagePullPolicy: IfNotPresent
           terminationMessagePolicy: FallbackToLogsOnError
           image: ${IMAGE}
