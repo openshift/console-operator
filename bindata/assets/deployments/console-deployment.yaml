@@ -34,6 +34,22 @@ spec:
           type: RuntimeDefault
       terminationGracePeriodSeconds: 40
       priorityClassName: system-cluster-critical
+      initContainers:
+        - name: downloadsImageSidecar
+          securityContext:
+            readOnlyRootFilesystem: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+          image: ${DOWNLOADS_IMAGE}
+          ports:
+            - containerPort: 8081
+              protocol: TCP
+          command: ['sh', '-c', 'echo The sidecar is running! && touch "/tmp/file.txt" && echo "Hello from the shared Sidecar Content" > /tmp/file.txt ']
+          volumeMounts:
+            - name: shared-data
+              mountPath: /tmp
       containers:
         - resources:
             requests:
@@ -57,6 +73,7 @@ spec:
             - "--public-dir=/opt/bridge/static"
             - "--config=/var/console-config/console-config.yaml"
             - "--service-ca-file=/var/service-ca/service-ca.crt"
+            - "--downloads-server"
           startupProbe:
             httpGet:
               path: /health
@@ -90,6 +107,9 @@ spec:
           ports:
             - name: https
               containerPort: 8443
+              protocol: TCP
+            - name: http
+              containerPort: 8080
               protocol: TCP
           imagePullPolicy: IfNotPresent
           terminationMessagePolicy: FallbackToLogsOnError
