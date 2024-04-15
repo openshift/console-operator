@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	policyv1client "k8s.io/client-go/kubernetes/typed/policy/v1"
+	"k8s.io/klog/v2"
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
@@ -37,6 +38,7 @@ import (
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
 	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
+	"github.com/openshift/library-go/pkg/operator/configobserver/featuregates"
 	"github.com/openshift/library-go/pkg/operator/managementstatecontroller"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/staleconditions"
@@ -177,6 +179,33 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		return err
 	}
 
+	desiredVersion := status.VersionForOperatorFromEnv()
+	missingVersion := "0.0.1-snapshot"
+
+	featureGateAccessor := featuregates.NewFeatureGateAccess(
+		desiredVersion, missingVersion,
+		configInformers.Config().V1().ClusterVersions(),
+		configInformers.Config().V1().FeatureGates(),
+		controllerContext.EventRecorder,
+	)
+
+	configInformers.Start(ctx.Done())
+	go featureGateAccessor.Run(ctx)
+
+	select {
+	case <-featureGateAccessor.InitialFeatureGatesObserved():
+		featureGates, _ := featureGateAccessor.CurrentFeatureGates()
+		klog.Infof("FeatureGates initialized: knownFeatureGates=%v", featureGates.KnownFeatures())
+	case <-time.After(1 * time.Minute):
+		klog.Errorf("timed out waiting for FeatureGate detection")
+		return fmt.Errorf("timed out waiting for FeatureGate detection")
+	}
+
+	featureGates, err := featureGateAccessor.CurrentFeatureGates()
+	if err != nil {
+		return err
+	}
+
 	// TODO: rearrange these into informer,client pairs, NOT separated.
 	consoleOperator := operator.NewConsoleOperator(
 		ctx,
@@ -241,17 +270,18 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		recorder,
 	)
 
+	externalOIDCEnabled := featureGates.Enabled("ExternalOIDC")
 	oidcSetupController := oidcsetup.NewOIDCSetupController(
 		operatorClient,
 		kubeClient.CoreV1(),
 		configInformers.Config().V1().Authentications(),
 		configClient.ConfigV1().Authentications(),
 		operatorConfigInformers.Operator().V1().Consoles(),
-		apiextensionsInformers.Apiextensions().V1().CustomResourceDefinitions(),
 		kubeInformersConfigNamespaced.Core().V1().ConfigMaps(),
 		kubeInformersNamespaced.Core().V1().Secrets(),
 		kubeInformersNamespaced.Core().V1().ConfigMaps(),
 		kubeInformersNamespaced.Apps().V1().Deployments(),
+		externalOIDCEnabled,
 		recorder,
 	)
 
@@ -489,6 +519,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		Start(stopCh <-chan struct{})
 	}{
 		apiextensionsInformers,
+		configInformers,
 		kubeInformersNamespaced,
 		kubeInformersConfigNamespaced,
 		kubeInformersManagedNamespaced,
@@ -496,7 +527,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		resourceSyncerInformers,
 		operatorConfigInformers,
 		consoleInformers,
-		configInformers,
 		routesInformersNamespaced,
 		dynamicInformers,
 		oauthClientsSwitchedInformer,
