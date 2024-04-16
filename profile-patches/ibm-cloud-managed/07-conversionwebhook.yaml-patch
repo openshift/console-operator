@@ -2,6 +2,7 @@
   path: /metadata/annotations
   value:
     config.openshift.io/inject-proxy: conversion-webhook-server
+    include.release.openshift.io/hypershift: "true"
     include.release.openshift.io/ibm-cloud-managed: "true"
 - op: remove
   path: /spec/template/spec/nodeSelector
