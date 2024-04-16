@@ -3,7 +3,6 @@ package configmap
 import (
 	"fmt"
 	"net/url"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
@@ -20,10 +19,9 @@ import (
 )
 
 const (
-	consoleConfigYamlFile     = "console-config.yaml"
-	defaultLogoutURL          = ""
-	pluginProxyEndpoint       = "/api/proxy/plugin/"
-	telemetryAnnotationPrefix = "telemetry.console.openshift.io/"
+	consoleConfigYamlFile = "console-config.yaml"
+	defaultLogoutURL      = ""
+	pluginProxyEndpoint   = "/api/proxy/plugin/"
 )
 
 func getApiUrl(infrastructureConfig *configv1.Infrastructure) string {
@@ -54,7 +52,7 @@ func DefaultConfigMap(
 	nodeArchitectures []string,
 	nodeOperatingSystems []string,
 	copiedCSVsDisabled bool,
-	telemeterClientIsAvailable bool,
+	telemeterConfig map[string]string,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
@@ -97,7 +95,7 @@ func DefaultConfigMap(
 		Perspectives(operatorConfig.Spec.Customization.Perspectives).
 		StatusPageID(statusPageId(operatorConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
-		TelemetryConfiguration(GetTelemetryConfiguration(operatorConfig, telemeterClientIsAvailable)).
+		TelemetryConfiguration(telemeterConfig).
 		ReleaseVersion().
 		NodeArchitectures(nodeArchitectures).
 		NodeOperatingSystems(nodeOperatingSystems).
@@ -176,22 +174,6 @@ func getPluginsProxyServices(availablePlugins []*v1.ConsolePlugin) []consoleserv
 		}
 	}
 	return proxyServices
-}
-
-func GetTelemetryConfiguration(operatorConfig *operatorv1.Console, telemeterClientIsAvailable bool) map[string]string {
-	telemetry := make(map[string]string)
-	if len(operatorConfig.Annotations) > 0 {
-		for k, v := range operatorConfig.Annotations {
-			if strings.HasPrefix(k, telemetryAnnotationPrefix) && len(k) > len(telemetryAnnotationPrefix) {
-				telemetry[k[len(telemetryAnnotationPrefix):]] = v
-			}
-		}
-	}
-
-	if !telemeterClientIsAvailable {
-		telemetry["TELEMETER_CLIENT_DISABLED"] = "true"
-	}
-	return telemetry
 }
 
 func getConsoleAPIPath(pluginName string, service *v1.ConsolePluginProxy) string {

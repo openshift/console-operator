@@ -35,7 +35,6 @@ import (
 	upgradenotification "github.com/openshift/console-operator/pkg/console/controllers/upgradenotification"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
-	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/managementstatecontroller"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
@@ -58,6 +57,8 @@ import (
 
 	consolev1client "github.com/openshift/client-go/console/clientset/versioned"
 	consoleinformers "github.com/openshift/client-go/console/informers/externalversions"
+
+	telemetry "github.com/openshift/console-operator/pkg/console/telemetry"
 
 	"github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/library-go/pkg/operator/loglevel"
@@ -123,7 +124,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	kubeInformersMonitoringNamespaced := informers.NewSharedInformerFactoryWithOptions(
 		kubeClient,
 		resync,
-		informers.WithNamespace(deployment.TelemeterClientDeploymentNamespace),
+		informers.WithNamespace(telemetry.TelemeterClientDeploymentNamespace),
 	)
 
 	//configs are all named "cluster", but our clusteroperator is named "console"
@@ -205,6 +206,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleInformers.Console().V1().ConsolePlugins(),
 		// openshift
 		kubeInformersConfigNamespaced.Core().V1().ConfigMaps(), // openshift-config configMaps
+		kubeInformersConfigNamespaced.Core().V1().Secrets(),    // openshift-config secrets
 		// openshift managed
 		kubeInformersManagedNamespaced.Core().V1(), // Managed ConfigMaps
 		// event handling
