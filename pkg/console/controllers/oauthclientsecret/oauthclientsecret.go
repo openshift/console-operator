@@ -24,8 +24,8 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	v1helpers "github.com/openshift/library-go/pkg/operator/v1helpers"
 
+	authnsub "github.com/openshift/console-operator/pkg/console/subresource/authentication"
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
-	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
 // oauthClientSecretController behaves differently based on authentication/cluster .spec.type:
@@ -116,7 +116,7 @@ func (c *oauthClientSecretController) sync(ctx context.Context, syncCtx factory.
 			secretString = crypto.Random256BitsString()
 		}
 	case configv1.AuthenticationTypeOIDC:
-		_, clientConfig := utilsub.GetOIDCClientConfig(authConfig)
+		_, clientConfig := authnsub.GetOIDCClientConfig(authConfig, api.TargetNamespace, api.OpenShiftConsoleName)
 		if clientConfig == nil {
 			// no config, flush the condition and return
 			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "", nil))

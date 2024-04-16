@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/clientwrapper"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
+	"github.com/openshift/console-operator/pkg/console/controllers/clioidcclientstatus"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
 	"github.com/openshift/console-operator/pkg/console/controllers/healthcheck"
 	"github.com/openshift/console-operator/pkg/console/controllers/oauthclients"
@@ -281,6 +282,15 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeInformersNamespaced.Core().V1().Secrets(),
 		kubeInformersNamespaced.Core().V1().ConfigMaps(),
 		kubeInformersNamespaced.Apps().V1().Deployments(),
+		externalOIDCEnabled,
+		recorder,
+	)
+
+	cliOIDCClientStatusController := clioidcclientstatus.NewCLIOIDCClientStatusController(
+		operatorClient,
+		configInformers.Config().V1().Authentications(),
+		configClient.ConfigV1().Authentications(),
+		operatorConfigInformers.Operator().V1().Consoles(),
 		externalOIDCEnabled,
 		recorder,
 	)
@@ -555,6 +565,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		oauthClientController,
 		oauthClientSecretController,
 		oidcSetupController,
+		cliOIDCClientStatusController,
 		upgradeNotificationController,
 		staleConditionsController,
 	} {
