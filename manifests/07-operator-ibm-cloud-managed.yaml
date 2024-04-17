@@ -4,6 +4,7 @@ kind: Deployment
 metadata:
   annotations:
     config.openshift.io/inject-proxy: console-operator
+    include.release.openshift.io/hypershift: "true"
     include.release.openshift.io/ibm-cloud-managed: "true"
   name: console-operator
   namespace: openshift-console-operator
