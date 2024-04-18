@@ -7,9 +7,6 @@ import (
 
 	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	corev1 "k8s.io/api/core/v1"
-	apiexensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	apiexensionsv1informers "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensions/v1"
-	apiexensionsv1listers "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -59,11 +56,12 @@ type oidcSetupController struct {
 
 	authnLister               configv1listers.AuthenticationLister
 	consoleOperatorLister     operatorv1listers.ConsoleLister
-	crdLister                 apiexensionsv1listers.CustomResourceDefinitionLister
 	configConfigMapLister     corev1listers.ConfigMapLister
 	targetNSSecretsLister     corev1listers.SecretLister
 	targetNSConfigMapLister   corev1listers.ConfigMapLister
 	targetNSDeploymentsLister appsv1listers.DeploymentLister
+
+	externalOIDCFeatureEnabled bool
 
 	authStatusHandler *status.AuthStatusHandler
 }
@@ -74,11 +72,11 @@ func NewOIDCSetupController(
 	authnInformer configv1informers.AuthenticationInformer,
 	authenticationClient configv1client.AuthenticationInterface,
 	consoleOperatorInformer operatorv1informers.ConsoleInformer,
-	crdInformer apiexensionsv1informers.CustomResourceDefinitionInformer,
 	configConfigMapInformer corev1informers.ConfigMapInformer,
 	targetNSsecretsInformer corev1informers.SecretInformer,
 	targetNSConfigMapInformer corev1informers.ConfigMapInformer,
 	targetNSDeploymentsInformer appsv1informers.DeploymentInformer,
+	externalOIDCFeatureEnabled bool,
 	recorder events.Recorder,
 ) factory.Controller {
 	c := &oidcSetupController{
@@ -87,21 +85,18 @@ func NewOIDCSetupController(
 
 		authnLister:               authnInformer.Lister(),
 		consoleOperatorLister:     consoleOperatorInformer.Lister(),
-		crdLister:                 crdInformer.Lister(),
 		configConfigMapLister:     configConfigMapInformer.Lister(),
 		targetNSSecretsLister:     targetNSsecretsInformer.Lister(),
 		targetNSDeploymentsLister: targetNSDeploymentsInformer.Lister(),
 		targetNSConfigMapLister:   targetNSConfigMapInformer.Lister(),
+
+		externalOIDCFeatureEnabled: externalOIDCFeatureEnabled,
 
 		authStatusHandler: status.NewAuthStatusHandler(authenticationClient, api.OpenShiftConsoleName, api.TargetNamespace, api.OpenShiftConsoleOperator),
 	}
 	return factory.New().
 		WithSync(c.sync).
 		ResyncEvery(wait.Jitter(time.Minute, 1.0)).
-		WithFilteredEventsInformers(
-			factory.NamesFilter("authentications.config.openshift.io"),
-			crdInformer.Informer(),
-		).
 		WithInformers(
 			authnInformer.Informer(),
 			configConfigMapInformer.Informer(),
@@ -122,15 +117,9 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 		return nil
 	}
 
-	oidcClientsSchema, err := authnConfigHasOIDCFields(c.crdLister)
-	if err != nil {
-		return statusHandler.FlushAndReturn(err)
-	}
-
-	// the schema is feature-gating this controller, we assume API validation won't
-	// allow authentication/cluster 'Type=OIDC' if the `.status.oidcClients` field
-	// does not exist
-	if !oidcClientsSchema {
+	// we assume API validation won't allow authentication/cluster 'spec.type=OIDC'
+	// if the OIDC feature gate is not enabled
+	if !c.externalOIDCFeatureEnabled {
 		// reset all conditions set by this controller
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCClientConfig", "", nil))
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthStatusHandler", "", nil))
@@ -299,29 +288,4 @@ func (c *oidcSetupController) handleManaged() (bool, error) {
 	default:
 		return false, fmt.Errorf("console is in an unknown state: %v", managementState)
 	}
-}
-
-func authnConfigHasOIDCFields(crdLister apiexensionsv1listers.CustomResourceDefinitionLister) (bool, error) {
-	authnCRD, err := crdLister.Get("authentications.config.openshift.io")
-	if err != nil {
-		return false, err
-	}
-
-	var authnV1Config *apiexensionsv1.CustomResourceDefinitionVersion
-	for _, version := range authnCRD.Spec.Versions {
-		if version.Name == "v1" && version.Served && version.Storage {
-			authnV1Config = &version
-			break
-		}
-	}
-
-	if authnV1Config == nil {
-		return false, fmt.Errorf("authentications.config.openshift.io is not served or stored as v1")
-	}
-
-	schema := authnV1Config.Schema.OpenAPIV3Schema
-	_, clientsExist := schema.Properties["status"].Properties["oidcClients"]
-
-	return clientsExist, nil
-
 }

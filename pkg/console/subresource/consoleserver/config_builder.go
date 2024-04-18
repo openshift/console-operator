@@ -214,7 +214,7 @@ func (b *ConsoleServerCLIConfigBuilder) TelemetryConfiguration(telemetry map[str
 }
 
 func (b *ConsoleServerCLIConfigBuilder) ReleaseVersion() *ConsoleServerCLIConfigBuilder {
-	b.releaseVersion = os.Getenv("RELEASE_VERSION")
+	b.releaseVersion = os.Getenv("OPERATOR_IMAGE_VERSION")
 	return b
 }
 

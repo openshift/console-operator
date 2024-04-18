@@ -65,7 +65,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		nodeOperatingSystems     []string
 		copiedCSVsDisabled       bool
 	}
-	t.Setenv("RELEASE_VERSION", testReleaseVersion)
+	t.Setenv("OPERATOR_IMAGE_VERSION", testReleaseVersion)
 	tests := []struct {
 		name string
 		args args
