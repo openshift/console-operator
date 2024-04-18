@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	// kube
 	appsv1 "k8s.io/api/apps/v1"
@@ -365,9 +366,9 @@ func (co *consoleOperator) SyncConfigMap(
 		monitoringSharedConfig = &corev1.ConfigMap{}
 	}
 
-	telemeterClientIsAvailable, err := deploymentsub.IsTelemeterClientAvailable(co.monitoringDeploymentLister)
-	if err != nil {
-		return nil, false, "FailedTelemeterClientCheck", err
+	telemeterConfig, tcErr := co.GetTelemeterConfiguration(ctx, operatorConfig)
+	if tcErr != nil {
+		return nil, false, "FailedGetTelemetryConfig", tcErr
 	}
 
 	var (
@@ -395,7 +396,7 @@ func (co *consoleOperator) SyncConfigMap(
 		nodeArchitectures,
 		nodeOperatingSystems,
 		copiedCSVsDisabled,
-		telemeterClientIsAvailable,
+		telemeterConfig,
 	)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
@@ -409,6 +410,46 @@ func (co *consoleOperator) SyncConfigMap(
 		klog.V(4).Infof("%s", cm.Data)
 	}
 	return cm, cmChanged, "ConsoleConfigBuilder", cmErr
+}
+
+// Build telemetry configuration in following order:
+//  1. check if the telemetry client is available and set the "TELEMETER_CLIENT_DISABLED" annotation accordingly
+//  2. get telemetry related annotation from 'console-operator' config
+//  3. get telemetry related annotation from 'telemetry' configmap in the 'openshift-console-operator'
+func (co *consoleOperator) GetTelemeterConfiguration(ctx context.Context, operatorConfig *operatorv1.Console) (map[string]string, error) {
+	telemetryConfig := make(map[string]string)
+
+	telemeterClientIsAvailable, err := deploymentsub.IsTelemeterClientAvailable(co.monitoringDeploymentLister)
+	if err != nil {
+		return telemetryConfig, err
+	}
+
+	if !telemeterClientIsAvailable {
+		telemetryConfig["TELEMETER_CLIENT_DISABLED"] = "true"
+	}
+
+	if len(operatorConfig.Annotations) > 0 {
+		for k, v := range operatorConfig.Annotations {
+			if strings.HasPrefix(k, api.TelemetryAnnotationPrefix) && len(k) > len(api.TelemetryAnnotationPrefix) {
+				telemetryConfig[k[len(api.TelemetryAnnotationPrefix):]] = v
+			}
+		}
+	}
+
+	telemetryConfigMap, err := co.configMapClient.ConfigMaps(api.OpenShiftConsoleOperatorNamespace).Get(ctx, api.TelemetryConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		return telemetryConfig, err
+	}
+
+	if len(telemetryConfigMap.Data) > 0 {
+		for k, v := range telemetryConfigMap.Data {
+			if strings.HasPrefix(k, api.TelemetryAnnotationPrefix) && len(k) > len(api.TelemetryAnnotationPrefix) {
+				telemetryConfig[k[len(api.TelemetryAnnotationPrefix):]] = v
+			}
+		}
+	}
+
+	return telemetryConfig, nil
 }
 
 // apply service-ca configmap
