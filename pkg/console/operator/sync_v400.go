@@ -436,6 +436,12 @@ func (co *consoleOperator) GetTelemeterConfiguration(ctx context.Context, operat
 		}
 	}
 
+	configMaps, err := co.operatorNSConfigMapLister.ConfigMaps(api.OpenShiftConsoleOperatorNamespace).List(nil)
+	if err != nil {
+		return telemetryConfig, err
+	}
+	fmt.Printf("\n----> CM: %#v\n", configMaps)
+
 	telemetryConfigMap, err := co.operatorNSConfigMapLister.ConfigMaps(api.OpenShiftConsoleOperatorNamespace).Get(api.TelemetryConfigMapName)
 	if err != nil {
 		return telemetryConfig, err
