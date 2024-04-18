@@ -443,9 +443,7 @@ func (co *consoleOperator) GetTelemeterConfiguration(ctx context.Context, operat
 
 	if len(telemetryConfigMap.Data) > 0 {
 		for k, v := range telemetryConfigMap.Data {
-			if strings.HasPrefix(k, api.TelemetryAnnotationPrefix) && len(k) > len(api.TelemetryAnnotationPrefix) {
-				telemetryConfig[k[len(api.TelemetryAnnotationPrefix):]] = v
-			}
+			telemetryConfig[k] = v
 		}
 	}
 

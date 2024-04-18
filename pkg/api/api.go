@@ -46,7 +46,7 @@ const (
 	UpgradeConsoleNotification          = "cluster-upgrade"
 	V1Alpha1PluginI18nAnnotation        = "console.openshift.io/use-i18n"
 	VersionResourceName                 = "version"
-	TelemetryConfigMapName              = "telemetry"
+	TelemetryConfigMapName              = "telemetry-config"
 	TelemetryAnnotationPrefix           = "telemetry.console.openshift.io/"
 
 	OAuthClientName                         = OpenShiftConsoleName

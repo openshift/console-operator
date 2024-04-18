@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   namespace: openshift-console-operator
-  name: telemetry
+  name: telemetry-config
 spec:
   data:
     SEGMENT_API_KEY: BnuS1RP39EmLQjP21ko67oDjhbl9zpNU
