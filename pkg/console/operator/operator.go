@@ -76,13 +76,12 @@ type consoleOperator struct {
 	nodeClient               coreclientv1.NodesGetter
 	deploymentClient         appsclientv1.DeploymentsGetter
 	// openshift
-	operatorNSConfigMapLister corev1listers.ConfigMapLister //for openshift-config namespace
-	configNSConfigMapLister   corev1listers.ConfigMapLister //for openshift-config namespace
-	oauthClientLister         oauthlistersv1.OAuthClientLister
-	consoleOperatorLister     operatorlistersv1.ConsoleLister
-	routeClient               routeclientv1.RoutesGetter
-	routeLister               routev1listers.RouteLister
-	versionGetter             status.VersionGetter
+	configNSConfigMapLister corev1listers.ConfigMapLister //for openshift-config namespace
+	oauthClientLister       oauthlistersv1.OAuthClientLister
+	consoleOperatorLister   operatorlistersv1.ConsoleLister
+	routeClient             routeclientv1.RoutesGetter
+	routeLister             routev1listers.RouteLister
+	versionGetter           status.VersionGetter
 	// lister
 	consolePluginLister listerv1.ConsolePluginLister
 
@@ -120,7 +119,6 @@ func NewConsoleOperator(
 	// plugins
 	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
 	// openshift config
-	operatorNSConfigMapInformer corev1.ConfigMapInformer,
 	configNSConfigMapInformer corev1.ConfigMapInformer,
 	// openshift config managed
 	managedCoreV1 corev1.Interface,
@@ -156,10 +154,9 @@ func NewConsoleOperator(
 		secretsLister:   secretsInformer.Lister(),
 		configMapClient: corev1Client,
 
-		targetNSConfigMapLister:   targetNSConfigMapInformer.Lister(),
-		operatorNSConfigMapLister: operatorNSConfigMapInformer.Lister(),
-		configNSConfigMapLister:   configNSConfigMapInformer.Lister(),
-		managedNSConfigMapLister:  managedNSConfigMapInformer.Lister(),
+		targetNSConfigMapLister:  targetNSConfigMapInformer.Lister(),
+		configNSConfigMapLister:  configNSConfigMapInformer.Lister(),
+		managedNSConfigMapLister: managedNSConfigMapInformer.Lister(),
 
 		serviceClient:    corev1Client,
 		nodeClient:       corev1Client,
@@ -225,9 +222,6 @@ func NewConsoleOperator(
 	).WithFilteredEventsInformers(
 		util.IncludeNamesFilter(deployment.ConsoleOauthConfigName),
 		secretsInformer.Informer(),
-	).WithFilteredEventsInformers(
-		util.IncludeNamesFilter(api.TelemetryConfigMapName),
-		operatorNSConfigMapInformer.Informer(),
 	).WithFilteredEventsInformers(
 		util.IncludeNamesFilter(deployment.TelemeterClientDeploymentName),
 		monitoringDeploymentInformer.Informer(),

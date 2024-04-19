@@ -441,7 +441,7 @@ func (co *consoleOperator) GetTelemeterConfiguration(ctx context.Context, operat
 	}
 	klog.Infoln("3")
 
-	telemetryConfigMap, err := co.operatorNSConfigMapLister.ConfigMaps(api.OpenShiftConsoleOperatorNamespace).Get(api.TelemetryConfigMapName)
+	telemetryConfigMap, err := co.configMapClient.ConfigMaps(api.OpenShiftConsoleOperatorNamespace).Get(ctx, api.TelemetryConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		return telemetryConfig, err
 	}
