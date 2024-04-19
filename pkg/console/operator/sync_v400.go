@@ -365,12 +365,15 @@ func (co *consoleOperator) SyncConfigMap(
 		}
 		monitoringSharedConfig = &corev1.ConfigMap{}
 	}
+	fmt.Println("BEFORE TELEMERY CONFIG")
+	klog.Infoln("BEFORE TELEMERY CONFIG")
 
 	telemeterConfig, tcErr := co.GetTelemeterConfiguration(ctx, operatorConfig)
 	if tcErr != nil {
 		return nil, false, "FailedGetTelemetryConfig", tcErr
 	}
-
+	fmt.Printf("\nAFTER TELEMERY CONFIG: %v\n", telemeterConfig)
+	klog.Infof("\nAFTER TELEMERY CONFIG: %v\n", telemeterConfig)
 	var (
 		copiedCSVsDisabled bool
 		ccdErr             error
@@ -418,11 +421,12 @@ func (co *consoleOperator) SyncConfigMap(
 //  3. get telemetry related annotation from 'telemetry' configmap in the 'openshift-console-operator'
 func (co *consoleOperator) GetTelemeterConfiguration(ctx context.Context, operatorConfig *operatorv1.Console) (map[string]string, error) {
 	telemetryConfig := make(map[string]string)
-
+	klog.Infoln("1")
 	telemeterClientIsAvailable, err := deploymentsub.IsTelemeterClientAvailable(co.monitoringDeploymentLister)
 	if err != nil {
 		return telemetryConfig, err
 	}
+	klog.Infoln("2")
 
 	if !telemeterClientIsAvailable {
 		telemetryConfig["TELEMETER_CLIENT_DISABLED"] = "true"
@@ -435,17 +439,13 @@ func (co *consoleOperator) GetTelemeterConfiguration(ctx context.Context, operat
 			}
 		}
 	}
-
-	configMaps, err := co.operatorNSConfigMapLister.ConfigMaps(api.OpenShiftConsoleOperatorNamespace).List(nil)
-	if err != nil {
-		return telemetryConfig, err
-	}
-	fmt.Printf("\n----> CM: %#v\n", configMaps)
+	klog.Infoln("3")
 
 	telemetryConfigMap, err := co.operatorNSConfigMapLister.ConfigMaps(api.OpenShiftConsoleOperatorNamespace).Get(api.TelemetryConfigMapName)
 	if err != nil {
 		return telemetryConfig, err
 	}
+	klog.Infoln("4")
 
 	if len(telemetryConfigMap.Data) > 0 {
 		for k, v := range telemetryConfigMap.Data {
