@@ -3,6 +3,12 @@ kind: ConfigMap
 metadata:
   namespace: openshift-console-operator
   name: telemetry-config
+  annotations:
+    include.release.openshift.io/hypershift: "true"
+    include.release.openshift.io/ibm-cloud-managed: "true"
+    include.release.openshift.io/self-managed-high-availability: "true"
+    include.release.openshift.io/single-node-developer: "true"
+    capability.openshift.io/name: Console
 spec:
   data:
     SEGMENT_API_KEY: BnuS1RP39EmLQjP21ko67oDjhbl9zpNU
