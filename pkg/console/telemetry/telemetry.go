@@ -18,6 +18,7 @@ import (
 )
 
 const (
+	TelemetryConfigMapName             = "telemetry-config"
 	TelemeterClientDeploymentName      = "telemeter-client"
 	TelemetryAnnotationPrefix          = "telemetry.console.openshift.io/"
 	TelemeterClientDeploymentNamespace = "openshift-monitoring"
