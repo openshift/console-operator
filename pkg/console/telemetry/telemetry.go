@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	TelemetryConfigMapName             = "telemetry-config"
 	TelemeterClientDeploymentName      = "telemeter-client"
 	TelemeterClientDeploymentNamespace = "openshift-monitoring"
 	PullSecretName                     = "pull-secret"

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: openshift-console-operator
+  name: telemetry-config
+  annotations:
+    include.release.openshift.io/hypershift: "true"
+    include.release.openshift.io/ibm-cloud-managed: "true"
+    include.release.openshift.io/self-managed-high-availability: "true"
+    include.release.openshift.io/single-node-developer: "true"
+    capability.openshift.io/name: Console
+data:
+  SEGMENT_API_HOST: console.redhat.com/connections/api/v1
+  SEGMENT_JS_HOST: console.redhat.com/connections/cdn

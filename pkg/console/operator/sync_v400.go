@@ -444,6 +444,17 @@ func (co *consoleOperator) GetTelemeterConfiguration(ctx context.Context, operat
 	}
 	telemetryConfig["ORGANIZATION_ID"] = organizationID
 
+	telemetryConfigMap, err := co.operatorNSConfigMapLister.ConfigMaps(api.OpenShiftConsoleOperatorNamespace).Get(telemetry.TelemetryConfigMapName)
+	if err != nil {
+		return telemetryConfig, err
+	}
+
+	if len(telemetryConfigMap.Data) > 0 {
+		for k, v := range telemetryConfigMap.Data {
+			telemetryConfig[k] = v
+		}
+	}
+
 	return telemetryConfig, nil
 }
 
