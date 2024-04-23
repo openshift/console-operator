@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	configlistersv1 "github.com/openshift/client-go/config/listers/config/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -99,7 +100,12 @@ func GetOrganizationID(clusterID, accessToken string) (string, error) {
 		return "", err
 	}
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to GET (%s): %v", u.String(), err)
