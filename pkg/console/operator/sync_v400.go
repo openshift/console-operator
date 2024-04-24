@@ -433,26 +433,31 @@ func (co *consoleOperator) GetTelemeterConfiguration(ctx context.Context, operat
 		}
 	}
 
-	if !telemeterClientIsAvailable {
-		telemetryConfig["TELEMETER_CLIENT_DISABLED"] = "true"
-		return telemetryConfig, nil
-	}
-
 	clusterID, err := telemetry.GetClusterID(co.clusterVersionLister)
 	if err != nil {
 		return nil, err
 	}
 	telemetryConfig["CLUSTER_ID"] = clusterID
+
+	if !telemeterClientIsAvailable {
+		telemetryConfig["TELEMETER_CLIENT_DISABLED"] = "true"
+		return telemetryConfig, nil
+	}
+
 	accessToken, err := telemetry.GetAccessToken(co.configNSSecretLister)
 	if err != nil {
 		return nil, err
 	}
 
-	organizationID, err := telemetry.GetOrganizationID(clusterID, accessToken)
-	if err != nil {
-		return nil, err
+	// check if the ORGANIZATION_ID is already set on the telemetry config. If so skip fetching it.
+	_, ok := telemetryConfig["ORGANIZATION_ID"]
+	if !ok {
+		organizationID, err := telemetry.GetOrganizationID(clusterID, accessToken)
+		if err != nil {
+			return nil, err
+		}
+		telemetryConfig["ORGANIZATION_ID"] = organizationID
 	}
-	telemetryConfig["ORGANIZATION_ID"] = organizationID
 
 	return telemetryConfig, nil
 }
