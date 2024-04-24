@@ -54,7 +54,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: ""}}).
+					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: ""}}, "").
 					Config()
 			},
 			output: Config{
@@ -104,7 +104,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 								},
 							},
 						},
-					}).
+					},
+						"").
 					Config()
 			},
 			output: Config{
@@ -155,7 +156,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 								},
 							},
 						},
-					}).
+					}, "").
 					Config()
 			},
 			output: Config{
@@ -846,7 +847,7 @@ providers: {}
 								},
 							},
 						},
-					},
+					}, "",
 				).ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
@@ -875,7 +876,7 @@ providers: {}
 					APIServerURL("https://foobar.com/api").
 					Host("https://foobar.com/host").
 					LogoutURL("https://foobar.com/logout").
-					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: configv1.AuthenticationTypeIntegratedOAuth}}).
+					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: configv1.AuthenticationTypeIntegratedOAuth}}, "").
 					ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1
@@ -1137,7 +1138,7 @@ providers: {}
 						"plugin2": "plugin2_url",
 					}).
 					I18nNamespaces([]string{"plugin__plugin1"}).
-					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}})
+					AuthConfig(&configv1.Authentication{Spec: configv1.AuthenticationSpec{Type: "OIDC"}}, "")
 				return b.ConfigYAML()
 			},
 			output: `apiVersion: console.openshift.io/v1

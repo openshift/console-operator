@@ -182,6 +182,7 @@ func NewConsoleOperator(
 		configV1Informers.Ingresses().Informer(),
 		configV1Informers.Proxies().Informer(),
 		configV1Informers.OAuths().Informer(),
+		configV1Informers.Authentications().Informer(),
 	}
 
 	olmGroupVersionResource := schema.GroupVersionResource{

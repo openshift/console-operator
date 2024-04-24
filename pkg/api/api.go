@@ -3,6 +3,7 @@ package api
 const (
 	AuthServerCAMountDir                = "/var/auth-server-ca"
 	AuthServerCAFileName                = "ca-bundle.crt"
+	CLIOIDCClientComponentName          = "cli"
 	ClusterOperatorName                 = "console"
 	ConfigResourceName                  = "cluster"
 	ConsoleContainerPort                = 443

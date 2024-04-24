@@ -8,6 +8,7 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	authconfigsub "github.com/openshift/console-operator/pkg/console/subresource/authentication"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	"gopkg.in/yaml.v2"
 	authorizationv1 "k8s.io/api/authorization/v1"
@@ -69,6 +70,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	oauthClientID              string
 	oidcExtraScopes            []string
 	oidcIssuerURL              string
+	oidcOCLoginCommand         string
 	authType                   string
 	sessionEncryptionFile      string
 	sessionAuthenticationFile  string
@@ -142,7 +144,7 @@ func (b *ConsoleServerCLIConfigBuilder) StatusPageID(id string) *ConsoleServerCL
 	return b
 }
 
-func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authentication) *ConsoleServerCLIConfigBuilder {
+func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authentication, apiServerURL string) *ConsoleServerCLIConfigBuilder {
 	switch authnConfig.Spec.Type {
 	case "", configv1.AuthenticationTypeIntegratedOAuth:
 		b.authType = "openshift"
@@ -160,7 +162,7 @@ func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authent
 			return b
 		}
 
-		oidcProvider, oidcConfig := util.GetOIDCClientConfig(authnConfig)
+		oidcProvider, oidcConfig := authconfigsub.GetOIDCClientConfig(authnConfig, api.TargetNamespace, api.OpenShiftConsoleName)
 		if oidcConfig == nil {
 			b.authType = "disabled"
 			return b
@@ -170,6 +172,7 @@ func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authent
 		b.oidcIssuerURL = oidcProvider.Issuer.URL
 		b.oauthClientID = oidcConfig.ClientID
 		b.oidcExtraScopes = oidcConfig.ExtraScopes
+		b.oidcOCLoginCommand = authconfigsub.GetOIDCOCLoginCommand(authnConfig, apiServerURL)
 		b.sessionAuthenticationFile = "/var/session-secret/sessionAuthenticationKey"
 		b.sessionEncryptionFile = "/var/session-secret/sessionEncryptionKey"
 
@@ -344,6 +347,7 @@ func (b *ConsoleServerCLIConfigBuilder) auth() Auth {
 		OAuthEndpointCAFile:      b.CAFile,
 		InactivityTimeoutSeconds: b.inactivityTimeoutSeconds,
 		OIDCExtraScopes:          b.oidcExtraScopes,
+		OIDCOCLoginCommand:       b.oidcOCLoginCommand,
 	}
 	if len(b.logoutRedirectURL) > 0 {
 		conf.LogoutRedirect = b.logoutRedirectURL

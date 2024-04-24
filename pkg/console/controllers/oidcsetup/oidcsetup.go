@@ -30,6 +30,7 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
+	authnsub "github.com/openshift/console-operator/pkg/console/subresource/authentication"
 	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
 )
@@ -172,8 +173,7 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 }
 
 func (c *oidcSetupController) syncAuthTypeOIDC(ctx context.Context, authnConfig *configv1.Authentication, operatorConfig *operatorv1.Console, recorder events.Recorder) error {
-
-	oidcProvider, clientConfig := utilsub.GetOIDCClientConfig(authnConfig)
+	oidcProvider, clientConfig := authnsub.GetOIDCClientConfig(authnConfig, api.TargetNamespace, api.OpenShiftConsoleName)
 	if clientConfig == nil {
 		c.authStatusHandler.WithCurrentOIDCClient("")
 		c.authStatusHandler.Unavailable("OIDCClientConfig", "no OIDC client found")

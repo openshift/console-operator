@@ -3,14 +3,17 @@ package util
 import (
 	//k8s
 
+	"context"
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 
-	//github
-
+	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/library-go/pkg/controller/factory"
+	"github.com/openshift/library-go/pkg/operator/v1helpers"
 )
 
 // Return func which returns true if obj name is in names
@@ -55,5 +58,29 @@ func LabelFilter(labels map[string]string) factory.EventFilterFunc {
 			}
 		}
 		return true
+	}
+}
+
+type consoleOperatorController interface {
+	HandleManaged(context.Context) error
+	HandleUnmanaged(context.Context) error
+	HandleRemoved(context.Context) error
+}
+
+func HandleManagementState(ctx context.Context, c consoleOperatorController, operatorClient v1helpers.OperatorClient) error {
+	operatorSpec, _, _, err := operatorClient.GetOperatorState()
+	if err != nil {
+		return fmt.Errorf("failed to retrieve operator config: %w", err)
+	}
+
+	switch managementState := operatorSpec.ManagementState; managementState {
+	case operatorv1.Managed:
+		return c.HandleManaged(ctx)
+	case operatorv1.Unmanaged:
+		return c.HandleUnmanaged(ctx)
+	case operatorv1.Removed:
+		return c.HandleRemoved(ctx)
+	default:
+		return fmt.Errorf("console is in an unknown state: %v", managementState)
 	}
 }

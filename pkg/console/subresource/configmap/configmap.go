@@ -15,6 +15,7 @@ import (
 	"github.com/openshift/console-operator/bindata"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
+	infrastructuresub "github.com/openshift/console-operator/pkg/console/subresource/infrastructure"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
 )
@@ -25,13 +26,6 @@ const (
 	pluginProxyEndpoint       = "/api/proxy/plugin/"
 	telemetryAnnotationPrefix = "telemetry.console.openshift.io/"
 )
-
-func getApiUrl(infrastructureConfig *configv1.Infrastructure) string {
-	if infrastructureConfig != nil {
-		return infrastructureConfig.Status.APIServerURL
-	}
-	return ""
-}
 
 func statusPageId(operatorConfig *operatorv1.Console) string {
 	if operatorConfig.Spec.Providers.Statuspage != nil {
@@ -57,12 +51,14 @@ func DefaultConfigMap(
 	telemeterClientIsAvailable bool,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
+	apiServerURL := infrastructuresub.GetAPIServerURL(infrastructureConfig)
+
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
 	defaultConfig, err := defaultBuilder.Host(activeConsoleRoute.Spec.Host).
 		LogoutURL(defaultLogoutURL).
 		Brand(DEFAULT_BRAND).
 		DocURL(DEFAULT_DOC_URL).
-		APIServerURL(getApiUrl(infrastructureConfig)).
+		APIServerURL(apiServerURL).
 		Monitoring(monitoringSharedConfig).
 		InactivityTimeout(inactivityTimeoutSeconds).
 		ReleaseVersion().
@@ -81,7 +77,7 @@ func DefaultConfigMap(
 		LogoutURL(consoleConfig.Spec.Authentication.LogoutRedirect).
 		Brand(operatorConfig.Spec.Customization.Brand).
 		DocURL(operatorConfig.Spec.Customization.DocumentationBaseURL).
-		APIServerURL(getApiUrl(infrastructureConfig)).
+		APIServerURL(apiServerURL).
 		TopologyMode(infrastructureConfig.Status.ControlPlaneTopology).
 		Monitoring(monitoringSharedConfig).
 		Plugins(getPluginsEndpointMap(availablePlugins)).
@@ -101,7 +97,7 @@ func DefaultConfigMap(
 		ReleaseVersion().
 		NodeArchitectures(nodeArchitectures).
 		NodeOperatingSystems(nodeOperatingSystems).
-		AuthConfig(authConfig).
+		AuthConfig(authConfig, apiServerURL).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate user defined console-config config: %v", err)
