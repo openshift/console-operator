@@ -3,6 +3,7 @@ package configmap
 import (
 	"fmt"
 	"net/url"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
@@ -20,9 +21,10 @@ import (
 )
 
 const (
-	consoleConfigYamlFile = "console-config.yaml"
-	defaultLogoutURL      = ""
-	pluginProxyEndpoint   = "/api/proxy/plugin/"
+	consoleConfigYamlFile     = "console-config.yaml"
+	defaultLogoutURL          = ""
+	pluginProxyEndpoint       = "/api/proxy/plugin/"
+	telemetryAnnotationPrefix = "telemetry.console.openshift.io/"
 )
 
 func statusPageId(operatorConfig *operatorv1.Console) string {
@@ -46,7 +48,7 @@ func DefaultConfigMap(
 	nodeArchitectures []string,
 	nodeOperatingSystems []string,
 	copiedCSVsDisabled bool,
-	telemeterConfig map[string]string,
+	telemeterClientIsAvailable bool,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	apiServerURL := infrastructuresub.GetAPIServerURL(infrastructureConfig)
@@ -91,7 +93,7 @@ func DefaultConfigMap(
 		Perspectives(operatorConfig.Spec.Customization.Perspectives).
 		StatusPageID(statusPageId(operatorConfig)).
 		InactivityTimeout(inactivityTimeoutSeconds).
-		TelemetryConfiguration(telemeterConfig).
+		TelemetryConfiguration(GetTelemetryConfiguration(operatorConfig, telemeterClientIsAvailable)).
 		ReleaseVersion().
 		NodeArchitectures(nodeArchitectures).
 		NodeOperatingSystems(nodeOperatingSystems).
@@ -170,6 +172,22 @@ func getPluginsProxyServices(availablePlugins []*v1.ConsolePlugin) []consoleserv
 		}
 	}
 	return proxyServices
+}
+
+func GetTelemetryConfiguration(operatorConfig *operatorv1.Console, telemeterClientIsAvailable bool) map[string]string {
+	telemetry := make(map[string]string)
+	if len(operatorConfig.Annotations) > 0 {
+		for k, v := range operatorConfig.Annotations {
+			if strings.HasPrefix(k, telemetryAnnotationPrefix) && len(k) > len(telemetryAnnotationPrefix) {
+				telemetry[k[len(telemetryAnnotationPrefix):]] = v
+			}
+		}
+	}
+
+	if !telemeterClientIsAvailable {
+		telemetry["TELEMETER_CLIENT_DISABLED"] = "true"
+	}
+	return telemetry
 }
 
 func getConsoleAPIPath(pluginName string, service *v1.ConsolePluginProxy) string {
