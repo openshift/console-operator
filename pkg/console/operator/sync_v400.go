@@ -449,15 +449,13 @@ func (co *consoleOperator) GetTelemeterConfiguration(ctx context.Context, operat
 		return nil, err
 	}
 
-	// check if the ORGANIZATION_ID is already set on the telemetry config. If so skip fetching it.
-	_, ok := telemetryConfig["ORGANIZATION_ID"]
-	if !ok {
-		organizationID, err := telemetry.GetOrganizationID(clusterID, accessToken)
-		if err != nil {
-			return nil, err
-		}
-		telemetryConfig["ORGANIZATION_ID"] = organizationID
+	// If for any reason the getting the ORGANIZATION_ID fails,
+	// log the error and set ORGANIZATION_ID to empty string.
+	organizationID, err := telemetry.GetOrganizationID(clusterID, accessToken)
+	if err != nil {
+		klog.Errorf("telemetry config error: %s", err)
 	}
+	telemetryConfig["ORGANIZATION_ID"] = organizationID
 
 	return telemetryConfig, nil
 }
