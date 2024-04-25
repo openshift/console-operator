@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	// kube
 	appsv1 "k8s.io/api/apps/v1"
@@ -22,6 +21,7 @@ import (
 	v1 "github.com/openshift/api/console/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
@@ -29,7 +29,6 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 
 	// operator
-	"github.com/openshift/console-operator/pkg/api"
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
 	"github.com/openshift/console-operator/pkg/console/metrics"
 	"github.com/openshift/console-operator/pkg/console/status"
@@ -39,7 +38,6 @@ import (
 	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
 	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
-	telemetry "github.com/openshift/console-operator/pkg/console/telemetry"
 )
 
 // The sync loop starts from zero and works its way through the requirements for a running console.
@@ -367,9 +365,9 @@ func (co *consoleOperator) SyncConfigMap(
 		monitoringSharedConfig = &corev1.ConfigMap{}
 	}
 
-	telemeterConfig, tcErr := co.GetTelemeterConfiguration(ctx, operatorConfig)
-	if tcErr != nil {
-		return nil, false, "FailedGetTelemetryConfig", tcErr
+	telemeterClientIsAvailable, err := deploymentsub.IsTelemeterClientAvailable(co.monitoringDeploymentLister)
+	if err != nil {
+		return nil, false, "FailedTelemeterClientCheck", err
 	}
 
 	var (
@@ -397,7 +395,7 @@ func (co *consoleOperator) SyncConfigMap(
 		nodeArchitectures,
 		nodeOperatingSystems,
 		copiedCSVsDisabled,
-		telemeterConfig,
+		telemeterClientIsAvailable,
 	)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
@@ -411,55 +409,6 @@ func (co *consoleOperator) SyncConfigMap(
 		klog.V(4).Infof("%s", cm.Data)
 	}
 	return cm, cmChanged, "ConsoleConfigBuilder", cmErr
-}
-
-// Build telemetry configuration in following order:
-//  1. check if the telemetry client is available and set the "TELEMETER_CLIENT_DISABLED" annotation accordingly
-//  2. get telemetry annotation from console-operator config
-//  3. get CLUSTER_ID from the cluster-version config
-//  4. get ORGANIZATION_ID from OCM
-func (co *consoleOperator) GetTelemeterConfiguration(ctx context.Context, operatorConfig *operatorv1.Console) (map[string]string, error) {
-	telemetryConfig := make(map[string]string)
-	telemeterClientIsAvailable, err := telemetry.IsTelemeterClientAvailable(co.monitoringDeploymentLister)
-	if err != nil {
-		return telemetryConfig, err
-	}
-
-	if len(operatorConfig.Annotations) > 0 {
-		for k, v := range operatorConfig.Annotations {
-			if strings.HasPrefix(k, telemetry.TelemetryAnnotationPrefix) && len(k) > len(telemetry.TelemetryAnnotationPrefix) {
-				telemetryConfig[k[len(telemetry.TelemetryAnnotationPrefix):]] = v
-			}
-		}
-	}
-
-	clusterID, err := telemetry.GetClusterID(co.clusterVersionLister)
-	if err != nil {
-		return nil, err
-	}
-	telemetryConfig["CLUSTER_ID"] = clusterID
-
-	if !telemeterClientIsAvailable {
-		telemetryConfig["TELEMETER_CLIENT_DISABLED"] = "true"
-		return telemetryConfig, nil
-	}
-
-	accessToken, err := telemetry.GetAccessToken(co.configNSSecretLister)
-	if err != nil {
-		return nil, err
-	}
-
-	// check if the ORGANIZATION_ID is already set on the telemetry config. If so skip fetching it.
-	_, ok := telemetryConfig["ORGANIZATION_ID"]
-	if !ok {
-		organizationID, err := telemetry.GetOrganizationID(clusterID, accessToken)
-		if err != nil {
-			return nil, err
-		}
-		telemetryConfig["ORGANIZATION_ID"] = organizationID
-	}
-
-	return telemetryConfig, nil
 }
 
 // apply service-ca configmap

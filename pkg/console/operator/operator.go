@@ -53,7 +53,6 @@ import (
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	"github.com/openshift/console-operator/pkg/console/subresource/secret"
-	telemetry "github.com/openshift/console-operator/pkg/console/telemetry"
 )
 
 type consoleOperator struct {
@@ -66,12 +65,10 @@ type consoleOperator struct {
 	proxyConfigLister    configlistersv1.ProxyLister
 	oauthConfigLister    configlistersv1.OAuthLister
 	authnConfigLister    configlistersv1.AuthenticationLister
-	clusterVersionLister configlistersv1.ClusterVersionLister
 	dynamicClient        dynamic.Interface
 	// core kube
 	secretsClient            coreclientv1.SecretsGetter
 	secretsLister            corev1listers.SecretLister
-	configNSSecretLister     corev1listers.SecretLister
 	configMapClient          coreclientv1.ConfigMapsGetter
 	targetNSConfigMapLister  corev1listers.ConfigMapLister // for openshift-console namespace
 	managedNSConfigMapLister corev1listers.ConfigMapLister // for openshift-config-managed namespace
@@ -123,7 +120,6 @@ func NewConsoleOperator(
 	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
 	// openshift config
 	configNSConfigMapInformer corev1.ConfigMapInformer,
-	configSecretsInformer corev1.SecretInformer,
 	// openshift config managed
 	managedCoreV1 corev1.Interface,
 	// event handling
@@ -139,7 +135,6 @@ func NewConsoleOperator(
 	nodeInformer := coreV1.Nodes()
 	configV1Informers := configInformer.Config().V1()
 	configNameFilter := util.IncludeNamesFilter(api.ConfigResourceName)
-
 	targetNameFilter := util.IncludeNamesFilter(api.OpenShiftConsoleName)
 
 	c := &consoleOperator{
@@ -152,14 +147,11 @@ func NewConsoleOperator(
 		ingressConfigLister:   configInformer.Config().V1().Ingresses().Lister(),
 		proxyConfigLister:     configInformer.Config().V1().Proxies().Lister(),
 		oauthConfigLister:     configInformer.Config().V1().OAuths().Lister(),
-		clusterVersionLister:  configInformer.Config().V1().ClusterVersions().Lister(),
 		authnConfigLister:     configV1Informers.Authentications().Lister(),
 		// console resources
 		// core kube
-		secretsClient:        corev1Client,
-		secretsLister:        secretsInformer.Lister(),
-		configNSSecretLister: configSecretsInformer.Lister(),
-
+		secretsClient:   corev1Client,
+		secretsLister:   secretsInformer.Lister(),
 		configMapClient: corev1Client,
 
 		targetNSConfigMapLister:  targetNSConfigMapInformer.Lister(),
@@ -232,7 +224,7 @@ func NewConsoleOperator(
 		util.IncludeNamesFilter(deployment.ConsoleOauthConfigName),
 		secretsInformer.Informer(),
 	).WithFilteredEventsInformers(
-		util.IncludeNamesFilter(telemetry.TelemeterClientDeploymentName),
+		util.IncludeNamesFilter(deployment.TelemeterClientDeploymentName),
 		monitoringDeploymentInformer.Informer(),
 	).ResyncEvery(time.Minute).WithSync(c.Sync).
 		ToController("ConsoleOperator", recorder.WithComponentSuffix("console-operator"))
