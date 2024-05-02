@@ -367,7 +367,7 @@ func (co *consoleOperator) SyncConfigMap(
 		monitoringSharedConfig = &corev1.ConfigMap{}
 	}
 
-	telemeterConfig, tcErr := co.GetTelemeterConfiguration(ctx, operatorConfig)
+	telemetryConfig, tcErr := co.GetTelemetryConfiguration(ctx, operatorConfig)
 	if tcErr != nil {
 		return nil, false, "FailedGetTelemetryConfig", tcErr
 	}
@@ -397,7 +397,7 @@ func (co *consoleOperator) SyncConfigMap(
 		nodeArchitectures,
 		nodeOperatingSystems,
 		copiedCSVsDisabled,
-		telemeterConfig,
+		telemetryConfig,
 	)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
@@ -419,7 +419,7 @@ func (co *consoleOperator) SyncConfigMap(
 //  3. get default telemetry value from telemetry-config configmap
 //  4. get CLUSTER_ID from the cluster-version config
 //  5. get ORGANIZATION_ID from OCM, if ORGANIZATION_ID is not already set
-func (co *consoleOperator) GetTelemeterConfiguration(ctx context.Context, operatorConfig *operatorv1.Console) (map[string]string, error) {
+func (co *consoleOperator) GetTelemetryConfiguration(ctx context.Context, operatorConfig *operatorv1.Console) (map[string]string, error) {
 	telemetryConfig := make(map[string]string)
 
 	if len(operatorConfig.Annotations) > 0 {
