@@ -55,7 +55,6 @@ func TestDefaultConfigMap(t *testing.T) {
 		consoleConfig            *configv1.Console
 		managedConfig            *corev1.ConfigMap
 		monitoringSharedConfig   *corev1.ConfigMap
-		clusterMonitoringConfig  *corev1.ConfigMap
 		authServerCAConfig       *corev1.ConfigMap
 		infrastructureConfig     *configv1.Infrastructure
 		rt                       *routev1.Route
@@ -64,6 +63,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		nodeArchitectures        []string
 		nodeOperatingSystems     []string
 		copiedCSVsDisabled       bool
+		telemetryConfig          map[string]string
 	}
 	t.Setenv("OPERATOR_IMAGE_VERSION", testReleaseVersion)
 	tests := []struct {
@@ -228,6 +228,9 @@ customization:
 				},
 				inactivityTimeoutSeconds: 0,
 				nodeArchitectures:        []string{"amd64", "arm64"},
+				telemetryConfig: map[string]string{
+					"telemetry.console.openshift.io/TELEMETER_CLIENT_DISABLED": "true",
+				},
 			},
 			want: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
@@ -268,6 +271,8 @@ servingInfo:
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
 providers: {}
+telemetry:
+  telemetry.console.openshift.io/TELEMETER_CLIENT_DISABLED: "true"
 `,
 				},
 			},
@@ -1063,7 +1068,7 @@ providers: {}
 				tt.args.nodeArchitectures,
 				tt.args.nodeOperatingSystems,
 				tt.args.copiedCSVsDisabled,
-				true, // TODO add test cases for telemetry client
+				tt.args.telemetryConfig,
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below
@@ -1150,61 +1155,6 @@ func testPluginsWithI18nPreloadType(pluginName, serviceName, serviceNamespace st
 	plugin := testPlugins(pluginName, serviceName, serviceNamespace)
 	plugin.Spec.I18n.LoadType = v1.Preload
 	return plugin
-}
-
-func TestTelemetryConfiguration(t *testing.T) {
-	tests := []struct {
-		name                    string
-		operatorConfig          *operatorv1.Console
-		clusterMonitoringConfig *corev1.ConfigMap
-		expectedConfiguration   map[string]string
-	}{
-		{
-			name:                  "Should pass without any telemetry annotations",
-			operatorConfig:        &operatorv1.Console{},
-			expectedConfiguration: map[string]string{},
-		},
-		{
-			name: "Should extract telemetry annotations correctly",
-			operatorConfig: &operatorv1.Console{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						"release.openshift.io/create-only":            "true",
-						"telemetry.console.openshift.io/A_CONFIG_KEY": "API_KEY",
-						"telemetry.console.openshift.io/disabled":     "true",
-					},
-				},
-			},
-			expectedConfiguration: map[string]string{
-				"A_CONFIG_KEY": "API_KEY",
-				"disabled":     "true",
-			},
-		},
-		{
-			name: "Should ignore an empty annotation suffix",
-			operatorConfig: &operatorv1.Console{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						"release.openshift.io/create-only":            "true",
-						"telemetry.console.openshift.io/A_CONFIG_KEY": "API_KEY",
-						"telemetry.console.openshift.io/disabled":     "true",
-						"telemetry.console.openshift.io/":             "invalid annotation",
-					},
-				},
-			},
-			expectedConfiguration: map[string]string{
-				"A_CONFIG_KEY": "API_KEY",
-				"disabled":     "true",
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(GetTelemetryConfiguration(tt.operatorConfig, true), tt.expectedConfiguration); diff != nil { // TODO  add test cases for telemetry client
-				t.Error(diff)
-			}
-		})
-	}
 }
 
 func TestStub(t *testing.T) {
