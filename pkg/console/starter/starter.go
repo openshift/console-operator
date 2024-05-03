@@ -236,7 +236,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// oauth
 		oauthClientsSwitchedInformer,
 		// routes
-		routesClient.RouteV1(),
 		routesInformersNamespaced.Route().V1().Routes(), // Route
 		// plugins
 		consoleInformers.Console().V1().ConsolePlugins(),
@@ -322,7 +321,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// clients
 		operatorClient,
 		consoleClient.ConsoleV1().ConsoleCLIDownloads(),
-		routesClient.RouteV1(),
 		// informers
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
 		configInformers, // Config
@@ -367,12 +365,10 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// enable health check for console route
 		true,
 		// top level config
-		configClient.ConfigV1(),
 		configInformers,
 		// clients
 		operatorClient,
 		routesClient.RouteV1(),
-		kubeClient.CoreV1(),
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
 		kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
@@ -386,12 +382,10 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// disable health check for console route
 		false,
 		// top level config
-		configClient.ConfigV1(),
 		configInformers,
 		// clients
 		operatorClient,
 		routesClient.RouteV1(),
-		kubeClient.CoreV1(),
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
 		kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
@@ -405,8 +399,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configClient.ConfigV1(),
 		// clients
 		operatorClient,
-		routesClient.RouteV1(),
-		kubeClient.CoreV1(),
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
 		configInformers,                     // Config
@@ -418,7 +410,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 	upgradeNotificationController := upgradenotification.NewUpgradeNotificationController(
 		// top level config
-		configClient.ConfigV1(),
 		configInformers,
 		// clients
 		operatorClient,
