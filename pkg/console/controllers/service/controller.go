@@ -15,6 +15,7 @@ import (
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
+	configlistersv1 "github.com/openshift/client-go/config/listers/config/v1"
 	operatorinformersv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	operatorv1listers "github.com/openshift/client-go/operator/listers/operator/v1"
 	"github.com/openshift/console-operator/bindata"
@@ -33,12 +34,12 @@ import (
 // the informers will automatically notify it of changes
 // and kick the sync loop
 type ServiceSyncController struct {
-	serviceName          string
-	operatorClient       v1helpers.OperatorClient
+	serviceName    string
+	operatorClient v1helpers.OperatorClient
+	serviceClient  coreclientv1.ServicesGetter
+
 	operatorConfigLister operatorv1listers.ConsoleLister
-	ingressClient        configclientv1.IngressInterface
-	// live clients, we dont need listers w/caches
-	serviceClient coreclientv1.ServicesGetter
+	ingressConfigLister  configlistersv1.IngressLister
 }
 
 // factory func needs clients and informers
@@ -62,7 +63,7 @@ func NewServiceSyncController(
 		serviceName:          serviceName,
 		operatorClient:       operatorClient,
 		operatorConfigLister: operatorConfigInformer.Lister(),
-		ingressClient:        configClient.Ingresses(),
+		ingressConfigLister:  configInformer.Config().V1().Ingresses().Lister(),
 		serviceClient:        corev1Client,
 	}
 
@@ -105,7 +106,7 @@ func (c *ServiceSyncController) Sync(ctx context.Context, controllerContext fact
 
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
-	ingressConfig, err := c.ingressClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	ingressConfig, err := c.ingressConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		return statusHandler.FlushAndReturn(err)
 	}

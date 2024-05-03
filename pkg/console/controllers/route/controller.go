@@ -11,15 +11,15 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	coreinformersv1 "k8s.io/client-go/informers/core/v1"
-	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
-	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
+	configlistersv1 "github.com/openshift/client-go/config/listers/config/v1"
 	v1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	operatorv1listers "github.com/openshift/client-go/operator/listers/operator/v1"
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
@@ -41,22 +41,20 @@ type RouteSyncController struct {
 	isHealthCheckEnabled bool
 	// clients
 	operatorClient       v1helpers.OperatorClient
-	operatorConfigLister operatorv1listers.ConsoleLister
-	ingressClient        configclientv1.IngressInterface
 	routeClient          routeclientv1.RoutesGetter
-	secretClient         coreclientv1.SecretsGetter
+	operatorConfigLister operatorv1listers.ConsoleLister
+	ingressConfigLister  configlistersv1.IngressLister
+	secretLister         corev1listers.SecretLister
 }
 
 func NewRouteSyncController(
 	routeName string,
 	isHealthCheckEnabled bool,
 	// top level config
-	configClient configclientv1.ConfigV1Interface,
 	configInformer configinformer.SharedInformerFactory,
 	// clients
 	operatorClient v1helpers.OperatorClient,
 	routev1Client routeclientv1.RoutesGetter,
-	secretClient coreclientv1.SecretsGetter,
 	// informers
 	operatorConfigInformer v1.ConsoleInformer,
 	secretInformer coreinformersv1.SecretInformer,
@@ -69,9 +67,9 @@ func NewRouteSyncController(
 		isHealthCheckEnabled: isHealthCheckEnabled,
 		operatorClient:       operatorClient,
 		operatorConfigLister: operatorConfigInformer.Lister(),
-		ingressClient:        configClient.Ingresses(),
+		ingressConfigLister:  configInformer.Config().V1().Ingresses().Lister(),
 		routeClient:          routev1Client,
-		secretClient:         secretClient,
+		secretLister:         secretInformer.Lister(),
 	}
 
 	configV1Informers := configInformer.Config().V1()
@@ -116,7 +114,7 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
-	ingressConfig, err := c.ingressClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	ingressConfig, err := c.ingressConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		return statusHandler.FlushAndReturn(err)
 	}
@@ -226,7 +224,7 @@ func (c *RouteSyncController) SyncCustomRoute(ctx context.Context, routeConfig *
 
 func (c *RouteSyncController) GetCustomRouteTLSSecret(ctx context.Context, routeConfig *routesub.RouteConfig) (*corev1.Secret, error) {
 	if routeConfig.IsCustomTLSSecretSet() {
-		customTLSSecret, customTLSSecretErr := c.secretClient.Secrets(api.OpenShiftConfigNamespace).Get(ctx, routeConfig.GetCustomTLSSecretName(), metav1.GetOptions{})
+		customTLSSecret, customTLSSecretErr := c.secretLister.Secrets(api.OpenShiftConfigNamespace).Get(routeConfig.GetCustomTLSSecretName())
 		if customTLSSecretErr != nil {
 			return nil, fmt.Errorf("failed to GET custom route TLS secret: %s", customTLSSecretErr)
 		}
@@ -246,7 +244,7 @@ func (c *RouteSyncController) GetDefaultRouteTLSSecret(ctx context.Context, rout
 		return nil, nil
 	}
 
-	secret, secretErr := c.secretClient.Secrets(api.OpenShiftConfigNamespace).Get(ctx, routeConfig.GetDefaultTLSSecretName(), metav1.GetOptions{})
+	secret, secretErr := c.secretLister.Secrets(api.OpenShiftConfigNamespace).Get(routeConfig.GetDefaultTLSSecretName())
 	if secretErr != nil {
 		return nil, fmt.Errorf("failed to GET default route TLS secret: %s", secretErr)
 	}
