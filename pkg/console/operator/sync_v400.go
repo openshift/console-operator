@@ -367,7 +367,7 @@ func (co *consoleOperator) SyncConfigMap(
 		monitoringSharedConfig = &corev1.ConfigMap{}
 	}
 
-	telemeterConfig, tcErr := co.GetTelemeterConfiguration(ctx, operatorConfig)
+	telemetryConfig, tcErr := co.GetTelemetryConfiguration(ctx, operatorConfig)
 	if tcErr != nil {
 		return nil, false, "FailedGetTelemetryConfig", tcErr
 	}
@@ -397,7 +397,7 @@ func (co *consoleOperator) SyncConfigMap(
 		nodeArchitectures,
 		nodeOperatingSystems,
 		copiedCSVsDisabled,
-		telemeterConfig,
+		telemetryConfig,
 	)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
@@ -416,14 +416,11 @@ func (co *consoleOperator) SyncConfigMap(
 // Build telemetry configuration in following order:
 //  1. check if the telemetry client is available and set the "TELEMETER_CLIENT_DISABLED" annotation accordingly
 //  2. get telemetry annotation from console-operator config
-//  3. get CLUSTER_ID from the cluster-version config
-//  4. get ORGANIZATION_ID from OCM
-func (co *consoleOperator) GetTelemeterConfiguration(ctx context.Context, operatorConfig *operatorv1.Console) (map[string]string, error) {
+//  3. get default telemetry value from telemetry-config configmap
+//  4. get CLUSTER_ID from the cluster-version config
+//  5. get ORGANIZATION_ID from OCM, if ORGANIZATION_ID is not already set
+func (co *consoleOperator) GetTelemetryConfiguration(ctx context.Context, operatorConfig *operatorv1.Console) (map[string]string, error) {
 	telemetryConfig := make(map[string]string)
-	telemeterClientIsAvailable, err := telemetry.IsTelemeterClientAvailable(co.monitoringDeploymentLister)
-	if err != nil {
-		return telemetryConfig, err
-	}
 
 	if len(operatorConfig.Annotations) > 0 {
 		for k, v := range operatorConfig.Annotations {
@@ -433,12 +430,27 @@ func (co *consoleOperator) GetTelemeterConfiguration(ctx context.Context, operat
 		}
 	}
 
+	telemetryConfigMap, err := co.operatorNSConfigMapLister.ConfigMaps(api.OpenShiftConsoleOperatorNamespace).Get(telemetry.TelemetryConfigMapName)
+	if err != nil {
+		return telemetryConfig, err
+	}
+
+	if len(telemetryConfigMap.Data) > 0 {
+		for k, v := range telemetryConfigMap.Data {
+			telemetryConfig[k] = v
+		}
+	}
+
 	clusterID, err := telemetry.GetClusterID(co.clusterVersionLister)
 	if err != nil {
 		return nil, err
 	}
 	telemetryConfig["CLUSTER_ID"] = clusterID
 
+	telemeterClientIsAvailable, err := telemetry.IsTelemeterClientAvailable(co.monitoringDeploymentLister)
+	if err != nil {
+		return telemetryConfig, err
+	}
 	if !telemeterClientIsAvailable {
 		telemetryConfig["TELEMETER_CLIENT_DISABLED"] = "true"
 		return telemetryConfig, nil
