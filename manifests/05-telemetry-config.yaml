@@ -12,4 +12,4 @@ metadata:
 data:
   SEGMENT_API_HOST: console.redhat.com/connections/api/v1
   SEGMENT_JS_HOST: console.redhat.com/connections/cdn
-  SEGMENT_API_KEY: BnuS1RP39EmLQjP21ko67oDjhbl9zpNU
+  SEGMENT_PUBLIC_API_KEY: BnuS1RP39EmLQjP21ko67oDjhbl9zpNU
