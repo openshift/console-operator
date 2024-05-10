@@ -75,7 +75,8 @@ type consoleOperator struct {
 	configMapClient          coreclientv1.ConfigMapsGetter
 	targetNSConfigMapLister  corev1listers.ConfigMapLister // for openshift-console namespace
 	managedNSConfigMapLister corev1listers.ConfigMapLister // for openshift-config-managed namespace
-	nodeLister               corev1listers.NodeLister
+	serviceClient            coreclientv1.ServicesGetter
+	nodeClient               coreclientv1.NodesGetter
 	deploymentClient         appsclientv1.DeploymentsGetter
 	// openshift
 	operatorNSConfigMapLister corev1listers.ConfigMapLister //for openshift-console-operator namespace
@@ -117,6 +118,7 @@ func NewConsoleOperator(
 	// oauth API
 	oauthClientSwitchedInformer *util.InformerWithSwitch,
 	// routes
+	routev1Client routeclientv1.RoutesGetter,
 	routeInformer routesinformersv1.RouteInformer,
 	// plugins
 	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
@@ -167,11 +169,13 @@ func NewConsoleOperator(
 		configNSConfigMapLister:   configNSConfigMapInformer.Lister(),
 		managedNSConfigMapLister:  managedNSConfigMapInformer.Lister(),
 
-		nodeLister:       nodeInformer.Lister(),
+		serviceClient:    corev1Client,
+		nodeClient:       corev1Client,
 		deploymentClient: deploymentClient,
 		dynamicClient:    dynamicClient,
 		// openshift
 		oauthClientLister: oauthClientSwitchedInformer.Lister(),
+		routeClient:       routev1Client,
 		routeLister:       routeInformer.Lister(),
 		versionGetter:     versionGetter,
 		// plugins
