@@ -27,14 +27,13 @@ import (
 	// informers
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
-	configlistersv1 "github.com/openshift/client-go/config/listers/config/v1"
 	consoleinformersv1 "github.com/openshift/client-go/console/informers/externalversions/console/v1"
 	operatorinformersv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
-	routev1listers "github.com/openshift/client-go/route/listers/route/v1"
 
 	// clients
 	consoleclientv1 "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
+	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 
 	// operator
 	"github.com/openshift/console-operator/pkg/api"
@@ -48,8 +47,8 @@ type CLIDownloadsSyncController struct {
 	// clients
 	operatorClient            v1helpers.OperatorClient
 	consoleCliDownloadsClient consoleclientv1.ConsoleCLIDownloadInterface
-	routeLister               routev1listers.RouteLister
-	ingressConfigLister       configlistersv1.IngressLister
+	ingressClient             configclientv1.IngressInterface
+	routeClient               routeclientv1.RoutesGetter
 	operatorConfigLister      operatorv1listers.ConsoleLister
 }
 
@@ -59,6 +58,7 @@ func NewCLIDownloadsSyncController(
 	// clients
 	operatorClient v1helpers.OperatorClient,
 	cliDownloadsInterface consoleclientv1.ConsoleCLIDownloadInterface,
+	routeClient routeclientv1.RoutesGetter,
 	// informers
 	operatorConfigInformer operatorinformersv1.ConsoleInformer,
 	configInformer configinformer.SharedInformerFactory,
@@ -72,8 +72,8 @@ func NewCLIDownloadsSyncController(
 		// clients
 		operatorClient:            operatorClient,
 		consoleCliDownloadsClient: cliDownloadsInterface,
-		routeLister:               routeInformer.Lister(),
-		ingressConfigLister:       configInformer.Config().V1().Ingresses().Lister(),
+		ingressClient:             configClient.Ingresses(),
+		routeClient:               routeClient,
 		operatorConfigLister:      operatorConfigInformer.Lister(),
 	}
 
@@ -114,7 +114,7 @@ func (c *CLIDownloadsSyncController) Sync(ctx context.Context, controllerContext
 	}
 
 	statusHandler := status.NewStatusHandler(c.operatorClient)
-	ingressConfig, err := c.ingressConfigLister.Get(api.ConfigResourceName)
+	ingressConfig, err := c.ingressClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return statusHandler.FlushAndReturn(err)
 	}
@@ -125,7 +125,7 @@ func (c *CLIDownloadsSyncController) Sync(ctx context.Context, controllerContext
 		activeRouteName = api.OpenshiftDownloadsCustomRouteName
 	}
 
-	downloadsRoute, downloadsRouteErr := c.routeLister.Routes(api.TargetNamespace).Get(activeRouteName)
+	downloadsRoute, downloadsRouteErr := c.routeClient.Routes(api.TargetNamespace).Get(ctx, activeRouteName, metav1.GetOptions{})
 	if downloadsRouteErr != nil {
 		return downloadsRouteErr
 	}

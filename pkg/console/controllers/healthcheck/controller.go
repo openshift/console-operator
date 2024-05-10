@@ -10,8 +10,9 @@ import (
 
 	// k8s
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	coreinformersv1 "k8s.io/client-go/informers/core/v1"
-	corev1listers "k8s.io/client-go/listers/core/v1"
+	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 
@@ -21,11 +22,10 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
-	configlistersv1 "github.com/openshift/client-go/config/listers/config/v1"
 	v1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	operatorv1listers "github.com/openshift/client-go/operator/listers/operator/v1"
+	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
-	routev1listers "github.com/openshift/client-go/route/listers/route/v1"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
@@ -40,12 +40,12 @@ import (
 
 type HealthCheckController struct {
 	// clients
-	operatorClient             v1helpers.OperatorClient
-	infrastructureConfigLister configlistersv1.InfrastructureLister
-	configMapLister            corev1listers.ConfigMapLister
-	routeLister                routev1listers.RouteLister
-	ingressConfigLister        configlistersv1.IngressLister
-	operatorConfigLister       operatorv1listers.ConsoleLister
+	operatorClient       v1helpers.OperatorClient
+	operatorConfigLister operatorv1listers.ConsoleLister
+	infrastructureClient configclientv1.InfrastructureInterface
+	ingressClient        configclientv1.IngressInterface
+	routeClient          routeclientv1.RoutesGetter
+	configMapClient      coreclientv1.ConfigMapsGetter
 }
 
 func NewHealthCheckController(
@@ -53,6 +53,8 @@ func NewHealthCheckController(
 	configClient configclientv1.ConfigV1Interface,
 	// clients
 	operatorClient v1helpers.OperatorClient,
+	routev1Client routeclientv1.RoutesGetter,
+	configMapClient coreclientv1.ConfigMapsGetter,
 	// informers
 	operatorConfigInformer v1.ConsoleInformer,
 	configInformer configinformer.SharedInformerFactory,
@@ -62,12 +64,12 @@ func NewHealthCheckController(
 	recorder events.Recorder,
 ) factory.Controller {
 	ctrl := &HealthCheckController{
-		operatorClient:             operatorClient,
-		operatorConfigLister:       operatorConfigInformer.Lister(),
-		infrastructureConfigLister: configInformer.Config().V1().Infrastructures().Lister(),
-		ingressConfigLister:        configInformer.Config().V1().Ingresses().Lister(),
-		routeLister:                routeInformer.Lister(),
-		configMapLister:            coreInformer.ConfigMaps().Lister(),
+		operatorClient:       operatorClient,
+		operatorConfigLister: operatorConfigInformer.Lister(),
+		infrastructureClient: configClient.Infrastructures(),
+		ingressClient:        configClient.Ingresses(),
+		routeClient:          routev1Client,
+		configMapClient:      configMapClient,
 	}
 
 	configMapInformer := coreInformer.ConfigMaps()
@@ -111,12 +113,12 @@ func (c *HealthCheckController) Sync(ctx context.Context, controllerContext fact
 	default:
 		return fmt.Errorf("unknown state: %v", updatedOperatorConfig.Spec.ManagementState)
 	}
-	ingressConfig, err := c.ingressConfigLister.Get(api.ConfigResourceName)
+	ingressConfig, err := c.ingressClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("ingress config error: %v", err)
 		return statusHandler.FlushAndReturn(err)
 	}
-	infrastructureConfig, err := c.infrastructureConfigLister.Get(api.ConfigResourceName)
+	infrastructureConfig, err := c.infrastructureClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("infrastructure config error: %v", err)
 		return statusHandler.FlushAndReturn(err)
@@ -134,7 +136,7 @@ func (c *HealthCheckController) Sync(ctx context.Context, controllerContext fact
 		activeRouteName = api.OpenshiftConsoleCustomRouteName
 	}
 
-	activeRoute, activeRouteErr := c.routeLister.Routes(api.OpenShiftConsoleNamespace).Get(activeRouteName)
+	activeRoute, activeRouteErr := c.routeClient.Routes(api.OpenShiftConsoleNamespace).Get(ctx, activeRouteName, metav1.GetOptions{})
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("RouteHealth", "FailedRouteGet", activeRouteErr))
 	if activeRouteErr != nil {
 		statusHandler.FlushAndReturn(activeRouteErr)
@@ -199,7 +201,7 @@ func (c *HealthCheckController) getCA(ctx context.Context, tls *routev1.TLSConfi
 	}
 
 	for _, cmName := range []string{api.TrustedCAConfigMapName, api.DefaultIngressCertConfigMapName} {
-		cm, err := c.configMapLister.ConfigMaps(api.OpenShiftConsoleNamespace).Get(cmName)
+		cm, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, cmName, metav1.GetOptions{})
 		if err != nil {
 			klog.V(4).Infof("failed to GET configmap %s / %s ", api.OpenShiftConsoleNamespace, cmName)
 			return nil, err

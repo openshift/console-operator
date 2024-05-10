@@ -13,7 +13,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
@@ -334,7 +333,8 @@ func (co *consoleOperator) SyncConfigMap(
 		}
 		managedConfig = &corev1.ConfigMap{}
 	}
-	nodeList, nodeListErr := co.nodeLister.List(labels.Everything())
+
+	nodeList, nodeListErr := co.nodeClient.Nodes().List(ctx, metav1.ListOptions{})
 	if nodeListErr != nil {
 		return nil, false, "FailedListNodes", nodeListErr
 	}
@@ -630,10 +630,10 @@ func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []string) []*
 	return availablePlugins
 }
 
-func getNodeComputeEnvironments(nodes []*corev1.Node) ([]string, []string) {
+func getNodeComputeEnvironments(nodes *corev1.NodeList) ([]string, []string) {
 	nodeArchitecturesSet := sets.NewString()
 	nodeOperatingSystemSet := sets.NewString()
-	for _, node := range nodes {
+	for _, node := range nodes.Items {
 		nodeArch := node.Labels[api.NodeArchitectureLabel]
 		if nodeArch == "" {
 			klog.Warningf("Missing architecture label %q on node %q.", api.NodeArchitectureLabel, node.GetName())
