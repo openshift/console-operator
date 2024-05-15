@@ -78,13 +78,13 @@ func serve(w http.ResponseWriter, r *http.Request, convert convertFunc) {
 	contentType := r.Header.Get("Content-Type")
 	serializer := getInputSerializer(contentType)
 	if serializer == nil {
-		msg := fmt.Sprintf("invalid Content-Type header `%s`", contentType)
+		msg := fmt.Sprintf("invalid Content-Type header %q", contentType)
 		klog.Errorf(msg)
 		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 
-	klog.V(4).Infof("Handling request body: \n%v", string(body))
+	klog.V(4).Infof("Handling request body: \n%q", string(body))
 	obj, gvk, err := serializer.Decode(body, nil, nil)
 	if err != nil {
 		msg := fmt.Sprintf("failed to deserialize body (%v) with error %v", string(body), err)
@@ -117,7 +117,7 @@ func serve(w http.ResponseWriter, r *http.Request, convert convertFunc) {
 	accept := r.Header.Get("Accept")
 	outSerializer := getOutputSerializer(accept)
 	if outSerializer == nil {
-		msg := fmt.Sprintf("invalid accept header `%s`", accept)
+		msg := fmt.Sprintf("invalid accept header %q", accept)
 		klog.Errorf(msg)
 		http.Error(w, msg, http.StatusBadRequest)
 		return
@@ -130,7 +130,7 @@ func serve(w http.ResponseWriter, r *http.Request, convert convertFunc) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	klog.V(4).Infof("Sending response: \n%v", responseBuffer.String())
+	klog.V(4).Infof("Sending response: \n%q", responseBuffer.String())
 	w.Write(responseBuffer.Bytes())
 }
 
