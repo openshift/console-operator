@@ -12,30 +12,28 @@ import (
 func TestGetNodeComputeEnvironments(t *testing.T) {
 	tests := []struct {
 		name                     string
-		nodeList                 *v1.NodeList
+		nodeList                 []*v1.Node
 		expectedArchitectures    []string
 		expectedOperatingSystems []string
 	}{
 		{
 			name: "Test getNodeComputeEnvironments",
-			nodeList: &v1.NodeList{
-				Items: []v1.Node{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "node-1",
-							Labels: map[string]string{
-								api.NodeArchitectureLabel:    "foo",
-								api.NodeOperatingSystemLabel: "bar",
-							},
+			nodeList: []*v1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-1",
+						Labels: map[string]string{
+							api.NodeArchitectureLabel:    "foo",
+							api.NodeOperatingSystemLabel: "bar",
 						},
 					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "node-1",
-							Labels: map[string]string{
-								api.NodeArchitectureLabel:    "baz",
-								api.NodeOperatingSystemLabel: "bat",
-							},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-1",
+						Labels: map[string]string{
+							api.NodeArchitectureLabel:    "baz",
+							api.NodeOperatingSystemLabel: "bat",
 						},
 					},
 				},
@@ -45,29 +43,27 @@ func TestGetNodeComputeEnvironments(t *testing.T) {
 		},
 		{
 			name:                     "Test getNodeComputeEnvironments empty node list",
-			nodeList:                 &v1.NodeList{},
+			nodeList:                 []*v1.Node{},
 			expectedArchitectures:    []string{},
 			expectedOperatingSystems: []string{},
 		},
 		{
 			name: "Test getNodeComputeEnvironments missing arch label",
-			nodeList: &v1.NodeList{
-				Items: []v1.Node{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "node-1",
-							Labels: map[string]string{
-								api.NodeOperatingSystemLabel: "bar",
-							},
+			nodeList: []*v1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-1",
+						Labels: map[string]string{
+							api.NodeOperatingSystemLabel: "bar",
 						},
 					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "node-2",
-							Labels: map[string]string{
-								api.NodeArchitectureLabel:    "baz",
-								api.NodeOperatingSystemLabel: "bat",
-							},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-2",
+						Labels: map[string]string{
+							api.NodeArchitectureLabel:    "baz",
+							api.NodeOperatingSystemLabel: "bat",
 						},
 					},
 				},
@@ -77,24 +73,22 @@ func TestGetNodeComputeEnvironments(t *testing.T) {
 		},
 		{
 			name: "Test getNodeComputeEnvironments empty arch label",
-			nodeList: &v1.NodeList{
-				Items: []v1.Node{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "node-1",
-							Labels: map[string]string{
-								api.NodeArchitectureLabel:    "",
-								api.NodeOperatingSystemLabel: "bar",
-							},
+			nodeList: []*v1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-1",
+						Labels: map[string]string{
+							api.NodeArchitectureLabel:    "",
+							api.NodeOperatingSystemLabel: "bar",
 						},
 					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "node-2",
-							Labels: map[string]string{
-								api.NodeArchitectureLabel:    "baz",
-								api.NodeOperatingSystemLabel: "bat",
-							},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-2",
+						Labels: map[string]string{
+							api.NodeArchitectureLabel:    "baz",
+							api.NodeOperatingSystemLabel: "bat",
 						},
 					},
 				},
@@ -104,24 +98,22 @@ func TestGetNodeComputeEnvironments(t *testing.T) {
 		},
 		{
 			name: "Test getNodeComputeEnvironments duplicate arch label",
-			nodeList: &v1.NodeList{
-				Items: []v1.Node{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "node-1",
-							Labels: map[string]string{
-								api.NodeArchitectureLabel:    "baz",
-								api.NodeOperatingSystemLabel: "bar",
-							},
+			nodeList: []*v1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-1",
+						Labels: map[string]string{
+							api.NodeArchitectureLabel:    "baz",
+							api.NodeOperatingSystemLabel: "bar",
 						},
 					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "node-2",
-							Labels: map[string]string{
-								api.NodeArchitectureLabel:    "baz",
-								api.NodeOperatingSystemLabel: "bat",
-							},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-2",
+						Labels: map[string]string{
+							api.NodeArchitectureLabel:    "baz",
+							api.NodeOperatingSystemLabel: "bat",
 						},
 					},
 				},
@@ -131,23 +123,21 @@ func TestGetNodeComputeEnvironments(t *testing.T) {
 		},
 		{
 			name: "Test getNodeComputeEnvironments missing OS label",
-			nodeList: &v1.NodeList{
-				Items: []v1.Node{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "node-1",
-							Labels: map[string]string{
-								api.NodeArchitectureLabel: "foo",
-							},
+			nodeList: []*v1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-1",
+						Labels: map[string]string{
+							api.NodeArchitectureLabel: "foo",
 						},
 					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "node-2",
-							Labels: map[string]string{
-								api.NodeArchitectureLabel:    "baz",
-								api.NodeOperatingSystemLabel: "bat",
-							},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-2",
+						Labels: map[string]string{
+							api.NodeArchitectureLabel:    "baz",
+							api.NodeOperatingSystemLabel: "bat",
 						},
 					},
 				},
@@ -157,24 +147,22 @@ func TestGetNodeComputeEnvironments(t *testing.T) {
 		},
 		{
 			name: "Test getNodeComputeEnvironments empty OS label",
-			nodeList: &v1.NodeList{
-				Items: []v1.Node{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "node-1",
-							Labels: map[string]string{
-								api.NodeArchitectureLabel:    "foo",
-								api.NodeOperatingSystemLabel: "",
-							},
+			nodeList: []*v1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-1",
+						Labels: map[string]string{
+							api.NodeArchitectureLabel:    "foo",
+							api.NodeOperatingSystemLabel: "",
 						},
 					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "node-2",
-							Labels: map[string]string{
-								api.NodeArchitectureLabel:    "baz",
-								api.NodeOperatingSystemLabel: "bat",
-							},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-2",
+						Labels: map[string]string{
+							api.NodeArchitectureLabel:    "baz",
+							api.NodeOperatingSystemLabel: "bat",
 						},
 					},
 				},
@@ -184,24 +172,22 @@ func TestGetNodeComputeEnvironments(t *testing.T) {
 		},
 		{
 			name: "Test getNodeComputeEnvironments duplicate OS label",
-			nodeList: &v1.NodeList{
-				Items: []v1.Node{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "node-1",
-							Labels: map[string]string{
-								api.NodeArchitectureLabel:    "foo",
-								api.NodeOperatingSystemLabel: "bat",
-							},
+			nodeList: []*v1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-1",
+						Labels: map[string]string{
+							api.NodeArchitectureLabel:    "foo",
+							api.NodeOperatingSystemLabel: "bat",
 						},
 					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "node-2",
-							Labels: map[string]string{
-								api.NodeArchitectureLabel:    "baz",
-								api.NodeOperatingSystemLabel: "bat",
-							},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-2",
+						Labels: map[string]string{
+							api.NodeArchitectureLabel:    "baz",
+							api.NodeOperatingSystemLabel: "bat",
 						},
 					},
 				},

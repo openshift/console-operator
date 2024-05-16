@@ -12,7 +12,6 @@ import (
 	v1 "github.com/openshift/api/config/v1"
 	consolev1 "github.com/openshift/api/console/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
-	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
 	configlistersv1 "github.com/openshift/client-go/config/listers/config/v1"
 	consoleclientv1 "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
@@ -43,7 +42,6 @@ type UpgradeNotificationController struct {
 // informers to start them up, clients to pass
 func NewUpgradeNotificationController(
 	// top level config
-	configClient configclientv1.ConfigV1Interface,
 	configInformer configinformer.SharedInformerFactory,
 	// clients
 	operatorClient v1helpers.OperatorClient,
