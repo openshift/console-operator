@@ -376,7 +376,7 @@ func (co *consoleOperator) SyncConfigMap(
 		copiedCSVsDisabled bool
 		ccdErr             error
 	)
-	if !co.isOLMDisabled {
+	if !co.trackables.isOLMDisabled {
 		copiedCSVsDisabled, ccdErr = co.isCopiedCSVsDisabled(ctx)
 		if ccdErr != nil {
 			return nil, false, "FailedGetOLMConfig", ccdErr
@@ -461,12 +461,9 @@ func (co *consoleOperator) GetTelemetryConfiguration(ctx context.Context, operat
 		return nil, err
 	}
 
-	// If for any reason the getting the ORGANIZATION_ID fails,
-	// log the error and set ORGANIZATION_ID to empty string.
-	organizationID, err := telemetry.GetOrganizationID(clusterID, accessToken)
-	if err != nil {
-		klog.Errorf("telemetry config error: %s", err)
-	}
+	organizationID := telemetry.GetOrganizationID(telemetryConfig, co.trackables.organizationID, clusterID, accessToken)
+	// cache ORGANIZATION_ID
+	co.trackables.organizationID = organizationID
 	telemetryConfig["ORGANIZATION_ID"] = organizationID
 
 	return telemetryConfig, nil
