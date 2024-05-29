@@ -139,7 +139,7 @@ func (c *HealthCheckController) Sync(ctx context.Context, controllerContext fact
 	activeRoute, activeRouteErr := c.routeClient.Routes(api.OpenShiftConsoleNamespace).Get(ctx, activeRouteName, metav1.GetOptions{})
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("RouteHealth", "FailedRouteGet", activeRouteErr))
 	if activeRouteErr != nil {
-		statusHandler.FlushAndReturn(activeRouteErr)
+		return statusHandler.FlushAndReturn(activeRouteErr)
 	}
 
 	routeHealthCheckErrReason, routeHealthCheckErr := c.CheckRouteHealth(ctx, updatedOperatorConfig, activeRoute)
