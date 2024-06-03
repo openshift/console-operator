@@ -6,6 +6,7 @@ import (
 	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 
 	configv1 "github.com/openshift/api/config/v1"
 	configv1ac "github.com/openshift/client-go/config/applyconfigurations/config/v1"
@@ -23,7 +24,7 @@ type AuthStatusHandler struct {
 	componentName      string
 	componentNamespace string
 	fieldManager       string
-	conditionsToApply  map[string]*metav1.Condition
+	conditionsToApply  map[string]*applymetav1.ConditionApplyConfiguration
 	currentClientID    string
 }
 
@@ -36,7 +37,7 @@ func NewAuthStatusHandler(authnClient configv1client.AuthenticationInterface, co
 		componentName:      componentName,
 		componentNamespace: componentNamespace,
 		fieldManager:       fieldManager,
-		conditionsToApply:  map[string]*metav1.Condition{},
+		conditionsToApply:  map[string]*applymetav1.ConditionApplyConfiguration{},
 	}
 }
 
@@ -72,13 +73,13 @@ func (c *AuthStatusHandler) Available(reason, message string) {
 
 func (c *AuthStatusHandler) setCondition(conditionType string, status metav1.ConditionStatus, reason, message string, ts metav1.Time) {
 	if c.conditionsToApply[conditionType] == nil {
-		c.conditionsToApply[conditionType] = &metav1.Condition{Type: string(conditionType)}
+		c.conditionsToApply[conditionType] = &applymetav1.ConditionApplyConfiguration{Type: &conditionType}
 	}
 
-	c.conditionsToApply[conditionType].Status = status
-	c.conditionsToApply[conditionType].Reason = reason
-	c.conditionsToApply[conditionType].Message = message
-	c.conditionsToApply[conditionType].LastTransitionTime = ts
+	c.conditionsToApply[conditionType].Status = &status
+	c.conditionsToApply[conditionType].Reason = &reason
+	c.conditionsToApply[conditionType].Message = &message
+	c.conditionsToApply[conditionType].LastTransitionTime = &ts
 }
 
 func (c *AuthStatusHandler) WithCurrentOIDCClient(currentClientID string) {
@@ -87,7 +88,7 @@ func (c *AuthStatusHandler) WithCurrentOIDCClient(currentClientID string) {
 
 func (c *AuthStatusHandler) Apply(ctx context.Context, authnConfig *configv1.Authentication) error {
 	defer func() {
-		c.conditionsToApply = map[string]*metav1.Condition{}
+		c.conditionsToApply = map[string]*applymetav1.ConditionApplyConfiguration{}
 	}()
 
 	applyConfig, err := configv1ac.ExtractAuthenticationStatus(authnConfig, c.fieldManager)
@@ -122,7 +123,7 @@ func (c *AuthStatusHandler) Apply(ctx context.Context, authnConfig *configv1.Aut
 			if condition == nil {
 				condition = existingOrNewCondition(applyConfig, conditionType)
 			}
-			clientStatus.WithConditions(*condition)
+			clientStatus.WithConditions(condition)
 		}
 	}
 
@@ -137,11 +138,11 @@ func (c *AuthStatusHandler) Apply(ctx context.Context, authnConfig *configv1.Aut
 	return err
 }
 
-func existingOrNewCondition(applyConfig *configv1ac.AuthenticationApplyConfiguration, conditionType string) *metav1.Condition {
-	var condition *metav1.Condition
+func existingOrNewCondition(applyConfig *configv1ac.AuthenticationApplyConfiguration, conditionType string) *applymetav1.ConditionApplyConfiguration {
+	var condition *applymetav1.ConditionApplyConfiguration
 	if applyConfig.Status != nil && len(applyConfig.Status.OIDCClients) > 0 {
-		slices.IndexFunc[metav1.Condition](applyConfig.Status.OIDCClients[0].Conditions, func(cond metav1.Condition) bool {
-			if cond.Type == conditionType {
+		slices.IndexFunc[applymetav1.ConditionApplyConfiguration](applyConfig.Status.OIDCClients[0].Conditions, func(cond applymetav1.ConditionApplyConfiguration) bool {
+			if *cond.Type == conditionType {
 				condition = &cond
 				return true
 			}
@@ -150,11 +151,16 @@ func existingOrNewCondition(applyConfig *configv1ac.AuthenticationApplyConfigura
 	}
 
 	if condition == nil {
-		condition = &metav1.Condition{
-			Type:               conditionType,
-			Status:             metav1.ConditionUnknown,
-			LastTransitionTime: metav1.Now(),
-			Reason:             "Unknown",
+		var (
+			tt     = metav1.Now()
+			reason = "Unknown"
+			status = metav1.ConditionUnknown
+		)
+		condition = &applymetav1.ConditionApplyConfiguration{
+			Type:               &conditionType,
+			Status:             &status,
+			LastTransitionTime: &tt,
+			Reason:             &reason,
 		}
 	}
 
