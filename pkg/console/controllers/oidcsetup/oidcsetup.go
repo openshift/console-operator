@@ -10,9 +10,12 @@ import (
 	apiexensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiexensionsv1informers "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensions/v1"
 	apiexensionsv1listers "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	appsv1informers "k8s.io/client-go/informers/apps/v1"
 	corev1informers "k8s.io/client-go/informers/core/v1"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
@@ -27,6 +30,7 @@ import (
 	"github.com/openshift/console-operator/pkg/console/status"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
+	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
@@ -50,11 +54,13 @@ import (
 //		- type=AuthStatusHandlerProgressing
 //		- type=AuthStatusHandlerDegraded
 type oidcSetupController struct {
-	operatorClient v1helpers.OperatorClient
+	operatorClient  v1helpers.OperatorClient
+	configMapClient corev1client.ConfigMapsGetter
 
 	authnLister               configv1listers.AuthenticationLister
-	crdLister                 apiexensionsv1listers.CustomResourceDefinitionLister
 	consoleOperatorLister     operatorv1listers.ConsoleLister
+	crdLister                 apiexensionsv1listers.CustomResourceDefinitionLister
+	configConfigMapLister     corev1listers.ConfigMapLister
 	targetNSSecretsLister     corev1listers.SecretLister
 	targetNSConfigMapLister   corev1listers.ConfigMapLister
 	targetNSDeploymentsLister appsv1listers.DeploymentLister
@@ -64,21 +70,25 @@ type oidcSetupController struct {
 
 func NewOIDCSetupController(
 	operatorClient v1helpers.OperatorClient,
+	configMapClient corev1client.ConfigMapsGetter,
 	authnInformer configv1informers.AuthenticationInformer,
 	authenticationClient configv1client.AuthenticationInterface,
 	consoleOperatorInformer operatorv1informers.ConsoleInformer,
 	crdInformer apiexensionsv1informers.CustomResourceDefinitionInformer,
+	configConfigMapInformer corev1informers.ConfigMapInformer,
 	targetNSsecretsInformer corev1informers.SecretInformer,
 	targetNSConfigMapInformer corev1informers.ConfigMapInformer,
 	targetNSDeploymentsInformer appsv1informers.DeploymentInformer,
 	recorder events.Recorder,
 ) factory.Controller {
 	c := &oidcSetupController{
-		operatorClient: operatorClient,
+		operatorClient:  operatorClient,
+		configMapClient: configMapClient,
 
 		authnLister:               authnInformer.Lister(),
 		consoleOperatorLister:     consoleOperatorInformer.Lister(),
 		crdLister:                 crdInformer.Lister(),
+		configConfigMapLister:     configConfigMapInformer.Lister(),
 		targetNSSecretsLister:     targetNSsecretsInformer.Lister(),
 		targetNSDeploymentsLister: targetNSDeploymentsInformer.Lister(),
 		targetNSConfigMapLister:   targetNSConfigMapInformer.Lister(),
@@ -94,6 +104,7 @@ func NewOIDCSetupController(
 		).
 		WithInformers(
 			authnInformer.Informer(),
+			configConfigMapInformer.Informer(),
 			consoleOperatorInformer.Informer(),
 			targetNSsecretsInformer.Informer(),
 			targetNSDeploymentsInformer.Informer(),
@@ -105,7 +116,7 @@ func NewOIDCSetupController(
 func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncContext) error {
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
-	if shouldSync, err := c.handleManaged(ctx); err != nil {
+	if shouldSync, err := c.handleManaged(); err != nil {
 		return err
 	} else if !shouldSync {
 		return nil
@@ -126,12 +137,12 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 		return statusHandler.FlushAndReturn(nil)
 	}
 
-	operatorConfig, err := c.consoleOperatorLister.Get(api.ConfigResourceName)
+	authnConfig, err := c.authnLister.Get(api.ConfigResourceName)
 	if err != nil {
 		return err
 	}
 
-	authnConfig, err := c.authnLister.Get(api.ConfigResourceName)
+	operatorConfig, err := c.consoleOperatorLister.Get("cluster")
 	if err != nil {
 		return err
 	}
@@ -148,7 +159,7 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 	// we need to keep track of errors during the sync so that we can requeue
 	// if any occur
 	var errs []error
-	syncErr := c.syncAuthTypeOIDC(ctx, syncCtx, statusHandler, operatorConfig, authnConfig)
+	syncErr := c.syncAuthTypeOIDC(ctx, authnConfig, operatorConfig, syncCtx.Recorder())
 	statusHandler.AddConditions(
 		status.HandleProgressingOrDegraded(
 			"OIDCClientConfig", "OIDCConfigSyncFailed",
@@ -171,15 +182,9 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 	return statusHandler.FlushAndReturn(nil)
 }
 
-func (c *oidcSetupController) syncAuthTypeOIDC(
-	ctx context.Context,
-	controllerContext factory.SyncContext,
-	statusHandler status.StatusHandler,
-	operatorConfig *operatorv1.Console,
-	authnConfig *configv1.Authentication,
-) error {
+func (c *oidcSetupController) syncAuthTypeOIDC(ctx context.Context, authnConfig *configv1.Authentication, operatorConfig *operatorv1.Console, recorder events.Recorder) error {
 
-	clientConfig := utilsub.GetOIDCClientConfig(authnConfig)
+	oidcProvider, clientConfig := utilsub.GetOIDCClientConfig(authnConfig)
 	if clientConfig == nil {
 		c.authStatusHandler.WithCurrentOIDCClient("")
 		c.authStatusHandler.Unavailable("OIDCClientConfig", "no OIDC client found")
@@ -200,6 +205,25 @@ func (c *oidcSetupController) syncAuthTypeOIDC(
 	if err != nil {
 		c.authStatusHandler.Degraded("OIDCClientSecretGet", err.Error())
 		return err
+	}
+
+	if caCMName := oidcProvider.Issuer.CertificateAuthority.Name; len(caCMName) > 0 {
+		caCM, err := c.configConfigMapLister.ConfigMaps(api.OpenShiftConfigNamespace).Get(caCMName)
+		if err != nil {
+			return fmt.Errorf("failed to get the CA configMap %q configured for the OIDC provider %q: %w", caCMName, oidcProvider.Name, err)
+		}
+
+		_, _, err = resourceapply.SyncPartialConfigMap(ctx,
+			c.configMapClient,
+			recorder,
+			caCM.Namespace, caCM.Name,
+			api.TargetNamespace, caCM.Name,
+			sets.NewString("ca-bundle.crt"),
+			[]metav1.OwnerReference{*utilsub.OwnerRefFrom(operatorConfig)})
+
+		if err != nil {
+			return fmt.Errorf("failed to sync the provider's CA configMap: %w", err)
+		}
 	}
 
 	if valid, msg, err := c.checkClientConfigStatus(authnConfig, clientSecret); err != nil {
@@ -256,7 +280,7 @@ func (c *oidcSetupController) checkClientConfigStatus(authnConfig *configv1.Auth
 // handleStatus returns whether sync should happen and any error encountering
 // determining the operator's management state
 // TODO: extract this logic to where it can be used for all controllers
-func (c *oidcSetupController) handleManaged(ctx context.Context) (bool, error) {
+func (c *oidcSetupController) handleManaged() (bool, error) {
 	operatorSpec, _, _, err := c.operatorClient.GetOperatorState()
 	if err != nil {
 		return false, fmt.Errorf("failed to retrieve operator config: %w", err)

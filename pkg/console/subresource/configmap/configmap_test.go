@@ -11,6 +11,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	configv1 "github.com/openshift/api/config/v1"
 	v1 "github.com/openshift/api/console/v1"
@@ -102,6 +103,11 @@ func TestDefaultConfigMap(t *testing.T) {
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "operator.openshift.io/v1",
+						Kind:       "Console",
+						Controller: ptr.To(true),
+					}},
 				},
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
@@ -160,6 +166,11 @@ providers: {}
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "operator.openshift.io/v1",
+						Kind:       "Console",
+						Controller: ptr.To(true),
+					}},
 				},
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
@@ -227,6 +238,11 @@ customization:
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "operator.openshift.io/v1",
+						Kind:       "Console",
+						Controller: ptr.To(true),
+					}},
 				},
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
@@ -297,6 +313,11 @@ customization:
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "operator.openshift.io/v1",
+						Kind:       "Console",
+						Controller: ptr.To(true),
+					}},
 				},
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
@@ -375,6 +396,11 @@ customization:
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "operator.openshift.io/v1",
+						Kind:       "Console",
+						Controller: ptr.To(true),
+					}},
 				},
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
@@ -455,6 +481,11 @@ customization:
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "operator.openshift.io/v1",
+						Kind:       "Console",
+						Controller: ptr.To(true),
+					}},
 				},
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
@@ -537,6 +568,11 @@ customization:
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "operator.openshift.io/v1",
+						Kind:       "Console",
+						Controller: ptr.To(true),
+					}},
 				},
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
@@ -601,6 +637,11 @@ providers:
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "operator.openshift.io/v1",
+						Kind:       "Console",
+						Controller: ptr.To(true),
+					}},
 				},
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
@@ -659,6 +700,11 @@ providers: {}
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "operator.openshift.io/v1",
+						Kind:       "Console",
+						Controller: ptr.To(true),
+					}},
 				},
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
@@ -722,6 +768,11 @@ providers: {}
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "operator.openshift.io/v1",
+						Kind:       "Console",
+						Controller: ptr.To(true),
+					}},
 				},
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
@@ -824,6 +875,11 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "operator.openshift.io/v1",
+						Kind:       "Console",
+						Controller: ptr.To(true),
+					}},
 				},
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
@@ -884,6 +940,11 @@ providers: {}
 					Namespace:   api.OpenShiftConsoleNamespace,
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "operator.openshift.io/v1",
+						Kind:       "Console",
+						Controller: ptr.To(true),
+					}},
 				},
 				Data: map[string]string{configKey: `kind: ConsoleConfig
 apiVersion: console.openshift.io/v1
@@ -946,8 +1007,13 @@ providers: {}
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        api.OpenShiftConsoleConfigMapName,
-					Namespace:   api.OpenShiftConsoleNamespace,
+					Name:      api.OpenShiftConsoleConfigMapName,
+					Namespace: api.OpenShiftConsoleNamespace,
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "operator.openshift.io/v1",
+						Kind:       "Console",
+						Controller: ptr.To(true),
+					}},
 					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{},
 				},

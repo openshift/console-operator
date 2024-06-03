@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilpointer "k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
@@ -82,8 +83,12 @@ func TestDefaultDeployment(t *testing.T) {
 			infrastructureConfigResourceVersionAnnotation:      "",
 			consoleImageAnnotation:                             "",
 		},
-		OwnerReferences: nil,
-		Finalizers:      nil,
+		OwnerReferences: []metav1.OwnerReference{{
+			APIVersion: "operator.openshift.io/v1",
+			Kind:       "Console",
+			Controller: ptr.To(true),
+		}},
+		Finalizers: nil,
 	}
 
 	consoleConfig := &corev1.ConfigMap{
@@ -1465,8 +1470,12 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 		DeletionGracePeriodSeconds: nil,
 		Labels:                     labels,
 		Annotations:                map[string]string{},
-		OwnerReferences:            nil,
-		Finalizers:                 nil,
+		OwnerReferences: []metav1.OwnerReference{{
+			APIVersion: "operator.openshift.io/v1",
+			Kind:       "Console",
+			Controller: ptr.To(true),
+		}},
+		Finalizers: nil,
 	}
 
 	infrastructureConfigHighlyAvailable := infrastructureConfigWithTopology(configv1.HighlyAvailableTopologyMode,

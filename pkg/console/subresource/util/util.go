@@ -74,30 +74,25 @@ func LogYaml(obj runtime.Object) {
 
 // objects can have more than one ownerRef, potentially
 func AddOwnerRef(obj metav1.Object, ownerRef *metav1.OwnerReference) {
-	// TODO: find the library-go equivalent of this and replace
-	// currently errs out with something like:
-	// failed with: ConfigMap "console-config" is invalid: [metadata.ownerReferences.apiVersion: Invalid value: "": version must not be empty, metadata.ownerReferences.kind: Invalid value: "": kind must not be empty]
-	//if obj != nil {
-	//	if ownerRef != nil {
-	//		obj.SetOwnerReferences(append(obj.GetOwnerReferences(), *ownerRef))
-	//	}
-	//}
+	if obj != nil && ownerRef != nil {
+		obj.SetOwnerReferences(append(obj.GetOwnerReferences(), *ownerRef))
+	}
 }
 
 // func RemoveOwnerRef
 func OwnerRefFrom(cr *operatorv1.Console) *metav1.OwnerReference {
-
-	if cr != nil {
-		truthy := true
-		return &metav1.OwnerReference{
-			APIVersion: cr.APIVersion,
-			Kind:       cr.Kind,
-			Name:       cr.Name,
-			UID:        cr.UID,
-			Controller: &truthy,
-		}
+	if cr == nil {
+		return nil
 	}
-	return nil
+
+	truthy := true
+	return &metav1.OwnerReference{
+		APIVersion: "operator.openshift.io/v1",
+		Kind:       "Console",
+		Name:       cr.Name,
+		UID:        cr.UID,
+		Controller: &truthy,
+	}
 }
 
 // borrowed from library-go
@@ -152,19 +147,23 @@ func RemoveDuplicateStr(strSlice []string) []string {
 	return list
 }
 
-func GetOIDCClientConfig(authnConfig *configv1.Authentication) *configv1.OIDCClientConfig {
+func GetOIDCClientConfig(authnConfig *configv1.Authentication) (*configv1.OIDCProvider, *configv1.OIDCClientConfig) {
 	if len(authnConfig.Spec.OIDCProviders) == 0 {
-		return nil
+		return nil, nil
 	}
 
-	var oidcClientConfig *configv1.OIDCClientConfig
-	slices.IndexFunc[configv1.OIDCClientConfig](authnConfig.Spec.OIDCProviders[0].OIDCClients, func(oc configv1.OIDCClientConfig) bool {
-		if oc.ComponentNamespace == api.TargetNamespace && oc.ComponentName == api.OpenShiftConsoleName {
-			oidcClientConfig = &oc
-			return true
+	var clientIdx int
+	for i := 0; i < len(authnConfig.Spec.OIDCProviders); i++ {
+		clientIdx = slices.IndexFunc(authnConfig.Spec.OIDCProviders[i].OIDCClients, func(oc configv1.OIDCClientConfig) bool {
+			if oc.ComponentNamespace == api.TargetNamespace && oc.ComponentName == api.OpenShiftConsoleName {
+				return true
+			}
+			return false
+		})
+		if clientIdx != -1 {
+			return &authnConfig.Spec.OIDCProviders[i], &authnConfig.Spec.OIDCProviders[i].OIDCClients[clientIdx]
 		}
-		return false
-	})
+	}
 
-	return oidcClientConfig
+	return nil, nil
 }
