@@ -12,7 +12,7 @@ require (
 	github.com/go-test/deep v1.0.5
 	github.com/google/go-cmp v0.6.0
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
-	github.com/openshift/api v0.0.0-20231218131639-7a5aa77cc72d
+	github.com/openshift/api v0.0.0-20240702171116-4b89b3a92a17
 	github.com/openshift/build-machinery-go v0.0.0-20220913142420-e25cf57ea46d
 	github.com/openshift/client-go v0.0.0-20231218140158-47f6d749b9d9
 	github.com/openshift/library-go v0.0.0-20240124134907-4dfbf6bc7b11

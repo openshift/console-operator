@@ -17,9 +17,9 @@ COPY manifests /manifests/
 COPY quickstarts/*.yaml /manifests/
 
 # extensions manifests generated from openshift/api types
-COPY vendor/github.com/openshift/api/console/v1/*.crd.yaml /manifests/
-COPY vendor/github.com/openshift/api/operator/*/*console-operator*.crd.yaml /manifests/
-COPY vendor/github.com/openshift/api/helm/*/*crd.yaml /manifests/
+COPY vendor/github.com/openshift/api/console/v1/zz_generated.crd-manifests/*.crd.yaml /manifests/
+COPY vendor/github.com/openshift/api/operator/*/zz_generated.crd-manifests/*console*.crd.yaml /manifests/
+COPY vendor/github.com/openshift/api/helm/*/zz_generated.crd-manifests/*crd.yaml /manifests/
 
 LABEL io.k8s.display-name="OpenShift console-operator" \
       io.k8s.description="This is a component of OpenShift Container Platform and manages the lifecycle of the web console." \
