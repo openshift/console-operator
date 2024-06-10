@@ -47,12 +47,13 @@ func DefaultConfigMap(
 	nodeOperatingSystems []string,
 	copiedCSVsDisabled bool,
 	telemeterConfig map[string]string,
+	consoleHost string,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	apiServerURL := infrastructuresub.GetAPIServerURL(infrastructureConfig)
 
 	defaultBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
-	defaultConfig, err := defaultBuilder.Host(activeConsoleRoute.Spec.Host).
+	defaultConfig, err := defaultBuilder.Host(consoleHost).
 		LogoutURL(defaultLogoutURL).
 		Brand(DEFAULT_BRAND).
 		DocURL(DEFAULT_DOC_URL).
@@ -71,7 +72,10 @@ func DefaultConfigMap(
 
 	extractedManagedConfig := extractYAML(managedConfig)
 	userDefinedBuilder := &consoleserver.ConsoleServerCLIConfigBuilder{}
-	userDefinedConfig, err := userDefinedBuilder.Host(activeConsoleRoute.Spec.Host).
+	if activeConsoleRoute != nil {
+		userDefinedBuilder = userDefinedBuilder.CustomHostnameRedirectPort(isCustomRoute(activeConsoleRoute))
+	}
+	userDefinedConfig, err := userDefinedBuilder.Host(consoleHost).
 		LogoutURL(consoleConfig.Spec.Authentication.LogoutRedirect).
 		Brand(operatorConfig.Spec.Customization.Brand).
 		DocURL(operatorConfig.Spec.Customization.DocumentationBaseURL).
@@ -86,7 +90,6 @@ func DefaultConfigMap(
 		CustomDeveloperCatalog(operatorConfig.Spec.Customization.DeveloperCatalog).
 		ProjectAccess(operatorConfig.Spec.Customization.ProjectAccess).
 		QuickStarts(operatorConfig.Spec.Customization.QuickStarts).
-		CustomHostnameRedirectPort(isCustomRoute(activeConsoleRoute)).
 		AddPage(operatorConfig.Spec.Customization.AddPage).
 		Perspectives(operatorConfig.Spec.Customization.Perspectives).
 		StatusPageID(statusPageId(operatorConfig)).

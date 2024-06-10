@@ -6,6 +6,8 @@ import (
 	"github.com/go-test/deep"
 	v1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	configv1 "github.com/openshift/api/config/v1"
 )
 
 var (
@@ -140,4 +142,86 @@ func TestLabelFilter(t *testing.T) {
 		})
 	}
 
+}
+
+func TestIsExternalControlPlaneWithIngressDisabled(t *testing.T) {
+	type args struct {
+		infraConfig    *configv1.Infrastructure
+		clusterVersion *configv1.ClusterVersion
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "Test ingress capability disabled",
+			args: args{
+				infraConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						ControlPlaneTopology: configv1.ExternalTopologyMode,
+					},
+				},
+				clusterVersion: &configv1.ClusterVersion{
+					Status: configv1.ClusterVersionStatus{
+						Capabilities: configv1.ClusterVersionCapabilitiesStatus{
+							EnabledCapabilities: []configv1.ClusterVersionCapability{
+								configv1.ClusterVersionCapabilityOpenShiftSamples,
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "Test ingress capability enabled",
+			args: args{
+				infraConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						ControlPlaneTopology: configv1.ExternalTopologyMode,
+					},
+				},
+				clusterVersion: &configv1.ClusterVersion{
+					Status: configv1.ClusterVersionStatus{
+						Capabilities: configv1.ClusterVersionCapabilitiesStatus{
+							EnabledCapabilities: []configv1.ClusterVersionCapability{
+								configv1.ClusterVersionCapabilityOpenShiftSamples,
+								configv1.ClusterVersionCapabilityIngress,
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "Test control plane topology is not external",
+			args: args{
+				infraConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						ControlPlaneTopology: configv1.HighlyAvailableTopologyMode,
+					},
+				},
+				clusterVersion: &configv1.ClusterVersion{
+					Status: configv1.ClusterVersionStatus{
+						Capabilities: configv1.ClusterVersionCapabilitiesStatus{
+							EnabledCapabilities: []configv1.ClusterVersionCapability{
+								configv1.ClusterVersionCapabilityOpenShiftSamples,
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if diff := deep.Equal(IsExternalControlPlaneWithIngressDisabled(tt.args.infraConfig, tt.args.clusterVersion), tt.want); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
 }

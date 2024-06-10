@@ -38,8 +38,10 @@ type ServiceSyncController struct {
 	operatorClient v1helpers.OperatorClient
 	serviceClient  coreclientv1.ServicesGetter
 
-	operatorConfigLister operatorv1listers.ConsoleLister
-	ingressConfigLister  configlistersv1.IngressLister
+	operatorConfigLister       operatorv1listers.ConsoleLister
+	ingressConfigLister        configlistersv1.IngressLister
+	infrastructureConfigLister configlistersv1.InfrastructureLister
+	clusterVersionLister       configlistersv1.ClusterVersionLister
 }
 
 // factory func needs clients and informers
@@ -60,11 +62,13 @@ func NewServiceSyncController(
 ) factory.Controller {
 
 	ctrl := &ServiceSyncController{
-		serviceName:          serviceName,
-		operatorClient:       operatorClient,
-		operatorConfigLister: operatorConfigInformer.Lister(),
-		ingressConfigLister:  configInformer.Config().V1().Ingresses().Lister(),
-		serviceClient:        corev1Client,
+		serviceName:                serviceName,
+		operatorClient:             operatorClient,
+		operatorConfigLister:       operatorConfigInformer.Lister(),
+		ingressConfigLister:        configInformer.Config().V1().Ingresses().Lister(),
+		serviceClient:              corev1Client,
+		infrastructureConfigLister: configInformer.Config().V1().Infrastructures().Lister(),
+		clusterVersionLister:       configInformer.Config().V1().ClusterVersions().Lister(),
 	}
 
 	configV1Informers := configInformer.Config().V1()
@@ -110,10 +114,22 @@ func (c *ServiceSyncController) Sync(ctx context.Context, controllerContext fact
 	if err != nil {
 		return statusHandler.FlushAndReturn(err)
 	}
+	infrastructureConfig, err := c.infrastructureConfigLister.Get(api.ConfigResourceName)
+	if err != nil {
+		return statusHandler.FlushAndReturn(err)
+	}
+	clusterVersionConfig, err := c.clusterVersionLister.Get("version")
+	if err != nil {
+		return statusHandler.FlushAndReturn(err)
+	}
+
+	// Change the type of the service to NodePort if the ingress capability is disabled.
+	ingressDisabled := util.IsExternalControlPlaneWithIngressDisabled(infrastructureConfig, clusterVersionConfig)
+
 	// Service name matches the Route's so it can be used as well, for creating RouteConfig
 	routeConfig := routesub.NewRouteConfig(updatedOperatorConfig, ingressConfig, c.serviceName)
 
-	requiredSvc := c.getDefaultService()
+	requiredSvc := c.getDefaultService(ingressDisabled)
 	_, _, svcErr := resourceapply.ApplyService(ctx, c.serviceClient, controllerContext.Recorder(), requiredSvc)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ServiceSync", "FailedApply", svcErr))
 	if svcErr != nil {
@@ -152,8 +168,13 @@ func (c *ServiceSyncController) removeService(ctx context.Context, serviceName s
 	return err
 }
 
-func (c *ServiceSyncController) getDefaultService() *corev1.Service {
-	service := resourceread.ReadServiceV1OrDie(bindata.MustAsset(fmt.Sprintf("assets/services/%s-service.yaml", c.serviceName)))
+func (c *ServiceSyncController) getDefaultService(ingressDisabled bool) *corev1.Service {
+	var service *corev1.Service
+	if !ingressDisabled {
+		service = resourceread.ReadServiceV1OrDie(bindata.MustAsset(fmt.Sprintf("assets/services/%s-service.yaml", c.serviceName)))
+	} else {
+		service = resourceread.ReadServiceV1OrDie(bindata.MustAsset(fmt.Sprintf("assets/services/%s-nodeport-service.yaml", c.serviceName)))
+	}
 
 	return service
 }
