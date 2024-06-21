@@ -64,6 +64,8 @@ spec:
               name: config
             - mountPath: /var/run/secrets/serving-cert
               name: serving-cert
+            - mountPath: /etc/pki/ca-trust/extracted/pem
+              name: trusted-ca
           env:
             - name: CONSOLE_IMAGE
               value: registry.svc.ci.openshift.org/openshift:console
@@ -99,3 +101,9 @@ spec:
           secret:
             secretName: serving-cert
             optional: true
+        - name: trusted-ca
+          configMap:
+            name: trusted-ca
+            items:
+            - key: ca-bundle.crt
+              path: tls-ca-bundle.pem

@@ -15,7 +15,7 @@ The use case in mind is [HyperShift hosted clusters where the Ingress capability
 
 In order to configure an HTTPS listener on AWS ALB you need to have a certificate created in AWS Certificate Manager.
 You can import an existing certificate or request a new one. Make sure the certificate is created in the same region as your cluster.
-Note the certificate ARN, you will need it later.
+Note the certificate ARN and the DNS name used in the certificate, you will need it later.
 
 ### Create Ingress resources for the NodePort services
 
@@ -73,12 +73,32 @@ EOF
 ### Update console config
 
 Once the console ALBs are ready you need to let the console operator know which urls to use.
+
+#### Add custom trusted CA (optional)
+
+To add the CA of the certificates used in the ingress objects to [the trusted bundle of the OpenShift cluster](https://docs.openshift.com/container-platform/latest/networking/configuring-a-custom-pki.html#nw-proxy-configure-object_configuring-a-custom-pki), follow these steps:
+```bash
+$ oc -n openshift-config create configmap console-ca-bundle --from-file=ca-bundle.crt=/path/to/pemencoded/cacert
+$ oc patch proxy cluster --type=merge -p '{"spec":{"trustedCA":{"name":"console-ca-bundle"}}}'
+```
+
+#### Setup DNS (optional)
+
+The console ALBs have public DNS names that might not match the Subject Alternative Name (SAN) from the certificates. Ensure public DNS records matching the certificates' SANs are created and target the following hostnames:
+```bash
+$ oc -n openshift-console get ing console -o yaml | yq .status.loadBalancer.ingress[0].hostname
+k8s-openshif-console-xxxxxxxxxx-xxxxxxxx.us-east-2.elb.amazonaws.comdd
+$ oc -n openshift-console get ing downloads -o yaml | yq .status.loadBalancer.ingress[0].hostname
+k8s-openshif-download-xxxxxxxxxx-xxxxxxxxxx.us-east-2.elb.amazonaws.com
+```
+
+#### Update console operator config
+
 Update the console operator config providing the custom urls:
 ```bash
-$ CONSOLE_ALB_HOST=$(oc -n openshift-console get ing console -o yaml | yq .status.loadBalancer.ingress[0].hostname)
-$ DOWNLOADS_ALB_HOST=$(oc -n openshift-console get ing downloads -o yaml | yq .status.loadBalancer.ingress[0].hostname)
-$ oc patch console.operator.openshift.io cluster --type=merge -p "{\"spec\":{\"ingress\":{\"consoleURL\":\"https://${CONSOLE_ALB_HOST}\",\"clientDownloadsURL\":\"https://${DOWNLOADS_ALB_HOST}\"}}}"
+$ oc patch console.operator.openshift.io cluster --type=merge -p "{\"spec\":{\"ingress\":{\"consoleURL\":\"https://${CONSOLE_HOST}\",\"clientDownloadsURL\":\"https://${DOWNLOADS_HOST}\"}}}"
 ```
+**Note**: ensure that the hosts used in the urls match the SAN from the corresponding certificates.
 
 ## Notes
 
@@ -110,6 +130,3 @@ $ oc -n openshift-console rsh deploy/console curl -k https://openshift.default.s
 ```bash
 $ oc -n openshift-ingress-operator patch ingresscontroller default --type='json' -p='[{"op": "replace", "path": "/spec/replicas", "value":0}]'
 ```
-
-## Links
-- [Demo of ALB ingress for the console on ROSA HCP](https://drive.google.com/file/d/1uWZgFbSeZTlDzlFyPW7QcH-625JsbSbw/view)
