@@ -3,6 +3,7 @@ package oauthclients
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -131,15 +132,26 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 		return err
 	}
 
-	routeName := api.OpenShiftConsoleRouteName
-	routeConfig := routesub.NewRouteConfig(operatorConfig, ingressConfig, routeName)
-	if routeConfig.IsCustomHostnameSet() {
-		routeName = api.OpenshiftConsoleCustomRouteName
-	}
+	var consoleURL *url.URL
 
-	_, consoleURL, _, routeErr := routesub.GetActiveRouteInfo(c.routesLister, routeName)
-	if routeErr != nil {
-		return routeErr
+	if len(operatorConfig.Spec.Ingress.ConsoleURL) == 0 {
+		routeName := api.OpenShiftConsoleRouteName
+		routeConfig := routesub.NewRouteConfig(operatorConfig, ingressConfig, routeName)
+		if routeConfig.IsCustomHostnameSet() {
+			routeName = api.OpenshiftConsoleCustomRouteName
+		}
+
+		_, url, _, routeErr := routesub.GetActiveRouteInfo(c.routesLister, routeName)
+		if routeErr != nil {
+			return routeErr
+		}
+		consoleURL = url
+	} else {
+		url, err := url.Parse(operatorConfig.Spec.Ingress.ConsoleURL)
+		if err != nil {
+			return fmt.Errorf("failed to parse console url: %w", err)
+		}
+		consoleURL = url
 	}
 
 	waitCtx, cancel := context.WithTimeout(ctx, 10*time.Second)

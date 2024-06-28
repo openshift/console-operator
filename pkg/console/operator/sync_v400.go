@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -50,28 +51,42 @@ import (
 // the loop.
 func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext factory.SyncContext, updatedOperatorConfig *operatorv1.Console, set configSet) error {
 	klog.V(4).Infoln("running sync loop 4.0.0")
-	statusHandler := status.NewStatusHandler(co.operatorClient)
 
-	// track changes, may trigger ripples & update operator config or console config status
-	toUpdate := false
+	var (
+		statusHandler = status.NewStatusHandler(co.operatorClient)
+		// track changes, may trigger ripples & update operator config or console config status
+		toUpdate     = false
+		consoleRoute *routev1.Route
+		consoleURL   *url.URL
+	)
 
-	routeName := api.OpenShiftConsoleRouteName
-	routeConfig := routesub.NewRouteConfig(updatedOperatorConfig, set.Ingress, routeName)
-	if routeConfig.IsCustomHostnameSet() {
-		routeName = api.OpenshiftConsoleCustomRouteName
-	}
+	if len(set.Operator.Spec.Ingress.ConsoleURL) == 0 {
+		routeName := api.OpenShiftConsoleRouteName
+		routeConfig := routesub.NewRouteConfig(updatedOperatorConfig, set.Ingress, routeName)
+		if routeConfig.IsCustomHostnameSet() {
+			routeName = api.OpenshiftConsoleCustomRouteName
+		}
 
-	route, consoleURL, routeReasoneErr, routeErr := routesub.GetActiveRouteInfo(co.routeLister, routeName)
-	// TODO: this controller is no longer responsible for syncing the route.
-	//   however, the route is essential for several of the components below.
-	//   - the loop should exit early and wait until the RouteSyncController creates the route.
-	//     there is nothing new in this flow, other than 2 controllers now look
-	//     at the same resource.
-	//     - RouteSyncController is responsible for updates
-	//     - ConsoleOperatorController (future ConsoleDeploymentController) is responsible for reads only.
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("SyncLoopRefresh", routeReasoneErr, routeErr))
-	if routeErr != nil {
-		return statusHandler.FlushAndReturn(routeErr)
+		route, url, routeReasonErr, routeErr := routesub.GetActiveRouteInfo(co.routeLister, routeName)
+		// TODO: this controller is no longer responsible for syncing the route.
+		//   however, the route is essential for several of the components below.
+		//   - the loop should exit early and wait until the RouteSyncController creates the route.
+		//     there is nothing new in this flow, other than 2 controllers now look
+		//     at the same resource.
+		//     - RouteSyncController is responsible for updates
+		//     - ConsoleOperatorController (future ConsoleDeploymentController) is responsible for reads only.
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("SyncLoopRefresh", routeReasonErr, routeErr))
+		if routeErr != nil {
+			return statusHandler.FlushAndReturn(routeErr)
+		}
+		consoleRoute = route
+		consoleURL = url
+	} else {
+		url, err := url.Parse(set.Operator.Spec.Ingress.ConsoleURL)
+		if err != nil {
+			return statusHandler.FlushAndReturn(fmt.Errorf("failed to get console url: %w", err))
+		}
+		consoleURL = url
 	}
 
 	authnConfig, err := co.authnConfigLister.Get(api.ConfigResourceName)
@@ -107,8 +122,9 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		set.OAuth,
 		authServerCAConfig,
 		authnConfig,
-		route,
+		consoleRoute,
 		controllerContext.Recorder(),
+		consoleURL.Hostname(),
 	)
 	toUpdate = toUpdate || cmChanged
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
@@ -325,6 +341,7 @@ func (co *consoleOperator) SyncConfigMap(
 	authConfig *configv1.Authentication,
 	activeConsoleRoute *routev1.Route,
 	recorder events.Recorder,
+	consoleHost string,
 ) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
 
 	managedConfig, mcErr := co.managedNSConfigMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName)
@@ -398,6 +415,7 @@ func (co *consoleOperator) SyncConfigMap(
 		nodeOperatingSystems,
 		copiedCSVsDisabled,
 		telemetryConfig,
+		consoleHost,
 	)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err

@@ -1069,6 +1069,7 @@ providers: {}
 				tt.args.nodeOperatingSystems,
 				tt.args.copiedCSVsDisabled,
 				tt.args.telemetryConfig,
+				tt.args.rt.Spec.Host,
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below

@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	// k8s
@@ -78,7 +79,6 @@ func NewHealthCheckController(
 			util.IncludeNamesFilter(api.ConfigResourceName),
 			operatorConfigInformer.Informer(),
 			configV1Informers.Ingresses().Informer(),
-			configV1Informers.Infrastructures().Informer(),
 		).WithFilteredEventsInformers( // service
 		util.IncludeNamesFilter(api.TrustedCAConfigMapName, api.OAuthServingCertConfigMapName),
 		configMapInformer.Informer(),
@@ -153,10 +153,22 @@ func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorCo
 		retry.DefaultRetry,
 		func(err error) bool { return err != nil },
 		func() error {
-			url, _, err := routeapihelpers.IngressURI(route, route.Spec.Host)
-			if err != nil {
-				reason = "RouteNotAdmitted"
-				return fmt.Errorf("console route is not admitted")
+			var (
+				url *url.URL
+				err error
+			)
+			if len(operatorConfig.Spec.Ingress.ConsoleURL) == 0 {
+				url, _, err = routeapihelpers.IngressURI(route, route.Spec.Host)
+				if err != nil {
+					reason = "RouteNotAdmitted"
+					return fmt.Errorf("console route is not admitted")
+				}
+			} else {
+				url, err = url.Parse(operatorConfig.Spec.Ingress.ConsoleURL)
+				if err != nil {
+					reason = "FailedParseConsoleURL"
+					return fmt.Errorf("failed to parse console url: %w", err)
+				}
 			}
 
 			caPool, err := c.getCA(ctx, route.Spec.TLS)

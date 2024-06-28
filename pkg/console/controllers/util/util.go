@@ -1,8 +1,6 @@
 package util
 
 import (
-	//k8s
-
 	"context"
 	"fmt"
 
@@ -11,7 +9,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 
+	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
+
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 )
@@ -83,4 +83,18 @@ func HandleManagementState(ctx context.Context, c consoleOperatorController, ope
 	default:
 		return fmt.Errorf("console is in an unknown state: %v", managementState)
 	}
+}
+
+// IsExternalControlPlaneWithIngressDisabled returns true if the cluster is in external control plane topology (hypershift)
+// and the ingress cluster capability is disabled.
+func IsExternalControlPlaneWithIngressDisabled(infrastructureConfig *configv1.Infrastructure, clusterVersionConfig *configv1.ClusterVersion) bool {
+	isIngressCapabilityEnabled := false
+	for _, capability := range clusterVersionConfig.Status.Capabilities.EnabledCapabilities {
+		if capability == configv1.ClusterVersionCapabilityIngress {
+			isIngressCapabilityEnabled = true
+			break
+		}
+	}
+
+	return infrastructureConfig.Status.ControlPlaneTopology == configv1.ExternalTopologyMode && !isIngressCapabilityEnabled
 }

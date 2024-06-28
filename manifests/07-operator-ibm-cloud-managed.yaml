@@ -71,6 +71,8 @@ spec:
           name: config
         - mountPath: /var/run/secrets/serving-cert
           name: serving-cert
+        - mountPath: /etc/pki/ca-trust/extracted/pem
+          name: trusted-ca
       priorityClassName: system-cluster-critical
       securityContext:
         runAsNonRoot: true
@@ -97,3 +99,9 @@ spec:
         secret:
           optional: true
           secretName: serving-cert
+      - configMap:
+          items:
+          - key: ca-bundle.crt
+            path: tls-ca-bundle.pem
+          name: trusted-ca
+        name: trusted-ca
