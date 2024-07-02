@@ -84,21 +84,21 @@ func GetAccessToken(secretsLister v1.SecretLister) (string, error) {
 // 1. custom ORGANIZATION_ID is awailable as telemetry annotation on console-operator config or in telemetry-config configmap
 // 2. cached ORGANIZATION_ID is available on the operator controller instance
 // else fetch the ORGANIZATION_ID from OCM
-func GetOrganizationID(telemetryConfig map[string]string, cachedOrganizationID, clusterID, accessToken string) string {
-	if customOrganizationID, isCustomOrgIDSet := telemetryConfig["ORGANIZATION_ID"]; isCustomOrgIDSet {
-		return customOrganizationID
+func GetOrganizationID(telemetryConfig map[string]string, cachedOrganizationID, clusterID, accessToken string) (string, bool) {
+	customOrganizationID, isCustomOrgIDSet := telemetryConfig["ORGANIZATION_ID"]
+	if isCustomOrgIDSet {
+		return customOrganizationID, false
 	}
 
 	if cachedOrganizationID != "" {
-		return cachedOrganizationID
+		return cachedOrganizationID, false
 	}
 
 	fetchedOrganizationID, err := FetchOrganizationID(clusterID, accessToken)
-	klog.V(4).Infoln("Fetching ORGANIZATION_ID from OCM")
 	if err != nil {
 		klog.Errorf("telemetry config error: %s", err)
 	}
-	return fetchedOrganizationID
+	return fetchedOrganizationID, true
 }
 
 // Needed to create our own types for OCM Subscriptions since their types and client are useless
