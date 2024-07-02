@@ -478,10 +478,11 @@ func (co *consoleOperator) GetTelemetryConfiguration(ctx context.Context, operat
 	if err != nil {
 		return nil, err
 	}
-
-	organizationID := telemetry.GetOrganizationID(telemetryConfig, co.trackables.organizationID, clusterID, accessToken)
-	// cache ORGANIZATION_ID
-	co.trackables.organizationID = organizationID
+	organizationID, refreshCache := telemetry.GetOrganizationID(telemetryConfig, co.trackables.organizationID, clusterID, accessToken)
+	// cache fetched ORGANIZATION_ID
+	if refreshCache {
+		co.trackables.organizationID = organizationID
+	}
 	telemetryConfig["ORGANIZATION_ID"] = organizationID
 
 	return telemetryConfig, nil
