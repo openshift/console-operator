@@ -1,8 +1,8 @@
 module github.com/openshift/console-operator
 
-go 1.22
+go 1.22.0
 
-toolchain go1.22.1
+toolchain go1.22.4
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
@@ -11,7 +11,7 @@ require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-test/deep v1.0.5
 	github.com/google/go-cmp v0.6.0
-	github.com/openshift/api v0.0.0-20240524162738-d899f8877d22
+	github.com/openshift/api v0.0.0-20240703080403-99bfe922c181
 	github.com/openshift/build-machinery-go v0.0.0-20240419090851-af9c868bcf52
 	github.com/openshift/client-go v0.0.0-20240523113335-452272e0496d
 	github.com/openshift/library-go v0.0.0-20240124134907-4dfbf6bc7b11
