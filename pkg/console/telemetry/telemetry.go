@@ -87,10 +87,12 @@ func GetAccessToken(secretsLister v1.SecretLister) (string, error) {
 func GetOrganizationID(telemetryConfig map[string]string, cachedOrganizationID, clusterID, accessToken string) (string, bool) {
 	customOrganizationID, isCustomOrgIDSet := telemetryConfig["ORGANIZATION_ID"]
 	if isCustomOrgIDSet {
+		klog.V(4).Infoln("telemetry config: using custom organization ID")
 		return customOrganizationID, false
 	}
 
 	if cachedOrganizationID != "" {
+		klog.V(4).Infoln("telemetry config: using cached organization ID")
 		return cachedOrganizationID, false
 	}
 
@@ -113,6 +115,7 @@ type Organization struct {
 
 // FetchOrganizationID fetches the organization ID using the cluster ID and access token
 func FetchOrganizationID(clusterID, accessToken string) (string, error) {
+	klog.V(4).Infoln("telemetry config: fetching organization ID")
 	u, err := buildURL(clusterID)
 	if err != nil {
 		return "", err // more contextual error handling can be added here if needed
