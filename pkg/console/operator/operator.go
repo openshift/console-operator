@@ -90,10 +90,16 @@ type consoleOperator struct {
 
 	resourceSyncer resourcesynccontroller.ResourceSyncer
 
-	// used to keep track of OLM capability
-	isOLMDisabled bool
+	trackables trackables
 
 	monitoringDeploymentLister appsv1listers.DeploymentLister
+}
+
+type trackables struct {
+	// used to keep track of OLM capability
+	isOLMDisabled bool
+	// track organization ID
+	organizationID string
 }
 
 func NewConsoleOperator(
@@ -203,7 +209,7 @@ func NewConsoleOperator(
 		informers = append(informers, olmConfigInformer.Informer())
 	} else {
 		klog.Info("olmconfigs resource does not exist in cluster, launching poll and disabling olmconfigs informer")
-		c.isOLMDisabled = true
+		c.trackables.isOLMDisabled = true
 		c.startPollAndRestartIfResourceEnabled(olmGroupVersionResource)
 	}
 

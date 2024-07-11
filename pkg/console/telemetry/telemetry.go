@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	v1 "k8s.io/client-go/listers/core/v1"
+	"k8s.io/klog/v2"
 
 	"github.com/openshift/console-operator/pkg/api"
 	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
@@ -79,6 +80,29 @@ func GetAccessToken(secretsLister v1.SecretLister) (string, error) {
 	return authsBytes.Auth, nil
 }
 
+// check if:
+// 1. custom ORGANIZATION_ID is awailable as telemetry annotation on console-operator config or in telemetry-config configmap
+// 2. cached ORGANIZATION_ID is available on the operator controller instance
+// else fetch the ORGANIZATION_ID from OCM
+func GetOrganizationID(telemetryConfig map[string]string, cachedOrganizationID, clusterID, accessToken string) (string, bool) {
+	customOrganizationID, isCustomOrgIDSet := telemetryConfig["ORGANIZATION_ID"]
+	if isCustomOrgIDSet {
+		klog.V(4).Infoln("telemetry config: using custom organization ID")
+		return customOrganizationID, false
+	}
+
+	if cachedOrganizationID != "" {
+		klog.V(4).Infoln("telemetry config: using cached organization ID")
+		return cachedOrganizationID, false
+	}
+
+	fetchedOrganizationID, err := FetchOrganizationID(clusterID, accessToken)
+	if err != nil {
+		klog.Errorf("telemetry config error: %s", err)
+	}
+	return fetchedOrganizationID, true
+}
+
 // Needed to create our own types for OCM Subscriptions since their types and client are useless
 // https://github.com/openshift-online/ocm-sdk-go/blob/main/accountsmgmt/v1/subscription_client.go - everything private
 // https://github.com/openshift-online/ocm-sdk-go/blob/main/accountsmgmt/v1/subscriptions_client.go#L38-L41 - useless client
@@ -89,8 +113,9 @@ type Organization struct {
 	OrganizationID string `json:"organization_id"`
 }
 
-// GetOrganizationID fetches the organization ID using the cluster ID and access token
-func GetOrganizationID(clusterID, accessToken string) (string, error) {
+// FetchOrganizationID fetches the organization ID using the cluster ID and access token
+func FetchOrganizationID(clusterID, accessToken string) (string, error) {
+	klog.V(4).Infoln("telemetry config: fetching organization ID")
 	u, err := buildURL(clusterID)
 	if err != nil {
 		return "", err // more contextual error handling can be added here if needed
