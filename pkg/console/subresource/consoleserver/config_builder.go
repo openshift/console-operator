@@ -74,6 +74,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	authType                   string
 	sessionEncryptionFile      string
 	sessionAuthenticationFile  string
+	capabilities               []operatorv1.Capability
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -141,6 +142,11 @@ func (b *ConsoleServerCLIConfigBuilder) CustomHostnameRedirectPort(redirect bool
 }
 func (b *ConsoleServerCLIConfigBuilder) StatusPageID(id string) *ConsoleServerCLIConfigBuilder {
 	b.statusPageID = id
+	return b
+}
+
+func (b *ConsoleServerCLIConfigBuilder) Capabilities(capabilities []operatorv1.Capability) *ConsoleServerCLIConfigBuilder {
+	b.capabilities = capabilities
 	return b
 }
 
@@ -491,6 +497,8 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 
 		conf.Perspectives = perspectives
 	}
+
+	conf.Capabilities = b.capabilities
 
 	return conf
 }
