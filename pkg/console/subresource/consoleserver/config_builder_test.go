@@ -7,7 +7,6 @@ import (
 	"github.com/go-test/deep"
 	"github.com/google/go-cmp/cmp"
 	configv1 "github.com/openshift/api/config/v1"
-	operatorv1 "github.com/openshift/api/operator/v1"
 	v1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	authorizationv1 "k8s.io/api/authorization/v1"
@@ -45,6 +44,48 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				},
 				Customization: Customization{},
 				Providers:     Providers{},
+			},
+		}, {
+			name: "Config builder should handle customization with LightspeedButton capability",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				return b.
+					Capabilities([]v1.Capability{
+						{
+							Name: v1.LightspeedButton,
+							Visibility: v1.CapabilityVisibility{
+								State: v1.CapabilityEnabled,
+							},
+						},
+					}).
+					Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
+				},
+				Customization: Customization{
+					Capabilities: []v1.Capability{
+						{
+							Name: v1.LightspeedButton,
+							Visibility: v1.CapabilityVisibility{
+								State: v1.CapabilityEnabled,
+							},
+						},
+					},
+				},
+				Providers: Providers{},
 			},
 		}, {
 			name: "Config builder should handle cluster info with internal OAuth",
@@ -551,7 +592,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 								Missing:  []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}},
 							},
 						},
-						PinnedResources: &[]operatorv1.PinnedResourceReference{
+						PinnedResources: &[]v1.PinnedResourceReference{
 							{Group: "apps", Version: "v1", Resource: "deployments"},
 							{Group: "", Version: "v1", Resource: "configmaps"},
 						},
@@ -593,7 +634,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 									},
 								},
 							},
-							PinnedResources: &[]operatorv1.PinnedResourceReference{
+							PinnedResources: &[]v1.PinnedResourceReference{
 								{Group: "apps", Version: "v1", Resource: "deployments"},
 								{Group: "", Version: "v1", Resource: "configmaps"},
 							},
@@ -618,7 +659,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 								Missing:  []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}},
 							},
 						},
-						PinnedResources: &[]operatorv1.PinnedResourceReference{},
+						PinnedResources: &[]v1.PinnedResourceReference{},
 					}, {
 						ID: "perspective2",
 						Visibility: v1.PerspectiveVisibility{
@@ -658,7 +699,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 									},
 								},
 							},
-							PinnedResources: &[]operatorv1.PinnedResourceReference{},
+							PinnedResources: &[]v1.PinnedResourceReference{},
 						},
 						{ID: "perspective2", Visibility: PerspectiveVisibility{State: PerspectiveDisabled}},
 					},
@@ -1275,7 +1316,7 @@ providers: {}
 								Missing:  []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}},
 							},
 						},
-						PinnedResources: &[]operatorv1.PinnedResourceReference{
+						PinnedResources: &[]v1.PinnedResourceReference{
 							{Group: "apps", Version: "v1", Resource: "deployments"},
 							{Group: "", Version: "v1", Resource: "configmaps"},
 						},
@@ -1348,7 +1389,7 @@ providers: {}
 								Missing:  []authorizationv1.ResourceAttributes{{Resource: "clusterroles", Verb: "list"}},
 							},
 						},
-						PinnedResources: &[]operatorv1.PinnedResourceReference{},
+						PinnedResources: &[]v1.PinnedResourceReference{},
 					}, {
 						ID: "perspective2",
 						Visibility: v1.PerspectiveVisibility{
@@ -1424,6 +1465,39 @@ providers: {}
 telemetry:
   a-boolean-as-string: "false"
   a-key: a-value
+`,
+		},
+		{
+			name: "Config builder should pass customization Capabilities",
+			input: func() ([]byte, error) {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.Capabilities([]v1.Capability{
+					{
+						Name: v1.LightspeedButton,
+						Visibility: v1.CapabilityVisibility{
+							State: v1.CapabilityEnabled,
+						},
+					},
+				})
+				return b.ConfigYAML()
+			},
+			output: `apiVersion: console.openshift.io/v1
+kind: ConsoleConfig
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+clusterInfo: {}
+auth:
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+session: {}
+customization:
+  capabilities:
+  - name: LightspeedButton
+    visibility:
+      state: Enabled
+providers: {}
 `,
 		},
 	}

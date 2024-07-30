@@ -11,3 +11,8 @@ metadata:
     capability.openshift.io/name: Console
 spec:
   managementState: Managed
+  customization:
+    capabilities:
+    - name: LightspeedButton
+      visibility:
+        state: Enabled
