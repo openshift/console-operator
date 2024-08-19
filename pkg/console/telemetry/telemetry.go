@@ -107,10 +107,14 @@ func GetOrganizationID(telemetryConfig map[string]string, cachedOrganizationID, 
 // https://github.com/openshift-online/ocm-sdk-go/blob/main/accountsmgmt/v1/subscription_client.go - everything private
 // https://github.com/openshift-online/ocm-sdk-go/blob/main/accountsmgmt/v1/subscriptions_client.go#L38-L41 - useless client
 type OCMAPIResponse struct {
-	Items []Organization `json:"items"`
+	Items []Subscription `json:"items"`
 }
+type Subscription struct {
+	Organization Organization `json:"organization,omitempty"`
+}
+
 type Organization struct {
-	OrganizationID string `json:"organization_id"`
+	ExternalId string `json:"external_id,omitempty"`
 }
 
 // FetchOrganizationID fetches the organization ID using the cluster ID and access token
@@ -156,7 +160,7 @@ func FetchOrganizationID(clusterID, accessToken string) (string, error) {
 		return "", fmt.Errorf("empty OCM response")
 	}
 
-	return ocmResponse.Items[0].OrganizationID, nil
+	return ocmResponse.Items[0].Organization.ExternalId, nil
 }
 
 // buildURL constructs the URL for the API request
