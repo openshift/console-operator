@@ -16,3 +16,6 @@ spec:
     - name: LightspeedButton
       visibility:
         state: Enabled
+    - name: GettingStartedBanner
+      visibility:
+        state: Enabled
