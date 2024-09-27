@@ -11,6 +11,7 @@ import (
 
 	// k8s
 
+	"k8s.io/apimachinery/pkg/util/wait"
 	coreinformersv1 "k8s.io/client-go/informers/core/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/util/retry"
@@ -137,10 +138,14 @@ func (c *HealthCheckController) Sync(ctx context.Context, controllerContext fact
 	activeRoute, activeRouteErr := c.routeLister.Routes(api.OpenShiftConsoleNamespace).Get(activeRouteName)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("RouteHealth", "FailedRouteGet", activeRouteErr))
 	if activeRouteErr != nil {
+		klog.V(4).Infof("failed getting %q route for performing health check: %v", activeRouteName, activeRouteErr)
 		return statusHandler.FlushAndReturn(activeRouteErr)
 	}
 
 	routeHealthCheckErrReason, routeHealthCheckErr := c.CheckRouteHealth(ctx, updatedOperatorConfig, activeRoute)
+	if routeHealthCheckErr != nil {
+		klog.V(4).Infof("failed to performing health check: %v", routeHealthCheckErr)
+	}
 	statusHandler.AddCondition(status.HandleDegraded("RouteHealth", routeHealthCheckErrReason, routeHealthCheckErr))
 	statusHandler.AddCondition(status.HandleAvailable("RouteHealth", routeHealthCheckErrReason, routeHealthCheckErr))
 
@@ -149,8 +154,14 @@ func (c *HealthCheckController) Sync(ctx context.Context, controllerContext fact
 
 func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorConfig *operatorsv1.Console, route *routev1.Route) (string, error) {
 	var reason string
+	healthCheckBackoff := wait.Backoff{
+		Steps:    10,
+		Duration: 1 * time.Second,
+		Factor:   1.0,
+		Jitter:   0.1,
+	}
 	err := retry.OnError(
-		retry.DefaultRetry,
+		healthCheckBackoff,
 		func(err error) bool { return err != nil },
 		func() error {
 			var (
@@ -161,38 +172,50 @@ func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorCo
 				url, _, err = routeapihelpers.IngressURI(route, route.Spec.Host)
 				if err != nil {
 					reason = "RouteNotAdmitted"
-					return fmt.Errorf("console route is not admitted")
+					errStr := fmt.Sprintf("%s route is not admitted", route.Name)
+					logHealthCheckError(errStr)
+					return fmt.Errorf(errStr)
 				}
 			} else {
 				url, err = url.Parse(operatorConfig.Spec.Ingress.ConsoleURL)
 				if err != nil {
 					reason = "FailedParseConsoleURL"
-					return fmt.Errorf("failed to parse console url: %w", err)
+					errStr := fmt.Sprintf("failed to parse console url: %v", err)
+					logHealthCheckError(errStr)
+					return fmt.Errorf(errStr)
 				}
 			}
 
 			caPool, err := c.getCA(ctx, route.Spec.TLS)
 			if err != nil {
 				reason = "FailedLoadCA"
-				return fmt.Errorf("failed to read CA to check route health: %v", err)
+				errStr := fmt.Sprintf("failed to read CA to check route health: %v", err)
+				logHealthCheckError(errStr)
+				return fmt.Errorf(errStr)
 			}
 			client := clientWithCA(caPool)
 
 			req, err := http.NewRequest(http.MethodGet, url.String(), nil)
 			if err != nil {
 				reason = "FailedRequest"
-				return fmt.Errorf("failed to build request to route (%s): %v", url, err)
+				errStr := fmt.Sprintf("failed to build request to route (%s): %v", url, err)
+				logHealthCheckError(errStr)
+				return fmt.Errorf(errStr)
 			}
 			resp, err := client.Do(req)
 			if err != nil {
 				reason = "FailedGet"
+				errStr := fmt.Sprintf("failed to GET route (%s): %v", url, err)
+				logHealthCheckError(errStr)
 				return fmt.Errorf("failed to GET route (%s): %v", url, err)
 			}
 			defer resp.Body.Close()
 
 			if resp.StatusCode != http.StatusOK {
 				reason = "StatusError"
-				return fmt.Errorf("route not yet available, %s returns '%s'", url, resp.Status)
+				errStr := fmt.Sprintf("route not yet available, %s returns '%s'", url, resp.Status)
+				logHealthCheckError(errStr)
+				return fmt.Errorf(errStr)
 			}
 			reason = ""
 			return nil
@@ -241,4 +264,8 @@ func isExternalControlPlaneWithNLB(infrastructureConfig *configv1.Infrastructure
 		infrastructureConfig.Status.PlatformStatus.Type == configv1.AWSPlatformType &&
 		ingressConfig.Spec.LoadBalancer.Platform.Type == configv1.AWSPlatformType &&
 		ingressConfig.Spec.LoadBalancer.Platform.AWS.Type == configv1.NLB
+}
+
+func logHealthCheckError(errStr string) {
+	klog.V(4).Infof("health check error: %v; Retry...", errStr)
 }
