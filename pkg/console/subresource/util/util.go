@@ -5,18 +5,11 @@ import (
 	"os"
 	"strings"
 
-	yaml "gopkg.in/yaml.v2"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog/v2"
 
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
-	proxyv1alpha1 "open-cluster-management.io/cluster-proxy/pkg/apis/proxy/v1alpha1"
-	proxyscheme "open-cluster-management.io/cluster-proxy/pkg/generated/clientset/versioned/scheme"
 )
 
 func SharedLabels() map[string]string {
@@ -56,17 +49,6 @@ func SharedMeta() metav1.ObjectMeta {
 		Namespace:   api.OpenShiftConsoleNamespace,
 		Labels:      SharedLabels(),
 		Annotations: map[string]string{},
-	}
-}
-
-func LogYaml(obj runtime.Object) {
-	// REALLY NOISY, but handy for debugging:
-	// deployJSON, err := json.Marshal(d)
-	objYaml, err := yaml.Marshal(obj)
-	if err != nil {
-		klog.V(4).Infoln("failed to show yaml in log")
-	} else {
-		klog.V(4).Infof("%v", string(objYaml))
 	}
 }
 
@@ -111,26 +93,6 @@ func HTTPS(host string) string {
 	}
 	secured := fmt.Sprintf("%s%s", protocol, host)
 	return secured
-}
-
-// TODO remove when we update library-go to a version that includes this
-// borrowed from library-go
-// https://github.com/openshift/library-go/blob/master/pkg/operator/resource/resourceread/unstructured.go
-func ReadUnstructuredOrDie(objBytes []byte) *unstructured.Unstructured {
-	udi, _, err := scheme.Codecs.UniversalDecoder().Decode(objBytes, nil, &unstructured.Unstructured{})
-	if err != nil {
-		panic(err)
-	}
-	return udi.(*unstructured.Unstructured)
-}
-
-func ReadManagedProxyServiceResolverOrDie(objBytes []byte) *proxyv1alpha1.ManagedProxyServiceResolver {
-	groupVersionKind := proxyv1alpha1.GroupVersion.WithKind("ManagedProxyServiceResolver")
-	resource, _, err := proxyscheme.Codecs.UniversalDecoder().Decode(objBytes, &groupVersionKind, &proxyv1alpha1.ManagedProxyServiceResolver{})
-	if err != nil {
-		panic(err)
-	}
-	return resource.(*proxyv1alpha1.ManagedProxyServiceResolver)
 }
 
 func RemoveDuplicateStr(strSlice []string) []string {
