@@ -11,7 +11,7 @@ const (
 	ConsoleContainerTargetPort          = 8443
 	ConsoleServingCertName              = "console-serving-cert"
 	DefaultIngressCertConfigMapName     = "default-ingress-cert"
-	DownloadsPort                       = 8080
+	DownloadsPort                       = 8081
 	DownloadsPortName                   = "http"
 	DownloadsResourceName               = "downloads"
 	NodeArchitectureLabel               = "kubernetes.io/arch"
