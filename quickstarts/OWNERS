@@ -1,14 +1,14 @@
 reviewers:
+  - christoph-jerolimov
   - invincibleJai
-  - jerolimov
+  - jhadvig
   - lokanandaprabhu
   - lucifergene
-  - vikram-raj
-  - jhadvig
   - TheRealJon
+  - vikram-raj
 approvers:
+  - christoph-jerolimov
   - invincibleJai
-  - jerolimov
-  - vikram-raj
   - jhadvig
   - TheRealJon
+  - vikram-raj
