@@ -8,12 +8,14 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/go-test/deep"
+	"github.com/google/go-cmp/cmp"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
 	configv1 "github.com/openshift/api/config/v1"
+	consolev1 "github.com/openshift/api/console/v1"
 	v1 "github.com/openshift/api/console/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -1291,6 +1293,88 @@ customization:
 				t.Error(diff)
 				t.Errorf("Got: %v \n", result)
 				t.Errorf("Want: %v \n", []byte(tt.want))
+			}
+		})
+	}
+}
+
+func TestAggregateCSPDirectives(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  []*consolev1.ConsolePlugin
+		output map[consolev1.DirectiveType][]string
+	}{
+		{
+			name: "Test aggregate CSP directives",
+			input: []*consolev1.ConsolePlugin{
+				{
+					Spec: consolev1.ConsolePluginSpec{
+						ContentSecurityPolicy: []consolev1.ConsolePluginCSP{
+							{
+								Directive: consolev1.DefaultSrc,
+								Values:    []consolev1.CSPDirectiveValue{"source1", "source2"},
+							},
+							{
+								Directive: consolev1.ScriptSrc,
+								Values:    []consolev1.CSPDirectiveValue{"script1"},
+							},
+						},
+					},
+				},
+				{
+					Spec: consolev1.ConsolePluginSpec{
+						ContentSecurityPolicy: []consolev1.ConsolePluginCSP{
+							{
+								Directive: consolev1.DefaultSrc,
+								Values:    []consolev1.CSPDirectiveValue{"source2", "source3"},
+							},
+							{
+								Directive: consolev1.StyleSrc,
+								Values:    []consolev1.CSPDirectiveValue{"style1", "style2"},
+							},
+						},
+					},
+				},
+			},
+			output: map[consolev1.DirectiveType][]string{
+				consolev1.DefaultSrc: {"source1", "source2", "source3"},
+				consolev1.ScriptSrc:  {"script1"},
+				consolev1.StyleSrc:   {"style1", "style2"},
+			},
+		},
+		{
+			name: "Test aggregate CSP directives",
+			input: []*consolev1.ConsolePlugin{
+				{
+					Spec: consolev1.ConsolePluginSpec{},
+				},
+				{
+					Spec: consolev1.ConsolePluginSpec{
+						ContentSecurityPolicy: []consolev1.ConsolePluginCSP{
+							{
+								Directive: consolev1.DefaultSrc,
+								Values:    []consolev1.CSPDirectiveValue{"source1", "source2"},
+							},
+							{
+								Directive: consolev1.StyleSrc,
+								Values:    []consolev1.CSPDirectiveValue{"style1", "style2"},
+							},
+						},
+					},
+				},
+			},
+			output: map[consolev1.DirectiveType][]string{
+				consolev1.DefaultSrc: {"source1", "source2"},
+				consolev1.StyleSrc:   {"style1", "style2"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := aggregateCSPDirectives(tt.input)
+			if diff := cmp.Diff(tt.output, result); len(diff) > 0 {
+				t.Error(diff)
 			}
 		})
 	}

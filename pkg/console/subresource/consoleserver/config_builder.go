@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	configv1 "github.com/openshift/api/config/v1"
+	v1 "github.com/openshift/api/console/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	authconfigsub "github.com/openshift/console-operator/pkg/console/subresource/authentication"
@@ -75,6 +76,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	sessionEncryptionFile      string
 	sessionAuthenticationFile  string
 	capabilities               []operatorv1.Capability
+	contentSecurityPolicyList  map[v1.DirectiveType][]string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -207,6 +209,11 @@ func (b *ConsoleServerCLIConfigBuilder) Plugins(plugins map[string]string) *Cons
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) ContentSecurityPolicies(cspList map[v1.DirectiveType][]string) *ConsoleServerCLIConfigBuilder {
+	b.contentSecurityPolicyList = cspList
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) I18nNamespaces(i18nNamespaces []string) *ConsoleServerCLIConfigBuilder {
 	b.i18nNamespaceList = i18nNamespaces
 	return b
@@ -244,19 +251,20 @@ func (b *ConsoleServerCLIConfigBuilder) CopiedCSVsDisabled(copiedCSVsDisabled bo
 
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
-		Kind:           "ConsoleConfig",
-		APIVersion:     "console.openshift.io/v1",
-		Auth:           b.auth(),
-		Session:        b.session(),
-		ClusterInfo:    b.clusterInfo(),
-		Customization:  b.customization(),
-		ServingInfo:    b.servingInfo(),
-		Providers:      b.providers(),
-		MonitoringInfo: b.monitoringInfo(),
-		Plugins:        b.plugins(),
-		I18nNamespaces: b.i18nNamespaces(),
-		Proxy:          b.proxy(),
-		Telemetry:      b.telemetry,
+		Kind:                  "ConsoleConfig",
+		APIVersion:            "console.openshift.io/v1",
+		Auth:                  b.auth(),
+		Session:               b.session(),
+		ClusterInfo:           b.clusterInfo(),
+		Customization:         b.customization(),
+		ServingInfo:           b.servingInfo(),
+		Providers:             b.providers(),
+		MonitoringInfo:        b.monitoringInfo(),
+		Plugins:               b.plugins(),
+		I18nNamespaces:        b.i18nNamespaces(),
+		Proxy:                 b.proxy(),
+		ContentSecurityPolicy: b.contentSecurityPolicy(),
+		Telemetry:             b.telemetry,
 	}
 }
 
@@ -518,6 +526,10 @@ func (b *ConsoleServerCLIConfigBuilder) plugins() map[string]string {
 
 func (b *ConsoleServerCLIConfigBuilder) i18nNamespaces() []string {
 	return b.i18nNamespaceList
+}
+
+func (b *ConsoleServerCLIConfigBuilder) contentSecurityPolicy() map[v1.DirectiveType][]string {
+	return b.contentSecurityPolicyList
 }
 
 func (b *ConsoleServerCLIConfigBuilder) proxy() Proxy {

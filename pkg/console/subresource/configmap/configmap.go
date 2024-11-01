@@ -84,6 +84,7 @@ func DefaultConfigMap(
 		Monitoring(monitoringSharedConfig).
 		Plugins(getPluginsEndpointMap(availablePlugins)).
 		I18nNamespaces(pluginsWithI18nNamespace(availablePlugins)).
+		ContentSecurityPolicies(aggregateCSPDirectives(availablePlugins)).
 		Proxy(getPluginsProxyServices(availablePlugins)).
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
 		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).
@@ -129,6 +130,32 @@ func DefaultConfigMap(
 	util.AddOwnerRef(configMap, util.OwnerRefFrom(operatorConfig))
 
 	return configMap, willMergeConfigOverrides, nil
+}
+
+func aggregateCSPDirectives(plugins []*v1.ConsolePlugin) map[v1.DirectiveType][]string {
+	aggregated := make(map[v1.DirectiveType]map[string]struct{}) // Use a map to ensure uniqueness
+
+	for _, plugin := range plugins {
+		for _, csp := range plugin.Spec.ContentSecurityPolicy {
+			if aggregated[csp.Directive] == nil {
+				aggregated[csp.Directive] = make(map[string]struct{}) // Initialize if not already done
+			}
+			for _, v := range csp.Values {
+				stringValue := string(v)
+				aggregated[csp.Directive][stringValue] = struct{}{} // Use empty struct for uniqueness
+			}
+		}
+	}
+
+	// Convert back to the desired format
+	result := make(map[v1.DirectiveType][]string)
+	for directive, valuesMap := range aggregated {
+		for value := range valuesMap {
+			result[directive] = append(result[directive], value)
+		}
+	}
+
+	return result
 }
 
 func pluginsWithI18nNamespace(availablePlugins []*v1.ConsolePlugin) []string {
