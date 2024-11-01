@@ -11,17 +11,20 @@ import (
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apiexensionsinformers "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	policyv1client "k8s.io/client-go/kubernetes/typed/policy/v1"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/clock"
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/api/oauth"
-	operatorv1 "github.com/openshift/api/operator"
+	operator "github.com/openshift/api/operator"
+	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/clientwrapper"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
@@ -36,9 +39,9 @@ import (
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
 	upgradenotification "github.com/openshift/console-operator/pkg/console/controllers/upgradenotification"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
-	"github.com/openshift/console-operator/pkg/console/operatorclient"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/configobserver/featuregates"
+	"github.com/openshift/library-go/pkg/operator/genericoperatorclient"
 	"github.com/openshift/library-go/pkg/operator/managementstatecontroller"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/staleconditions"
@@ -61,9 +64,11 @@ import (
 	consolev1client "github.com/openshift/client-go/console/clientset/versioned"
 	consoleinformers "github.com/openshift/client-go/console/informers/externalversions"
 
+	applyoperatorv1 "github.com/openshift/client-go/operator/applyconfigurations/operator/v1"
+
 	telemetry "github.com/openshift/console-operator/pkg/console/telemetry"
 
-	"github.com/openshift/console-operator/pkg/console/operator"
+	consoleoperator "github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/library-go/pkg/operator/loglevel"
 )
 
@@ -158,15 +163,16 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		resync,
 	)
 
-	dynamicInformers := dynamicinformer.NewDynamicSharedInformerFactory(
-		dynamicClient,
-		resync,
+	operatorClient, dynamicInformers, err := genericoperatorclient.NewClusterScopedOperatorClient(
+		clock.RealClock{},
+		controllerContext.KubeConfig,
+		operatorv1.GroupVersion.WithResource("consoles"),
+		operatorv1.GroupVersion.WithKind("Console"),
+		extractStaticPodOperatorSpec,
+		extractStaticPodOperatorStatus,
 	)
-
-	operatorClient := &operatorclient.OperatorClient{
-		Informers: operatorConfigInformers,
-		Client:    operatorConfigClient.OperatorV1(),
-		Context:   ctx,
+	if err != nil {
+		return err
 	}
 
 	recorder := controllerContext.EventRecorder
@@ -215,7 +221,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	}
 
 	// TODO: rearrange these into informer,client pairs, NOT separated.
-	consoleOperator := operator.NewConsoleOperator(
+	consoleOperator := consoleoperator.NewConsoleOperator(
 		ctx,
 		// top level config
 		configClient.ConfigV1(),
@@ -425,7 +431,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	clusterOperatorStatus := status.NewClusterOperatorStatusController(
 		api.ClusterOperatorName,
 		[]configv1.ObjectReference{
-			{Group: operatorv1.GroupName, Resource: "consoles", Name: api.ConfigResourceName},
+			{Group: operator.GroupName, Resource: "consoles", Name: api.ConfigResourceName},
 			{Group: configv1.GroupName, Resource: "consoles", Name: api.ConfigResourceName},
 			{Group: configv1.GroupName, Resource: "infrastructures", Name: api.ConfigResourceName},
 			{Group: configv1.GroupName, Resource: "proxies", Name: api.ConfigResourceName},
@@ -607,6 +613,7 @@ func getResourceSyncer(controllerContext *controllercmd.ControllerContext, kubeC
 		api.OpenShiftConfigManagedNamespace,
 	)
 	resourceSyncer := resourcesynccontroller.NewResourceSyncController(
+		"console",
 		operatorClient,
 		resourceSyncerInformers,
 		v1helpers.CachedSecretGetter(kubeClient.CoreV1(), resourceSyncerInformers),
@@ -614,4 +621,36 @@ func getResourceSyncer(controllerContext *controllercmd.ControllerContext, kubeC
 		controllerContext.EventRecorder,
 	)
 	return resourceSyncerInformers, resourceSyncer
+}
+
+func extractStaticPodOperatorSpec(obj *unstructured.Unstructured, fieldManager string) (*applyoperatorv1.OperatorSpecApplyConfiguration, error) {
+	castObj := &operatorv1.Console{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, castObj); err != nil {
+		return nil, fmt.Errorf("unable to convert to Console: %w", err)
+	}
+
+	ret, err := applyoperatorv1.ExtractConsole(castObj, fieldManager)
+	if err != nil {
+		return nil, fmt.Errorf("unable to extract fields for %q: %w", fieldManager, err)
+	}
+	if ret.Spec == nil {
+		return nil, nil
+	}
+	return &ret.Spec.OperatorSpecApplyConfiguration, nil
+}
+
+func extractStaticPodOperatorStatus(obj *unstructured.Unstructured, fieldManager string) (*applyoperatorv1.OperatorStatusApplyConfiguration, error) {
+	castObj := &operatorv1.Console{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, castObj); err != nil {
+		return nil, fmt.Errorf("unable to convert to Console: %w", err)
+	}
+	ret, err := applyoperatorv1.ExtractConsoleStatus(castObj, fieldManager)
+	if err != nil {
+		return nil, fmt.Errorf("unable to extract fields for %q: %w", fieldManager, err)
+	}
+
+	if ret.Status == nil {
+		return nil, nil
+	}
+	return &ret.Status.OperatorStatusApplyConfiguration, nil
 }

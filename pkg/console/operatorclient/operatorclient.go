@@ -5,6 +5,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/clock"
 
 	operatorv1 "github.com/openshift/api/operator/v1"
 	operatorv1client "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
@@ -14,9 +15,12 @@ import (
 
 type OperatorClient struct {
 	Informers operatorv1informers.SharedInformerFactory
-	Client    operatorv1client.ConsolesGetter
+	Client    operatorv1client.OperatorV1Interface
 	Context   context.Context
+	clock     clock.PassiveClock
 }
+
+// var _ v1helpers.OperatorClient = &OperatorClient{}
 
 func (c *OperatorClient) Informer() cache.SharedIndexInformer {
 	return c.Informers.Operator().V1().Consoles().Informer()
