@@ -11,7 +11,7 @@ require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-test/deep v1.0.5
 	github.com/google/go-cmp v0.6.0
-	github.com/openshift/api v0.0.0-20241111120719-57564f6994b5
+	github.com/openshift/api v0.0.0-20241211151016-1a7b90faeadf
 	github.com/openshift/build-machinery-go v0.0.0-20240613134303-8359781da660
 	github.com/openshift/client-go v0.0.0-20241001162912-da6d55e4611f
 	github.com/openshift/library-go v0.0.0-20241023193830-022ad9c25e39
