@@ -25,10 +25,13 @@ func Pristine(t *testing.T, client *ClientSet) (*operatorsv1.Console, error) {
 	}
 	copy := operatorConfig.DeepCopy()
 	cleanSpec := operatorsv1.ConsoleSpec{}
-	// we can set a default management state & log level, but
-	// nothing else should be necessary
+	// we can set a default
+	// - ManagementState
+	// - LogLevel
+	// - Plugins - since some plugins are enabled by default, eg. networking and monitoring
 	cleanSpec.ManagementState = operatorsv1.Managed
 	cleanSpec.LogLevel = operatorsv1.Normal
+	cleanSpec.Plugins = copy.Spec.Plugins
 	copy.Spec = cleanSpec
 	return client.Operator.Consoles().Update(context.TODO(), copy, metav1.UpdateOptions{})
 }

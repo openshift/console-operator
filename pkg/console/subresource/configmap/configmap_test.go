@@ -8,7 +8,6 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/go-test/deep"
-	"github.com/google/go-cmp/cmp"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,7 +15,6 @@ import (
 
 	configv1 "github.com/openshift/api/config/v1"
 	consolev1 "github.com/openshift/api/console/v1"
-	v1 "github.com/openshift/api/console/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
@@ -61,7 +59,7 @@ func TestDefaultConfigMap(t *testing.T) {
 		infrastructureConfig     *configv1.Infrastructure
 		rt                       *routev1.Route
 		inactivityTimeoutSeconds int
-		availablePlugins         []*v1.ConsolePlugin
+		availablePlugins         []*consolev1.ConsolePlugin
 		nodeArchitectures        []string
 		nodeOperatingSystems     []string
 		copiedCSVsDisabled       bool
@@ -760,7 +758,7 @@ providers: {}
 					},
 				},
 				inactivityTimeoutSeconds: 0,
-				availablePlugins: []*v1.ConsolePlugin{
+				availablePlugins: []*consolev1.ConsolePlugin{
 					testPluginsWithProxy("plugin1", "service1", "service-namespace1"),
 					testPluginsWithProxy("plugin2", "service2", "service-namespace2"),
 					testPluginsWithI18nPreloadType("plugin3", "service3", "service-namespace3"),
@@ -1114,15 +1112,15 @@ providers: {}
 	}
 }
 
-func testPlugins(pluginName, serviceName, serviceNamespace string) *v1.ConsolePlugin {
-	return &v1.ConsolePlugin{
+func testPlugins(pluginName, serviceName, serviceNamespace string) *consolev1.ConsolePlugin {
+	return &consolev1.ConsolePlugin{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: pluginName,
 		},
-		Spec: v1.ConsolePluginSpec{
-			Backend: v1.ConsolePluginBackend{
-				Type: v1.Service,
-				Service: &v1.ConsolePluginService{
+		Spec: consolev1.ConsolePluginSpec{
+			Backend: consolev1.ConsolePluginBackend{
+				Type: consolev1.Service,
+				Service: &consolev1.ConsolePluginService{
 					Name:      serviceName,
 					Namespace: serviceNamespace,
 					Port:      8443,
@@ -1133,16 +1131,16 @@ func testPlugins(pluginName, serviceName, serviceNamespace string) *v1.ConsolePl
 	}
 }
 
-func testPluginsWithProxy(pluginName, serviceName, serviceNamespace string) *v1.ConsolePlugin {
+func testPluginsWithProxy(pluginName, serviceName, serviceNamespace string) *consolev1.ConsolePlugin {
 	plugin := testPlugins(pluginName, serviceName, serviceNamespace)
-	plugin.Spec.Proxy = []v1.ConsolePluginProxy{
+	plugin.Spec.Proxy = []consolev1.ConsolePluginProxy{
 		{
 			Alias:         fmt.Sprintf("%s-alias", pluginName),
 			CACertificate: validCertificate,
-			Authorization: v1.UserToken,
-			Endpoint: v1.ConsolePluginProxyEndpoint{
-				Type: v1.ProxyTypeService,
-				Service: &v1.ConsolePluginProxyServiceConfig{
+			Authorization: consolev1.UserToken,
+			Endpoint: consolev1.ConsolePluginProxyEndpoint{
+				Type: consolev1.ProxyTypeService,
+				Service: &consolev1.ConsolePluginProxyServiceConfig{
 					Name:      fmt.Sprintf("proxy-%s", serviceName),
 					Namespace: fmt.Sprintf("proxy-%s", serviceNamespace),
 					Port:      9991,
@@ -1154,9 +1152,9 @@ func testPluginsWithProxy(pluginName, serviceName, serviceNamespace string) *v1.
 	return plugin
 }
 
-func testPluginsWithI18nPreloadType(pluginName, serviceName, serviceNamespace string) *v1.ConsolePlugin {
+func testPluginsWithI18nPreloadType(pluginName, serviceName, serviceNamespace string) *consolev1.ConsolePlugin {
 	plugin := testPlugins(pluginName, serviceName, serviceNamespace)
-	plugin.Spec.I18n.LoadType = v1.Preload
+	plugin.Spec.I18n.LoadType = consolev1.Preload
 	return plugin
 }
 
@@ -1305,7 +1303,7 @@ func TestAggregateCSPDirectives(t *testing.T) {
 		output map[consolev1.DirectiveType][]string
 	}{
 		{
-			name: "Test aggregate CSP directives",
+			name: "Test aggregate CSP directives for multiple ConsolePlugins",
 			input: []*consolev1.ConsolePlugin{
 				{
 					Spec: consolev1.ConsolePluginSpec{
@@ -1343,7 +1341,7 @@ func TestAggregateCSPDirectives(t *testing.T) {
 			},
 		},
 		{
-			name: "Test aggregate CSP directives",
+			name: "Test aggregate CSP directives for a single ConsolePlugin",
 			input: []*consolev1.ConsolePlugin{
 				{
 					Spec: consolev1.ConsolePluginSpec{},
@@ -1373,8 +1371,10 @@ func TestAggregateCSPDirectives(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := aggregateCSPDirectives(tt.input)
-			if diff := cmp.Diff(tt.output, result); len(diff) > 0 {
+			if diff := deep.Equal(tt.output, result); diff != nil {
 				t.Error(diff)
+				t.Errorf("Got: %v \n", result)
+				t.Errorf("Want: %v \n", tt.output)
 			}
 		})
 	}
