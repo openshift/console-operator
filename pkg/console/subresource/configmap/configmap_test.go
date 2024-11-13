@@ -2,6 +2,7 @@ package configmap
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"testing"
 
@@ -1344,9 +1345,6 @@ func TestAggregateCSPDirectives(t *testing.T) {
 			name: "Test aggregate CSP directives for a single ConsolePlugin",
 			input: []*consolev1.ConsolePlugin{
 				{
-					Spec: consolev1.ConsolePluginSpec{},
-				},
-				{
 					Spec: consolev1.ConsolePluginSpec{
 						ContentSecurityPolicy: []consolev1.ConsolePluginCSP{
 							{
@@ -1366,11 +1364,28 @@ func TestAggregateCSPDirectives(t *testing.T) {
 				consolev1.StyleSrc:   {"style1", "style2"},
 			},
 		},
+		{
+			name: "Test a single ConsolePlugin without CSP directives",
+			input: []*consolev1.ConsolePlugin{
+				{
+					Spec: consolev1.ConsolePluginSpec{},
+				},
+			},
+			output: nil,
+		},
+	}
+
+	// Anonymous function to sort each slice in a directive map
+	sortDirectives := func(directives map[consolev1.DirectiveType][]string) {
+		for _, values := range directives {
+			sort.Strings(values)
+		}
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := aggregateCSPDirectives(tt.input)
+			sortDirectives(result)
 			if diff := deep.Equal(tt.output, result); diff != nil {
 				t.Error(diff)
 				t.Errorf("Got: %v \n", result)

@@ -3,6 +3,7 @@ package configmap
 import (
 	"fmt"
 	"net/url"
+	"sort"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
@@ -146,13 +147,20 @@ func aggregateCSPDirectives(plugins []*v1.ConsolePlugin) map[v1.DirectiveType][]
 			}
 		}
 	}
+	// Check if the aggregated map is empty
+	if len(aggregated) == 0 {
+		return nil
+	}
 
 	// Convert back to the desired format
 	result := make(map[v1.DirectiveType][]string)
 	for directive, valuesMap := range aggregated {
+		result[directive] = make([]string, 0, len(valuesMap))
 		for value := range valuesMap {
 			result[directive] = append(result[directive], value)
 		}
+		// Sort the slice of strings for each directive
+		sort.Strings(result[directive])
 	}
 
 	return result
