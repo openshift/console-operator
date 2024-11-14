@@ -155,12 +155,14 @@ func existingOrNewCondition(applyConfig *configv1ac.AuthenticationApplyConfigura
 			tt     = metav1.Now()
 			reason = "Unknown"
 			status = metav1.ConditionUnknown
+			msg    = ""
 		)
 		condition = &applymetav1.ConditionApplyConfiguration{
 			Type:               &conditionType,
 			Status:             &status,
 			LastTransitionTime: &tt,
 			Reason:             &reason,
+			Message:            &msg,
 		}
 	}
 
