@@ -87,6 +87,7 @@ type consoleOperator struct {
 	versionGetter             status.VersionGetter
 	// lister
 	consolePluginLister listerv1.ConsolePluginLister
+	// feature gate
 
 	resourceSyncer resourcesynccontroller.ResourceSyncer
 
@@ -182,8 +183,7 @@ func NewConsoleOperator(
 		versionGetter:     versionGetter,
 		// plugins
 		consolePluginLister: consolePluginInformer.Lister(),
-
-		resourceSyncer: resourceSyncer,
+		resourceSyncer:      resourceSyncer,
 
 		monitoringDeploymentLister: monitoringDeploymentInformer.Lister(),
 	}

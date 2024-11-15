@@ -207,7 +207,7 @@ func (c *oidcSetupController) syncAuthTypeOIDC(ctx context.Context, authnConfig 
 			recorder,
 			caCM.Namespace, caCM.Name,
 			api.TargetNamespace, caCM.Name,
-			sets.NewString("ca-bundle.crt"),
+			sets.New[string]("ca-bundle.crt"),
 			[]metav1.OwnerReference{*utilsub.OwnerRefFrom(operatorConfig)})
 
 		if err != nil {

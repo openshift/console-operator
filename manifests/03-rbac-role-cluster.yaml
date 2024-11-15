@@ -97,6 +97,7 @@ rules:
       - create
       - update
       - delete
+      - patch
   - apiGroups:
       - console.openshift.io
     resources:

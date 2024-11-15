@@ -3,6 +3,7 @@ package configmap
 import (
 	"fmt"
 	"net/url"
+	"sort"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
@@ -84,6 +85,7 @@ func DefaultConfigMap(
 		Monitoring(monitoringSharedConfig).
 		Plugins(getPluginsEndpointMap(availablePlugins)).
 		I18nNamespaces(pluginsWithI18nNamespace(availablePlugins)).
+		ContentSecurityPolicies(aggregateCSPDirectives(availablePlugins)).
 		Proxy(getPluginsProxyServices(availablePlugins)).
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
 		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).
@@ -129,6 +131,39 @@ func DefaultConfigMap(
 	util.AddOwnerRef(configMap, util.OwnerRefFrom(operatorConfig))
 
 	return configMap, willMergeConfigOverrides, nil
+}
+
+func aggregateCSPDirectives(plugins []*v1.ConsolePlugin) map[v1.DirectiveType][]string {
+	aggregated := make(map[v1.DirectiveType]map[string]struct{}) // Use a map to ensure uniqueness
+
+	for _, plugin := range plugins {
+		for _, csp := range plugin.Spec.ContentSecurityPolicy {
+			if aggregated[csp.Directive] == nil {
+				aggregated[csp.Directive] = make(map[string]struct{}) // Initialize if not already done
+			}
+			for _, v := range csp.Values {
+				stringValue := string(v)
+				aggregated[csp.Directive][stringValue] = struct{}{} // Use empty struct for uniqueness
+			}
+		}
+	}
+	// Check if the aggregated map is empty
+	if len(aggregated) == 0 {
+		return nil
+	}
+
+	// Convert back to the desired format
+	result := make(map[v1.DirectiveType][]string)
+	for directive, valuesMap := range aggregated {
+		result[directive] = make([]string, 0, len(valuesMap))
+		for value := range valuesMap {
+			result[directive] = append(result[directive], value)
+		}
+		// Sort the slice of strings for each directive
+		sort.Strings(result[directive])
+	}
+
+	return result
 }
 
 func pluginsWithI18nNamespace(availablePlugins []*v1.ConsolePlugin) []string {

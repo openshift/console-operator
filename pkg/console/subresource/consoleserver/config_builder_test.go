@@ -1288,6 +1288,8 @@ customization:
           resource: namespaces
           subresource: ""
           name: ""
+          fieldselector: null
+          labelselector: null
         missing:
         - namespace: ""
           verb: list
@@ -1296,6 +1298,8 @@ customization:
           resource: clusterroles
           subresource: ""
           name: ""
+          fieldselector: null
+          labelselector: null
   - id: perspective2
     visibility:
       state: Disabled
@@ -1354,6 +1358,8 @@ customization:
           resource: namespaces
           subresource: ""
           name: ""
+          fieldselector: null
+          labelselector: null
         missing:
         - namespace: ""
           verb: list
@@ -1362,6 +1368,8 @@ customization:
           resource: clusterroles
           subresource: ""
           name: ""
+          fieldselector: null
+          labelselector: null
     pinnedResources:
     - group: apps
       version: v1
@@ -1424,6 +1432,8 @@ customization:
           resource: namespaces
           subresource: ""
           name: ""
+          fieldselector: null
+          labelselector: null
         missing:
         - namespace: ""
           verb: list
@@ -1432,6 +1442,8 @@ customization:
           resource: clusterroles
           subresource: ""
           name: ""
+          fieldselector: null
+          labelselector: null
     pinnedResources: []
   - id: perspective2
     visibility:
