@@ -130,6 +130,7 @@ func DefaultDownloadsDeployment(
 // otherwise it should be deployed in HA mode based on the ControlPlaneTopology.
 func ShouldDeployHA(infrastructureConfig *configv1.Infrastructure) bool {
 	return infrastructureConfig.Status.ControlPlaneTopology == configv1.HighlyAvailableTopologyMode ||
+		infrastructureConfig.Status.ControlPlaneTopology == configv1.HighlyAvailableArbiter ||
 		(infrastructureConfig.Status.ControlPlaneTopology == configv1.ExternalTopologyMode &&
 			infrastructureConfig.Status.InfrastructureTopology == configv1.HighlyAvailableTopologyMode)
 }
