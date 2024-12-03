@@ -107,7 +107,8 @@ func (c *oauthClientSecretController) sync(ctx context.Context, syncCtx factory.
 
 	var secretString string
 	switch authConfig.Spec.Type {
-	case "", configv1.AuthenticationTypeIntegratedOAuth:
+	// We don't disable auth since the internal OAuth server is not disabled even with auth type 'None'.
+	case "", configv1.AuthenticationTypeIntegratedOAuth, configv1.AuthenticationTypeNone:
 		// in OpenShift controlled world, we generate the client secret ourselves
 		if clientSecret != nil {
 			secretString = secretsub.GetSecretString(clientSecret)

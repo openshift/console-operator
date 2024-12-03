@@ -83,7 +83,8 @@ func TestSync(t *testing.T) {
 		{"informer running when auth type IntegratedOAuth", configv1.AuthenticationTypeIntegratedOAuth, "cluster", true, false},
 		{"informer running when auth type empty", configv1.AuthenticationType(""), "cluster", true, false},
 		{"informer not running when auth type OIDC", configv1.AuthenticationTypeOIDC, "cluster", false, false},
-		{"informer not running when auth type None", configv1.AuthenticationTypeNone, "cluster", false, false},
+		// We don't disable auth since the internal OAuth server is not disabled even with auth type 'None'.
+		{"informer running when auth type None", configv1.AuthenticationTypeNone, "cluster", true, false},
 	}
 
 	for _, tt := range tests {
