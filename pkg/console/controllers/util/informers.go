@@ -123,11 +123,12 @@ func (s *InformerWithSwitch) sync(ctx context.Context, _ factory.SyncContext) er
 	}
 
 	switch authnConfig.Spec.Type {
-	case "", configv1.AuthenticationTypeIntegratedOAuth:
+	// We don't disable auth since the internal OAuth server is not disabled even with auth type 'None'.
+	case "", configv1.AuthenticationTypeIntegratedOAuth, configv1.AuthenticationTypeNone:
 		klog.V(4).Infof("authentication type '%s'; starting OAuth clients informer", authnConfig.Spec.Type)
 		s.ensureRunning()
 
-	case configv1.AuthenticationTypeOIDC, configv1.AuthenticationTypeNone:
+	case configv1.AuthenticationTypeOIDC:
 		klog.V(4).Infof("authentication type '%s'; stopping OAuth clients informer", authnConfig.Spec.Type)
 		s.stop()
 
