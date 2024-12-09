@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	consolev1 "github.com/openshift/api/console/v1"
+	operatorv1 "github.com/openshift/api/operator/v1"
 	consoleapi "github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
 	"github.com/openshift/console-operator/test/e2e/framework"
@@ -115,7 +116,10 @@ func setOperatorConfigPlugins(t *testing.T, client *framework.ClientSet, plugins
 		if err != nil {
 			t.Fatalf("could not get operator config: %v", err)
 		}
-		operatorConfig.Spec.Plugins = plugins
+		operatorConfig.Spec.Plugins = make([]operatorv1.PluginName, len(plugins))
+		for i, plugin := range plugins {
+			operatorConfig.Spec.Plugins[i] = operatorv1.PluginName(plugin)
+		}
 		_, err = client.Operator.Consoles().Update(context.TODO(), operatorConfig, metav1.UpdateOptions{})
 		return err
 	})
@@ -128,11 +132,14 @@ func setOperatorConfigPlugins(t *testing.T, client *framework.ClientSet, plugins
 func getOperatorConfigPlugins(t *testing.T, client *framework.ClientSet) []string {
 	var plugins []string
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		config, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
+		operatorConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
 		if err != nil {
 			t.Fatalf("could not get operator config: %v", err)
 		}
-		plugins = config.Spec.Plugins
+		operatorConfig.Spec.Plugins = make([]operatorv1.PluginName, len(plugins))
+		for i, plugin := range plugins {
+			operatorConfig.Spec.Plugins[i] = operatorv1.PluginName(plugin)
+		}
 		return nil
 	})
 	if err != nil {
