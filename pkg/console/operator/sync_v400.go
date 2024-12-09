@@ -40,7 +40,6 @@ import (
 	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
 	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
-	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
 	telemetry "github.com/openshift/console-operator/pkg/console/telemetry"
 )
 
@@ -633,10 +632,10 @@ func (co *consoleOperator) ValidateCustomLogo(ctx context.Context, operatorConfi
 	return true, "", nil
 }
 
-func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []string) []*v1.ConsolePlugin {
+func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []operatorv1.PluginName) []*v1.ConsolePlugin {
 	var availablePlugins []*v1.ConsolePlugin
-	for _, pluginName := range utilsub.RemoveDuplicateStr(enabledPluginsNames) {
-		plugin, err := co.consolePluginLister.Get(pluginName)
+	for _, pluginName := range enabledPluginsNames {
+		plugin, err := co.consolePluginLister.Get(string(pluginName))
 		if err != nil {
 			klog.Errorf("failed to get %q plugin: %v", pluginName, err)
 			continue
