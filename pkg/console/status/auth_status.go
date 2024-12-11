@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
+	"k8s.io/klog/v2"
 
 	configv1 "github.com/openshift/api/config/v1"
 	configv1ac "github.com/openshift/client-go/config/applyconfigurations/config/v1"
@@ -87,6 +88,7 @@ func (c *AuthStatusHandler) WithCurrentOIDCClient(currentClientID string) {
 }
 
 func (c *AuthStatusHandler) Apply(ctx context.Context, authnConfig *configv1.Authentication) error {
+	logger := klog.FromContext(ctx).WithName("AuthStatusHandler")
 	defer func() {
 		c.conditionsToApply = map[string]*applymetav1.ConditionApplyConfiguration{}
 	}()
@@ -102,19 +104,30 @@ func (c *AuthStatusHandler) Apply(ctx context.Context, authnConfig *configv1.Aut
 	}
 
 	if len(c.currentClientID) > 0 {
-		var providerName, providerIssuerURL string
 		if len(authnConfig.Spec.OIDCProviders) > 0 {
-			providerName = authnConfig.Spec.OIDCProviders[0].Name
-			providerIssuerURL = authnConfig.Spec.OIDCProviders[0].Issuer.URL
-		}
+			providerName := authnConfig.Spec.OIDCProviders[0].Name
+			providerIssuerURL := authnConfig.Spec.OIDCProviders[0].Issuer.URL
 
-		clientStatus.WithCurrentOIDCClients(
-			&configv1ac.OIDCClientReferenceApplyConfiguration{
-				OIDCProviderName: &providerName,
-				IssuerURL:        &providerIssuerURL,
-				ClientID:         &c.currentClientID,
-			},
-		)
+			// It violates the Authentication CRD validations to set an empty
+			// OIDCProviderName and IssuerURL value, so only ever add CurrentOIDCClients
+			// to the OIDCClientStatus if there are OIDCProviders present in the spec.
+			clientStatus.WithCurrentOIDCClients(
+				&configv1ac.OIDCClientReferenceApplyConfiguration{
+					OIDCProviderName: &providerName,
+					IssuerURL:        &providerIssuerURL,
+					ClientID:         &c.currentClientID,
+				},
+			)
+		} else {
+			// Generally, we should never get here because when the Authentication type
+			// is changed from OIDC to something else the currentClientID field on the authStatusHandler
+			// should be reset to an empty string. In the event that it isn't reset and it seems like
+			// there are no OIDC providers configured, we should avoid trying to set the
+			// OIDCClients information in the status and marking the clusteroperator as degraded.
+			// Instead, log a warning that we see the currentClientID is set but there is no
+			// evidence of OIDCProviders actually being configured.
+			logger.V(2).Info("WARNING: currentClientID is set but the Authentication resource doesn't seem to have any OIDC providers configured, not adding OIDC clients information to status.", "currentClientID", c.currentClientID)
+		}
 	}
 
 	if authnConfig.Spec.Type == configv1.AuthenticationTypeOIDC {
