@@ -128,8 +128,12 @@ func DefaultDownloadsDeployment(
 // ShouldDeployHA returns true if the console should be deployed in HA mode.
 // If the control plane is externalized, the console should be deployed in HA mode based on the InfrastructureTopology,
 // otherwise it should be deployed in HA mode based on the ControlPlaneTopology.
+//
+// On HighlyAvailableArbiter control plane topologies, with a minimum of two full sized master nodes, we also deploy HA
+// since the default for HA is 2 pods.
 func ShouldDeployHA(infrastructureConfig *configv1.Infrastructure) bool {
 	return infrastructureConfig.Status.ControlPlaneTopology == configv1.HighlyAvailableTopologyMode ||
+		infrastructureConfig.Status.ControlPlaneTopology == configv1.HighlyAvailableArbiterMode ||
 		(infrastructureConfig.Status.ControlPlaneTopology == configv1.ExternalTopologyMode &&
 			infrastructureConfig.Status.InfrastructureTopology == configv1.HighlyAvailableTopologyMode)
 }
