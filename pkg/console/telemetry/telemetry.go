@@ -84,23 +84,23 @@ func GetAccessToken(secretsLister v1.SecretLister) (string, error) {
 // 1. custom ORGANIZATION_ID is awailable as telemetry annotation on console-operator config or in telemetry-config configmap
 // 2. cached ORGANIZATION_ID is available on the operator controller instance
 // else fetch the ORGANIZATION_ID from OCM
-func GetOrganizationID(telemetryConfig map[string]string, cachedOrganizationID, clusterID, accessToken string) (string, bool) {
+func GetOrganizationMeta(telemetryConfig map[string]string, cachedOrganizationID, cachedAccountEmail, clusterID, accessToken string) (string, string, bool) {
 	customOrganizationID, isCustomOrgIDSet := telemetryConfig["ORGANIZATION_ID"]
 	if isCustomOrgIDSet {
 		klog.V(4).Infoln("telemetry config: using custom organization ID")
-		return customOrganizationID, false
+		return customOrganizationID, "", false
 	}
 
-	if cachedOrganizationID != "" {
-		klog.V(4).Infoln("telemetry config: using cached organization ID")
-		return cachedOrganizationID, false
+	if cachedOrganizationID != "" && cachedAccountEmail != "" {
+		klog.V(4).Infoln("telemetry config: using cached organization metadata")
+		return cachedOrganizationID, cachedAccountEmail, false
 	}
 
-	fetchedOrganizationID, err := FetchOrganizationID(clusterID, accessToken)
+	fetchedOCMRespose, err := FetchSubscription(clusterID, accessToken)
 	if err != nil {
 		klog.Errorf("telemetry config error: %s", err)
 	}
-	return fetchedOrganizationID, true
+	return fetchedOCMRespose.Organization.ExternalId, fetchedOCMRespose.Creator.Email, true
 }
 
 // Needed to create our own types for OCM Subscriptions since their types and client are useless
@@ -111,23 +111,28 @@ type OCMAPIResponse struct {
 }
 type Subscription struct {
 	Organization Organization `json:"organization,omitempty"`
+	Creator      Creator      `json:"creator,omitempty"`
+}
+
+type Creator struct {
+	Email string `json:"email,omitempty"`
 }
 
 type Organization struct {
 	ExternalId string `json:"external_id,omitempty"`
 }
 
-// FetchOrganizationID fetches the organization ID using the cluster ID and access token
-func FetchOrganizationID(clusterID, accessToken string) (string, error) {
+// FetchOrganizationMeta fetches the organization ID and Accout email using the cluster ID and access token
+func FetchSubscription(clusterID, accessToken string) (*Subscription, error) {
 	klog.V(4).Infoln("telemetry config: fetching organization ID")
 	u, err := buildURL(clusterID)
 	if err != nil {
-		return "", err // more contextual error handling can be added here if needed
+		return nil, err // more contextual error handling can be added here if needed
 	}
 
 	req, err := createRequest(u, clusterID, accessToken)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	client := &http.Client{
@@ -138,29 +143,31 @@ func FetchOrganizationID(clusterID, accessToken string) (string, error) {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to GET (%s): %v", u.String(), err)
+		return nil, fmt.Errorf("failed to GET (%s): %v", u.String(), err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("HTTP request failed with status '%s'", resp.Status)
+		return nil, fmt.Errorf("HTTP request failed with status '%s'", resp.Status)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %v", err)
+		return nil, fmt.Errorf("failed to read response body: %v", err)
 	}
 
 	var ocmResponse OCMAPIResponse
 	if err = json.Unmarshal(body, &ocmResponse); err != nil {
-		return "", fmt.Errorf("error decoding JSON: %v", err)
+		return nil, fmt.Errorf("error decoding JSON: %v", err)
 	}
+	klog.Infof("---> data: %#v\n", string(body))
+	klog.Infof("---> ocmResponse: %#v\n", ocmResponse)
 
 	if len(ocmResponse.Items) == 0 {
-		return "", fmt.Errorf("empty OCM response")
+		return nil, fmt.Errorf("empty OCM response")
 	}
 
-	return ocmResponse.Items[0].Organization.ExternalId, nil
+	return &ocmResponse.Items[0], nil
 }
 
 // buildURL constructs the URL for the API request
@@ -172,6 +179,7 @@ func buildURL(clusterID string) (*url.URL, error) {
 	}
 	q := u.Query()
 	q.Add("fetchOrganization", "true")
+	q.Add("fetchAccounts", "true")
 	q.Add("search", fmt.Sprintf("external_cluster_id='%s'", clusterID))
 	u.RawQuery = q.Encode()
 	return u, nil
