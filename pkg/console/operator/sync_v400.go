@@ -157,7 +157,8 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 
 	var oauthServingCertConfigMap *corev1.ConfigMap
 	switch authnConfig.Spec.Type {
-	case "", configv1.AuthenticationTypeIntegratedOAuth:
+	// We don't disable auth since the internal OAuth server is not disabled even with auth type 'None'.
+	case "", configv1.AuthenticationTypeIntegratedOAuth, configv1.AuthenticationTypeNone:
 		var oauthServingCertErrReason string
 		var oauthServingCertErr error
 
