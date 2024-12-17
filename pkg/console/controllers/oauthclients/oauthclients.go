@@ -115,7 +115,8 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 	}
 
 	switch authnConfig.Spec.Type {
-	case "", configv1.AuthenticationTypeIntegratedOAuth:
+	// We don't disable auth since the internal OAuth server is not disabled even with auth type 'None'.
+	case "", configv1.AuthenticationTypeIntegratedOAuth, configv1.AuthenticationTypeNone:
 	default:
 		// if we're not using integrated oauth, reset all degraded conditions
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSync", "", nil))
