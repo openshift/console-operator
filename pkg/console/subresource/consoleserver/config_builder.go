@@ -144,14 +144,11 @@ func (b *ConsoleServerCLIConfigBuilder) StatusPageID(id string) *ConsoleServerCL
 
 func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authentication) *ConsoleServerCLIConfigBuilder {
 	switch authnConfig.Spec.Type {
-	case "", configv1.AuthenticationTypeIntegratedOAuth:
+	// We don't disable auth since the internal OAuth server is not disabled even with auth type 'None'.
+	case "", configv1.AuthenticationTypeIntegratedOAuth, configv1.AuthenticationTypeNone:
 		b.authType = "openshift"
 		b.oauthClientID = api.OAuthClientName
 		b.CAFile = oauthServingCertFilePath
-		return b
-
-	case configv1.AuthenticationTypeNone:
-		b.authType = "disabled"
 		return b
 
 	case configv1.AuthenticationTypeOIDC:
