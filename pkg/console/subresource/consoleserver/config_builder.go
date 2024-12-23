@@ -501,6 +501,16 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 		}
 
 		conf.Perspectives = perspectives
+	} else {
+		// Disable the developer perspective by default
+		perspectives := make([]Perspective, 1)
+		perspectives[0] = Perspective{
+			ID: string(PerspectiveIDDev),
+			Visibility: PerspectiveVisibility{
+				State: PerspectiveDisabled,
+			},
+		}
+		conf.Perspectives = perspectives
 	}
 
 	conf.Capabilities = b.capabilities

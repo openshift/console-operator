@@ -202,6 +202,16 @@ const (
 	PerspectiveAccessReview PerspectiveState = "AccessReview"
 )
 
+// PerspectiveID defines the id of the perspective.
+// "admin" is the id of the admin perspective.
+// "dev" is the id of the developer perspective.
+type PerspectiveID string
+
+const (
+	PerspectiveIDAdmin PerspectiveID = "admin"
+	PerspectiveIDDev   PerspectiveID = "dev"
+)
+
 // ResourceAttributesAccessReview defines the visibility of the perspective depending on the access review checks.
 // `required` and  `missing` can work together esp. in the case where the cluster admin
 // wants to show another perspective to users without specific permissions. Out of `required` and `missing` atleast one property should be non-empty.
