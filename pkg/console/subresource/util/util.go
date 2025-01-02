@@ -106,3 +106,11 @@ func RemoveDuplicateStr(strSlice []string) []string {
 	}
 	return list
 }
+
+func PluginNamesToStrings(pluginNames []operatorv1.PluginName) []string {
+	var pluginNameStrings []string
+	for _, pluginName := range pluginNames {
+		pluginNameStrings = append(pluginNameStrings, string(pluginName))
+	}
+	return RemoveDuplicateStr(pluginNameStrings)
+}
