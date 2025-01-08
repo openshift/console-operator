@@ -127,6 +127,10 @@ session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
+  perspectives:
+    - id: dev
+      visibility:
+        state: Disabled
 servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
@@ -189,6 +193,10 @@ session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
+  perspectives:
+    - id: dev
+      visibility:
+        state: Disabled
 servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
@@ -267,6 +275,10 @@ session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
+  perspectives:
+    - id: dev
+      visibility:
+        state: Disabled
 servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
@@ -344,6 +356,10 @@ session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
+  perspectives:
+    - id: dev
+      visibility:
+        state: Disabled
 servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
@@ -424,6 +440,10 @@ session: {}
 customization:
   branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
+  perspectives:
+    - id: dev
+      visibility:
+        state: Disabled
 servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
@@ -511,6 +531,10 @@ customization:
   documentationBaseURL: ` + mockOperatorDocURL + `
   customLogoFile: /var/logo/logo.svg
   customProductName: custom-product-name
+  perspectives:
+    - id: dev
+      visibility:
+        state: Disabled
 servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
@@ -596,6 +620,10 @@ session: {}
 customization:
   branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
+  perspectives:
+    - id: dev
+      visibility:
+        state: Disabled
 servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
@@ -665,6 +693,10 @@ session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
+  perspectives:
+    - id: dev
+      visibility:
+        state: Disabled
 servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
@@ -729,6 +761,10 @@ session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
+  perspectives:
+    - id: dev
+      visibility:
+        state: Disabled
 servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
@@ -796,6 +832,10 @@ session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
+  perspectives:
+    - id: dev
+      visibility:
+        state: Disabled
 i18nNamespaces:
 - plugin__plugin3
 servingInfo:
@@ -904,6 +944,10 @@ session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
+  perspectives:
+    - id: dev
+      visibility:
+        state: Disabled
 servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
@@ -970,6 +1014,10 @@ session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
+  perspectives:
+    - id: dev
+      visibility:
+        state: Disabled
 servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
@@ -1040,6 +1088,10 @@ session: {}
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
+  perspectives:
+    - id: dev
+      visibility:
+        state: Disabled
 monitoringInfo:
   alertmanagerTenancyHost: alertmanager-user-workload.openshift-user-workload-monitoring.svc:9092
   alertmanagerUserWorkloadHost: alertmanager-user-workload.openshift-user-workload-monitoring.svc:9094
