@@ -26,7 +26,7 @@ spec:
           Is Network Observability Operator listed ?
       summary:
         failed: Try the steps again.
-        success: Great work! You successfully installed Network Observability Operator.
+        success: Great work! You successfully installed the Network Observability Operator.
       title: Install the Network Observability Operator
     - description: |-
         In order to start capturing traffic, you need to create a **FlowCollector** resource to configure the components of Network Observability Operator.
