@@ -22,8 +22,8 @@ spec:
         failedTaskHelp: This task isn’t verified yet. Try the task again.
         instructions: |-
           #### Verify the operator was successfully installed:
-          Navigate to Operators → Installed Operators.
-          Is Network Observability Operator listed ?
+          Navigate to **Operators** → **Installed Operators**.
+          Is the Network Observability Operator listed?
       summary:
         failed: Try the steps again.
         success: Great work! You successfully installed the Network Observability Operator.
