@@ -7,7 +7,7 @@ spec:
   description: Install Network Observability Operator and deploy a FlowCollector to monitor your network.
   displayName: Observe the cluster network traffic
   durationMinutes: 5
-  introduction: '### In this quick start, you'll deploy and configure Network Observability Operator to get an overview of your cluster network traffic including ingress and egress traffic. For more information on Network Observability, see the related [OpenShift documentation.](https://docs.openshift.com/container-platform/latest/observability/network_observability/network-observability-overview.html)'
+  introduction: '### In this quick start, you'll deploy and configure Network Observability Operator to get an overview of your cluster network traffic including ingress and egress traffic. For more information on Network Observability, see the related [OpenShift documentation](https://docs.openshift.com/container-platform/latest/observability/network_observability/network-observability-overview.html)'.
   tags:
     - network
     - observability
