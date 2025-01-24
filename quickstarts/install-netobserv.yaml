@@ -35,7 +35,7 @@ spec:
 
         2. Navigate to the **FlowCollector** tab, and click **Create FlowCollector**. Make the following selections in the form view:
           
-          2.1 **spec.agent.ebpf.Sampling**: Specify a sampling size for flows. Lower sampling sizes will have higher impact on resource utilization. For more information, see the "FlowCollector API reference", spec.agent.ebpf.
+          2.1 **spec.agent.ebpf.Sampling**: Specify a sampling value for flows. Lower sampling values will have higher impact on resource utilization. For more information, see the "FlowCollector API reference", spec.agent.ebpf.
           
           2.2 If you are not using Loki, click Loki client settings and change **Enable** to **False**. The setting is True by default.
           
