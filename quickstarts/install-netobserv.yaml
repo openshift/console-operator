@@ -47,7 +47,6 @@ spec:
           
           2.4 Optional: If you are in a large-scale environment, consider configuring the FlowCollector with **Kafka** for forwarding data in a more resilient, scalable way. See "Configuring the Flow Collector resource with Kafka storage" in the "Important Flow Collector configuration considerations" section.
           
-          2.5 Optional: Configure other optional settings before the next step of creating the FlowCollector. For example, if you choose not to use Loki, then you can configure exporting flows to **Kafka**, **OpenTelemetry** or **IPFIX**. See "Export enriched network flow data to Kafka and IPFIX" and more in the "Important Flow Collector configuration considerations" section.
 
         3. Click Create.
       review:
