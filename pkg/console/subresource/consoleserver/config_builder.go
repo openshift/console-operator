@@ -42,41 +42,42 @@ const (
 //
 //	b.Host().Brand("").Config()
 type ConsoleServerCLIConfigBuilder struct {
-	host                       string
-	logoutRedirectURL          string
-	brand                      operatorv1.Brand
-	docURL                     string
-	apiServerURL               string
-	controlPlaneToplogy        configv1.TopologyMode
-	statusPageID               string
-	customProductName          string
-	devCatalogCustomization    operatorv1.DeveloperConsoleCatalogCustomization
-	projectAccess              operatorv1.ProjectAccess
-	quickStarts                operatorv1.QuickStarts
-	addPage                    operatorv1.AddPage
-	perspectives               []operatorv1.Perspective
-	customLogoFile             string
-	CAFile                     string
-	monitoring                 map[string]string
-	customHostnameRedirectPort int
-	inactivityTimeoutSeconds   int
-	pluginsList                map[string]string
-	i18nNamespaceList          []string
-	proxyServices              []ProxyService
-	telemetry                  map[string]string
-	releaseVersion             string
-	nodeArchitectures          []string
-	nodeOperatingSystems       []string
-	copiedCSVsDisabled         bool
-	oauthClientID              string
-	oidcExtraScopes            []string
-	oidcIssuerURL              string
-	oidcOCLoginCommand         string
-	authType                   string
-	sessionEncryptionFile      string
-	sessionAuthenticationFile  string
-	capabilities               []operatorv1.Capability
-	contentSecurityPolicyList  map[v1.DirectiveType][]string
+	host                         string
+	logoutRedirectURL            string
+	brand                        operatorv1.Brand
+	docURL                       string
+	apiServerURL                 string
+	controlPlaneToplogy          configv1.TopologyMode
+	statusPageID                 string
+	customProductName            string
+	devCatalogCustomization      operatorv1.DeveloperConsoleCatalogCustomization
+	projectAccess                operatorv1.ProjectAccess
+	quickStarts                  operatorv1.QuickStarts
+	addPage                      operatorv1.AddPage
+	perspectives                 []operatorv1.Perspective
+	customLogoFile               string
+	CAFile                       string
+	monitoring                   map[string]string
+	customHostnameRedirectPort   int
+	inactivityTimeoutSeconds     int
+	pluginsList                  map[string]string
+	i18nNamespaceList            []string
+	proxyServices                []ProxyService
+	telemetry                    map[string]string
+	releaseVersion               string
+	nodeArchitectures            []string
+	nodeOperatingSystems         []string
+	copiedCSVsDisabled           bool
+	oauthClientID                string
+	oidcExtraScopes              []string
+	oidcIssuerURL                string
+	oidcOCLoginCommand           string
+	authType                     string
+	sessionEncryptionFile        string
+	sessionAuthenticationFile    string
+	capabilities                 []operatorv1.Capability
+	contentSecurityPolicyEnabled bool
+	contentSecurityPolicyList    map[v1.DirectiveType][]string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -211,6 +212,11 @@ func (b *ConsoleServerCLIConfigBuilder) ContentSecurityPolicies(cspList map[v1.D
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) ContentSecurityPolicyEnabled(enabled bool) *ConsoleServerCLIConfigBuilder {
+	b.contentSecurityPolicyEnabled = enabled
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) I18nNamespaces(i18nNamespaces []string) *ConsoleServerCLIConfigBuilder {
 	b.i18nNamespaceList = i18nNamespaces
 	return b
@@ -248,20 +254,21 @@ func (b *ConsoleServerCLIConfigBuilder) CopiedCSVsDisabled(copiedCSVsDisabled bo
 
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
-		Kind:                  "ConsoleConfig",
-		APIVersion:            "console.openshift.io/v1",
-		Auth:                  b.auth(),
-		Session:               b.session(),
-		ClusterInfo:           b.clusterInfo(),
-		Customization:         b.customization(),
-		ServingInfo:           b.servingInfo(),
-		Providers:             b.providers(),
-		MonitoringInfo:        b.monitoringInfo(),
-		Plugins:               b.plugins(),
-		I18nNamespaces:        b.i18nNamespaces(),
-		Proxy:                 b.proxy(),
-		ContentSecurityPolicy: b.contentSecurityPolicy(),
-		Telemetry:             b.telemetry,
+		Kind:                         "ConsoleConfig",
+		APIVersion:                   "console.openshift.io/v1",
+		Auth:                         b.auth(),
+		Session:                      b.session(),
+		ClusterInfo:                  b.clusterInfo(),
+		Customization:                b.customization(),
+		ServingInfo:                  b.servingInfo(),
+		Providers:                    b.providers(),
+		MonitoringInfo:               b.monitoringInfo(),
+		Plugins:                      b.plugins(),
+		I18nNamespaces:               b.i18nNamespaces(),
+		Proxy:                        b.proxy(),
+		ContentSecurityPolicy:        b.contentSecurityPolicy(),
+		ContentSecurityPolicyEnabled: b.getContentSecurityPolicyEnabled(),
+		Telemetry:                    b.telemetry,
 	}
 }
 
@@ -527,6 +534,10 @@ func (b *ConsoleServerCLIConfigBuilder) i18nNamespaces() []string {
 
 func (b *ConsoleServerCLIConfigBuilder) contentSecurityPolicy() map[v1.DirectiveType][]string {
 	return b.contentSecurityPolicyList
+}
+
+func (b *ConsoleServerCLIConfigBuilder) getContentSecurityPolicyEnabled() bool {
+	return b.contentSecurityPolicyEnabled
 }
 
 func (b *ConsoleServerCLIConfigBuilder) proxy() Proxy {

@@ -415,6 +415,7 @@ func (co *consoleOperator) SyncConfigMap(
 		nodeArchitectures,
 		nodeOperatingSystems,
 		copiedCSVsDisabled,
+		co.contentSecurityPolicyEnabled,
 		telemetryConfig,
 		consoleHost,
 	)
