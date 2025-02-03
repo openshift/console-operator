@@ -22,6 +22,42 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 		output Config
 	}{
 		{
+			name: "Config builder should not disable dev perspective if perspective config exists",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+
+				return b.Perspectives([]v1.Perspective{
+					{
+						ID:         "some-other-perspective",
+						Visibility: v1.PerspectiveVisibility{State: v1.PerspectiveEnabled},
+					},
+				}).Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{},
+				Auth: Auth{
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
+				},
+				Customization: Customization{
+					Perspectives: []Perspective{
+						{
+							ID:         "some-other-perspective",
+							Visibility: PerspectiveVisibility{State: PerspectiveEnabled},
+						},
+					},
+				},
+				Providers: Providers{},
+			},
+		},
+		{
 			name: "Config builder should return default config if given no inputs",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}

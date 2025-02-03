@@ -13,13 +13,15 @@ spec:
   managementState: Managed
   customization:
     capabilities:
-    - name: LightspeedButton
-      visibility:
-        state: Enabled
-    - name: GettingStartedBanner
-      visibility:
-        state: Enabled
+      - name: LightspeedButton
+        visibility:
+          state: Enabled
+      - name: GettingStartedBanner
+        visibility:
+          state: Enabled
+    # The admin and the dev perspectives are merged into a single perspective and the dev perspective is disabled.
+    # Jira Epic: https://issues.redhat.com/browse/ODC-7716
     perspectives:
-    - id: dev
-      visibility:
-        state: Disabled
+      - id: dev
+        visibility:
+          state: Disabled
