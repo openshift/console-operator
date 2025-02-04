@@ -50,6 +50,10 @@ clusterInfo:
 customization:
   branding: okd
   documentationBaseURL: https://foobar.com/docs
+  perspectives:
+  - id: dev
+    visibility:
+      state: Disabled
 kind: ConsoleConfig
 providers:
   statuspageID: status-12345
