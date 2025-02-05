@@ -51,20 +51,21 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ
 // To manually run these tests: go test -v ./pkg/console/subresource/configmap/...
 func TestDefaultConfigMap(t *testing.T) {
 	type args struct {
-		operatorConfig           *operatorv1.Console
-		authConfig               *configv1.Authentication
-		consoleConfig            *configv1.Console
-		managedConfig            *corev1.ConfigMap
-		monitoringSharedConfig   *corev1.ConfigMap
-		authServerCAConfig       *corev1.ConfigMap
-		infrastructureConfig     *configv1.Infrastructure
-		rt                       *routev1.Route
-		inactivityTimeoutSeconds int
-		availablePlugins         []*consolev1.ConsolePlugin
-		nodeArchitectures        []string
-		nodeOperatingSystems     []string
-		copiedCSVsDisabled       bool
-		telemetryConfig          map[string]string
+		operatorConfig               *operatorv1.Console
+		authConfig                   *configv1.Authentication
+		consoleConfig                *configv1.Console
+		managedConfig                *corev1.ConfigMap
+		monitoringSharedConfig       *corev1.ConfigMap
+		authServerCAConfig           *corev1.ConfigMap
+		infrastructureConfig         *configv1.Infrastructure
+		rt                           *routev1.Route
+		inactivityTimeoutSeconds     int
+		availablePlugins             []*consolev1.ConsolePlugin
+		nodeArchitectures            []string
+		nodeOperatingSystems         []string
+		copiedCSVsDisabled           bool
+		contentSecurityPolicyEnabled bool
+		telemetryConfig              map[string]string
 	}
 	t.Setenv("OPERATOR_IMAGE_VERSION", testReleaseVersion)
 	tests := []struct {
@@ -1069,6 +1070,7 @@ providers: {}
 				tt.args.nodeArchitectures,
 				tt.args.nodeOperatingSystems,
 				tt.args.copiedCSVsDisabled,
+				tt.args.contentSecurityPolicyEnabled,
 				tt.args.telemetryConfig,
 				tt.args.rt.Spec.Host,
 			)

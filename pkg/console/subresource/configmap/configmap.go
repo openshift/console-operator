@@ -47,6 +47,7 @@ func DefaultConfigMap(
 	nodeArchitectures []string,
 	nodeOperatingSystems []string,
 	copiedCSVsDisabled bool,
+	contentSecurityPolicyEnabled bool,
 	telemeterConfig map[string]string,
 	consoleHost string,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
@@ -86,6 +87,7 @@ func DefaultConfigMap(
 		Plugins(getPluginsEndpointMap(availablePlugins)).
 		I18nNamespaces(pluginsWithI18nNamespace(availablePlugins)).
 		ContentSecurityPolicies(aggregateCSPDirectives(availablePlugins)).
+		ContentSecurityPolicyEnabled(contentSecurityPolicyEnabled).
 		Proxy(getPluginsProxyServices(availablePlugins)).
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
 		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).

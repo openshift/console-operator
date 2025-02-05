@@ -220,9 +220,11 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		return err
 	}
 
+	contentSecurityPolicyEnabled := featureGates.Enabled("ConsolePluginContentSecurityPolicy")
 	// TODO: rearrange these into informer,client pairs, NOT separated.
 	consoleOperator := consoleoperator.NewConsoleOperator(
 		ctx,
+		contentSecurityPolicyEnabled,
 		// top level config
 		configClient.ConfigV1(),
 		configInformers,

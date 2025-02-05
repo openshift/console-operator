@@ -87,7 +87,9 @@ type consoleOperator struct {
 	versionGetter             status.VersionGetter
 	// lister
 	consolePluginLister listerv1.ConsolePluginLister
-	// feature gate
+
+	// CSP feature gate enabled
+	contentSecurityPolicyEnabled bool
 
 	resourceSyncer resourcesynccontroller.ResourceSyncer
 
@@ -105,6 +107,7 @@ type trackables struct {
 
 func NewConsoleOperator(
 	ctx context.Context,
+	contentSecurityPolicyEnabled bool,
 	// top level config
 	configClient configclientv1.ConfigV1Interface,
 	configInformer configinformer.SharedInformerFactory,
@@ -185,7 +188,8 @@ func NewConsoleOperator(
 		consolePluginLister: consolePluginInformer.Lister(),
 		resourceSyncer:      resourceSyncer,
 
-		monitoringDeploymentLister: monitoringDeploymentInformer.Lister(),
+		monitoringDeploymentLister:   monitoringDeploymentInformer.Lister(),
+		contentSecurityPolicyEnabled: contentSecurityPolicyEnabled,
 	}
 
 	informers := []factory.Informer{
