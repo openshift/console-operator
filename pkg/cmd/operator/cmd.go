@@ -5,6 +5,8 @@ import (
 	"context"
 	// 3rd party
 	"github.com/spf13/cobra"
+	"k8s.io/utils/clock"
+
 	// kube / openshift
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	// us
@@ -18,7 +20,8 @@ func NewOperator() *cobra.Command {
 		NewControllerCommandConfig(
 			"console-operator",
 			version.Get(),
-			starter.RunOperator).
+			starter.RunOperator,
+			clock.RealClock{}).
 		NewCommandWithContext(context.TODO())
 	cmd.Use = "operator"
 	cmd.Short = "Start the Console Operator"

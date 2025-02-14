@@ -14,6 +14,7 @@ import (
 	"github.com/openshift/library-go/pkg/operator/events"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	clocktesting "k8s.io/utils/clock/testing"
 )
 
 func TestEnsureRunningAndStop(t *testing.T) {
@@ -117,7 +118,7 @@ func TestSync(t *testing.T) {
 				testClient,
 				0,
 				testAuthnInformer,
-				events.NewInMemoryRecorder(tt.name),
+				events.NewInMemoryRecorder(tt.name, clocktesting.NewFakePassiveClock(time.Now())),
 			)
 
 			err = switchedInformer.sync(ctx, nil)

@@ -451,6 +451,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		operatorClient,
 		versionRecorder,
 		controllerContext.EventRecorder,
+		clock.RealClock{},
 	)
 
 	// Show all ConsolePlugin instances as related objects
@@ -473,6 +474,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 	// NOTE: be sure to uncomment the .Run() below if using this
 	staleConditionsController := staleconditions.NewRemoveStaleConditionsController(
+		"RemoveStaleConditionsController",
 		[]string{
 			// If a condition is removed, we need to add it here for at least
 			// one release to ensure the operator does not permanently wedge.
@@ -529,7 +531,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		recorder,
 	)
 
-	configUpgradeableController := unsupportedconfigoverridescontroller.NewUnsupportedConfigOverridesController(operatorClient, controllerContext.EventRecorder)
+	configUpgradeableController := unsupportedconfigoverridescontroller.NewUnsupportedConfigOverridesController("UnsupportedConfigOverridesController", operatorClient, controllerContext.EventRecorder)
 	logLevelController := loglevel.NewClusterOperatorLoggingController(operatorClient, controllerContext.EventRecorder)
 	managementStateController := managementstatecontroller.NewOperatorManagementStateController(api.ClusterOperatorName, operatorClient, controllerContext.EventRecorder)
 
