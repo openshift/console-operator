@@ -154,7 +154,7 @@ func (c *AuthStatusHandler) Apply(ctx context.Context, authnConfig *configv1.Aut
 func existingOrNewCondition(applyConfig *configv1ac.AuthenticationApplyConfiguration, conditionType string) *applymetav1.ConditionApplyConfiguration {
 	var condition *applymetav1.ConditionApplyConfiguration
 	if applyConfig.Status != nil && len(applyConfig.Status.OIDCClients) > 0 {
-		slices.IndexFunc[applymetav1.ConditionApplyConfiguration](applyConfig.Status.OIDCClients[0].Conditions, func(cond applymetav1.ConditionApplyConfiguration) bool {
+		slices.IndexFunc(applyConfig.Status.OIDCClients[0].Conditions, func(cond applymetav1.ConditionApplyConfiguration) bool {
 			if *cond.Type == conditionType {
 				condition = &cond
 				return true
