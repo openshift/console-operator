@@ -22,6 +22,42 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 		output Config
 	}{
 		{
+			name: "Config builder should not disable dev perspective if perspective config exists",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+
+				return b.Perspectives([]v1.Perspective{
+					{
+						ID:         "some-other-perspective",
+						Visibility: v1.PerspectiveVisibility{State: v1.PerspectiveEnabled},
+					},
+				}).Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{},
+				Auth: Auth{
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
+				},
+				Customization: Customization{
+					Perspectives: []Perspective{
+						{
+							ID:         "some-other-perspective",
+							Visibility: PerspectiveVisibility{State: PerspectiveEnabled},
+						},
+					},
+				},
+				Providers: Providers{},
+			},
+		},
+		{
 			name: "Config builder should return default config if given no inputs",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
@@ -42,8 +78,15 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
-				Customization: Customization{},
-				Providers:     Providers{},
+				Customization: Customization{
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
+					},
+				},
+				Providers: Providers{},
 			},
 		}, {
 			name: "Config builder should handle customization with LightspeedButton capability",
@@ -84,6 +127,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 							},
 						},
 					},
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
+					},
 				},
 				Providers: Providers{},
 			},
@@ -118,8 +167,15 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					OAuthEndpointCAFile: "/var/oauth-serving-cert/ca-bundle.crt",
 					LogoutRedirect:      "https://foobar.com/logout",
 				},
-				Customization: Customization{},
-				Providers:     Providers{},
+				Customization: Customization{
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
+					},
+				},
+				Providers: Providers{},
 			},
 		}, {
 			name: "Config builder should handle cluster info with external OIDC",
@@ -173,8 +229,15 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
 					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
 				},
-				Customization: Customization{},
-				Providers:     Providers{},
+				Customization: Customization{
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
+					},
+				},
+				Providers: Providers{},
 			},
 		}, {
 			name: "Config builder should handle monitoring and info",
@@ -219,8 +282,15 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 					LogoutRedirect:   "https://foobar.com/logout",
 				},
-				Customization: Customization{},
-				Providers:     Providers{},
+				Customization: Customization{
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
+					},
+				},
+				Providers: Providers{},
 			},
 		}, {
 			name: "Config builder should handle StatuspageID",
@@ -243,7 +313,14 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
-				Customization: Customization{},
+				Customization: Customization{
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
+					},
+				},
 				Providers: Providers{
 					StatuspageID: "status-12345",
 				},
@@ -271,8 +348,15 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
-				Customization: Customization{},
-				Providers:     Providers{},
+				Customization: Customization{
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
+					},
+				},
+				Providers: Providers{},
 			},
 		},
 		{
@@ -303,6 +387,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
 						Categories: &[]DeveloperConsoleCatalogCategory{},
+					},
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
 					},
 				},
 				Providers: Providers{},
@@ -355,6 +445,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				},
 				Session: Session{},
 				Customization: Customization{
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
+					},
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
 						Categories: &[]DeveloperConsoleCatalogCategory{
 							{
@@ -413,6 +509,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 						Categories: nil,
 						Types:      DeveloperConsoleCatalogTypes{State: CatalogTypeDisabled, Disabled: &[]string{"type1", "type2"}},
 					},
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
+					},
 				},
 				Providers: Providers{},
 			},
@@ -447,6 +549,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 						Categories: nil,
 						Types:      DeveloperConsoleCatalogTypes{State: CatalogTypeEnabled, Enabled: &[]string{}},
 					},
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
+					},
 				},
 				Providers: Providers{},
 			},
@@ -480,6 +588,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ProjectAccess: ProjectAccess{
 						AvailableClusterRoles: []string{"View", "Edit", "Admin"},
 					},
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
+					},
 				},
 				Providers: Providers{},
 			},
@@ -512,6 +626,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Customization: Customization{
 					QuickStarts: QuickStarts{
 						Disabled: []string{"quick-start0", "quick-start1", "quick-start2"},
+					},
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
 					},
 				},
 				Providers: Providers{},
@@ -745,6 +865,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Customization: Customization{
 					Branding:             "okd",
 					DocumentationBaseURL: "https://foobar.com/docs",
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
+					},
 				},
 				Providers: Providers{
 					StatuspageID: "status-12345",
@@ -780,8 +906,15 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
-				Customization: Customization{},
-				Providers:     Providers{},
+				Customization: Customization{
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
+					},
+				},
+				Providers: Providers{},
 				Telemetry: map[string]string{
 					"a-key": "a-value",
 				},
@@ -814,8 +947,15 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
-				Customization: Customization{},
-				Providers:     Providers{},
+				Customization: Customization{
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
+					},
+				},
+				Providers: Providers{},
 				MonitoringInfo: MonitoringInfo{
 					AlertmanagerUserWorkloadHost: "alertmanager-user-workload.openshift-user-workload-monitoring.svc:9094",
 					AlertmanagerTenancyHost:      "alertmanager-user-workload.openshift-user-workload-monitoring.svc:9092",
@@ -861,7 +1001,11 @@ auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
 session: {}
-customization: {}
+customization:
+  perspectives:
+  - id: dev
+    visibility:
+      state: Disabled
 providers: {}
 `,
 		},
@@ -905,7 +1049,11 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
-customization: {}
+customization:
+  perspectives:
+  - id: dev
+    visibility:
+      state: Disabled
 providers: {}
 `,
 		},
@@ -936,7 +1084,11 @@ auth:
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
   logoutRedirect: https://foobar.com/logout
 session: {}
-customization: {}
+customization:
+  perspectives:
+  - id: dev
+    visibility:
+      state: Disabled
 providers: {}
 `,
 		},
@@ -957,7 +1109,11 @@ auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
 session: {}
-customization: {}
+customization:
+  perspectives:
+  - id: dev
+    visibility:
+      state: Disabled
 providers:
   statuspageID: status-12345
 `,
@@ -980,7 +1136,11 @@ auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
 session: {}
-customization: {}
+customization:
+  perspectives:
+  - id: dev
+    visibility:
+      state: Disabled
 providers: {}
 `,
 		},
@@ -1008,6 +1168,10 @@ customization:
   developerCatalog:
     categories: []
     types: {}
+  perspectives:
+  - id: dev
+    visibility:
+      state: Disabled
 providers: {}
 `,
 		},
@@ -1069,6 +1233,10 @@ customization:
     - id: notagsorsubcategory
       label: No tags or subcategory
     types: {}
+  perspectives:
+  - id: dev
+    visibility:
+      state: Disabled
 providers: {}
 `,
 		},
@@ -1100,6 +1268,10 @@ customization:
       disabled:
       - type1
       - type2
+  perspectives:
+  - id: dev
+    visibility:
+      state: Disabled
 providers: {}
 `,
 		},
@@ -1129,6 +1301,10 @@ customization:
     types:
       state: Enabled
       enabled: []
+  perspectives:
+  - id: dev
+    visibility:
+      state: Disabled
 providers: {}
 `,
 		},
@@ -1160,6 +1336,10 @@ customization:
     disabledActions:
     - git
     - tekton.dev/pipelines
+  perspectives:
+  - id: dev
+    visibility:
+      state: Disabled
 providers: {}
 `,
 		},
@@ -1200,6 +1380,10 @@ session: {}
 customization:
   branding: okd
   documentationBaseURL: https://foobar.com/docs
+  perspectives:
+  - id: dev
+    visibility:
+      state: Disabled
 providers:
   statuspageID: status-12345
 plugins:
@@ -1237,6 +1421,10 @@ customization:
     disabled:
     - quickStarts0
     - quickStarts1
+  perspectives:
+  - id: dev
+    visibility:
+      state: Disabled
 providers: {}
 `,
 		},
@@ -1472,7 +1660,11 @@ auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
 session: {}
-customization: {}
+customization:
+  perspectives:
+  - id: dev
+    visibility:
+      state: Disabled
 providers: {}
 telemetry:
   a-boolean-as-string: "false"
@@ -1505,6 +1697,10 @@ auth:
   clientSecretFile: /var/oauth-config/clientSecret
 session: {}
 customization:
+  perspectives:
+  - id: dev
+    visibility:
+      state: Disabled
   capabilities:
   - name: LightspeedButton
     visibility:
