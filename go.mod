@@ -27,6 +27,8 @@ require (
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738
 )
 
+replace github.com/openshift/api v0.0.0-20250128184011-806af1f2b3bc => github.com/cajieh/api v0.0.0-20250220215552-20fe4e4e3e18
+
 require (
 	cel.dev/expr v0.18.0 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect

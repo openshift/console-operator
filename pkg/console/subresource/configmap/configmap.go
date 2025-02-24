@@ -89,7 +89,7 @@ func DefaultConfigMap(
 		ContentSecurityPolicies(aggregateCSPDirectives(availablePlugins)).
 		ContentSecurityPolicyEnabled(contentSecurityPolicyEnabled).
 		Proxy(getPluginsProxyServices(availablePlugins)).
-		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key).
+		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile.Key). // Update/replace this function. We now need to handle multiple custom logo files instead of just one.
 		CustomProductName(operatorConfig.Spec.Customization.CustomProductName).
 		CustomDeveloperCatalog(operatorConfig.Spec.Customization.DeveloperCatalog).
 		ProjectAccess(operatorConfig.Spec.Customization.ProjectAccess).
