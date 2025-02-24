@@ -81,14 +81,16 @@ func GetAccessToken(secretsLister v1.SecretLister) (string, error) {
 }
 
 // check if:
-// 1. custom ORGANIZATION_ID is awailable as telemetry annotation on console-operator config or in telemetry-config configmap
-// 2. cached ORGANIZATION_ID is available on the operator controller instance
-// else fetch the ORGANIZATION_ID from OCM
+// 1. custom ORGANIZATION_ID and ACCOUNT_MAIL is awailable as telemetry annotation on console-operator config or in telemetry-config configmap
+// 2. cached ORGANIZATION_ID and ACCOUNT_MAIL is available on the operator controller instance
+// else fetch the ORGANIZATION_ID and ACCOUNT_MAIL from OCM
 func GetOrganizationMeta(telemetryConfig map[string]string, cachedOrganizationID, cachedAccountEmail, clusterID, accessToken string) (string, string, bool) {
 	customOrganizationID, isCustomOrgIDSet := telemetryConfig["ORGANIZATION_ID"]
-	if isCustomOrgIDSet {
-		klog.V(4).Infoln("telemetry config: using custom organization ID")
-		return customOrganizationID, "", false
+	customAccountMail, isCustomAccountMailSet := telemetryConfig["ACCOUNT_MAIL"]
+
+	if isCustomOrgIDSet && isCustomAccountMailSet {
+		klog.V(4).Infoln("telemetry config: using custom data")
+		return customOrganizationID, customAccountMail, false
 	}
 
 	if cachedOrganizationID != "" && cachedAccountEmail != "" {
@@ -99,7 +101,15 @@ func GetOrganizationMeta(telemetryConfig map[string]string, cachedOrganizationID
 	fetchedOCMRespose, err := FetchSubscription(clusterID, accessToken)
 	if err != nil {
 		klog.Errorf("telemetry config error: %s", err)
+		return "", "", false // Ensure safe return in case of error
 	}
+
+	// Check if the fetched response is nil before accessing fields
+	if fetchedOCMRespose == nil {
+		klog.Errorf("telemetry config error: FetchSubscription returned nil response")
+		return "", "", false
+	}
+
 	return fetchedOCMRespose.Organization.ExternalId, fetchedOCMRespose.Creator.Email, true
 }
 
@@ -160,8 +170,6 @@ func FetchSubscription(clusterID, accessToken string) (*Subscription, error) {
 	if err = json.Unmarshal(body, &ocmResponse); err != nil {
 		return nil, fmt.Errorf("error decoding JSON: %v", err)
 	}
-	klog.Infof("---> data: %#v\n", string(body))
-	klog.Infof("---> ocmResponse: %#v\n", ocmResponse)
 
 	if len(ocmResponse.Items) == 0 {
 		return nil, fmt.Errorf("empty OCM response")

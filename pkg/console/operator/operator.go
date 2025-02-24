@@ -209,6 +209,13 @@ func NewConsoleOperator(
 		Resource: api.OLMConfigResource,
 	}
 
+	// set default values for trackables
+	c.trackables = trackables{
+		isOLMDisabled:  false,
+		organizationID: "",
+		accountMail:    "",
+	}
+
 	if found, _ := isResourceEnabled(dynamicClient, olmGroupVersionResource); found {
 		olmConfigInformer := dynamicInformers.ForResource(olmGroupVersionResource)
 		informers = append(informers, olmConfigInformer.Informer())
