@@ -240,6 +240,8 @@ func withConsoleVolumes(
 	if caBundleExists && caBundle != "" {
 		volumeConfig = append(volumeConfig, trustedCAVolume())
 	}
+
+	// Update to handle multiple custom logos
 	if canMountCustomLogo {
 		volumeConfig = append(volumeConfig, customLogoVolume())
 	}
@@ -495,6 +497,7 @@ func trustedCAVolume() volumeConfig {
 	}
 }
 
+// Udpate to handle multiple custom logos
 func customLogoVolume() volumeConfig {
 	return volumeConfig{
 		name:        api.OpenShiftCustomLogoConfigMapName,

@@ -128,6 +128,8 @@ func (b *ConsoleServerCLIConfigBuilder) Perspectives(perspectives []operatorv1.P
 	b.perspectives = perspectives
 	return b
 }
+
+// Update/replace this function
 func (b *ConsoleServerCLIConfigBuilder) CustomLogoFile(customLogoFile string) *ConsoleServerCLIConfigBuilder {
 	if customLogoFile != "" {
 		b.customLogoFile = "/var/logo/" + customLogoFile // append path here to prevent customLogoFile from always being just /var/logo/
