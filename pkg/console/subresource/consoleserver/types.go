@@ -104,10 +104,10 @@ type Session struct {
 
 // Customization holds configuration such as what logo to use.
 type Customization struct {
-	Branding             string `yaml:"branding,omitempty"`
-	DocumentationBaseURL string `yaml:"documentationBaseURL,omitempty"`
-	CustomProductName    string `yaml:"customProductName,omitempty"`
-	CustomLogoFile       string `yaml:"customLogoFile,omitempty"`
+	Branding             string                  `yaml:"branding,omitempty"`
+	DocumentationBaseURL string                  `yaml:"documentationBaseURL,omitempty"`
+	CustomProductName    string                  `yaml:"customProductName,omitempty"`
+	CustomLogos          []operatorv1.CustomLogo `yaml:"customLogos,omitempty"`
 	// developerCatalog allows to configure the shown developer catalog categories.
 	DeveloperCatalog *DeveloperConsoleCatalogCustomization `yaml:"developerCatalog,omitempty"`
 	ProjectAccess    ProjectAccess                         `yaml:"projectAccess,omitempty"`
