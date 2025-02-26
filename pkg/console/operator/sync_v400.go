@@ -147,7 +147,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	}
 
 	// TODO: why is this missing a toUpdate change?
-	_, customLogosErrReason, customLogosErr := co.SyncCustomLogoConfigMaps(ctx, updatedOperatorConfig)
+	configMapsToSync, customLogosErrReason, customLogosErr := co.SyncCustomLogoConfigMaps(ctx, updatedOperatorConfig)
 	// If the custom logo sync fails for any reason, we are degraded, not progressing.
 	// The sync loop may not settle, we are unable to honor it in current state.
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("CustomLogoSync", customLogosErrReason, customLogosErr))
@@ -187,7 +187,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		sessionSecret,
 		set.Proxy,
 		set.Infrastructure,
-		customLogosErr == nil, // TODO update this to accept result of SyncCustomLogoConfigMaps
+		configMapsToSync,
 		controllerContext.Recorder(),
 	)
 	toUpdate = toUpdate || depChanged
@@ -291,7 +291,7 @@ func (co *consoleOperator) SyncDeployment(
 	sessionSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
-	canMountCustomLogo bool,
+	customLogos []configmapsub.CustomLogoRef,
 	recorder events.Recorder,
 ) (consoleDeployment *appsv1.Deployment, changed bool, reason string, err error) {
 	updatedOperatorConfig := operatorConfig.DeepCopy()
@@ -306,7 +306,7 @@ func (co *consoleOperator) SyncDeployment(
 		sessionSecret,
 		proxyConfig,
 		infrastructureConfig,
-		canMountCustomLogo,
+		customLogos,
 	)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
@@ -556,36 +556,31 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorC
 	return actual, true, "", err
 }
 
-type operatorCustomLogo struct {
-	location  operatorv1.LogoType
-	theme     operatorv1.ThemeType
-	file      configv1.ConfigMapFileReference
-	okToMount bool
-}
-
-func (co *consoleOperator) SyncCustomLogoConfigMaps(ctx context.Context, operatorConfig *operatorv1.Console) ([]operatorCustomLogo, string, error) {
+func (co *consoleOperator) SyncCustomLogoConfigMaps(ctx context.Context, operatorConfig *operatorv1.Console) ([]configmapsub.CustomLogoRef, string, error) {
 	configMapsToSync := getConfigMapsToSync(operatorConfig)
 	var (
-		aggregatedError  error
-		aggregatedReason string
+		aggregatedError error
+		err             error
+		reason          string
 	)
 	for _, logoToSync := range configMapsToSync {
-		reason, err := co.SyncCustomLogoConfigMap(ctx, logoToSync)
+		logoToSync.OkToMount, reason, err = co.SyncCustomLogoConfigMap(ctx, logoToSync)
 		if err != nil {
 			if aggregatedError == nil {
 				aggregatedError = fmt.Errorf("One or more errors were encountered while configuring custom logos:\n\t- %v, %s", logoToSync, err.Error())
-				aggregatedReason = reason
 			} else {
 				aggregatedError = fmt.Errorf("%s\n\t- %v, %s", aggregatedError.Error(), logoToSync, err.Error())
-				aggregatedReason = fmt.Sprintf("%s, %s", aggregatedReason, reason)
 			}
 		}
 	}
-	return configMapsToSync, aggregatedReason, aggregatedError
+	if aggregatedError != nil {
+		return nil, reason, aggregatedError
+	}
+	return configMapsToSync, "", nil
 }
 
-func getConfigMapsToSync(operatorConfig *operatorv1.Console) []operatorCustomLogo {
-	var normalizedLogos = []operatorCustomLogo{}
+func getConfigMapsToSync(operatorConfig *operatorv1.Console) []configmapsub.CustomLogoRef {
+	var normalizedLogos = []configmapsub.CustomLogoRef{}
 	var skipDeprecatedLogoSync = false
 	if operatorConfig.Spec.Customization.CustomLogos != nil {
 		for _, logo := range operatorConfig.Spec.Customization.CustomLogos {
@@ -595,10 +590,10 @@ func getConfigMapsToSync(operatorConfig *operatorv1.Console) []operatorCustomLog
 			for _, theme := range logo.Themes {
 				normalizedLogos = append(
 					normalizedLogos,
-					operatorCustomLogo{
-						location: logo.Type,
-						theme:    theme.Type,
-						file:     theme.File,
+					configmapsub.CustomLogoRef{
+						Location: logo.Type,
+						Theme:    theme.Type,
+						File:     theme.File,
 					},
 				)
 			}
@@ -608,10 +603,10 @@ func getConfigMapsToSync(operatorConfig *operatorv1.Console) []operatorCustomLog
 	if !skipDeprecatedLogoSync && &operatorConfig.Spec.Customization.CustomLogoFile != nil {
 		normalizedLogos = append(
 			normalizedLogos,
-			operatorCustomLogo{
-				location: operatorv1.LogoTypeMasthead,
-				theme:    operatorv1.ThemeTypeDefault,
-				file:     operatorConfig.Spec.Customization.CustomLogoFile,
+			configmapsub.CustomLogoRef{
+				Location: operatorv1.LogoTypeMasthead,
+				Theme:    operatorv1.ThemeTypeDefault,
+				File:     operatorConfig.Spec.Customization.CustomLogoFile,
 			},
 		)
 	}
@@ -624,18 +619,15 @@ func getConfigMapsToSync(operatorConfig *operatorv1.Console) []operatorCustomLog
 // - Validate existence of custom icon configmaps defined in the console operator config,
 // - populate to the console config
 // - create volumes/volumemounts in console deployment
-func (co *consoleOperator) SyncCustomLogoConfigMap(ctx context.Context, customLogo operatorCustomLogo) (string, error) {
+func (co *consoleOperator) SyncCustomLogoConfigMap(ctx context.Context, customLogo configmapsub.CustomLogoRef) (bool, string, error) {
 	// validate first, to avoid a broken volume mount & a crashlooping console
-	okToMount, reason, err := co.ValidateCustomLogo(ctx, customLogo.file)
-	if customLogo.okToMount {
-		if err := co.UpdateCustomLogoSyncSource(&customLogo.file); err != nil {
-			okToMount = false
-			reason = "FailedSyncSource"
-			err = customerrors.NewCustomLogoError("custom logo sync source update error")
+	okToMount, reason, err := co.ValidateCustomLogo(ctx, customLogo.File)
+	if okToMount {
+		if err := co.UpdateCustomLogoSyncSource(customLogo.File); err != nil {
+			return false, "FailedSyncSource", customerrors.NewCustomLogoError(fmt.Sprintf("custom logo sync source update error, %v", err))
 		}
 	}
-	customLogo.okToMount = okToMount // TODO get rid of side-effect
-	return reason, err
+	return okToMount, reason, err
 }
 
 func (co *consoleOperator) ValidateOAuthServingCertConfigMap(ctx context.Context) (oauthServingCert *corev1.ConfigMap, reason string, err error) {
@@ -659,7 +651,7 @@ func (co *consoleOperator) ValidateOAuthServingCertConfigMap(ctx context.Context
 // sync loop will run later.  Our operator is waiting to receive
 // the copied configmap into the console namespace for a future
 // sync loop to mount into the console deployment.
-func (c *consoleOperator) UpdateCustomLogoSyncSource(cmRef *configv1.ConfigMapFileReference) error {
+func (c *consoleOperator) UpdateCustomLogoSyncSource(cmRef configv1.ConfigMapFileReference) error {
 	source := resourcesynccontroller.ResourceLocation{}
 	logoConfigMapName := cmRef.Name
 

@@ -189,8 +189,8 @@ func hasCustomBranding(cm *v1.ConfigMap, desiredProductName string, desiredLogoF
 	consoleConfig := consoleserver.Config{}
 	yaml.Unmarshal([]byte(cm.Data["console-config.yaml"]), &consoleConfig)
 	actualProductName := consoleConfig.Customization.CustomProductName
-	actualLogoFile := consoleConfig.Customization.CustomLogoFile
-	return (desiredProductName == actualProductName) && ("/var/logo/"+desiredLogoFileName == actualLogoFile)
+	actualLogoFile := consoleConfig.Customization.CustomLogos[0].Themes[0].File.Name
+	return (desiredProductName == actualProductName) && (desiredLogoFileName == actualLogoFile)
 }
 
 func findCustomLogoVolume(deployment *appsv1.Deployment) bool {
