@@ -438,7 +438,7 @@ func (co *consoleOperator) SyncConfigMap(
 //  2. get telemetry annotation from console-operator config
 //  3. get default telemetry value from telemetry-config configmap
 //  4. get CLUSTER_ID from the cluster-version config
-//  5. get ORGANIZATION_ID and ACCOUNT_MAIL from OCM, if they are not already set
+//  5. get ORGANIZATION_ID from OCM, if ORGANIZATION_ID is not already set
 func (co *consoleOperator) GetTelemetryConfiguration(ctx context.Context, operatorConfig *operatorv1.Console) (map[string]string, error) {
 	telemetryConfig := make(map[string]string)
 
@@ -480,14 +480,12 @@ func (co *consoleOperator) GetTelemetryConfiguration(ctx context.Context, operat
 	if err != nil {
 		return nil, err
 	}
-	organizationID, accountMail, refreshCache := telemetry.GetOrganizationMeta(telemetryConfig, co.trackables.organizationID, co.trackables.accountMail, clusterID, accessToken)
-	// cache fetched ORGANIZATION_ID and ACCOUNT_MAIL
+	organizationID, refreshCache := telemetry.GetOrganizationID(telemetryConfig, co.trackables.organizationID, clusterID, accessToken)
+	// cache fetched ORGANIZATION_ID
 	if refreshCache {
 		co.trackables.organizationID = organizationID
-		co.trackables.accountMail = accountMail
 	}
 	telemetryConfig["ORGANIZATION_ID"] = organizationID
-	telemetryConfig["ACCOUNT_MAIL"] = accountMail
 
 	return telemetryConfig, nil
 }

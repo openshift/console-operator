@@ -101,9 +101,8 @@ type consoleOperator struct {
 type trackables struct {
 	// used to keep track of OLM capability
 	isOLMDisabled bool
-	// track organization ID and mail
+	// track organization ID
 	organizationID string
-	accountMail    string
 }
 
 func NewConsoleOperator(
@@ -207,13 +206,6 @@ func NewConsoleOperator(
 		Group:    api.OLMConfigGroup,
 		Version:  api.OLMConfigVersion,
 		Resource: api.OLMConfigResource,
-	}
-
-	// set default values for trackables
-	c.trackables = trackables{
-		isOLMDisabled:  false,
-		organizationID: "",
-		accountMail:    "",
 	}
 
 	if found, _ := isResourceEnabled(dynamicClient, olmGroupVersionResource); found {
