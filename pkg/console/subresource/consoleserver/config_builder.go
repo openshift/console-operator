@@ -55,10 +55,10 @@ type ConsoleServerCLIConfigBuilder struct {
 	quickStarts                  operatorv1.QuickStarts
 	addPage                      operatorv1.AddPage
 	perspectives                 []operatorv1.Perspective
-	customLogoFile               string
 	CAFile                       string
 	monitoring                   map[string]string
 	customHostnameRedirectPort   int
+	customLogos                  []operatorv1.CustomLogo
 	inactivityTimeoutSeconds     int
 	pluginsList                  map[string]string
 	i18nNamespaceList            []string
@@ -128,9 +128,11 @@ func (b *ConsoleServerCLIConfigBuilder) Perspectives(perspectives []operatorv1.P
 	b.perspectives = perspectives
 	return b
 }
-func (b *ConsoleServerCLIConfigBuilder) CustomLogoFile(customLogoFile string) *ConsoleServerCLIConfigBuilder {
-	if customLogoFile != "" {
-		b.customLogoFile = "/var/logo/" + customLogoFile // append path here to prevent customLogoFile from always being just /var/logo/
+
+// Update/replace this function
+func (b *ConsoleServerCLIConfigBuilder) CustomLogos(customLogos []operatorv1.CustomLogo) *ConsoleServerCLIConfigBuilder {
+	if len(customLogos) > 0 {
+		b.customLogos = customLogos
 	}
 	return b
 }
@@ -395,8 +397,8 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 	if len(b.customProductName) > 0 {
 		conf.CustomProductName = b.customProductName
 	}
-	if len(b.customLogoFile) > 0 {
-		conf.CustomLogoFile = b.customLogoFile
+	if len(b.customLogos) > 0 {
+		conf.CustomLogos = b.customLogos
 	}
 
 	if b.devCatalogCustomization.Categories != nil {

@@ -17,6 +17,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/bindata"
 	"github.com/openshift/console-operator/pkg/api"
+	configmapsub "github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
 )
@@ -74,7 +75,7 @@ func DefaultDeployment(
 	sessionSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
-	canMountCustomLogo bool,
+	customLogos []configmapsub.CustomLogoRef,
 ) *appsv1.Deployment {
 	authnCATrustConfigMap := localOAuthServingCertConfigMap
 	if authnCATrustConfigMap == nil {
@@ -102,7 +103,7 @@ func DefaultDeployment(
 		authServerCAConfigMap,
 		trustedCAConfigMap,
 		sessionSecret,
-		canMountCustomLogo,
+		customLogos,
 	)
 	withConsoleContainerImage(deployment, operatorConfig, proxyConfig)
 	withConsoleNodeSelector(deployment, infrastructureConfig)
@@ -233,15 +234,19 @@ func withConsoleVolumes(
 	authServerCAConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
 	sessionSecret *corev1.Secret,
-	canMountCustomLogo bool) {
+	customLogos []configmapsub.CustomLogoRef) {
 	volumeConfig := defaultVolumeConfig()
 
 	caBundle, caBundleExists := trustedCAConfigMap.Data["ca-bundle.crt"]
 	if caBundleExists && caBundle != "" {
 		volumeConfig = append(volumeConfig, trustedCAVolume())
 	}
-	if canMountCustomLogo {
-		volumeConfig = append(volumeConfig, customLogoVolume())
+
+	// Update to handle multiple custom logos
+	if len(customLogos) > 0 {
+		for _, customLogo := range customLogos {
+			volumeConfig = append(volumeConfig, customLogoVolume(customLogo))
+		}
 	}
 
 	if oauthServingCert != nil {
@@ -495,9 +500,10 @@ func trustedCAVolume() volumeConfig {
 	}
 }
 
-func customLogoVolume() volumeConfig {
+// Udpate to handle multiple custom logos
+func customLogoVolume(customLogo configmapsub.CustomLogoRef) volumeConfig {
 	return volumeConfig{
-		name:        api.OpenShiftCustomLogoConfigMapName,
+		name:        customLogo.File.Name,
 		path:        "/var/logo/",
 		isConfigMap: true}
 }
