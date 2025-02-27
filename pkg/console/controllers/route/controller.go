@@ -40,13 +40,15 @@ type RouteSyncController struct {
 	routeName            string
 	isHealthCheckEnabled bool
 	// clients
-	operatorClient             v1helpers.OperatorClient
-	routeClient                routeclientv1.RoutesGetter
-	operatorConfigLister       operatorv1listers.ConsoleLister
-	ingressConfigLister        configlistersv1.IngressLister
-	secretLister               corev1listers.SecretLister
-	infrastructureConfigLister configlistersv1.InfrastructureLister
-	clusterVersionLister       configlistersv1.ClusterVersionLister
+	operatorClient                v1helpers.OperatorClient
+	routeClient                   routeclientv1.RoutesGetter
+	operatorConfigLister          operatorv1listers.ConsoleLister
+	ingressConfigLister           configlistersv1.IngressLister
+	ingressControllerLister       operatorv1listers.IngressControllerLister
+	secretLister                  corev1listers.SecretLister
+	ingressControllerSecretLister corev1listers.SecretLister
+	infrastructureConfigLister    configlistersv1.InfrastructureLister
+	clusterVersionLister          configlistersv1.ClusterVersionLister
 }
 
 func NewRouteSyncController(
@@ -59,6 +61,7 @@ func NewRouteSyncController(
 	routev1Client routeclientv1.RoutesGetter,
 	// informers
 	operatorConfigInformer v1.ConsoleInformer,
+	ingressControllerInformer v1.IngressControllerInformer,
 	secretInformer coreinformersv1.SecretInformer,
 	routeInformer routesinformersv1.RouteInformer,
 	// events
@@ -70,6 +73,7 @@ func NewRouteSyncController(
 		operatorClient:             operatorClient,
 		operatorConfigLister:       operatorConfigInformer.Lister(),
 		ingressConfigLister:        configInformer.Config().V1().Ingresses().Lister(),
+		ingressControllerLister:    ingressControllerInformer.Lister(),
 		routeClient:                routev1Client,
 		secretLister:               secretInformer.Lister(),
 		infrastructureConfigLister: configInformer.Config().V1().Infrastructures().Lister(),
@@ -86,6 +90,9 @@ func NewRouteSyncController(
 			configV1Informers.Ingresses().Informer(),
 		).WithInformers(
 		secretInformer.Informer(),
+	).WithFilteredEventsInformers(
+		util.IncludeNamesFilter(api.DefaultIngressController),
+		ingressControllerInformer.Informer(),
 	).WithFilteredEventsInformers( // route
 		util.IncludeNamesFilter(routeName, routesub.GetCustomRouteName(routeName)),
 		routeInformer.Informer(),
@@ -135,6 +142,11 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 		return statusHandler.FlushAndReturn(err)
 	}
 
+	ingressControllerConfig, err := c.ingressControllerLister.IngressControllers(api.IngressControllerNamespace).Get(api.DefaultIngressController)
+	if err != nil {
+		return statusHandler.FlushAndReturn(err)
+	}
+
 	clusterVersionConfig, err := c.clusterVersionLister.Get("version")
 	if err != nil {
 		return statusHandler.FlushAndReturn(err)
@@ -157,7 +169,7 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 	// try to sync the custom route first. If the sync fails for any reason, error
 	// out the sync loop and inform about this fact instead of putting default
 	// route into inaccessible state.
-	_, customRouteErrReason, customRouteErr := c.SyncCustomRoute(ctx, routeConfig, controllerContext)
+	_, customRouteErrReason, customRouteErr := c.SyncCustomRoute(ctx, routeConfig, ingressControllerConfig, controllerContext)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded(typePrefix, customRouteErrReason, customRouteErr))
 	statusHandler.AddCondition(status.HandleUpgradable(typePrefix, customRouteErrReason, customRouteErr))
 	if customRouteErr != nil {
@@ -214,7 +226,7 @@ func (c *RouteSyncController) SyncDefaultRoute(ctx context.Context, routeConfig 
 // 2. if secret is defined, verify the TLS certificate and key
 // 4. create the custom console route, if custom TLS certificate and key are defined use them
 // 5. apply the custom route
-func (c *RouteSyncController) SyncCustomRoute(ctx context.Context, routeConfig *routesub.RouteConfig, controllerContext factory.SyncContext) (*routev1.Route, string, error) {
+func (c *RouteSyncController) SyncCustomRoute(ctx context.Context, routeConfig *routesub.RouteConfig, ingressControllerConfig *operatorsv1.IngressController, controllerContext factory.SyncContext) (*routev1.Route, string, error) {
 	if !routeConfig.IsCustomHostnameSet() {
 		if err := c.removeRoute(ctx, routesub.GetCustomRouteName(c.routeName)); err != nil {
 			return nil, "FailedDeleteCustomRoutes", err
@@ -228,7 +240,7 @@ func (c *RouteSyncController) SyncCustomRoute(ctx context.Context, routeConfig *
 		return nil, "", nil
 	}
 
-	if configErr := c.ValidateCustomRouteConfig(ctx, routeConfig); configErr != nil {
+	if configErr := c.ValidateCustomRouteConfig(ctx, routeConfig, ingressControllerConfig); configErr != nil {
 		return nil, "InvalidCustomRouteConfig", configErr
 	}
 
@@ -284,7 +296,13 @@ func (c *RouteSyncController) GetDefaultRouteTLSSecret(ctx context.Context, rout
 	return secret, nil
 }
 
-func (c *RouteSyncController) ValidateCustomRouteConfig(ctx context.Context, routeConfig *routesub.RouteConfig) error {
+func (c *RouteSyncController) ValidateCustomRouteConfig(ctx context.Context, routeConfig *routesub.RouteConfig, ingressControllerConfig *operatorsv1.IngressController) error {
+	// Check if the default cetrificate is set in the ingress controller config.
+	// If it is, then the custom route TLS secret is optional.
+	if ingressControllerConfig.Spec.DefaultCertificate != nil {
+		return nil
+	}
+
 	// Check if the custom hostname has cluster domain suffix, which indicates
 	// if a secret that contains TLS certificate and key needs to exist in the
 	// `openshift-config` namespace and referenced in  the operator config.
