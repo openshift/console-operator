@@ -598,7 +598,7 @@ func getConfigMapsToSync(operatorConfig *operatorv1.Console) []configmapsub.Cust
 		}
 	}
 
-	if !skipDeprecatedLogoSync && &operatorConfig.Spec.Customization.CustomLogoFile != nil {
+	if !skipDeprecatedLogoSync && (operatorConfig.Spec.Customization.CustomLogoFile.Key != "" || operatorConfig.Spec.Customization.CustomLogoFile.Name != "") {
 		normalizedLogos = append(
 			normalizedLogos,
 			configmapsub.CustomLogoRef{
