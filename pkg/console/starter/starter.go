@@ -23,7 +23,6 @@ import (
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/api/oauth"
-	operator "github.com/openshift/api/operator"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/clientwrapper"
@@ -379,6 +378,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		routesClient.RouteV1(),
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
+		operatorConfigInformers.Operator().V1().IngressControllers(),
 		kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
 		routesInformersNamespaced.Route().V1().Routes(),
 		// events
@@ -396,6 +396,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		routesClient.RouteV1(),
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
+		operatorConfigInformers.Operator().V1().IngressControllers(),
 		kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
 		routesInformersNamespaced.Route().V1().Routes(),
 		// events
@@ -433,7 +434,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	clusterOperatorStatus := status.NewClusterOperatorStatusController(
 		api.ClusterOperatorName,
 		[]configv1.ObjectReference{
-			{Group: operator.GroupName, Resource: "consoles", Name: api.ConfigResourceName},
+			{Group: operatorv1.GroupName, Resource: "consoles", Name: api.ConfigResourceName},
 			{Group: configv1.GroupName, Resource: "consoles", Name: api.ConfigResourceName},
 			{Group: configv1.GroupName, Resource: "infrastructures", Name: api.ConfigResourceName},
 			{Group: configv1.GroupName, Resource: "proxies", Name: api.ConfigResourceName},

@@ -28,12 +28,6 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 )
 
-const (
-	// ingress instance named "default" is the OOTB ingresscontroller
-	// this is an implicit stable API
-	defaultIngressController = "default"
-)
-
 // holds information about custom TLS certificate and its key
 type CustomTLSCert struct {
 	Certificate string
@@ -48,8 +42,8 @@ type RouteConfig struct {
 }
 
 type RouteControllerSpec struct {
-	hostname   string
-	secretName string
+	Hostname   string
+	SecretName string
 }
 
 func getComponentRouteSpec(ingressConfig *configv1.Ingress, componentName string) *configv1.ComponentRouteSpec {
@@ -72,17 +66,17 @@ func getComponentRouteStatus(ingressConfig *configv1.Ingress, componentName stri
 
 func NewRouteConfig(operatorConfig *operatorv1.Console, ingressConfig *configv1.Ingress, routeName string) *RouteConfig {
 	defaultRoute := RouteControllerSpec{
-		hostname: GetDefaultRouteHost(routeName, ingressConfig),
+		Hostname: GetDefaultRouteHost(routeName, ingressConfig),
 	}
 	var customRoute RouteControllerSpec
 	var isIngressConfigCustomHostnameSet bool
 
-	// Custom hostname in ingress config takes precedent over console operator's config
+	// Custom Hostname in ingress config takes precedent over console operator's config
 	componentRouteSpec := getComponentRouteSpec(ingressConfig, routeName)
 	if componentRouteSpec != nil {
-		customRoute.hostname = string(componentRouteSpec.Hostname)
+		customRoute.Hostname = string(componentRouteSpec.Hostname)
 		if componentRouteSpec.ServingCertKeyPairSecret.Name != "" {
-			customRoute.secretName = componentRouteSpec.ServingCertKeyPairSecret.Name
+			customRoute.SecretName = componentRouteSpec.ServingCertKeyPairSecret.Name
 		}
 		isIngressConfigCustomHostnameSet = true
 	}
@@ -92,59 +86,71 @@ func NewRouteConfig(operatorConfig *operatorv1.Console, ingressConfig *configv1.
 	// TLS for the default route.
 	if !isIngressConfigCustomHostnameSet && routeName == api.OpenShiftConsoleRouteName {
 		if len(operatorConfig.Spec.Route.Secret.Name) != 0 {
-			customRoute.secretName = operatorConfig.Spec.Route.Secret.Name
+			customRoute.SecretName = operatorConfig.Spec.Route.Secret.Name
 		}
-		customRoute.hostname = operatorConfig.Spec.Route.Hostname
+		customRoute.Hostname = operatorConfig.Spec.Route.Hostname
 	}
 
-	// if hostname for custom route is the same as the hostname for the default route
-	// OR if the custom route hostname is not set:
+	// if Hostname for custom route is the same as the Hostname for the default route
+	// OR if the custom route Hostname is not set:
 	// - if the custom route TLS secret is set and set it for the default route
-	// - unset hostname and TLS secret for the custom route
-	if defaultRoute.hostname == customRoute.hostname || len(customRoute.hostname) == 0 {
-		if len(customRoute.secretName) != 0 {
-			defaultRoute.secretName = customRoute.secretName
+	// - unset Hostname and TLS secret for the custom route
+	if defaultRoute.Hostname == customRoute.Hostname || len(customRoute.Hostname) == 0 {
+		if len(customRoute.SecretName) != 0 {
+			defaultRoute.SecretName = customRoute.SecretName
 		}
-		customRoute.hostname = ""
-		customRoute.secretName = ""
+		customRoute.Hostname = ""
+		customRoute.SecretName = ""
 	}
 
-	customHostnameSpec := &RouteConfig{
+	routeConfig := &RouteConfig{
 		defaultRoute: defaultRoute,
 		customRoute:  customRoute,
 		domain:       ingressConfig.Spec.Domain,
 		routeName:    routeName,
 	}
 
-	return customHostnameSpec
+	return routeConfig
+}
+
+func (rc *RouteConfig) GetRouteName() string {
+	return rc.routeName
+}
+
+func (rc *RouteConfig) GetDefaultRoute() RouteControllerSpec {
+	return rc.defaultRoute
+}
+
+func (rc *RouteConfig) GetCustomRoute() RouteControllerSpec {
+	return rc.customRoute
 }
 
 func (rc *RouteConfig) HostnameMatch() bool {
-	return rc.customRoute.hostname == rc.defaultRoute.hostname
+	return rc.customRoute.Hostname == rc.defaultRoute.Hostname
 }
 
 func (rc *RouteConfig) IsCustomHostnameSet() bool {
-	return len(rc.customRoute.hostname) != 0
+	return len(rc.customRoute.Hostname) != 0
 }
 
 func (rc *RouteConfig) GetCustomRouteHostname() string {
-	return rc.customRoute.hostname
+	return rc.customRoute.Hostname
 }
 
 func (rc *RouteConfig) IsCustomTLSSecretSet() bool {
-	return len(rc.customRoute.secretName) != 0
+	return len(rc.customRoute.SecretName) != 0
 }
 
 func (rc *RouteConfig) IsDefaultTLSSecretSet() bool {
-	return len(rc.defaultRoute.secretName) != 0
+	return len(rc.defaultRoute.SecretName) != 0
 }
 
 func (rc *RouteConfig) GetCustomTLSSecretName() string {
-	return rc.customRoute.secretName
+	return rc.customRoute.SecretName
 }
 
 func (rc *RouteConfig) GetDefaultTLSSecretName() string {
-	return rc.defaultRoute.secretName
+	return rc.defaultRoute.SecretName
 }
 
 func (rc *RouteConfig) GetDomain() string {
@@ -152,7 +158,7 @@ func (rc *RouteConfig) GetDomain() string {
 }
 
 // Default `console` route points by default to the `console` service.
-// If custom hostname for the console is set, then the default route
+// If custom Hostname for the console is set, then the default route
 // should point to the redirect `console-redirect` service and the
 // created custom route should be pointing to the `console` service.
 func (rc *RouteConfig) DefaultRoute(tlsConfig *CustomTLSCert, ingressConfig *configv1.Ingress) *routev1.Route {
@@ -169,9 +175,14 @@ func (rc *RouteConfig) DefaultRoute(tlsConfig *CustomTLSCert, ingressConfig *con
 
 func (rc *RouteConfig) CustomRoute(tlsConfig *CustomTLSCert, routeName string) *routev1.Route {
 	route := resourceread.ReadRouteV1OrDie(bindata.MustAsset(fmt.Sprintf("assets/routes/%s-custom-route.yaml", rc.routeName)))
-	route.Spec.Host = rc.customRoute.hostname
+	route.Spec.Host = rc.customRoute.Hostname
 	setTLS(tlsConfig, route)
 	return route
+}
+
+func (rc *RouteConfig) UnsetTLS() {
+	rc.defaultRoute.SecretName = ""
+	rc.customRoute.SecretName = ""
 }
 
 func GetDefaultRouteHost(routeName string, ingressConfig *configv1.Ingress) string {
