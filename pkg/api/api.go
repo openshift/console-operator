@@ -48,6 +48,11 @@ const (
 	V1Alpha1PluginI18nAnnotation        = "console.openshift.io/use-i18n"
 	VersionResourceName                 = "version"
 
+	// ingress instance named "default" is the OOTB ingresscontroller
+	// this is an implicit stable API
+	DefaultIngressController   = "default"
+	IngressControllerNamespace = "openshift-ingress-operator"
+
 	OAuthClientName                         = OpenShiftConsoleName
 	OpenShiftConsoleDeploymentName          = OpenShiftConsoleName
 	OpenShiftConsoleDownloadsDeploymentName = DownloadsResourceName

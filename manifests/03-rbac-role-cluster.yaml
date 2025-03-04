@@ -99,6 +99,14 @@ rules:
       - delete
       - patch
   - apiGroups:
+      - operator.openshift.io
+    resources:
+      - ingresscontrollers
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
       - console.openshift.io
     resources:
       - consoleclidownloads
