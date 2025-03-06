@@ -11,10 +11,8 @@ import (
 
 	// k8s
 
-	"k8s.io/apimachinery/pkg/util/wait"
 	coreinformersv1 "k8s.io/client-go/informers/core/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 
 	// openshift
@@ -28,6 +26,7 @@ import (
 	operatorv1listers "github.com/openshift/client-go/operator/listers/operator/v1"
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	routev1listers "github.com/openshift/client-go/route/listers/route/v1"
+	customerrors "github.com/openshift/console-operator/pkg/console/errors"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
@@ -92,6 +91,7 @@ func NewHealthCheckController(
 
 func (c *HealthCheckController) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
 	statusHandler := status.NewStatusHandler(c.operatorClient)
+
 	operatorConfig, err := c.operatorConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		klog.Errorf("operator config error: %v", err)
@@ -139,89 +139,75 @@ func (c *HealthCheckController) Sync(ctx context.Context, controllerContext fact
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("RouteHealth", "FailedRouteGet", activeRouteErr))
 	if activeRouteErr != nil {
 		klog.V(4).Infof("failed getting %q route for performing health check: %v", activeRouteName, activeRouteErr)
-		return statusHandler.FlushAndReturn(activeRouteErr)
+		return statusHandler.FlushAndReturn(err)
 	}
 
-	routeHealthCheckErrReason, routeHealthCheckErr := c.CheckRouteHealth(ctx, updatedOperatorConfig, activeRoute)
-	if routeHealthCheckErr != nil {
-		klog.V(4).Infof("failed to performing health check: %v", routeHealthCheckErr)
-	}
-	statusHandler.AddCondition(status.HandleDegraded("RouteHealth", routeHealthCheckErrReason, routeHealthCheckErr))
-	statusHandler.AddCondition(status.HandleAvailable("RouteHealth", routeHealthCheckErrReason, routeHealthCheckErr))
-
-	return statusHandler.FlushAndReturn(routeHealthCheckErr)
-}
-
-func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorConfig *operatorsv1.Console, route *routev1.Route) (string, error) {
-	var reason string
-	healthCheckBackoff := wait.Backoff{
-		Steps:    10,
-		Duration: 1 * time.Second,
-		Factor:   1.0,
-		Jitter:   0.1,
-	}
-	err := retry.OnError(
-		healthCheckBackoff,
-		func(err error) bool { return err != nil },
+	routeHealthCheckReasonedErr := util.RetryWrapper(
 		func() error {
-			var (
-				url *url.URL
-				err error
-			)
-			if len(operatorConfig.Spec.Ingress.ConsoleURL) == 0 {
-				url, _, err = routeapihelpers.IngressURI(route, route.Spec.Host)
-				if err != nil {
-					reason = "RouteNotAdmitted"
-					errStr := fmt.Sprintf("%s route is not admitted", route.Name)
-					logHealthCheckError(errStr)
-					return fmt.Errorf(errStr)
-				}
-			} else {
-				url, err = url.Parse(operatorConfig.Spec.Ingress.ConsoleURL)
-				if err != nil {
-					reason = "FailedParseConsoleURL"
-					errStr := fmt.Sprintf("failed to parse console url: %v", err)
-					logHealthCheckError(errStr)
-					return fmt.Errorf(errStr)
-				}
-			}
-
-			caPool, err := c.getCA(ctx, route.Spec.TLS)
-			if err != nil {
-				reason = "FailedLoadCA"
-				errStr := fmt.Sprintf("failed to read CA to check route health: %v", err)
-				logHealthCheckError(errStr)
-				return fmt.Errorf(errStr)
-			}
-			client := clientWithCA(caPool)
-
-			req, err := http.NewRequest(http.MethodGet, url.String(), nil)
-			if err != nil {
-				reason = "FailedRequest"
-				errStr := fmt.Sprintf("failed to build request to route (%s): %v", url, err)
-				logHealthCheckError(errStr)
-				return fmt.Errorf(errStr)
-			}
-			resp, err := client.Do(req)
-			if err != nil {
-				reason = "FailedGet"
-				errStr := fmt.Sprintf("failed to GET route (%s): %v", url, err)
-				logHealthCheckError(errStr)
-				return fmt.Errorf("failed to GET route (%s): %v", url, err)
-			}
-			defer resp.Body.Close()
-
-			if resp.StatusCode != http.StatusOK {
-				reason = "StatusError"
-				errStr := fmt.Sprintf("route not yet available, %s returns '%s'", url, resp.Status)
-				logHealthCheckError(errStr)
-				return fmt.Errorf(errStr)
-			}
-			reason = ""
-			return nil
+			return c.CheckRouteHealth(ctx, updatedOperatorConfig, activeRoute)
 		},
 	)
-	return reason, err
+	var routeHealthCheckErrReason string
+	if routeHealthCheckReasonedErr != nil {
+		if rErr, ok := routeHealthCheckReasonedErr.(*customerrors.ReasonedError); ok {
+			routeHealthCheckErrReason = rErr.Reason()
+		}
+		klog.V(4).Infof("failed to performing health check: %v", routeHealthCheckReasonedErr)
+	}
+	statusHandler.AddCondition(status.HandleDegraded("RouteHealth", routeHealthCheckErrReason, routeHealthCheckReasonedErr))
+	statusHandler.AddCondition(status.HandleAvailable("RouteHealth", routeHealthCheckErrReason, routeHealthCheckReasonedErr))
+	return statusHandler.FlushAndReturn(routeHealthCheckReasonedErr)
+}
+
+func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorConfig *operatorsv1.Console, route *routev1.Route) error {
+	var (
+		url *url.URL
+		err error
+	)
+	if len(operatorConfig.Spec.Ingress.ConsoleURL) == 0 {
+		url, _, err = routeapihelpers.IngressURI(route, route.Spec.Host)
+		if err != nil {
+			errStr := fmt.Sprintf("%s route is not admitted", route.Name)
+			logHealthCheckError(errStr)
+			return customerrors.NewReasonedError("RouteNotAdmitted", errStr)
+		}
+	} else {
+		url, err = url.Parse(operatorConfig.Spec.Ingress.ConsoleURL)
+		if err != nil {
+			errStr := fmt.Sprintf("failed to parse console url: %v", err)
+			logHealthCheckError(errStr)
+			return customerrors.NewReasonedError("FailedParseConsoleURL", errStr)
+		}
+	}
+
+	caPool, err := c.getCA(ctx, route.Spec.TLS)
+	if err != nil {
+		errStr := fmt.Sprintf("failed to read CA to check route health: %v", err)
+		logHealthCheckError(errStr)
+		return customerrors.NewReasonedError("FailedLoadCA", errStr)
+	}
+	client := clientWithCA(caPool)
+
+	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
+	if err != nil {
+		errStr := fmt.Sprintf("failed to build request to route (%s): %v", url, err)
+		logHealthCheckError(errStr)
+		return customerrors.NewReasonedError("FailedRequest", errStr)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		errStr := fmt.Sprintf("failed to GET route (%s): %v", url, err)
+		logHealthCheckError(errStr)
+		return customerrors.NewReasonedError("FailedGet", errStr)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errStr := fmt.Sprintf("route not yet available, %s returns '%s'", url, resp.Status)
+		logHealthCheckError(errStr)
+		return customerrors.NewReasonedError("StatusError", errStr)
+	}
+	return nil
 }
 
 func (c *HealthCheckController) getCA(ctx context.Context, tls *routev1.TLSConfig) (*x509.CertPool, error) {
