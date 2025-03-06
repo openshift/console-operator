@@ -3,6 +3,13 @@ kind: ConsoleQuickStart
 metadata:
   name: enable-developer-perspective
 spec:
+  accessReviewResources:
+    - group: operator.openshift.io
+      resource: consoles
+      verb: patch
+    - group: operator.openshift.io
+      resource: consoles
+      verb: update
   conclusion: You have learned how to enable and disable the Developer perspective!
   description: Learn how to enable and disable the Developer perspective.
   displayName: Enable the Developer Perspective
