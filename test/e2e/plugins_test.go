@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"golang.org/x/exp/maps"
+
 	consolev1 "github.com/openshift/api/console/v1"
 	consoleapi "github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
@@ -60,17 +62,22 @@ func cleanupTestCase(t *testing.T, client *framework.ClientSet, defaultPlugins, 
 }
 
 // TestPluginsCSPAggregation verifies correct CSP aggregation from multiple plugins.
-// Uncomment this test once the ConsoleContentSecurityPolicy is not behind feature gate.
-// func TestPluginsCSPAggregation(t *testing.T) {
-// 	client, defaultPlugins := setupTestCase(t)
-// 	defer cleanupTestCase(t, client, defaultPlugins, maps.Keys(pluginCSPs))
+func TestPluginsCSPAggregation(t *testing.T) {
+	client, defaultPlugins := setupTestCase(t)
 
-// 	for name, csp := range pluginCSPs {
-// 		createConsolePlugin(t, client, getPlugin(name, csp))
-// 	}
-// 	setOperatorConfigPlugins(t, client, maps.Keys(pluginCSPs))
-// 	verifyConsoleConfigCSP(t, client, expectedCSP)
-// }
+	isFeatureGateSet := framework.IsFeatureGateSet(t, client)
+	if !isFeatureGateSet {
+		t.Skip("Feature gate not set, skipping test")
+	}
+
+	defer cleanupTestCase(t, client, defaultPlugins, defaultPlugins)
+
+	for name, csp := range pluginCSPs {
+		createConsolePlugin(t, client, getPlugin(name, csp))
+	}
+	setOperatorConfigPlugins(t, client, maps.Keys(pluginCSPs))
+	verifyConsoleConfigCSP(t, client, expectedCSP)
+}
 
 // TestAddPlugins tests addition of available and unavailable plugins.
 func TestAddPlugins(t *testing.T) {
