@@ -15,47 +15,44 @@ spec:
   displayName: Enable the Developer Perspective
   durationMinutes: 5
   introduction: 'This guide walks you through enabling the Developer perspective in OpenShift. You will learn how to modify console setting via the web interface or the CLI, allowing developers to access a streamlined, developer-friendly view within the OpenShift web console.'
-  prerequisites:
-    - You must have cluster administrator or appropriate RBAC permissions to modify console settings.
   tags:
     - developer
     - perspective
     - ODC
   tasks:
     - description: |-
-        **Search page**
-        1. Open the **Home** section in the side navigation, and navigate to the **Search** page
+        **Cluster Settings**
+        1. In the side navigation, click on **Administration** > **Cluster Settings**
       review:
         failedTaskHelp: This task isn’t verified yet. Try the task again.
         instructions: |-
           To verify that you are in the right place:
-          1. You should see a search bar and a Resource filter dropdown at the top of the page.
+          1. You should see a **Cluster Settings** title at the top of the page.
       summary:
         failed: Try the steps again.
         success: Great work!
-      title: Navigate to the search page
+      title: Navigate to the Cluster Settings page
     - description: |-
-        **Search results**
-        1. Under the **Resource** filter dropdown, search for **operator.openshift.io/v1**
+        **Configuration**
+        1. Select the **Configuration** tab under the **Cluster Settings** page.
+        2. Type **console** in the search bar and select **operator.openshift.io**.
       review:
         failedTaskHelp: This task isn’t verified yet. Try the task again.
         instructions: |-
-          To verify that you have the right access:
-          1. You should see a list of results, including Console Operator.
+          To verify that you are in the right place:
+          1. You should see a configration with name **Console** and **operator.openshift.io** group.
       summary:
         failed: Try the steps again.
         success: Great work!
-      title: Locate the Console Operator Resource
+      title: Locate the Console Operator resource
     - description: |-
         **Cluster details**
-        1. Click on the **Console Operator** resource to open the cluster details page.
-        2. Click on the **Actions menu** and select **Customize**.
-
-          a. This will open the Cluster Configuration page
+        1. Click on the **Console** resource to open the cluster details page.
+        2. Click on the **Actions** menu and select **Customize**.
       review:
         failedTaskHelp: This task isn’t verified yet. Try the task again.
         instructions: |-
-          To verify that you have the right place:
+          To verify that you are in the right place:
           1. You should see details related to the Console Operator, including configurations and status.
           2. The Cluster Configuration page should open, showing different customization options.
       summary:
@@ -71,11 +68,11 @@ spec:
             
         `oc patch console.operator.openshift.io/cluster --type='merge' -p '{"spec":{"customization":{"perspectives":[{"id":"dev","visibility":{"state":"Enabled"}}]}}}'`{{execute}}
         ### Note
-        - It will take some time to reflect in the UI as the console pod gets restarted. And reload the console is required.
+        - It will take some time to reflect in the UI as the console pod gets restarted and reload the console is required.
       review:
         failedTaskHelp: This task isn’t verified yet. Try the task again.
         instructions: |-
-          To verify that you have the right place:
+          To verify that you are in the right place:
           1. You should see details related to the Console Operator, including configurations and status.
           2. The Cluster Configuration page should open, showing different customization options.
       summary:
