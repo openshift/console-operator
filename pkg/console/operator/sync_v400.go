@@ -114,6 +114,15 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		}
 	}
 
+	// TODO: why is this missing a toUpdate change?
+	customLogos, customLogosErr, customLogosErrReason := co.SyncCustomLogoConfigMaps(ctx, updatedOperatorConfig)
+	// If the custom logo sync fails for any reason, we are degraded, not progressing.
+	// The sync loop may not settle, we are unable to honor it in current state.
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("CustomLogoSync", customLogosErrReason, customLogosErr))
+	if customLogosErr != nil {
+		return statusHandler.FlushAndReturn(customLogosErr)
+	}
+
 	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(
 		ctx,
 		set.Operator,
@@ -125,6 +134,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		consoleRoute,
 		controllerContext.Recorder(),
 		consoleURL.Hostname(),
+		customLogosErr != nil,
 	)
 	toUpdate = toUpdate || cmChanged
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
@@ -144,15 +154,6 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("TrustedCASync", trustedCAErrReason, trustedCAErr))
 	if trustedCAErr != nil {
 		return statusHandler.FlushAndReturn(trustedCAErr)
-	}
-
-	// TODO: why is this missing a toUpdate change?
-	configMapsToSync, customLogosErrReason, customLogosErr := co.SyncCustomLogoConfigMaps(ctx, updatedOperatorConfig)
-	// If the custom logo sync fails for any reason, we are degraded, not progressing.
-	// The sync loop may not settle, we are unable to honor it in current state.
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("CustomLogoSync", customLogosErrReason, customLogosErr))
-	if customLogosErr != nil {
-		return statusHandler.FlushAndReturn(customLogosErr)
 	}
 
 	var oauthServingCertConfigMap *corev1.ConfigMap
@@ -187,7 +188,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		sessionSecret,
 		set.Proxy,
 		set.Infrastructure,
-		configMapsToSync,
+		customLogos,
 		controllerContext.Recorder(),
 	)
 	toUpdate = toUpdate || depChanged
@@ -343,6 +344,7 @@ func (co *consoleOperator) SyncConfigMap(
 	activeConsoleRoute *routev1.Route,
 	recorder events.Recorder,
 	consoleHost string,
+	customLogoConfigMapsExist bool,
 ) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
 
 	managedConfig, mcErr := co.managedNSConfigMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName)
@@ -418,6 +420,7 @@ func (co *consoleOperator) SyncConfigMap(
 		co.contentSecurityPolicyEnabled,
 		telemetryConfig,
 		consoleHost,
+		customLogoConfigMapsExist,
 	)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
@@ -554,7 +557,7 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorC
 	return actual, true, "", err
 }
 
-func (co *consoleOperator) SyncCustomLogoConfigMaps(ctx context.Context, operatorConfig *operatorv1.Console) ([]configmapsub.CustomLogoRef, string, error) {
+func (co *consoleOperator) SyncCustomLogoConfigMaps(ctx context.Context, operatorConfig *operatorv1.Console) ([]configmapsub.CustomLogoRef, error, string) {
 	configMapsToSync := getConfigMapsToSync(operatorConfig)
 	var (
 		aggregatedError error
@@ -562,49 +565,46 @@ func (co *consoleOperator) SyncCustomLogoConfigMaps(ctx context.Context, operato
 		reason          string
 	)
 	for _, logoToSync := range configMapsToSync {
-		logoToSync.OkToMount, reason, err = co.SyncCustomLogoConfigMap(ctx, logoToSync)
+		err, reason = co.SyncCustomLogoConfigMap(ctx, logoToSync)
 		if err != nil {
 			if aggregatedError == nil {
-				aggregatedError = fmt.Errorf("One or more errors were encountered while configuring custom logos:\n\t- %v, %s", logoToSync, err.Error())
+				aggregatedError = fmt.Errorf("One or more errors were encountered while syncing custom logos:\n  - %v, %s", logoToSync, err.Error())
 			} else {
-				aggregatedError = fmt.Errorf("%s\n\t- %v, %s", aggregatedError.Error(), logoToSync, err.Error())
+				aggregatedError = fmt.Errorf("%s\n  - %v, %s", aggregatedError.Error(), logoToSync, err.Error())
 			}
 		}
 	}
 	if aggregatedError != nil {
-		return nil, reason, aggregatedError
+		return nil, aggregatedError, reason
 	}
-	return configMapsToSync, "", nil
+	return configMapsToSync, nil, ""
 }
 
 func getConfigMapsToSync(operatorConfig *operatorv1.Console) []configmapsub.CustomLogoRef {
 	var normalizedLogos = []configmapsub.CustomLogoRef{}
-	var skipDeprecatedLogoSync = false
-	if operatorConfig.Spec.Customization.CustomLogos != nil {
-		for _, logo := range operatorConfig.Spec.Customization.CustomLogos {
-			if logo.Type == operatorv1.LogoTypeMasthead {
-				skipDeprecatedLogoSync = true
-			}
+	if operatorConfig.Spec.Customization.Logos != nil {
+		for _, logo := range operatorConfig.Spec.Customization.Logos {
 			for _, theme := range logo.Themes {
-				normalizedLogos = append(
-					normalizedLogos,
-					configmapsub.CustomLogoRef{
-						Location: logo.Type,
-						Theme:    theme.Type,
-						File:     theme.File,
-					},
-				)
+				if theme.Source.From == "ConfigMap" {
+					normalizedLogos = append(
+						normalizedLogos,
+						configmapsub.CustomLogoRef{
+							File: *theme.Source.ConfigMap,
+							Mode: theme.Mode,
+							Type: logo.Type,
+						},
+					)
+				}
 			}
 		}
 	}
 
-	if !skipDeprecatedLogoSync && (operatorConfig.Spec.Customization.CustomLogoFile.Key != "" || operatorConfig.Spec.Customization.CustomLogoFile.Name != "") {
+	if operatorConfig.Spec.Customization.CustomLogoFile.Key != "" || operatorConfig.Spec.Customization.CustomLogoFile.Name != "" {
 		normalizedLogos = append(
 			normalizedLogos,
 			configmapsub.CustomLogoRef{
-				Location: operatorv1.LogoTypeMasthead,
-				Theme:    operatorv1.ThemeTypeDefault,
-				File:     operatorConfig.Spec.Customization.CustomLogoFile,
+				File: operatorv1.ConfigMapFileReference(operatorConfig.Spec.Customization.CustomLogoFile),
+				Type: operatorv1.LogoTypeMasthead,
 			},
 		)
 	}
@@ -612,20 +612,18 @@ func getConfigMapsToSync(operatorConfig *operatorv1.Console) []configmapsub.Cust
 	return normalizedLogos
 }
 
-// TODO CONSOLE-4061 - update this function to handle new custom favicon API. Will need to handle
-// multiple configmaps.
-// - Validate existence of custom icon configmaps defined in the console operator config,
-// - populate to the console config
-// - create volumes/volumemounts in console deployment
-func (co *consoleOperator) SyncCustomLogoConfigMap(ctx context.Context, customLogo configmapsub.CustomLogoRef) (bool, string, error) {
+func (co *consoleOperator) SyncCustomLogoConfigMap(ctx context.Context, customLogo configmapsub.CustomLogoRef) (error, string) {
 	// validate first, to avoid a broken volume mount & a crashlooping console
-	okToMount, reason, err := co.ValidateCustomLogo(ctx, customLogo.File)
-	if okToMount {
-		if err := co.UpdateCustomLogoSyncSource(customLogo.File); err != nil {
-			return false, "FailedSyncSource", customerrors.NewCustomLogoError(fmt.Sprintf("custom logo sync source update error, %v", err))
-		}
+	err, reason := co.ValidateCustomLogo(ctx, customLogo.File)
+	if err != nil {
+		return err, reason
 	}
-	return okToMount, reason, err
+
+	// if err := co.UpdateCustomLogoSyncSource(customLogo.File); err != nil {
+	// 	return customerrors.NewCustomLogoError(fmt.Sprintf("custom logo sync source update error, %v", err)), "FailedSyncSource"
+	// }
+
+	return nil, ""
 }
 
 func (co *consoleOperator) ValidateOAuthServingCertConfigMap(ctx context.Context) (oauthServingCert *corev1.ConfigMap, reason string, err error) {
@@ -659,31 +657,31 @@ func (c *consoleOperator) UpdateCustomLogoSyncSource(cmRef configv1.ConfigMapFil
 	}
 	// if no custom logo provided, sync an empty source to delete
 	return c.resourceSyncer.SyncConfigMap(
-		resourcesynccontroller.ResourceLocation{Namespace: api.OpenShiftConsoleNamespace, Name: api.OpenShiftCustomLogoConfigMapName},
+		resourcesynccontroller.ResourceLocation{Namespace: api.OpenShiftConsoleNamespace, Name: cmRef.Name},
 		source,
 	)
 }
 
-func (co *consoleOperator) ValidateCustomLogo(ctx context.Context, logoFileRef configv1.ConfigMapFileReference) (okToMount bool, reason string, err error) {
+func (co *consoleOperator) ValidateCustomLogo(ctx context.Context, logoFileRef operatorv1.ConfigMapFileReference) (err error, reason string) {
 	logoConfigMapName := logoFileRef.Name
 	logoImageKey := logoFileRef.Key
 
 	if (len(logoConfigMapName) == 0) != (len(logoImageKey) == 0) {
 		klog.V(4).Infoln("custom logo filename or key have not been set")
-		return false, "KeyOrFilenameInvalid", customerrors.NewCustomLogoError("either custom logo filename or key have not been set")
+		return customerrors.NewCustomLogoError("either custom logo filename or key have not been set"), "KeyOrFilenameInvalid"
 	}
 
 	// fine if nothing set, but don't mount it
 	if len(logoConfigMapName) == 0 {
 		klog.V(4).Infoln("no custom logo configured")
-		return false, "", nil
+		return nil, ""
 	}
 
 	logoConfigMap, err := co.configNSConfigMapLister.ConfigMaps(api.OpenShiftConfigNamespace).Get(logoConfigMapName)
 	// If we 404, the logo file may not have been created yet.
 	if err != nil {
-		klog.V(4).Infof("custom logo file %v not found", logoConfigMapName)
-		return false, "FailedGet", customerrors.NewCustomLogoError(fmt.Sprintf("custom logo file %v not found", logoConfigMapName))
+		klog.V(4).Infof("failed to get ConfigMap %v, %v", logoConfigMapName, err)
+		return customerrors.NewCustomLogoError(fmt.Sprintf("failed to get ConfigMap %v, %v", logoConfigMapName, err)), "FailedGet"
 	}
 
 	_, imageDataFound := logoConfigMap.BinaryData[logoImageKey]
@@ -692,11 +690,11 @@ func (co *consoleOperator) ValidateCustomLogo(ctx context.Context, logoFileRef c
 	}
 	if !imageDataFound {
 		klog.V(4).Infoln("custom logo file exists but no image provided")
-		return false, "NoImageProvided", customerrors.NewCustomLogoError("custom logo file exists but no image provided")
+		return customerrors.NewCustomLogoError("custom logo file exists but no image provided"), "NoImageProvided"
 	}
 
 	klog.V(4).Infoln("custom logo ok to mount")
-	return true, "", nil
+	return nil, ""
 }
 
 func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []string) []*v1.ConsolePlugin {

@@ -504,7 +504,7 @@ func trustedCAVolume() volumeConfig {
 func customLogoVolume(customLogo configmapsub.CustomLogoRef) volumeConfig {
 	return volumeConfig{
 		name:        customLogo.File.Name,
-		path:        "/var/logo/",
+		path:        fmt.Sprintf("/var/logo/%s/", customLogo.File.Name),
 		isConfigMap: true}
 }
 

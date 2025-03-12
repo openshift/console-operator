@@ -143,22 +143,24 @@ type Capability struct {
 	Visibility CapabilityVisibility `json:"visibility"`
 }
 
-// ThemeType is the value of the CustomLogo Theme Type field that determines the theme mode in the console UI.
-type ThemeType string
+// ThemeMode is the value of the Logo Theme Mode field that determines the theme mode in the console UI.
+// +kubebuilder:validation:Enum="Dark";"Light"
+// +enum
+type ThemeMode string
 
-// ThemeType values
+// ThemeMode values
 const (
-	// ThemeTypeDark represents the dark theme for the console UI.
-	ThemeTypeDark ThemeType = "Dark"
+	// ThemeModeDark represents the dark theme for the console UI.
+	ThemeModeDark ThemeMode = "Dark"
 
-	// ThemeTypeLight represents the light theme for the console UI.
-	ThemeTypeLight ThemeType = "Light"
-
-	// ThemeTypeDefault represents the default theme for all unspecified themes.
-	ThemeTypeDefault ThemeType = "Default"
+	// ThemeModeLight represents the light theme for the console UI.
+	ThemeModeLight ThemeMode = "Light"
 )
 
-// LogoType is the value of the CustomLogo Type field that determines if the logo is for the masthead or the favicon in the console UI.
+// LogoType is the value of the Logo Type field that determines if the logo is for the masthead or the favicon in the console UI.
+// The masthead logo is displayed in the masthead and about modal of the console UI.
+// +kubebuilder:validation:Enum="Masthead";"Favicon"
+// +enum
 type LogoType string
 
 const (
@@ -169,67 +171,106 @@ const (
 	LogoTypeFavicon LogoType = "Favicon"
 )
 
-// Theme defines a theme type for the console UI.
-type Theme struct {
-	// type is used to specify what theme(s) a logo will apply to in the console UI.
-	// type is a required field that allows values of Dark, Light, and Default.
-	// When set to Dark, the logo file referenced in the 'file' field will be used when an end-user of the console UI enables the Dark theme.
-	// When set to Light, the logo file referenced in the 'file' field will be used when an end-user of the console UI enables the Light theme.
-	// When set to Default, the logo file referenced in the 'file' field will be used for any themes types that do not have an explicit configuration.
-	// +kubebuilder:validation:Enum="Dark";"Light";"Default"
+// ConfigMapFileReference references a specific file within a ConfigMap.
+type ConfigMapFileReference struct {
+	// name is the name of the ConfigMap.
+	// Must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character.
+	// Must be at most 253 characters in length.
+	// +kubebuilder:validation:MaxLength=253
+	// +kubebuilder:validation:XValidation:rule="!format.dns1123Subdomain().validate(self).hasValue()",message="a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character."
 	// +required
-	Type ThemeType `json:"type"`
+	Name string `json:"name"`
 
-	// file is used by the console to locate the specified file containing a custom logo.
-	// file is a required field that references a ConfigMap name and key that contains the custom logo file in the openshift-config namespace.
-	// You can create it with a command like:
-	// - 'oc create configmap custom-logos-config --namespace=openshift-config --from-file=/path/to/file'
-	// The ConfigMap key must include the file extension for the dark, light, or default theme so that the console serves the file with the correct MIME type, which can be '.svg', '.png', or whatever the browser supports.
-	// Recommended Masthead and About Modal logo specifications:
-	// Image size must be less than 1 MiB due to constraints on the ConfigMap size.
-	// Dimensions: Max height of 60px and max width of 200px.
-	// SVG format preferred.
-	// Recommended Favicon specifications:
-	// Dimensions: Max height of 16px and max width of 16px
-	// PNG format preferred.
+	// key is the logo key inside the referenced ConfigMap.
+	// Must consist only of alphanumeric characters, dashes (-), underscores (_), and periods (.).
+	// Must be at most 253 characters in length.
+	// +kubebuilder:validation:MaxLength=253
+	// +kubebuilder:validation:XValidation:rule="self.matches('.*\\\\.[a-zA-Z]{2,5}$')",message="The ConfigMap key must end with a valid file extension (2 to 5 letters)."
 	// +required
-	File configv1.ConfigMapFileReference `json:"file"`
+	Key string `json:"key"`
 }
 
-// CustomLogo defines a configuration based on theme types for the console UI logo.
-type CustomLogo struct {
+type FileReferenceSource struct {
+	// from specifies the source type of the file reference.
+	// This field is an enum with valid values "ConfigMap" and "URL".
+	// +kubebuilder:validation:Enum="ConfigMap";"URL"
+	// +required
+	From string `json:"from"`
+
+	// configMap specifies the ConfigMap source details.
+	// This field is required if From is "ConfigMap".
+	// +optional
+	ConfigMap *ConfigMapFileReference `json:"configMap"`
+
+	// url specifies the URL source.
+	// This field is required if From is "URL".
+	// Must be a valid URL.
+	// +kubebuilder:validation:MaxLength=253
+	// +kubebuilder:validation:XValidation:rule="isURL(self)",message="url must be a valid absolute URL"
+	// +optional
+	URL string `json:"url"`
+}
+
+// Theme defines a theme mode for the console UI.
+type Theme struct {
+	// mode is used to specify what theme mode a logo will apply to in the console UI.
+	// mode is a required field that allows values of Dark and Light.
+	// When set to Dark, the logo file referenced in the 'file' field will be used when an end-user of the console UI enables the Dark mode.
+	// When set to Light, the logo file referenced in the 'file' field will be used when an end-user of the console UI enables the Light mode.
+	// +required
+	Mode ThemeMode `json:"mode"`
+
+	// source is used by the console to locate the specified file containing a custom logo.
+	// Source is a required field that references a ConfigMap name and key that contains the custom logo file in the openshift-config namespace.
+	// You can create it with a command like:
+	// - 'oc create configmap custom-logos-config --namespace=openshift-config --from-file=/path/to/file'
+	// The ConfigMap key must include the file extension for the dark or light theme so that the console serves the file with the correct MIME type.
+	// Recommended Masthead logo specifications:
+	// The Masthead logo must be at most 1 MiB in size and must have a maximum height of 60px and a maximum width of 200px.
+	// For the Masthead logo, the SVG file format is recommended, but other file formats are allowed if the browser supports them.
+	// Recommended Favicon specifications:
+	// The Favicon logo must be at most 1 MiB in size and must have a maximum height of 16px and a maximum width of 16px.
+	// For the Favicon logo, the PNG file format is recommended, but other file formats are allowed if the browser supports them.
+	// +required
+	Source FileReferenceSource `json:"source"`
+}
+
+// Logo defines a configuration based on theme modes for the console UI logo.
+type Logo struct {
 	// type specifies the type of the logo for the console UI. It determines whether the logo is for the masthead or favicon.
 	// type is a required field that allows values of Masthead and Favicon.
 	// When set to "Masthead", the logo will be used in the masthead and about modal of the console UI.
 	// When set to "Favicon", the logo will be used as the favicon of the console UI.
-	// +kubebuilder:validation:Enum="Masthead";"Favicon"
 	// +required
 	Type LogoType `json:"type"`
 
 	// themes specifies the themes for the console UI logo.
-	// themes is a required field that allows a list of themes. Each item in the list must have a unique Type and a File field.
-	// Each theme determines whether the logo is for the dark or light or default theme of the console UI.
-	// There must be at least one entry and no more than 3 entries.
+	// themes is a required field that allows a list of themes. Each item in the list must have a unique type and a source field.
+	// Each mode determines whether the logo is for the dark or light mode of the console UI.
+	// There must be at least one entry and no more than 2 entries.
 	// +kubebuilder:validation:MinItems=1
-	// +kubebuilder:validation:MaxItems=3
+	// +kubebuilder:validation:MaxItems=2
 	// +listType=map
-	// +listMapKey=type
+	// +listMapKey=mode
 	// +required
 	Themes []Theme `json:"themes"`
 }
 
 // ConsoleCustomization defines a list of optional configuration for the console UI.
+// Ensure that Logos and CustomLogoFile cannot be set at the same time.
+// +kubebuilder:validation:XValidation:rule="!(has(self.logos) && has(self.customLogoFile))",message="Only one of logos or customLogoFile can be set."
 type ConsoleCustomization struct {
-	// customLogos is used to replace the OpenShift Masthead and Favicon logos in the console UI with custom logos.
-	// customLogos is an optional field that allows a list of custom logos.
+	// logos is used to replace the OpenShift Masthead and Favicon logos in the console UI with custom logos.
+	// logos is an optional field that allows a list of logos.
+	// Only one of logos or customLogoFile can be set at a time.
+	// If Logos is set, customLogoFile must be unset.
 	// When specified, there must be at least one entry and no more than 2 entries.
-	// Each item in the list must have a unique Type and a Themes field.
-	// +kubebuilder:validation:MinItems=1
+	// Each type must appear only once in the list.
 	// +kubebuilder:validation:MaxItems=2
 	// +listType=map
 	// +listMapKey=type
 	// +optional
-	CustomLogos []CustomLogo `json:"customLogos,omitempty"`
+	Logos []Logo `json:"logos"`
 
 	// capabilities defines an array of capabilities that can be interacted with in the console UI.
 	// Each capability defines a visual state that can be interacted with the console to render in the UI.
@@ -258,6 +299,7 @@ type ConsoleCustomization struct {
 	// +optional
 	CustomProductName string `json:"customProductName,omitempty"`
 	// customLogoFile replaces the default OpenShift logo in the masthead and about dialog. It is a reference to a
+	// Only one of customLogoFile or logos can be set at a time.
 	// ConfigMap in the openshift-config namespace. This can be created with a command like
 	// 'oc create configmap custom-logo --from-file=/path/to/file -n openshift-config'.
 	// Image size must be less than 1 MB due to constraints on the ConfigMap size.
@@ -266,7 +308,7 @@ type ConsoleCustomization struct {
 	// Recommended logo specifications:
 	// Dimensions: Max height of 60px and max width of 200px
 	// SVG format preferred
-	// Deprecated: Use CustomLogos instead.
+	// Deprecated: Use logos instead.
 	// +optional
 	CustomLogoFile configv1.ConfigMapFileReference `json:"customLogoFile,omitempty"`
 	// developerCatalog allows to configure the shown developer catalog categories (filters) and types (sub-catalogs).

@@ -189,7 +189,7 @@ func hasCustomBranding(cm *v1.ConfigMap, desiredProductName string, desiredLogoF
 	consoleConfig := consoleserver.Config{}
 	yaml.Unmarshal([]byte(cm.Data["console-config.yaml"]), &consoleConfig)
 	actualProductName := consoleConfig.Customization.CustomProductName
-	actualLogoFile := consoleConfig.Customization.CustomLogos[0].Themes[0].File.Name
+	actualLogoFile := consoleConfig.Customization.Logos[0].Themes[0].Source.ConfigMap.Name
 	return (desiredProductName == actualProductName) && (desiredLogoFileName == actualLogoFile)
 }
 

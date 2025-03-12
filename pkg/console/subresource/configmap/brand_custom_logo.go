@@ -1,15 +1,13 @@
 package configmap
 
 import (
-	configv1 "github.com/openshift/api/config/v1"
 	v1 "github.com/openshift/api/operator/v1"
 )
 
 type CustomLogoRef struct {
-	Location  v1.LogoType
-	Theme     v1.ThemeType
-	File      configv1.ConfigMapFileReference
-	OkToMount bool
+	File v1.ConfigMapFileReference
+	Mode v1.ThemeMode
+	Type v1.LogoType
 }
 
 // borrowed from the image package

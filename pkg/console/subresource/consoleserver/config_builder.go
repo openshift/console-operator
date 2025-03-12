@@ -58,7 +58,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	CAFile                       string
 	monitoring                   map[string]string
 	customHostnameRedirectPort   int
-	customLogos                  []operatorv1.CustomLogo
+	logos                        []operatorv1.Logo
 	inactivityTimeoutSeconds     int
 	pluginsList                  map[string]string
 	i18nNamespaceList            []string
@@ -130,9 +130,9 @@ func (b *ConsoleServerCLIConfigBuilder) Perspectives(perspectives []operatorv1.P
 }
 
 // Update/replace this function
-func (b *ConsoleServerCLIConfigBuilder) CustomLogos(customLogos []operatorv1.CustomLogo) *ConsoleServerCLIConfigBuilder {
-	if len(customLogos) > 0 {
-		b.customLogos = customLogos
+func (b *ConsoleServerCLIConfigBuilder) CustomLogos(customLogos []operatorv1.Logo, logoConfigMapsExist bool) *ConsoleServerCLIConfigBuilder {
+	if len(customLogos) > 0 && logoConfigMapsExist {
+		b.logos = customLogos
 	}
 	return b
 }
@@ -397,8 +397,8 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 	if len(b.customProductName) > 0 {
 		conf.CustomProductName = b.customProductName
 	}
-	if len(b.customLogos) > 0 {
-		conf.CustomLogos = b.customLogos
+	if len(b.logos) > 0 {
+		conf.Logos = b.logos
 	}
 
 	if b.devCatalogCustomization.Categories != nil {
