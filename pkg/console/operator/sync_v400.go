@@ -134,7 +134,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		consoleRoute,
 		controllerContext.Recorder(),
 		consoleURL.Hostname(),
-		customLogosErr != nil,
+		customLogosErr == nil,
 	)
 	toUpdate = toUpdate || cmChanged
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
@@ -693,7 +693,7 @@ func (co *consoleOperator) ValidateCustomLogo(ctx context.Context, logoFileRef o
 		return customerrors.NewCustomLogoError("custom logo file exists but no image provided"), "NoImageProvided"
 	}
 
-	klog.V(4).Infoln("custom logo ok to mount")
+	klog.V(4).Infof("custom logo %s ok to mount", logoConfigMapName)
 	return nil, ""
 }
 
