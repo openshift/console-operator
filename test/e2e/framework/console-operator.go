@@ -10,7 +10,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 
+	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	consoleapi "github.com/openshift/console-operator/pkg/api"
 )
@@ -373,4 +375,24 @@ func logUnsettledAtInterval(t *testing.T, count int) {
 			t.Logf("waited %d seconds to reach settled state...\n", count)
 		}
 	}
+}
+
+func IsFeatureGateSet(t *testing.T, client *ClientSet) bool {
+	var featureGate *configv1.FeatureGate
+	err := retry.OnError(retry.DefaultRetry, func(err error) bool { return err != nil }, func() error {
+		var err error
+		featureGate, err = client.FeatureGate.FeatureGates().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
+		return err
+	})
+
+	// If all retries fail, return false
+	if err != nil {
+		t.Logf("Failed to get FeatureGate after retries: %v", err)
+		return false
+	}
+
+	if featureGate.Spec.FeatureSet == configv1.TechPreviewNoUpgrade || featureGate.Spec.FeatureSet == configv1.DevPreviewNoUpgrade || featureGate.Spec.FeatureSet == configv1.CustomNoUpgrade {
+		return true
+	}
+	return false
 }

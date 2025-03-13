@@ -33,6 +33,7 @@ type ClientSet struct {
 	Proxy                  configv1.ProxiesGetter
 	Infrastructure         configv1.InfrastructuresGetter
 	Ingress                configv1.IngressesGetter
+	FeatureGate            configv1.FeatureGatesGetter
 	PodDisruptionBudget    policyv1client.PodDisruptionBudgetsGetter
 }
 
@@ -75,6 +76,7 @@ func NewClientset(kubeconfig *restclient.Config) (*ClientSet, error) {
 	clientset.Infrastructure = configClient
 	clientset.Ingress = configClient
 	clientset.ClusterOperator = configClient
+	clientset.FeatureGate = configClient
 
 	consoleClient, err := consoleclientv1.NewForConfig(kubeconfig)
 	if err != nil {
