@@ -48,7 +48,7 @@ func TestDefaultDeployment(t *testing.T) {
 		sessionSecret                  *corev1.Secret
 		proxyConfig                    *configv1.Proxy
 		infrastructureConfig           *configv1.Infrastructure
-		canMountCustomLogo             bool
+		canMountCustomLogo             []configmap.CustomLogoRef
 	}
 
 	consoleOperatorConfig := &operatorsv1.Console{
@@ -183,12 +183,12 @@ func TestDefaultDeployment(t *testing.T) {
 	withConsoleContainerImage(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
 	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMap{
 		Data: map[string]string{"ca-bundle.crt": "test"},
-	}, nil, trustedCAConfigMapEmpty, nil, false)
+	}, nil, trustedCAConfigMapEmpty, nil, []configmap.CustomLogoRef{})
 	consoleDeploymentContainer := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumes := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMap{
 		Data: map[string]string{"ca-bundle.crt": "test"},
-	}, nil, trustedCAConfigMapSet, nil, false)
+	}, nil, trustedCAConfigMapSet, nil, []configmap.CustomLogoRef{})
 	consoleDeploymentContainerTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumesTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 
@@ -901,7 +901,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 		deployment         *appsv1.Deployment
 		trustedCAConfigMap *corev1.ConfigMap
 		sessionSecret      *corev1.Secret
-		canMountCustomLogo bool
+		canMountCustomLogo []configmap.CustomLogoRef
 	}
 
 	trustedCAConfigMap := &corev1.ConfigMap{
@@ -1076,7 +1076,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 			args: args{
 				deployment:         consoleDeployment,
 				trustedCAConfigMap: trustedCAConfigMap,
-				canMountCustomLogo: false,
+				canMountCustomLogo: []configmap.CustomLogoRef{},
 			},
 			want: &appsv1.Deployment{
 				Spec: appsv1.DeploymentSpec{
@@ -1099,7 +1099,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 			args: args{
 				deployment:         consoleDeployment,
 				trustedCAConfigMap: &corev1.ConfigMap{},
-				canMountCustomLogo: false,
+				canMountCustomLogo: []configmap.CustomLogoRef{},
 			},
 			want: &appsv1.Deployment{
 				Spec: appsv1.DeploymentSpec{
@@ -1122,7 +1122,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 			args: args{
 				deployment:         consoleDeployment,
 				trustedCAConfigMap: &corev1.ConfigMap{},
-				canMountCustomLogo: true,
+				canMountCustomLogo: []configmap.CustomLogoRef{},
 			},
 			want: &appsv1.Deployment{
 				Spec: appsv1.DeploymentSpec{
@@ -1145,7 +1145,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 			args: args{
 				deployment:         consoleDeployment,
 				trustedCAConfigMap: trustedCAConfigMap,
-				canMountCustomLogo: true,
+				canMountCustomLogo: []configmap.CustomLogoRef{},
 			},
 			want: &appsv1.Deployment{
 				Spec: appsv1.DeploymentSpec{

@@ -1125,6 +1125,7 @@ providers: {}
 				tt.args.contentSecurityPolicyEnabled,
 				tt.args.telemetryConfig,
 				tt.args.rt.Spec.Host,
+				false,
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below
