@@ -1488,6 +1488,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 		NodeSelector: map[string]string{
 			"kubernetes.io/os": "linux",
 		},
+		Volumes:  downloadsDeploymentTemplate.Spec.Template.Spec.Volumes,
 		Affinity: &corev1.Affinity{},
 		Tolerations: []corev1.Toleration{
 			{
@@ -1521,6 +1522,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 					Protocol:      corev1.ProtocolTCP,
 					ContainerPort: api.DownloadsPort,
 				}},
+				VolumeMounts: downloadsDeploymentTemplate.Spec.Template.Spec.Containers[0].VolumeMounts,
 				ReadinessProbe: &corev1.Probe{
 					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
@@ -1547,7 +1549,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 					SuccessThreshold: 1,
 					FailureThreshold: 3,
 				},
-				Command: []string{"/bin/sh"},
+				Command: []string{"/opt/downloads/downloads"},
 				Resources: corev1.ResourceRequirements{
 					Requests: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceCPU:    resource.MustParse("10m"),
