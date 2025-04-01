@@ -31,7 +31,6 @@ func (co *consoleOperator) SyncDeployment(
 	sessionSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
-	canMountCustomLogo bool,
 	recorder events.Recorder,
 ) (consoleDeployment *appsv1.Deployment, changed bool, reason string, err error) {
 	updatedOperatorConfig := operatorConfig.DeepCopy()
@@ -46,7 +45,6 @@ func (co *consoleOperator) SyncDeployment(
 		sessionSecret,
 		proxyConfig,
 		infrastructureConfig,
-		canMountCustomLogo,
 	)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 

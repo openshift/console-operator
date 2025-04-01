@@ -454,8 +454,9 @@ providers: {}
 				},
 			},
 		},
+		// TODO remove deprecated CustomLogoFile API
 		{
-			name: "Test operator config with Custom Branding Values",
+			name: "Test operator config with custom branding values (CustomLogoFile)",
 			args: args{
 				authConfig: &configv1.Authentication{},
 				operatorConfig: &operatorv1.Console{
@@ -530,8 +531,189 @@ session: {}
 customization:
   branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
-  customLogoFile: /var/logo/logo.svg
   customProductName: custom-product-name
+  logos:
+    - themes:
+        - mode: ` + string(operatorv1.ThemeModeDark) + `
+          source:
+            from: ConfigMap
+            configmap:
+              name: custom-logo-file
+              key: logo.svg
+        - mode: ` + string(operatorv1.ThemeModeLight) + `
+          source:
+            from: ConfigMap
+            configmap:
+              name: custom-logo-file
+              key: logo.svg
+      type: ` + string(operatorv1.LogoTypeMasthead) + `
+  perspectives:
+    - id: dev
+      visibility:
+        state: Disabled
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+providers: {}
+`,
+				},
+			},
+		},
+		{
+			name: "Test operator config with custom branding values (Logos)",
+			args: args{
+				authConfig: &configv1.Authentication{},
+				operatorConfig: &operatorv1.Console{
+					Spec: operatorv1.ConsoleSpec{
+						OperatorSpec: operatorv1.OperatorSpec{},
+						Customization: operatorv1.ConsoleCustomization{
+							Brand:                operatorv1.BrandDedicated,
+							DocumentationBaseURL: mockOperatorDocURL,
+							CustomProductName:    "custom-product-name",
+							Logos: []operatorv1.Logo{
+								{
+									Type: operatorv1.LogoTypeMasthead,
+									Themes: []operatorv1.Theme{
+										{
+											Mode: operatorv1.ThemeModeDark,
+											Source: operatorv1.FileReferenceSource{
+												From: "ConfigMap",
+												ConfigMap: &operatorv1.ConfigMapFileReference{
+													Name: "masthead-dark",
+													Key:  "masthead-dark-logo.png",
+												},
+											},
+										},
+										{
+											Mode: operatorv1.ThemeModeLight,
+											Source: operatorv1.FileReferenceSource{
+												From: "ConfigMap",
+												ConfigMap: &operatorv1.ConfigMapFileReference{
+													Name: "masthead-light",
+													Key:  "masthead-light-logo.png",
+												},
+											},
+										},
+									},
+								},
+								{
+									Type: operatorv1.LogoTypeFavicon,
+									Themes: []operatorv1.Theme{
+										{
+											Mode: operatorv1.ThemeModeDark,
+											Source: operatorv1.FileReferenceSource{
+												From: "ConfigMap",
+												ConfigMap: &operatorv1.ConfigMapFileReference{
+													Name: "favicon-dark",
+													Key:  "favicon-dark-logo.png",
+												},
+											},
+										},
+										{
+											Mode: operatorv1.ThemeModeLight,
+											Source: operatorv1.FileReferenceSource{
+												From: "ConfigMap",
+												ConfigMap: &operatorv1.ConfigMapFileReference{
+													Name: "favicon-light",
+													Key:  "favicon-light-logo.png",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					Status: operatorv1.ConsoleStatus{},
+				},
+				consoleConfig: &configv1.Console{},
+				managedConfig: &corev1.ConfigMap{
+					Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+session: {}
+customization:
+  branding: online
+  documentationBaseURL: https://docs.okd.io/4.4/
+`,
+					},
+				},
+				infrastructureConfig: &configv1.Infrastructure{
+					Status: configv1.InfrastructureStatus{
+						APIServerURL: mockAPIServer,
+					},
+				},
+				rt: &routev1.Route{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: api.OpenShiftConsoleName,
+					},
+					Spec: routev1.RouteSpec{
+						Host: host,
+					},
+				},
+				inactivityTimeoutSeconds: 0,
+			},
+			want: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        api.OpenShiftConsoleConfigMapName,
+					Namespace:   api.OpenShiftConsoleNamespace,
+					Labels:      map[string]string{"app": api.OpenShiftConsoleName},
+					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "operator.openshift.io/v1",
+						Kind:       "Console",
+						Controller: ptr.To(true),
+					}},
+				},
+				Data: map[string]string{configKey: `kind: ConsoleConfig
+apiVersion: console.openshift.io/v1
+auth:
+  authType: openshift
+  clientID: console
+  clientSecretFile: /var/oauth-config/clientSecret
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+clusterInfo:
+  consoleBaseAddress: https://` + host + `
+  masterPublicURL: ` + mockAPIServer + `
+  releaseVersion: ` + testReleaseVersion + `
+session: {}
+customization:
+  branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
+  documentationBaseURL: ` + mockOperatorDocURL + `
+  customProductName: custom-product-name
+  logos:
+    - themes:
+        - mode: ` + string(operatorv1.ThemeModeDark) + `
+          source:
+            from: ConfigMap
+            configmap:
+              name: masthead-dark
+              key: masthead-dark-logo.png
+        - mode: ` + string(operatorv1.ThemeModeLight) + `
+          source:
+            from: ConfigMap
+            configmap:
+              name: masthead-light
+              key: masthead-light-logo.png
+      type: ` + string(operatorv1.LogoTypeMasthead) + `
+    - themes:
+        - mode: ` + string(operatorv1.ThemeModeDark) + `
+          source:
+            from: ConfigMap
+            configmap:
+              name: favicon-dark
+              key: favicon-dark-logo.png
+        - mode: ` + string(operatorv1.ThemeModeLight) + `
+          source:
+            from: ConfigMap
+            configmap:
+              name: favicon-light
+              key: favicon-light-logo.png
+      type: ` + string(operatorv1.LogoTypeFavicon) + `
   perspectives:
     - id: dev
       visibility:
