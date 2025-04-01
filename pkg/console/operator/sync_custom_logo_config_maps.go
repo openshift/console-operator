@@ -1,7 +1,6 @@
 package operator
 
 import (
-	"context"
 	"fmt"
 
 	// kube
@@ -15,19 +14,41 @@ import (
 	// operator
 	"github.com/openshift/console-operator/pkg/api"
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
-	configmapsub "github.com/openshift/console-operator/pkg/console/subresource/configmap"
 )
 
-func (co *consoleOperator) SyncCustomLogoConfigMap(ctx context.Context, operatorConfig *operatorv1.Console) (okToMount bool, reason string, err error) {
-	// validate first, to avoid a broken volume mount & a crashlooping console
-	okToMount, reason, err = co.ValidateCustomLogo(ctx, operatorConfig)
+func (co *consoleOperator) SyncCustomLogos(operatorConfig *operatorv1.Console) (error, string) {
+	if operatorConfig.Spec.Customization.CustomLogoFile.Name != "" || operatorConfig.Spec.Customization.CustomLogoFile.Key != "" {
+		return co.SyncCustomLogoConfigMap(operatorConfig)
+	}
 
-	if okToMount || configmapsub.IsRemoved(operatorConfig) {
-		if err := co.UpdateCustomLogoSyncSource(operatorConfig); err != nil {
-			return false, "FailedSyncSource", customerrors.NewCustomLogoError("custom logo sync source update error")
+	var (
+		aggregatedError error
+		err             error
+		reason          string
+	)
+	for _, logo := range operatorConfig.Spec.Customization.Logos {
+		for _, theme := range logo.Themes {
+			logoToSync := theme.Source.ConfigMap
+			err, reason = co.updateCustomLogoSyncSource(logoToSync)
+			if err != nil {
+				if aggregatedError == nil {
+					aggregatedError = fmt.Errorf("One or more errors were encountered while syncing custom logos:\n  - %v, %s", logoToSync, err.Error())
+				} else {
+					aggregatedError = fmt.Errorf("%s\n  - %v, %s", aggregatedError.Error(), logoToSync, err.Error())
+				}
+			}
 		}
 	}
-	return okToMount, reason, err
+	if aggregatedError != nil {
+		return aggregatedError, reason
+	}
+	return nil, ""
+}
+
+// TODO remove deprecated CustomLogoFile API
+func (co *consoleOperator) SyncCustomLogoConfigMap(operatorConfig *operatorv1.Console) (error, string) {
+	var customLogoRef = operatorv1.ConfigMapFileReference(operatorConfig.Spec.Customization.CustomLogoFile)
+	return co.updateCustomLogoSyncSource(&customLogoRef)
 }
 
 // on each pass of the operator sync loop, we need to check the
@@ -37,39 +58,52 @@ func (co *consoleOperator) SyncCustomLogoConfigMap(ctx context.Context, operator
 // sync loop will run later.  Our operator is waiting to receive
 // the copied configmap into the console namespace for a future
 // sync loop to mount into the console deployment.
-func (c *consoleOperator) UpdateCustomLogoSyncSource(operatorConfig *operatorv1.Console) error {
+func (c *consoleOperator) updateCustomLogoSyncSource(cmRef *operatorv1.ConfigMapFileReference) (error, string) {
+	// validate first, to avoid a broken volume mount & a crashlooping console
+	err, reason := c.validateCustomLogo(cmRef)
+	if err != nil {
+		return err, reason
+	}
+
 	source := resourcesynccontroller.ResourceLocation{}
-	logoConfigMapName := operatorConfig.Spec.Customization.CustomLogoFile.Name
+	logoConfigMapName := cmRef.Name
 
 	if logoConfigMapName != "" {
 		source.Name = logoConfigMapName
 		source.Namespace = api.OpenShiftConfigNamespace
 	}
 	// if no custom logo provided, sync an empty source to delete
-	return c.resourceSyncer.SyncConfigMap(
-		resourcesynccontroller.ResourceLocation{Namespace: api.OpenShiftConsoleNamespace, Name: api.OpenShiftCustomLogoConfigMapName},
+	err = c.resourceSyncer.SyncConfigMap(
+		resourcesynccontroller.ResourceLocation{Namespace: api.OpenShiftConsoleNamespace, Name: cmRef.Name},
 		source,
 	)
+	if err != nil {
+		return err, "FailedResourceSync"
+	}
+
+	return nil, ""
 }
 
-func (co *consoleOperator) ValidateCustomLogo(ctx context.Context, operatorConfig *operatorv1.Console) (okToMount bool, reason string, err error) {
-	logoConfigMapName := operatorConfig.Spec.Customization.CustomLogoFile.Name
-	logoImageKey := operatorConfig.Spec.Customization.CustomLogoFile.Key
+func (co *consoleOperator) validateCustomLogo(logoFileRef *operatorv1.ConfigMapFileReference) (err error, reason string) {
+	logoConfigMapName := logoFileRef.Name
+	logoImageKey := logoFileRef.Key
 
-	if configmapsub.FileNameOrKeyInconsistentlySet(operatorConfig) {
+	if (len(logoConfigMapName) == 0) != (len(logoImageKey) == 0) {
 		klog.V(4).Infoln("custom logo filename or key have not been set")
-		return false, "KeyOrFilenameInvalid", customerrors.NewCustomLogoError("either custom logo filename or key have not been set")
+		return customerrors.NewCustomLogoError("either custom logo filename or key have not been set"), "KeyOrFilenameInvalid"
 	}
+
 	// fine if nothing set, but don't mount it
-	if configmapsub.FileNameNotSet(operatorConfig) {
+	if len(logoConfigMapName) == 0 {
 		klog.V(4).Infoln("no custom logo configured")
-		return false, "", nil
+		return nil, ""
 	}
+
 	logoConfigMap, err := co.configNSConfigMapLister.ConfigMaps(api.OpenShiftConfigNamespace).Get(logoConfigMapName)
 	// If we 404, the logo file may not have been created yet.
 	if err != nil {
-		klog.V(4).Infof("custom logo file %v not found", logoConfigMapName)
-		return false, "FailedGet", customerrors.NewCustomLogoError(fmt.Sprintf("custom logo file %v not found", logoConfigMapName))
+		klog.V(4).Infof("failed to get ConfigMap %v, %v", logoConfigMapName, err)
+		return customerrors.NewCustomLogoError(fmt.Sprintf("failed to get ConfigMap %v, %v", logoConfigMapName, err)), "FailedGet"
 	}
 
 	_, imageDataFound := logoConfigMap.BinaryData[logoImageKey]
@@ -78,9 +112,9 @@ func (co *consoleOperator) ValidateCustomLogo(ctx context.Context, operatorConfi
 	}
 	if !imageDataFound {
 		klog.V(4).Infoln("custom logo file exists but no image provided")
-		return false, "NoImageProvided", customerrors.NewCustomLogoError("custom logo file exists but no image provided")
+		return customerrors.NewCustomLogoError("custom logo file exists but no image provided"), "NoImageProvided"
 	}
 
-	klog.V(4).Infoln("custom logo ok to mount")
-	return true, "", nil
+	klog.V(4).Infof("custom logo %s ok to mount", logoConfigMapName)
+	return nil, ""
 }

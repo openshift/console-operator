@@ -18,21 +18,22 @@ import (
 
 // Config is the top-level console server cli configuration.
 type Config struct {
-	APIVersion                   string `yaml:"apiVersion"`
-	Kind                         string `yaml:"kind"`
-	ServingInfo                  `yaml:"servingInfo"`
-	ClusterInfo                  `yaml:"clusterInfo"`
+	APIVersion string `yaml:"apiVersion"`
+	Kind       string `yaml:"kind"`
+
 	Auth                         `yaml:"auth"`
-	Session                      `yaml:"session"`
-	Customization                `yaml:"customization"`
-	Providers                    `yaml:"providers"`
-	MonitoringInfo               `yaml:"monitoringInfo,omitempty"`
-	Plugins                      map[string]string             `yaml:"plugins,omitempty"`
-	I18nNamespaces               []string                      `yaml:"i18nNamespaces,omitempty"`
-	Proxy                        Proxy                         `yaml:"proxy,omitempty"`
+	ClusterInfo                  `yaml:"clusterInfo"`
 	ContentSecurityPolicy        map[v1.DirectiveType][]string `yaml:"contentSecurityPolicy,omitempty"`
 	ContentSecurityPolicyEnabled bool                          `yaml:"contentSecurityPolicyEnabled,omitempty"`
-	Telemetry                    map[string]string             `yaml:"telemetry,omitempty"`
+	Customization                `yaml:"customization"`
+	I18nNamespaces               []string `yaml:"i18nNamespaces,omitempty"`
+	MonitoringInfo               `yaml:"monitoringInfo,omitempty"`
+	Plugins                      map[string]string `yaml:"plugins,omitempty"`
+	Providers                    `yaml:"providers"`
+	Proxy                        Proxy `yaml:"proxy,omitempty"`
+	ServingInfo                  `yaml:"servingInfo"`
+	Session                      `yaml:"session"`
+	Telemetry                    map[string]string `yaml:"telemetry,omitempty"`
 }
 
 type Proxy struct {
@@ -40,27 +41,27 @@ type Proxy struct {
 }
 
 type ProxyService struct {
-	Endpoint       string `yaml:"endpoint"`
-	ConsoleAPIPath string `yaml:"consoleAPIPath"`
-	CACertificate  string `yaml:"caCertificate"`
 	Authorize      bool   `yaml:"authorize"`
+	CACertificate  string `yaml:"caCertificate"`
+	ConsoleAPIPath string `yaml:"consoleAPIPath"`
+	Endpoint       string `yaml:"endpoint"`
 }
 
 // ServingInfo holds configuration for serving HTTP.
 type ServingInfo struct {
-	BindAddress  string `yaml:"bindAddress,omitempty"`
-	CertFile     string `yaml:"certFile,omitempty"`
-	KeyFile      string `yaml:"keyFile,omitempty"`
-	RedirectPort int    `yaml:"redirectPort,omitempty"`
+	BindAddress string `yaml:"bindAddress,omitempty"`
 
 	// These fields are defined in `HTTPServingInfo`, but are not supported for console. Fail if any are specified.
 	// https://github.com/openshift/api/blob/0cb4131a7636e1ada6b2769edc9118f0fe6844c8/config/v1/types.go#L7-L38
 	BindNetwork           string        `yaml:"bindNetwork,omitempty"`
-	ClientCA              string        `yaml:"clientCA,omitempty"`
-	NamedCertificates     []interface{} `yaml:"namedCertificates,omitempty"`
-	MinTLSVersion         string        `yaml:"minTLSVersion,omitempty"`
+	CertFile              string        `yaml:"certFile,omitempty"`
 	CipherSuites          []string      `yaml:"cipherSuites,omitempty"`
+	ClientCA              string        `yaml:"clientCA,omitempty"`
+	KeyFile               string        `yaml:"keyFile,omitempty"`
 	MaxRequestsInFlight   int64         `yaml:"maxRequestsInFlight,omitempty"`
+	MinTLSVersion         string        `yaml:"minTLSVersion,omitempty"`
+	NamedCertificates     []interface{} `yaml:"namedCertificates,omitempty"`
+	RedirectPort          int           `yaml:"redirectPort,omitempty"`
 	RequestTimeoutSeconds int64         `yaml:"requestTimeoutSeconds,omitempty"`
 }
 
@@ -68,55 +69,55 @@ type ServingInfo struct {
 type ClusterInfo struct {
 	ConsoleBaseAddress   string                `yaml:"consoleBaseAddress,omitempty"`
 	ConsoleBasePath      string                `yaml:"consoleBasePath,omitempty"`
-	MasterPublicURL      string                `yaml:"masterPublicURL,omitempty"`
 	ControlPlaneToplogy  configv1.TopologyMode `yaml:"controlPlaneTopology,omitempty"`
-	ReleaseVersion       string                `yaml:"releaseVersion,omitempty"`
+	CopiedCSVsDisabled   bool                  `yaml:"copiedCSVsDisabled,omitempty"`
+	MasterPublicURL      string                `yaml:"masterPublicURL,omitempty"`
 	NodeArchitectures    []string              `yaml:"nodeArchitectures,omitempty"`
 	NodeOperatingSystems []string              `yaml:"nodeOperatingSystems,omitempty"`
-	CopiedCSVsDisabled   bool                  `yaml:"copiedCSVsDisabled,omitempty"`
+	ReleaseVersion       string                `yaml:"releaseVersion,omitempty"`
 }
 
 // MonitoringInfo holds configuration for monitoring related services
 type MonitoringInfo struct {
-	AlertmanagerUserWorkloadHost string `yaml:"alertmanagerUserWorkloadHost,omitempty"`
 	AlertmanagerTenancyHost      string `yaml:"alertmanagerTenancyHost,omitempty"`
+	AlertmanagerUserWorkloadHost string `yaml:"alertmanagerUserWorkloadHost,omitempty"`
 }
 
 // Auth holds configuration for authenticating with OpenShift. The auth method is assumed to be "openshift".
 type Auth struct {
 	AuthType                 string   `yaml:"authType,omitempty"`
-	OIDCIssuer               string   `yaml:"oidcIssuer,omitempty"`
-	OIDCExtraScopes          []string `yaml:"oidcExtraScopes,omitempty"`
-	OIDCOCLoginCommand       string   `yaml:"oidcOCLoginCommand,omitempty"`
 	ClientID                 string   `yaml:"clientID,omitempty"`
 	ClientSecretFile         string   `yaml:"clientSecretFile,omitempty"`
-	OAuthEndpointCAFile      string   `yaml:"oauthEndpointCAFile,omitempty"`
-	LogoutRedirect           string   `yaml:"logoutRedirect,omitempty"`
 	InactivityTimeoutSeconds int      `yaml:"inactivityTimeoutSeconds,omitempty"`
+	LogoutRedirect           string   `yaml:"logoutRedirect,omitempty"`
+	OAuthEndpointCAFile      string   `yaml:"oauthEndpointCAFile,omitempty"`
+	OIDCExtraScopes          []string `yaml:"oidcExtraScopes,omitempty"`
+	OIDCIssuer               string   `yaml:"oidcIssuer,omitempty"`
+	OIDCOCLoginCommand       string   `yaml:"oidcOCLoginCommand,omitempty"`
 }
 
 // Session holds configuration for web-session related configuration
 type Session struct {
-	CookieEncryptionKeyFile     string `yaml:"cookieEncryptionKeyFile,omitempty"`
 	CookieAuthenticationKeyFile string `yaml:"cookieAuthenticationKeyFile,omitempty"`
+	CookieEncryptionKeyFile     string `yaml:"cookieEncryptionKeyFile,omitempty"`
 	// TODO: move InactivityTimeoutSeconds here
 }
 
 // Customization holds configuration such as what logo to use.
 type Customization struct {
-	Branding             string `yaml:"branding,omitempty"`
-	DocumentationBaseURL string `yaml:"documentationBaseURL,omitempty"`
-	CustomProductName    string `yaml:"customProductName,omitempty"`
-	CustomLogoFile       string `yaml:"customLogoFile,omitempty"`
-	// developerCatalog allows to configure the shown developer catalog categories.
-	DeveloperCatalog *DeveloperConsoleCatalogCustomization `yaml:"developerCatalog,omitempty"`
-	ProjectAccess    ProjectAccess                         `yaml:"projectAccess,omitempty"`
-	QuickStarts      QuickStarts                           `yaml:"quickStarts,omitempty"`
 	// addPage allows customizing actions on the Add page in developer perspective.
-	AddPage AddPage `yaml:"addPage,omitempty"`
+	AddPage           AddPage                 `yaml:"addPage,omitempty"`
+	Branding          string                  `yaml:"branding,omitempty"`
+	Capabilities      []operatorv1.Capability `yaml:"capabilities,omitempty"`
+	CustomProductName string                  `yaml:"customProductName,omitempty"`
+	// developerCatalog allows to configure the shown developer catalog categories.
+	DeveloperCatalog     *DeveloperConsoleCatalogCustomization `yaml:"developerCatalog,omitempty"`
+	DocumentationBaseURL string                                `yaml:"documentationBaseURL,omitempty"`
+	Logos                []operatorv1.Logo                     `yaml:"logos,omitempty"`
 	// perspectives allows enabling/disabling of perspective(s) that user can see in the Perspective switcher dropdown.
-	Perspectives []Perspective           `yaml:"perspectives,omitempty"`
-	Capabilities []operatorv1.Capability `yaml:"capabilities,omitempty"`
+	Perspectives  []Perspective `yaml:"perspectives,omitempty"`
+	ProjectAccess ProjectAccess `yaml:"projectAccess,omitempty"`
+	QuickStarts   QuickStarts   `yaml:"quickStarts,omitempty"`
 }
 
 // QuickStarts contains options for quick starts
@@ -133,14 +134,18 @@ type ProjectAccess struct {
 type CatalogTypesState string
 
 const (
-	CatalogTypeEnabled  CatalogTypesState = "Enabled"
 	CatalogTypeDisabled CatalogTypesState = "Disabled"
+	CatalogTypeEnabled  CatalogTypesState = "Enabled"
 )
 
 // DeveloperConsoleCatalogTypes defines the state of the sub-catalog types.
 type DeveloperConsoleCatalogTypes struct {
-	// state defines if a list of catalog types should be enabled or disabled.
-	State CatalogTypesState `yaml:"state,omitempty"`
+	// disabled is a list of developer catalog types (sub-catalogs IDs) that are not shown to users.
+	// Types (sub-catalogs) are added via console plugins, the available types (sub-catalog IDs) are available
+	// in the console on the cluster configuration page, or when editing the YAML in the console.
+	// Example: "Devfile", "HelmChart", "BuilderImage"
+	// If the list is empty or all the available sub-catalog types are added, then the complete developer catalog should be hidden.
+	Disabled *[]string `yaml:"disabled,omitempty"`
 	// enabled is a list of developer catalog types (sub-catalogs IDs) that will be shown to users.
 	// Types (sub-catalogs) are added via console plugins, the available types (sub-catalog IDs) are available
 	// in the console on the cluster configuration page, or when editing the YAML in the console.
@@ -148,12 +153,8 @@ type DeveloperConsoleCatalogTypes struct {
 	// If the list is non-empty, a new type will not be shown to the user until it is added to list.
 	// If the list is empty the complete developer catalog will be shown.
 	Enabled *[]string `yaml:"enabled,omitempty"`
-	// disabled is a list of developer catalog types (sub-catalogs IDs) that are not shown to users.
-	// Types (sub-catalogs) are added via console plugins, the available types (sub-catalog IDs) are available
-	// in the console on the cluster configuration page, or when editing the YAML in the console.
-	// Example: "Devfile", "HelmChart", "BuilderImage"
-	// If the list is empty or all the available sub-catalog types are added, then the complete developer catalog should be hidden.
-	Disabled *[]string `yaml:"disabled,omitempty"`
+	// state defines if a list of catalog types should be enabled or disabled.
+	State CatalogTypesState `yaml:"state,omitempty"`
 }
 
 // DeveloperConsoleCatalogCustomization allow cluster admin to configure developer catalog.
@@ -198,9 +199,9 @@ type AddPage struct {
 type PerspectiveState string
 
 const (
-	PerspectiveEnabled      PerspectiveState = "Enabled"
-	PerspectiveDisabled     PerspectiveState = "Disabled"
 	PerspectiveAccessReview PerspectiveState = "AccessReview"
+	PerspectiveDisabled     PerspectiveState = "Disabled"
+	PerspectiveEnabled      PerspectiveState = "Enabled"
 )
 
 // PerspectiveID defines the id of the perspective.
@@ -217,19 +218,19 @@ const (
 // `required` and  `missing` can work together esp. in the case where the cluster admin
 // wants to show another perspective to users without specific permissions. Out of `required` and `missing` atleast one property should be non-empty.
 type ResourceAttributesAccessReview struct {
-	// required defines a list of permission checks. The perspective will only be shown when all checks are successful. When omitted, the access review is skipped and the perspective will not be shown unless it is required to do so based on the configuration of the missing access review list.
-	Required []authorizationv1.ResourceAttributes `yaml:"required,omitempty"`
 	// missing defines a list of permission checks. The perspective will only be shown when at least one check fails. When omitted, the access review is skipped and the perspective will not be shown unless it is required to do so based on the configuration of the required access review list.
 	Missing []authorizationv1.ResourceAttributes `yaml:"missing,omitempty"`
+	// required defines a list of permission checks. The perspective will only be shown when all checks are successful. When omitted, the access review is skipped and the perspective will not be shown unless it is required to do so based on the configuration of the missing access review list.
+	Required []authorizationv1.ResourceAttributes `yaml:"required,omitempty"`
 }
 
 // PerspectiveVisibility defines the criteria to show/hide a perspective.
 type PerspectiveVisibility struct {
+	// accessReview defines required and missing access review checks.
+	AccessReview *ResourceAttributesAccessReview `yaml:"accessReview,omitempty"`
 	// state defines the perspective is enabled or disabled or access review check is required.
 	// state is required
 	State PerspectiveState `yaml:"state"`
-	// accessReview defines required and missing access review checks.
-	AccessReview *ResourceAttributesAccessReview `yaml:"accessReview,omitempty"`
 }
 
 // Perspective defines a perspective that cluster admins want to show/hide in the perspective switcher dropdown
@@ -239,14 +240,14 @@ type Perspective struct {
 	// The available perspective ids can be found in the code snippet section next to the yaml editor.
 	// Incorrect or unknown ids will be ignored.
 	ID string `yaml:"id"`
-	// visibility defines the state of perspective along with access review checks if needed for that perspective.
-	// visibility is required
-	Visibility PerspectiveVisibility `yaml:"visibility"`
 	// pinnedResources defines the list of default pinned resources that users will see on the perspective navigation if they have not customized these pinned resources themselves.
 	// The list of available Kubernetes resources could be read via `kubectl api-resources`.
 	// The console will also provide a configuration UI and a YAML snippet that will list the available resources that can be pinned to the navigation.
 	// Incorrect or unknown resources will be ignored.
 	PinnedResources *[]operatorv1.PinnedResourceReference `yaml:"pinnedResources,omitempty"`
+	// visibility defines the state of perspective along with access review checks if needed for that perspective.
+	// visibility is required
+	Visibility PerspectiveVisibility `yaml:"visibility"`
 }
 
 type Providers struct {
@@ -254,8 +255,8 @@ type Providers struct {
 }
 
 type HelmChartRepo struct {
-	URL    string `yaml:"url,omitempty"`
 	CAFile string `yaml:"caFile,omitempty"`
+	URL    string `yaml:"url,omitempty"`
 }
 
 type Helm struct {

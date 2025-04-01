@@ -8,7 +8,6 @@ import (
 	"os"
 
 	// kube
-
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog/v2"
@@ -97,6 +96,12 @@ func (co *consoleOperator) sync(ctx context.Context, controllerContext factory.S
 		}
 	}
 
+	customLogosErr, customLogosErrReason := co.SyncCustomLogos(updatedOperatorConfig)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("CustomLogosSync", customLogosErrReason, customLogosErr))
+	if customLogosErr != nil {
+		return statusHandler.FlushAndReturn(customLogosErr)
+	}
+
 	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(
 		ctx,
 		set.Operator,
@@ -127,15 +132,6 @@ func (co *consoleOperator) sync(ctx context.Context, controllerContext factory.S
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("TrustedCASync", trustedCAErrReason, trustedCAErr))
 	if trustedCAErr != nil {
 		return statusHandler.FlushAndReturn(trustedCAErr)
-	}
-
-	// TODO: why is this missing a toUpdate change?
-	customLogoCanMount, customLogoErrReason, customLogoError := co.SyncCustomLogoConfigMap(ctx, updatedOperatorConfig)
-	// If the custom logo sync fails for any reason, we are degraded, not progressing.
-	// The sync loop may not settle, we are unable to honor it in current state.
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("CustomLogoSync", customLogoErrReason, customLogoError))
-	if customLogoError != nil {
-		return statusHandler.FlushAndReturn(customLogoError)
 	}
 
 	var oauthServingCertConfigMap *corev1.ConfigMap
@@ -170,7 +166,6 @@ func (co *consoleOperator) sync(ctx context.Context, controllerContext factory.S
 		sessionSecret,
 		set.Proxy,
 		set.Infrastructure,
-		customLogoCanMount,
 		controllerContext.Recorder(),
 	)
 	toUpdate = toUpdate || depChanged

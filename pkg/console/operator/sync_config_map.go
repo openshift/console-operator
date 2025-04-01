@@ -15,7 +15,7 @@ import (
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
-	v1 "github.com/openshift/api/console/v1"
+	consolev1 "github.com/openshift/api/console/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/library-go/pkg/operator/events"
@@ -23,7 +23,6 @@ import (
 
 	// operator
 	"github.com/openshift/console-operator/pkg/api"
-
 	configmapsub "github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
 	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
@@ -76,7 +75,7 @@ func (co *consoleOperator) SyncConfigMap(
 		}
 	}
 
-	availablePlugins := co.GetAvailablePlugins(operatorConfig.Spec.Plugins)
+	availablePlugins := co.getAvailablePlugins(operatorConfig.Spec.Plugins)
 
 	monitoringSharedConfig, mscErr := co.managedNSConfigMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftMonitoringConfigMapName)
 	if mscErr != nil {
@@ -86,7 +85,7 @@ func (co *consoleOperator) SyncConfigMap(
 		monitoringSharedConfig = &corev1.ConfigMap{}
 	}
 
-	telemetryConfig, tcErr := co.GetTelemetryConfiguration(ctx, operatorConfig)
+	telemetryConfig, tcErr := co.getTelemetryConfiguration(operatorConfig)
 	if tcErr != nil {
 		return nil, false, "FailedGetTelemetryConfig", tcErr
 	}
@@ -140,7 +139,7 @@ func (co *consoleOperator) SyncConfigMap(
 //  3. get default telemetry value from telemetry-config configmap
 //  4. get CLUSTER_ID from the cluster-version config
 //  5. get ORGANIZATION_ID from OCM, if ORGANIZATION_ID is not already set
-func (co *consoleOperator) GetTelemetryConfiguration(ctx context.Context, operatorConfig *operatorv1.Console) (map[string]string, error) {
+func (co *consoleOperator) getTelemetryConfiguration(operatorConfig *operatorv1.Console) (map[string]string, error) {
 	telemetryConfig := make(map[string]string)
 
 	if len(operatorConfig.Annotations) > 0 {
@@ -191,8 +190,8 @@ func (co *consoleOperator) GetTelemetryConfiguration(ctx context.Context, operat
 	return telemetryConfig, nil
 }
 
-func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []string) []*v1.ConsolePlugin {
-	var availablePlugins []*v1.ConsolePlugin
+func (co *consoleOperator) getAvailablePlugins(enabledPluginsNames []string) []*consolev1.ConsolePlugin {
+	var availablePlugins []*consolev1.ConsolePlugin
 	for _, pluginName := range utilsub.RemoveDuplicateStr(enabledPluginsNames) {
 		plugin, err := co.consolePluginLister.Get(pluginName)
 		if err != nil {

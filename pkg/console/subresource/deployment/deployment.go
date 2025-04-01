@@ -74,7 +74,6 @@ func DefaultDeployment(
 	sessionSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
-	canMountCustomLogo bool,
 ) *appsv1.Deployment {
 	authnCATrustConfigMap := localOAuthServingCertConfigMap
 	if authnCATrustConfigMap == nil {
@@ -102,7 +101,7 @@ func DefaultDeployment(
 		authServerCAConfigMap,
 		trustedCAConfigMap,
 		sessionSecret,
-		canMountCustomLogo,
+		&operatorConfig.Spec.Customization,
 	)
 	withConsoleContainerImage(deployment, operatorConfig, proxyConfig)
 	withConsoleNodeSelector(deployment, infrastructureConfig)
@@ -233,15 +232,20 @@ func withConsoleVolumes(
 	authServerCAConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
 	sessionSecret *corev1.Secret,
-	canMountCustomLogo bool) {
+	customization *operatorv1.ConsoleCustomization,
+) {
 	volumeConfig := defaultVolumeConfig()
 
 	caBundle, caBundleExists := trustedCAConfigMap.Data["ca-bundle.crt"]
 	if caBundleExists && caBundle != "" {
 		volumeConfig = append(volumeConfig, trustedCAVolume())
 	}
-	if canMountCustomLogo {
-		volumeConfig = append(volumeConfig, customLogoVolume())
+
+	if len(customization.Logos) > 0 {
+		volumeConfig = withCustomLogoVolumes(volumeConfig, customization.Logos)
+		// TODO remove deprecated CustomLogoFile API
+	} else if customization.CustomLogoFile.Name != "" && customization.CustomLogoFile.Key != "" {
+		volumeConfig = append(volumeConfig, customLogoVolume(customization.CustomLogoFile.Name))
 	}
 
 	if oauthServingCert != nil {
@@ -300,6 +304,24 @@ func withConsoleVolumes(
 		}
 	}
 	deployment.Spec.Template.Spec.Volumes = vols
+}
+
+func withCustomLogoVolumes(volumeConfig []volumeConfig, customLogos []operatorv1.Logo) []volumeConfig {
+	u := map[string]string{}
+	if len(customLogos) > 0 {
+		for _, logo := range customLogos {
+			for _, theme := range logo.Themes {
+				name := theme.Source.ConfigMap.Name
+				u[name] = name
+			}
+		}
+	}
+
+	for _, name := range u {
+		volumeConfig = append(volumeConfig, customLogoVolume(name))
+	}
+
+	return volumeConfig
 }
 
 func withConsoleContainerImage(
@@ -495,10 +517,10 @@ func trustedCAVolume() volumeConfig {
 	}
 }
 
-func customLogoVolume() volumeConfig {
+func customLogoVolume(name string) volumeConfig {
 	return volumeConfig{
-		name:        api.OpenShiftCustomLogoConfigMapName,
-		path:        "/var/logo/",
+		name:        name,
+		path:        fmt.Sprintf("/var/logo/%s/", name),
 		isConfigMap: true}
 }
 

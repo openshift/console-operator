@@ -48,7 +48,6 @@ func TestDefaultDeployment(t *testing.T) {
 		sessionSecret                  *corev1.Secret
 		proxyConfig                    *configv1.Proxy
 		infrastructureConfig           *configv1.Infrastructure
-		canMountCustomLogo             bool
 	}
 
 	consoleOperatorConfig := &operatorsv1.Console{
@@ -183,12 +182,12 @@ func TestDefaultDeployment(t *testing.T) {
 	withConsoleContainerImage(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
 	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMap{
 		Data: map[string]string{"ca-bundle.crt": "test"},
-	}, nil, trustedCAConfigMapEmpty, nil, false)
+	}, nil, trustedCAConfigMapEmpty, nil, &operatorsv1.ConsoleCustomization{})
 	consoleDeploymentContainer := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumes := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMap{
 		Data: map[string]string{"ca-bundle.crt": "test"},
-	}, nil, trustedCAConfigMapSet, nil, false)
+	}, nil, trustedCAConfigMapSet, nil, &operatorsv1.ConsoleCustomization{})
 	consoleDeploymentContainerTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumesTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 
@@ -526,7 +525,6 @@ func TestDefaultDeployment(t *testing.T) {
 				tt.args.sessionSecret,
 				tt.args.proxyConfig,
 				tt.args.infrastructureConfig,
-				tt.args.canMountCustomLogo,
 			), tt.want); diff != nil {
 				t.Error(diff)
 			}
@@ -898,10 +896,10 @@ func TestWithAffinity(t *testing.T) {
 
 func TestWithConsoleVolumes(t *testing.T) {
 	type args struct {
+		customization      *operatorsv1.ConsoleCustomization
 		deployment         *appsv1.Deployment
 		trustedCAConfigMap *corev1.ConfigMap
 		sessionSecret      *corev1.Secret
-		canMountCustomLogo bool
 	}
 
 	trustedCAConfigMap := &corev1.ConfigMap{
@@ -990,6 +988,35 @@ func TestWithConsoleVolumes(t *testing.T) {
 		},
 	}
 
+	logosVolumes := []corev1.Volume{
+		{
+			Name: "favicon-logos",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "favicon-logos",
+					},
+					Items:       nil,
+					DefaultMode: nil,
+					Optional:    nil,
+				},
+			},
+		},
+		{
+			Name: "masthead-logos",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "masthead-logos",
+					},
+					Items:       nil,
+					DefaultMode: nil,
+					Optional:    nil,
+				},
+			},
+		},
+	}
+
 	trustedCAVolume := corev1.Volume{
 		Name: api.TrustedCAConfigMapName,
 		VolumeSource: corev1.VolumeSource{
@@ -1053,7 +1080,20 @@ func TestWithConsoleVolumes(t *testing.T) {
 	customLogoVolumeMount := corev1.VolumeMount{
 		Name:      api.OpenShiftCustomLogoConfigMapName,
 		ReadOnly:  false,
-		MountPath: "/var/logo/",
+		MountPath: "/var/logo/custom-logo/",
+	}
+
+	logosVolumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "favicon-logos",
+			ReadOnly:  false,
+			MountPath: "/var/logo/favicon-logos/",
+		},
+		{
+			Name:      "masthead-logos",
+			ReadOnly:  false,
+			MountPath: "/var/logo/masthead-logos/",
+		},
 	}
 
 	defaultVolumeMounts := []corev1.VolumeMount{
@@ -1074,9 +1114,9 @@ func TestWithConsoleVolumes(t *testing.T) {
 		{
 			name: "Test Volumes With Only CA Bundle",
 			args: args{
+				customization:      &operatorsv1.ConsoleCustomization{},
 				deployment:         consoleDeployment,
 				trustedCAConfigMap: trustedCAConfigMap,
-				canMountCustomLogo: false,
 			},
 			want: &appsv1.Deployment{
 				Spec: appsv1.DeploymentSpec{
@@ -1094,12 +1134,15 @@ func TestWithConsoleVolumes(t *testing.T) {
 				},
 			},
 		},
+		// TODO remove deprecated CustomLogoFile API
 		{
-			name: "Test Volumes Without CA Bundle And Custom Logo False",
+			name: "Test Volumes Without CA Bundle And Empty Custom Logo File",
 			args: args{
+				customization: &operatorsv1.ConsoleCustomization{
+					CustomLogoFile: configv1.ConfigMapFileReference{},
+				},
 				deployment:         consoleDeployment,
 				trustedCAConfigMap: &corev1.ConfigMap{},
-				canMountCustomLogo: false,
 			},
 			want: &appsv1.Deployment{
 				Spec: appsv1.DeploymentSpec{
@@ -1117,35 +1160,47 @@ func TestWithConsoleVolumes(t *testing.T) {
 				},
 			},
 		},
+		// TODO remove deprecated CustomLogoFile API
 		{
-			name: "Test Volumes With Only Custom Logo True",
+			name: "Test Volumes With Only Custom Logo File",
 			args: args{
+				customization: &operatorsv1.ConsoleCustomization{
+					CustomLogoFile: configv1.ConfigMapFileReference{
+						Name: "custom-logo",
+						Key:  "custom-logo.png",
+					},
+				},
 				deployment:         consoleDeployment,
 				trustedCAConfigMap: &corev1.ConfigMap{},
-				canMountCustomLogo: true,
 			},
 			want: &appsv1.Deployment{
 				Spec: appsv1.DeploymentSpec{
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
+							Volumes: customLogoVolumes,
 							Containers: []corev1.Container{
 								{
 									Name:         "consoleContainer",
 									VolumeMounts: customLogoVolumeMounts,
 								},
 							},
-							Volumes: customLogoVolumes,
 						},
 					},
 				},
 			},
 		},
+		// TODO remove deprecated CustomLogoFile API
 		{
-			name: "Test Volumes With CA bundle And Custom Logo True",
+			name: "Test Volumes With CA bundle And Custom Logo File",
 			args: args{
+				customization: &operatorsv1.ConsoleCustomization{
+					CustomLogoFile: configv1.ConfigMapFileReference{
+						Name: "custom-logo",
+						Key:  "custom-logo.png",
+					},
+				},
 				deployment:         consoleDeployment,
 				trustedCAConfigMap: trustedCAConfigMap,
-				canMountCustomLogo: true,
 			},
 			want: &appsv1.Deployment{
 				Spec: appsv1.DeploymentSpec{
@@ -1163,6 +1218,82 @@ func TestWithConsoleVolumes(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Test Volumes With Logos",
+			args: args{
+				customization: &operatorsv1.ConsoleCustomization{
+					Logos: []operatorsv1.Logo{
+						{
+							Type: operatorsv1.LogoTypeFavicon,
+							Themes: []operatorsv1.Theme{
+								{
+									Mode: operatorsv1.ThemeModeDark,
+									Source: operatorsv1.FileReferenceSource{
+										From: "ConfigMap",
+										ConfigMap: &operatorsv1.ConfigMapFileReference{
+											Name: "favicon-logos",
+											Key:  "favicon-logo-dark.png",
+										},
+									},
+								},
+								{
+									Mode: operatorsv1.ThemeModeLight,
+									Source: operatorsv1.FileReferenceSource{
+										From: "ConfigMap",
+										ConfigMap: &operatorsv1.ConfigMapFileReference{
+											Name: "favicon-logos",
+											Key:  "favicon-logo-light.png",
+										},
+									},
+								},
+							},
+						},
+						{
+							Type: operatorsv1.LogoTypeMasthead,
+							Themes: []operatorsv1.Theme{
+								{
+									Mode: operatorsv1.ThemeModeDark,
+									Source: operatorsv1.FileReferenceSource{
+										From: "ConfigMap",
+										ConfigMap: &operatorsv1.ConfigMapFileReference{
+											Name: "masthead-logos",
+											Key:  "masthead-logo-dark.png",
+										},
+									},
+								},
+								{
+									Mode: operatorsv1.ThemeModeLight,
+									Source: operatorsv1.FileReferenceSource{
+										From: "ConfigMap",
+										ConfigMap: &operatorsv1.ConfigMapFileReference{
+											Name: "masthead-logos",
+											Key:  "masthead-logo-light.png",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				deployment:         consoleDeployment,
+				trustedCAConfigMap: &corev1.ConfigMap{},
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:         "consoleContainer",
+									VolumeMounts: append(defaultVolumeMounts, logosVolumeMounts...),
+								},
+							},
+							Volumes: append(defaultVolumes, logosVolumes...),
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1172,7 +1303,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 				nil,
 				tt.args.trustedCAConfigMap,
 				tt.args.sessionSecret,
-				tt.args.canMountCustomLogo,
+				tt.args.customization,
 			)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
