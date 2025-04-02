@@ -14,7 +14,7 @@ require (
 	github.com/openshift/api v0.0.0-20250320170726-75d64d71980b
 	github.com/openshift/build-machinery-go v0.0.0-20250102153059-e85a1a7ecb5c
 	github.com/openshift/client-go v0.0.0-20250125113824-8e1f0b8fa9a7
-	github.com/openshift/library-go v0.0.0-20250127111945-0f76e23726cd
+	github.com/openshift/library-go v0.0.0-20250402180609-ce2ba53fb2a4
 	github.com/spf13/cobra v1.8.1
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	gopkg.in/yaml.v2 v2.4.0
@@ -39,7 +39,6 @@ require (
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
-	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/felixge/fgprof v0.9.4 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
