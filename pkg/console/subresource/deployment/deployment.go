@@ -3,6 +3,7 @@ package deployment
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	// kube
 	appsv1 "k8s.io/api/apps/v1"
@@ -307,20 +308,32 @@ func withConsoleVolumes(
 }
 
 func withCustomLogoVolumes(volumeConfig []volumeConfig, customLogos []operatorv1.Logo) []volumeConfig {
+	if len(customLogos) == 0 {
+		return volumeConfig
+	}
+
+	// Build a map, where each key is a unique conifgmap name
 	u := map[string]string{}
-	if len(customLogos) > 0 {
-		for _, logo := range customLogos {
-			for _, theme := range logo.Themes {
-				name := theme.Source.ConfigMap.Name
-				u[name] = name
-			}
+	for _, logo := range customLogos {
+		for _, theme := range logo.Themes {
+			name := theme.Source.ConfigMap.Name
+			u[name] = name
 		}
 	}
 
-	for _, name := range u {
-		volumeConfig = append(volumeConfig, customLogoVolume(name))
+	// Convert map to a slice of unique conifg map names
+	keys := []string{}
+	for k := range u {
+		keys = append(keys, k)
 	}
 
+	// Sort for idempotency
+	slices.Sort(keys)
+
+	// Add each to volume config
+	for _, name := range keys {
+		volumeConfig = append(volumeConfig, customLogoVolume(name))
+	}
 	return volumeConfig
 }
 
