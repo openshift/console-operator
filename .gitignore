@@ -14,6 +14,9 @@ tmp/_test
 
 # local dev scripts not intended for general use
 dev_*
+!vendor/golang.org/x/sys/unix/dev_aix_ppc.go
+!vendor/golang.org/x/sys/unix/dev_aix_ppc64.go
+!vendor/golang.org/x/sys/unix/dev_zos.go
 
 # local dev yamls not intended for general use (likely paired with above dev scripts)
 examples_dev/
