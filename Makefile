@@ -3,7 +3,6 @@ all: build
 
 # Include the library makefile
 include $(addprefix ./vendor/github.com/openshift/build-machinery-go/make/, \
-    golang.mk \
     targets/openshift/deps-gomod.mk \
     targets/openshift/images.mk \
     targets/openshift/bindata.mk \
@@ -36,18 +35,29 @@ $(call build-image,ocp-console-operator,$(IMAGE_REGISTRY)/ocp/4.5:console-operat
 # $3 - manifests directory
 $(call add-profile-manifests,manifests,./profile-patches,./manifests)
 
-GO_TEST_PACKAGES :=./pkg/... ./cmd/...
+GO_UNIT_TEST_PACKAGES :=./pkg/... ./cmd/...
 
+# Run tests
 test: test-unit test-e2e
-.PHONY: test
 
-test-unit:
+test-unit: install-go-junit-report
+	./test-unit.sh PKG=$(GO_UNIT_TEST_PACKAGES)
 .PHONY: test-unit
 
-test-e2e:
-	KUBERNETES_CONFIG=${KUBECONFIG} go test -timeout 30m -v ./test/e2e/
+test-e2e: install-go-junit-report
+	./test-e2e.sh
 .PHONY: test-e2e
 
+# Automatically install go-junit-report if not found
+GO_JUNIT_REPORT := $(shell command -v go-junit-report 2> /dev/null)
+install-go-junit-report:
+ifndef GO_JUNIT_REPORT
+	@echo "Installing go-junit-report..."
+	go install -mod= github.com/jstemmer/go-junit-report@latest
+else
+	@echo "go-junit-report already installed."
+	go-junit-report --version
+endif
 
 # Remove all build artifacts.
 #
