@@ -115,22 +115,21 @@ func TestCustomBrand(t *testing.T) {
 			t.Fatalf("could not clear customizations from operator config (%s)", err)
 		}
 
-		// TODO re-enable this check once https://issues.redhat.com/browse/OCPBUGS-54780 is fixed
-		// 	t.Logf("ensure that the %s configmap is no longer synced to 'openshift-console' namespace", suite.customLogoConfigMapName)
-		// 	err = wait.Poll(pollFrequency, pollStandardMax, func() (stop bool, err error) {
-		// 		_, err = framework.GetCustomLogoConfigMap(client, suite.customLogoConfigMapName)
-		// 		if apiErrors.IsNotFound(err) {
-		// 			return true, nil
-		// 		}
-		// 		if err != nil {
-		// 			return false, err
-		// 		}
-		// 		// Try until timeout
-		// 		return false, nil
-		// 	})
-		// 	if err != nil {
-		// 		t.Fatalf("timed out checking for configmap '%s' in 'openshift-console'", suite.customLogoConfigMapName)
-		// 	}
+		t.Logf("ensure that the %s configmap is no longer synced to 'openshift-console' namespace", suite.customLogoConfigMapName)
+		err = wait.Poll(pollFrequency, pollStandardMax, func() (stop bool, err error) {
+			_, err = framework.GetCustomLogoConfigMap(client, suite.customLogoConfigMapName)
+			if apiErrors.IsNotFound(err) {
+				return true, nil
+			}
+			if err != nil {
+				return false, err
+			}
+			// Try until timeout
+			return false, nil
+		})
+		if err != nil {
+			t.Fatalf("configmap '%s' was orphaned in 'openshift-console' namespace", suite.customLogoConfigMapName)
+		}
 	}
 }
 

@@ -102,8 +102,9 @@ type trackables struct {
 	// used to keep track of OLM capability
 	isOLMDisabled bool
 	// track organization ID and mail
-	organizationID string
-	accountMail    string
+	organizationID       string
+	accountMail          string
+	customLogoConfigMaps []string
 }
 
 func NewConsoleOperator(
