@@ -26,13 +26,51 @@ const (
 )
 
 var (
-	expectedCSP = map[consolev1.DirectiveType][]string{
+	expectedCSPSinglePlugin = map[consolev1.DirectiveType][]string{
+		consolev1.ConnectSrc: {"connect1"},
+		consolev1.DefaultSrc: {"source1", "source2"},
+		consolev1.ImgSrc:     {"image1"},
+	}
+
+	pluginCSPSinglePlugin = map[string][]consolev1.ConsolePluginCSP{
+		fmt.Sprintf("%s-1", availablePluginName): {
+			{Directive: consolev1.ConnectSrc, Values: []consolev1.CSPDirectiveValue{"connect1"}},
+			{Directive: consolev1.DefaultSrc, Values: []consolev1.CSPDirectiveValue{"source1", "source2"}},
+			{Directive: consolev1.ImgSrc, Values: []consolev1.CSPDirectiveValue{"image1"}},
+		},
+	}
+
+	expectedCSPMultiplePluginsWithoutCSP = map[consolev1.DirectiveType][]string{
+		consolev1.DefaultSrc: {"source1", "source2"},
+	}
+
+	pluginCSPMultiplePluginsWithoutCSP = map[string][]consolev1.ConsolePluginCSP{
+		fmt.Sprintf("%s-1", availablePluginName): {
+			{Directive: consolev1.DefaultSrc, Values: []consolev1.CSPDirectiveValue{"source1", "source2"}},
+		},
+		fmt.Sprintf("%s-2", availablePluginName): {},
+	}
+
+	expectedCSPMultiplePlugins = map[consolev1.DirectiveType][]string{
+		consolev1.DefaultSrc: {"source1", "source2", "source3", "source4"},
+	}
+
+	pluginCSPMultiplePlugins = map[string][]consolev1.ConsolePluginCSP{
+		fmt.Sprintf("%s-1", availablePluginName): {
+			{Directive: consolev1.DefaultSrc, Values: []consolev1.CSPDirectiveValue{"source1", "source2"}},
+		},
+		fmt.Sprintf("%s-2", availablePluginName): {
+			{Directive: consolev1.DefaultSrc, Values: []consolev1.CSPDirectiveValue{"source3", "source4"}},
+		},
+	}
+
+	expectedCSPMultiplePluginsWithDuplicates = map[consolev1.DirectiveType][]string{
 		consolev1.DefaultSrc: {"source1", "source2", "source3"},
 		consolev1.StyleSrc:   {"style1", "style2"},
 		consolev1.ImgSrc:     {"image1"},
 	}
 
-	pluginCSPs = map[string][]consolev1.ConsolePluginCSP{
+	pluginCSPMultiplePluginsWithDuplicates = map[string][]consolev1.ConsolePluginCSP{
 		fmt.Sprintf("%s-1", availablePluginName): {
 			{Directive: consolev1.DefaultSrc, Values: []consolev1.CSPDirectiveValue{"source1", "source2"}},
 			{Directive: consolev1.StyleSrc, Values: []consolev1.CSPDirectiveValue{"style1", "style2"}},
@@ -41,6 +79,36 @@ var (
 			{Directive: consolev1.DefaultSrc, Values: []consolev1.CSPDirectiveValue{"source2", "source3"}},
 			{Directive: consolev1.StyleSrc, Values: []consolev1.CSPDirectiveValue{"style1"}},
 			{Directive: consolev1.ImgSrc, Values: []consolev1.CSPDirectiveValue{"image1"}},
+		},
+	}
+
+	expectedCSPMultiplePluginsWithMutualExclusion = map[consolev1.DirectiveType][]string{
+		consolev1.ConnectSrc: {"connect1"},
+		consolev1.DefaultSrc: {"source1"},
+		consolev1.FontSrc:    {"font1"},
+		consolev1.ImgSrc:     {"image1"},
+		consolev1.ScriptSrc:  {"script1"},
+		consolev1.StyleSrc:   {"style1"},
+	}
+
+	pluginCSPMultiplePluginsWithMutualExclusion = map[string][]consolev1.ConsolePluginCSP{
+		fmt.Sprintf("%s-1", availablePluginName): {
+			{Directive: consolev1.ConnectSrc, Values: []consolev1.CSPDirectiveValue{"connect1"}},
+		},
+		fmt.Sprintf("%s-2", availablePluginName): {
+			{Directive: consolev1.DefaultSrc, Values: []consolev1.CSPDirectiveValue{"source1"}},
+		},
+		fmt.Sprintf("%s-3", availablePluginName): {
+			{Directive: consolev1.FontSrc, Values: []consolev1.CSPDirectiveValue{"font1"}},
+		},
+		fmt.Sprintf("%s-4", availablePluginName): {
+			{Directive: consolev1.ImgSrc, Values: []consolev1.CSPDirectiveValue{"image1"}},
+		},
+		fmt.Sprintf("%s-5", availablePluginName): {
+			{Directive: consolev1.ScriptSrc, Values: []consolev1.CSPDirectiveValue{"script1"}},
+		},
+		fmt.Sprintf("%s-6", availablePluginName): {
+			{Directive: consolev1.StyleSrc, Values: []consolev1.CSPDirectiveValue{"style1"}},
 		},
 	}
 )
@@ -62,7 +130,7 @@ func cleanupTestCase(t *testing.T, client *framework.ClientSet, defaultPlugins, 
 }
 
 // TestPluginsCSPAggregation verifies correct CSP aggregation from multiple plugins.
-func TestPluginsCSPAggregation(t *testing.T) {
+func TestPluginsCSPSinglePlugin(t *testing.T) {
 	client, defaultPlugins := setupTestCase(t)
 
 	isFeatureGateSet := framework.IsFeatureGateSet(t, client)
@@ -70,16 +138,82 @@ func TestPluginsCSPAggregation(t *testing.T) {
 		t.Skip("Feature gate not set, skipping test")
 	}
 
-	defer cleanupTestCase(t, client, defaultPlugins, defaultPlugins)
+	defer cleanupTestCase(t, client, defaultPlugins, maps.Keys(pluginCSPSinglePlugin))
 
-	for name, csp := range pluginCSPs {
+	for name, csp := range pluginCSPSinglePlugin {
 		createConsolePlugin(t, client, getPlugin(name, csp))
 	}
-	setOperatorConfigPlugins(t, client, maps.Keys(pluginCSPs))
-	verifyConsoleConfigCSP(t, client, expectedCSP)
+	setOperatorConfigPlugins(t, client, maps.Keys(pluginCSPSinglePlugin))
+	verifyConsoleConfigCSP(t, client, expectedCSPSinglePlugin)
 }
 
-// TestAddPlugins tests addition of available and unavailable plugins.
+func TestPluginsCSPMultiplePluginsWithoutCSP(t *testing.T) {
+	client, defaultPlugins := setupTestCase(t)
+
+	isFeatureGateSet := framework.IsFeatureGateSet(t, client)
+	if !isFeatureGateSet {
+		t.Skip("Feature gate not set, skipping test")
+	}
+
+	defer cleanupTestCase(t, client, defaultPlugins, maps.Keys(pluginCSPMultiplePluginsWithoutCSP))
+
+	for name, csp := range pluginCSPMultiplePluginsWithoutCSP {
+		createConsolePlugin(t, client, getPlugin(name, csp))
+	}
+	setOperatorConfigPlugins(t, client, maps.Keys(pluginCSPMultiplePluginsWithoutCSP))
+	verifyConsoleConfigCSP(t, client, expectedCSPMultiplePluginsWithoutCSP)
+}
+
+func TestPluginsCSPMultiplePlugins(t *testing.T) {
+	client, defaultPlugins := setupTestCase(t)
+
+	isFeatureGateSet := framework.IsFeatureGateSet(t, client)
+	if !isFeatureGateSet {
+		t.Skip("Feature gate not set, skipping test")
+	}
+
+	defer cleanupTestCase(t, client, defaultPlugins, maps.Keys(pluginCSPMultiplePlugins))
+
+	for name, csp := range pluginCSPMultiplePlugins {
+		createConsolePlugin(t, client, getPlugin(name, csp))
+	}
+	setOperatorConfigPlugins(t, client, maps.Keys(pluginCSPMultiplePlugins))
+	verifyConsoleConfigCSP(t, client, expectedCSPMultiplePlugins)
+}
+
+func TestPluginsCSPMultiplePluginsWithDuplicates(t *testing.T) {
+	client, defaultPlugins := setupTestCase(t)
+
+	isFeatureGateSet := framework.IsFeatureGateSet(t, client)
+	if !isFeatureGateSet {
+		t.Skip("Feature gate not set, skipping test")
+	}
+
+	defer cleanupTestCase(t, client, defaultPlugins, maps.Keys(pluginCSPMultiplePluginsWithDuplicates))
+
+	for name, csp := range pluginCSPMultiplePluginsWithDuplicates {
+		createConsolePlugin(t, client, getPlugin(name, csp))
+	}
+	setOperatorConfigPlugins(t, client, maps.Keys(pluginCSPMultiplePluginsWithDuplicates))
+	verifyConsoleConfigCSP(t, client, expectedCSPMultiplePluginsWithDuplicates)
+}
+func TestPluginsCSPMultiplePluginsWithMutualExclusion(t *testing.T) {
+	client, defaultPlugins := setupTestCase(t)
+
+	isFeatureGateSet := framework.IsFeatureGateSet(t, client)
+	if !isFeatureGateSet {
+		t.Skip("Feature gate not set, skipping test")
+	}
+
+	defer cleanupTestCase(t, client, defaultPlugins, maps.Keys(pluginCSPMultiplePluginsWithMutualExclusion))
+
+	for name, csp := range pluginCSPMultiplePluginsWithMutualExclusion {
+		createConsolePlugin(t, client, getPlugin(name, csp))
+	}
+	setOperatorConfigPlugins(t, client, maps.Keys(pluginCSPMultiplePluginsWithMutualExclusion))
+	verifyConsoleConfigCSP(t, client, expectedCSPMultiplePluginsWithMutualExclusion)
+}
+
 func TestAddPlugins(t *testing.T) {
 	expectedPlugins := map[string]string{availablePluginName: expectedPluginServiceEndpoint}
 	expectedI18nNamespaces := []string{expectedPluginNamespace}
