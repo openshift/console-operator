@@ -23,10 +23,12 @@ spec:
         To view the details of your sample application:
         
         1. Go to the project your sample application was created in.
-        
-        1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation, and select **Developer**.
-        
-        1. In the navigation menu, click [Topology]{{highlight qs-nav-topology}}.
+
+        1. If present click on the [perspective switcher]{{highlight
+          qs-perspective-switcher}} at the top of the navigation, and select
+          **Administrator**.
+
+        1. In the main navigation menu, select [Workloads]{{highlight qs-nav-workloads}} and select **Topology**.
 
         1. Click on the **nodejs-basic** deployment to view its details.
 

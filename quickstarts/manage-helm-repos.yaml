@@ -66,11 +66,9 @@ spec:
         instructions: >-
           Verify that the HelmChartRepository was successfully installed:
 
-          1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation, and select **Developer**.
+          1. In the main navigation menu, select [Home]{{highlight qs-nav-home}} and select **Software Catalog**.
 
-          1. In the navigation menu, click [Add]{{highlight qs-nav-add}}.
-          
-          1. On the **+Add** page, click **Helm Chart**. 
+          1. On the **Software Catalog** page, click **Helm Charts** in the **Type** filter.
           
           1. Confirm that the **azure-sample-repo** is an available catalog.
 
