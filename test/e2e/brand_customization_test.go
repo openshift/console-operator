@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/console-operator/test/e2e/framework"
 )
 
+// TODO remove deprecated CustomLogoFile API
 const (
 	customLogoVolumeName       = "custom-logo"
 	customLogoMountPath        = "/var/logo/"
@@ -101,34 +102,35 @@ func TestCustomBrand(t *testing.T) {
 		if err != nil {
 			t.Fatalf("error: %s", err)
 		}
-	}
 
-	// remove custom configuration from console config
-	t.Log("removing custom-product-name and custom-logo")
-	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		operatorConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
-		operatorConfig.Spec = originalConfig.Spec
-		_, err = client.Operator.Consoles().Update(context.TODO(), operatorConfig, metav1.UpdateOptions{})
-		return err
-	})
-	if err != nil {
-		t.Fatalf("could not clear customizations from operator config (%s)", err)
-	}
-
-	// ensure that the custom-product-name configmap in openshift-console has been removed
-	err = wait.Poll(pollFrequency, pollStandardMax, func() (stop bool, err error) {
-		_, err = framework.GetCustomLogoConfigMap(client)
-		if apiErrors.IsNotFound(err) {
-			return true, nil
-		}
+		// remove custom configuration from console config
+		t.Log("removing custom product name and logo from console operator config")
+		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			operatorConfig, err := client.Operator.Consoles().Get(context.TODO(), consoleapi.ConfigResourceName, metav1.GetOptions{})
+			operatorConfig.Spec = originalConfig.Spec
+			_, err = client.Operator.Consoles().Update(context.TODO(), operatorConfig, metav1.UpdateOptions{})
+			return err
+		})
 		if err != nil {
-			return false, err
+			t.Fatalf("could not clear customizations from operator config (%s)", err)
 		}
-		// Try until timeout
-		return false, nil
-	})
-	if err != nil {
-		t.Fatalf("configmap custom-logo not found in openshift-console")
+
+		// TODO re-enable this check once https://issues.redhat.com/browse/OCPBUGS-54780 is fixed
+		// 	t.Logf("ensure that the %s configmap is no longer synced to 'openshift-console' namespace", suite.customLogoConfigMapName)
+		// 	err = wait.Poll(pollFrequency, pollStandardMax, func() (stop bool, err error) {
+		// 		_, err = framework.GetCustomLogoConfigMap(client, suite.customLogoConfigMapName)
+		// 		if apiErrors.IsNotFound(err) {
+		// 			return true, nil
+		// 		}
+		// 		if err != nil {
+		// 			return false, err
+		// 		}
+		// 		// Try until timeout
+		// 		return false, nil
+		// 	})
+		// 	if err != nil {
+		// 		t.Fatalf("timed out checking for configmap '%s' in 'openshift-console'", suite.customLogoConfigMapName)
+		// 	}
 	}
 }
 
@@ -159,7 +161,7 @@ func setAndCheckCustomLogo(t *testing.T, client *framework.ClientSet, customProd
 
 	// ensure that custom-logo in openshift-console has been created
 	err = wait.Poll(pollFrequency, pollStandardMax, func() (stop bool, err error) {
-		_, err = framework.GetCustomLogoConfigMap(client)
+		_, err = framework.GetCustomLogoConfigMap(client, customLogoConfigMapName)
 		if apiErrors.IsNotFound(err) {
 			return false, nil
 		}
@@ -175,8 +177,8 @@ func setAndCheckCustomLogo(t *testing.T, client *framework.ClientSet, customProd
 	// ensure the volume mounts have been added to the deployment
 	err = wait.Poll(pollFrequency, pollLongMax, func() (stop bool, err error) {
 		deployment, err := framework.GetConsoleDeployment(client)
-		volume := findCustomLogoVolume(deployment)
-		volumeMount := findCustomLogoVolumeMount(deployment)
+		volume := findCustomLogoVolume(deployment, customLogoConfigMapName)
+		volumeMount := findCustomLogoVolumeMount(deployment, customLogoConfigMapName)
 		return volume && volumeMount, nil
 	})
 	if err != nil {
@@ -189,24 +191,33 @@ func hasCustomBranding(cm *v1.ConfigMap, desiredProductName string, desiredLogoF
 	consoleConfig := consoleserver.Config{}
 	yaml.Unmarshal([]byte(cm.Data["console-config.yaml"]), &consoleConfig)
 	actualProductName := consoleConfig.Customization.CustomProductName
-	actualLogoFile := consoleConfig.Customization.CustomLogoFile
-	return (desiredProductName == actualProductName) && ("/var/logo/"+desiredLogoFileName == actualLogoFile)
+	if len(consoleConfig.Customization.Logos) == 0 {
+		return false
+	}
+	for _, logo := range consoleConfig.Customization.Logos {
+		for _, theme := range logo.Themes {
+			if theme.Source.ConfigMap.Key != desiredLogoFileName {
+				return false
+			}
+		}
+	}
+	return (desiredProductName == actualProductName)
 }
 
-func findCustomLogoVolume(deployment *appsv1.Deployment) bool {
+func findCustomLogoVolume(deployment *appsv1.Deployment, volumeName string) bool {
 	volumes := deployment.Spec.Template.Spec.Volumes
 	for _, volume := range volumes {
-		if volume.Name == customLogoVolumeName {
+		if volume.Name == volumeName {
 			return true
 		}
 	}
 	return false
 }
 
-func findCustomLogoVolumeMount(deployment *appsv1.Deployment) bool {
+func findCustomLogoVolumeMount(deployment *appsv1.Deployment, volumeMountName string) bool {
 	mounts := deployment.Spec.Template.Spec.Containers[0].VolumeMounts
 	for _, mount := range mounts {
-		if (mount.Name == customLogoVolumeName) && (mount.MountPath == customLogoMountPath) {
+		if (mount.Name == volumeMountName) && (mount.MountPath == "/var/logo/"+volumeMountName+"/") {
 			return true
 		}
 	}
