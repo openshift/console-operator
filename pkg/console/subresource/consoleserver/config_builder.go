@@ -18,11 +18,10 @@ import (
 )
 
 const (
+	certFilePath             = "/var/serving-cert/tls.crt" // serving info
 	clientSecretFilePath     = "/var/oauth-config/clientSecret"
+	keyFilePath              = "/var/serving-cert/tls.key"
 	oauthServingCertFilePath = "/var/oauth-serving-cert/ca-bundle.crt"
-	// serving info
-	certFilePath = "/var/serving-cert/tls.crt"
-	keyFilePath  = "/var/serving-cert/tls.key"
 )
 
 // ConsoleServerCLIConfigBuilder
@@ -42,42 +41,42 @@ const (
 //
 //	b.Host().Brand("").Config()
 type ConsoleServerCLIConfigBuilder struct {
-	host                         string
-	logoutRedirectURL            string
-	brand                        operatorv1.Brand
-	docURL                       string
+	addPage                      operatorv1.AddPage
 	apiServerURL                 string
+	authType                     string
+	brand                        operatorv1.Brand
+	CAFile                       string
+	capabilities                 []operatorv1.Capability
+	contentSecurityPolicyEnabled bool
+	contentSecurityPolicyList    map[v1.DirectiveType][]string
 	controlPlaneToplogy          configv1.TopologyMode
-	statusPageID                 string
+	copiedCSVsDisabled           bool
+	customHostnameRedirectPort   int
 	customProductName            string
 	devCatalogCustomization      operatorv1.DeveloperConsoleCatalogCustomization
-	projectAccess                operatorv1.ProjectAccess
-	quickStarts                  operatorv1.QuickStarts
-	addPage                      operatorv1.AddPage
-	perspectives                 []operatorv1.Perspective
-	customLogoFile               string
-	CAFile                       string
-	monitoring                   map[string]string
-	customHostnameRedirectPort   int
-	inactivityTimeoutSeconds     int
-	pluginsList                  map[string]string
+	docURL                       string
+	host                         string
 	i18nNamespaceList            []string
-	proxyServices                []ProxyService
-	telemetry                    map[string]string
-	releaseVersion               string
+	inactivityTimeoutSeconds     int
+	logos                        []operatorv1.Logo
+	logoutRedirectURL            string
+	monitoring                   map[string]string
 	nodeArchitectures            []string
 	nodeOperatingSystems         []string
-	copiedCSVsDisabled           bool
 	oauthClientID                string
 	oidcExtraScopes              []string
 	oidcIssuerURL                string
 	oidcOCLoginCommand           string
-	authType                     string
-	sessionEncryptionFile        string
+	perspectives                 []operatorv1.Perspective
+	pluginsList                  map[string]string
+	projectAccess                operatorv1.ProjectAccess
+	proxyServices                []ProxyService
+	quickStarts                  operatorv1.QuickStarts
+	releaseVersion               string
 	sessionAuthenticationFile    string
-	capabilities                 []operatorv1.Capability
-	contentSecurityPolicyEnabled bool
-	contentSecurityPolicyList    map[v1.DirectiveType][]string
+	sessionEncryptionFile        string
+	statusPageID                 string
+	telemetry                    map[string]string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -128,9 +127,40 @@ func (b *ConsoleServerCLIConfigBuilder) Perspectives(perspectives []operatorv1.P
 	b.perspectives = perspectives
 	return b
 }
-func (b *ConsoleServerCLIConfigBuilder) CustomLogoFile(customLogoFile string) *ConsoleServerCLIConfigBuilder {
-	if customLogoFile != "" {
-		b.customLogoFile = "/var/logo/" + customLogoFile // append path here to prevent customLogoFile from always being just /var/logo/
+
+// TODO Remove deprecated CustomLogoFile API.
+func (b *ConsoleServerCLIConfigBuilder) CustomLogoFile(customLogoFile configv1.ConfigMapFileReference) *ConsoleServerCLIConfigBuilder {
+	if customLogoFile.Key != "" && customLogoFile.Name != "" {
+		configMapReference := operatorv1.ConfigMapFileReference(customLogoFile)
+		b.logos = []operatorv1.Logo{
+			{
+				Type: operatorv1.LogoTypeMasthead,
+				Themes: []operatorv1.Theme{
+					{
+						Mode: operatorv1.ThemeModeDark,
+						Source: operatorv1.FileReferenceSource{
+							From:      "ConfigMap",
+							ConfigMap: &configMapReference,
+						},
+					},
+					{
+						Mode: operatorv1.ThemeModeLight,
+						Source: operatorv1.FileReferenceSource{
+							From:      "ConfigMap",
+							ConfigMap: &configMapReference,
+						},
+					},
+				},
+			},
+		}
+	}
+	return b
+}
+
+// Update/replace this function
+func (b *ConsoleServerCLIConfigBuilder) CustomLogos(customLogos []operatorv1.Logo) *ConsoleServerCLIConfigBuilder {
+	if len(customLogos) > 0 {
+		b.logos = customLogos
 	}
 	return b
 }
@@ -254,20 +284,20 @@ func (b *ConsoleServerCLIConfigBuilder) CopiedCSVsDisabled(copiedCSVsDisabled bo
 
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
-		Kind:                         "ConsoleConfig",
 		APIVersion:                   "console.openshift.io/v1",
 		Auth:                         b.auth(),
-		Session:                      b.session(),
 		ClusterInfo:                  b.clusterInfo(),
-		Customization:                b.customization(),
-		ServingInfo:                  b.servingInfo(),
-		Providers:                    b.providers(),
-		MonitoringInfo:               b.monitoringInfo(),
-		Plugins:                      b.plugins(),
-		I18nNamespaces:               b.i18nNamespaces(),
-		Proxy:                        b.proxy(),
 		ContentSecurityPolicy:        b.contentSecurityPolicy(),
 		ContentSecurityPolicyEnabled: b.getContentSecurityPolicyEnabled(),
+		Customization:                b.customization(),
+		I18nNamespaces:               b.i18nNamespaces(),
+		Kind:                         "ConsoleConfig",
+		MonitoringInfo:               b.monitoringInfo(),
+		Plugins:                      b.plugins(),
+		Providers:                    b.providers(),
+		Proxy:                        b.proxy(),
+		ServingInfo:                  b.servingInfo(),
+		Session:                      b.session(),
 		Telemetry:                    b.telemetry,
 	}
 }
@@ -359,12 +389,12 @@ func (b *ConsoleServerCLIConfigBuilder) auth() Auth {
 	}
 	conf := Auth{
 		AuthType:                 b.authType,
-		OIDCIssuer:               b.oidcIssuerURL,
 		ClientID:                 clientID,
 		ClientSecretFile:         clientSecretFilePath,
-		OAuthEndpointCAFile:      b.CAFile,
 		InactivityTimeoutSeconds: b.inactivityTimeoutSeconds,
+		OAuthEndpointCAFile:      b.CAFile,
 		OIDCExtraScopes:          b.oidcExtraScopes,
+		OIDCIssuer:               b.oidcIssuerURL,
 		OIDCOCLoginCommand:       b.oidcOCLoginCommand,
 	}
 	if len(b.logoutRedirectURL) > 0 {
@@ -395,8 +425,8 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 	if len(b.customProductName) > 0 {
 		conf.CustomProductName = b.customProductName
 	}
-	if len(b.customLogoFile) > 0 {
-		conf.CustomLogoFile = b.customLogoFile
+	if len(b.logos) > 0 {
+		conf.Logos = b.logos
 	}
 
 	if b.devCatalogCustomization.Categories != nil {

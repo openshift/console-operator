@@ -992,21 +992,21 @@ func TestConsoleServerCLIConfigBuilderYAML(t *testing.T) {
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+clusterInfo: {}
 customization:
   perspectives:
   - id: dev
     visibility:
       state: Disabled
 providers: {}
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+session: {}
 `,
 		},
 		{
@@ -1037,24 +1037,24 @@ providers: {}
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-clusterInfo: {}
 auth:
   authType: oidc
   clientID: testing-id
   clientSecretFile: /var/oauth-config/clientSecret
-session:
-  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
-  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+clusterInfo: {}
 customization:
   perspectives:
   - id: dev
     visibility:
       state: Disabled
 providers: {}
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+session:
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
 `,
 		},
 		{
@@ -1070,26 +1070,26 @@ providers: {}
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-clusterInfo:
-  consoleBaseAddress: https://foobar.com/host
-  masterPublicURL: https://foobar.com/api
 auth:
   authType: openshift
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
   logoutRedirect: https://foobar.com/logout
-session: {}
+  oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
+clusterInfo:
+  consoleBaseAddress: https://foobar.com/host
+  masterPublicURL: https://foobar.com/api
 customization:
   perspectives:
   - id: dev
     visibility:
       state: Disabled
 providers: {}
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+session: {}
 `,
 		},
 		{
@@ -1100,15 +1100,10 @@ providers: {}
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+clusterInfo: {}
 customization:
   perspectives:
   - id: dev
@@ -1116,6 +1111,11 @@ customization:
       state: Disabled
 providers:
   statuspageID: status-12345
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+session: {}
 `,
 		},
 		{
@@ -1127,21 +1127,21 @@ providers:
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+clusterInfo: {}
 customization:
   perspectives:
   - id: dev
     visibility:
       state: Disabled
 providers: {}
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+session: {}
 `,
 		},
 		{
@@ -1155,15 +1155,10 @@ providers: {}
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+clusterInfo: {}
 customization:
   developerCatalog:
     categories: []
@@ -1173,6 +1168,11 @@ customization:
     visibility:
       state: Disabled
 providers: {}
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+session: {}
 `,
 		},
 		{
@@ -1207,15 +1207,10 @@ providers: {}
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+clusterInfo: {}
 customization:
   developerCatalog:
     categories:
@@ -1238,6 +1233,11 @@ customization:
     visibility:
       state: Disabled
 providers: {}
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+session: {}
 `,
 		},
 		{
@@ -1251,28 +1251,28 @@ providers: {}
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+clusterInfo: {}
 customization:
   developerCatalog:
     categories: null
     types:
-      state: Disabled
       disabled:
       - type1
       - type2
+      state: Disabled
   perspectives:
   - id: dev
     visibility:
       state: Disabled
 providers: {}
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+session: {}
 `,
 		},
 		{
@@ -1286,26 +1286,26 @@ providers: {}
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+clusterInfo: {}
 customization:
   developerCatalog:
     categories: null
     types:
-      state: Enabled
       enabled: []
+      state: Enabled
   perspectives:
   - id: dev
     visibility:
       state: Disabled
 providers: {}
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+session: {}
 `,
 		},
 		{
@@ -1322,15 +1322,10 @@ providers: {}
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+clusterInfo: {}
 customization:
   addPage:
     disabledActions:
@@ -1341,6 +1336,11 @@ customization:
     visibility:
       state: Disabled
 providers: {}
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+session: {}
 `,
 		},
 		{
@@ -1364,19 +1364,13 @@ providers: {}
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-  redirectPort: ` + strconv.Itoa(api.RedirectContainerPort) + `
-clusterInfo:
-  masterPublicURL: https://foobar.com/api
 auth:
   authType: disabled
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
   logoutRedirect: https://foobar.com/logout
-session: {}
+clusterInfo:
+  masterPublicURL: https://foobar.com/api
 customization:
   branding: okd
   documentationBaseURL: https://foobar.com/docs
@@ -1384,13 +1378,19 @@ customization:
   - id: dev
     visibility:
       state: Disabled
-providers:
-  statuspageID: status-12345
+i18nNamespaces:
+- plugin__plugin1
 plugins:
   plugin1: plugin1_url
   plugin2: plugin2_url
-i18nNamespaces:
-- plugin__plugin1
+providers:
+  statuspageID: status-12345
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+  redirectPort: ` + strconv.Itoa(api.RedirectContainerPort) + `
+session: {}
 `,
 		},
 		{
@@ -1407,25 +1407,25 @@ i18nNamespaces:
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+clusterInfo: {}
 customization:
-  quickStarts:
-    disabled:
-    - quickStarts0
-    - quickStarts1
   perspectives:
   - id: dev
     visibility:
       state: Disabled
+  quickStarts:
+    disabled:
+    - quickStarts0
+    - quickStarts1
 providers: {}
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+session: {}
 `,
 		},
 		{
@@ -1453,31 +1453,15 @@ providers: {}
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+clusterInfo: {}
 customization:
   perspectives:
   - id: perspective1
     visibility:
-      state: AccessReview
       accessReview:
-        required:
-        - namespace: ""
-          verb: list
-          group: ""
-          version: ""
-          resource: namespaces
-          subresource: ""
-          name: ""
-          fieldselector: null
-          labelselector: null
         missing:
         - namespace: ""
           verb: list
@@ -1488,10 +1472,26 @@ customization:
           name: ""
           fieldselector: null
           labelselector: null
+        required:
+        - namespace: ""
+          verb: list
+          group: ""
+          version: ""
+          resource: namespaces
+          subresource: ""
+          name: ""
+          fieldselector: null
+          labelselector: null
+      state: AccessReview
   - id: perspective2
     visibility:
       state: Disabled
 providers: {}
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+session: {}
 `,
 		},
 		{
@@ -1523,31 +1523,22 @@ providers: {}
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+clusterInfo: {}
 customization:
   perspectives:
   - id: perspective1
+    pinnedResources:
+    - group: apps
+      version: v1
+      resource: deployments
+    - group: ""
+      version: v1
+      resource: configmaps
     visibility:
-      state: AccessReview
       accessReview:
-        required:
-        - namespace: ""
-          verb: list
-          group: ""
-          version: ""
-          resource: namespaces
-          subresource: ""
-          name: ""
-          fieldselector: null
-          labelselector: null
         missing:
         - namespace: ""
           verb: list
@@ -1558,17 +1549,26 @@ customization:
           name: ""
           fieldselector: null
           labelselector: null
-    pinnedResources:
-    - group: apps
-      version: v1
-      resource: deployments
-    - group: ""
-      version: v1
-      resource: configmaps
+        required:
+        - namespace: ""
+          verb: list
+          group: ""
+          version: ""
+          resource: namespaces
+          subresource: ""
+          name: ""
+          fieldselector: null
+          labelselector: null
+      state: AccessReview
   - id: perspective2
     visibility:
       state: Disabled
 providers: {}
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+session: {}
 `,
 		},
 		{
@@ -1597,31 +1597,16 @@ providers: {}
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+clusterInfo: {}
 customization:
   perspectives:
   - id: perspective1
+    pinnedResources: []
     visibility:
-      state: AccessReview
       accessReview:
-        required:
-        - namespace: ""
-          verb: list
-          group: ""
-          version: ""
-          resource: namespaces
-          subresource: ""
-          name: ""
-          fieldselector: null
-          labelselector: null
         missing:
         - namespace: ""
           verb: list
@@ -1632,11 +1617,26 @@ customization:
           name: ""
           fieldselector: null
           labelselector: null
-    pinnedResources: []
+        required:
+        - namespace: ""
+          verb: list
+          group: ""
+          version: ""
+          resource: namespaces
+          subresource: ""
+          name: ""
+          fieldselector: null
+          labelselector: null
+      state: AccessReview
   - id: perspective2
     visibility:
       state: Disabled
 providers: {}
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+session: {}
 `,
 		},
 		{
@@ -1651,21 +1651,21 @@ providers: {}
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+clusterInfo: {}
 customization:
   perspectives:
   - id: dev
     visibility:
       state: Disabled
 providers: {}
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+session: {}
 telemetry:
   a-boolean-as-string: "false"
   a-key: a-value
@@ -1687,25 +1687,25 @@ telemetry:
 			},
 			output: `apiVersion: console.openshift.io/v1
 kind: ConsoleConfig
-servingInfo:
-  bindAddress: https://[::]:8443
-  certFile: /var/serving-cert/tls.crt
-  keyFile: /var/serving-cert/tls.key
-clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+clusterInfo: {}
 customization:
-  perspectives:
-  - id: dev
-    visibility:
-      state: Disabled
   capabilities:
   - name: LightspeedButton
     visibility:
       state: Enabled
+  perspectives:
+  - id: dev
+    visibility:
+      state: Disabled
 providers: {}
+servingInfo:
+  bindAddress: https://[::]:8443
+  certFile: /var/serving-cert/tls.crt
+  keyFile: /var/serving-cert/tls.key
+session: {}
 `,
 		},
 	}

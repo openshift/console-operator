@@ -102,8 +102,9 @@ type trackables struct {
 	// used to keep track of OLM capability
 	isOLMDisabled bool
 	// track organization ID and mail
-	organizationID string
-	accountMail    string
+	organizationID       string
+	accountMail          string
+	customLogoConfigMaps []string
 }
 
 func NewConsoleOperator(
@@ -386,7 +387,7 @@ func (c *consoleOperator) handleSync(ctx context.Context, controllerContext fact
 		return fmt.Errorf("console is in an unknown state: %v", updatedStatus.Spec.ManagementState)
 	}
 
-	return c.sync_v400(ctx, controllerContext, updatedStatus, configs)
+	return c.sync(ctx, controllerContext, updatedStatus, configs)
 }
 
 // this may need to move to sync_v400 if versions ever have custom delete logic
