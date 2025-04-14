@@ -24,8 +24,8 @@ spec:
         
         1. Go to the project your sample application was created in.
 
-        1. If present click on the [perspective switcher]{{highlight
-          qs-perspective-switcher}} at the top of the navigation, and select
+        1. If present, click on the [perspective switcher]{{highlight
+          qs-perspective-switcher}} at the top of the navigation and select
           **Administrator**.
 
         1. In the main navigation menu, select [Workloads]{{highlight qs-nav-workloads}} and select **Topology**.

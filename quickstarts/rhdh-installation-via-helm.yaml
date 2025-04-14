@@ -111,7 +111,7 @@ spec:
       description: |-
         To install Red Hat Developer Hub via Helm:
 
-        1. If present click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
+        1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
         2. In the main navigation menu, select [Helm]{{highlight qs-admin-nav-helm}} and select **Releases**.
         3. If needed, switch or create a new project from the **Project dropdown**.
         4. On the **Helm Releases** page, click **Create Helm Release** button.
