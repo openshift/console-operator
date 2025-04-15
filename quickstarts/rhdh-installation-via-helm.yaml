@@ -206,7 +206,7 @@ spec:
         And this way, you can also link a single RHDH instance from multiple OpenShift clusters.
 
         1. Please copy the actual **Red Hat Developer Hub URL** from [Workloads]{{highlight qs-nav-workloads}} select **Topology**, or open it in another browser tab.
-        2. Click on the [+ plus icon]{{highlight qs-masthead-import}} button and select **Import YAML** at the top of the navigation.
+        2. Click on the [plus icon]{{highlight qs-masthead-import}} button and select **Import YAML** at the top of the navigation.
         3. **Insert the YAML** below into the YAML editor, add your Red Hat Developer Hub URL as `href`, and update the link `text` if needed.
 
             ```

@@ -111,7 +111,7 @@ spec:
       description: |-
         To install the Red Hat Developer Hub Operator:
 
-        1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
+        1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
         2. In the Administrator perspective, go to the **OperatorHub** page from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
         3. Search for **Red Hat Developer Hub**
         4. Select the card **Red Hat Developer Hub** with the **Red Hat** badge and press **Install** to open a page to install the Operator.
@@ -308,7 +308,7 @@ spec:
         This way, you can also link a single RHDH instance from multiple OpenShift clusters.
 
         1. Please copy the actual **Red Hat Developer Hub URL** from [Topology]{{highlight qs-nav-topology}}, or open it in another browser tab.
-        2. Click on the [+ plus icon]{{highlight qs-masthead-import}} button and select **Import YAML** at the top of the navigation.
+        2. Click on the [plus icon]{{highlight qs-masthead-import}} button and select **Import YAML** at the top of the navigation.
         3. **Insert the YAML** below into the YAML editor, add your Red Hat Developer Hub URL as `href`, and update the link `text` if needed.
 
             ```
