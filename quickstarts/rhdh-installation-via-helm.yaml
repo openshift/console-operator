@@ -173,7 +173,7 @@ spec:
         4. You can apply the following configuration with the Form view by clicking on **Root Schema > Global**
            or in the YAML view by applying as shown below:
 
-           ```
+        ```
         global:
           clusterRouterBase: developer-hub.example.com
           host: developer-hub.example.com
@@ -209,8 +209,8 @@ spec:
         2. Click on the [plus icon]{{highlight qs-masthead-import}} button and select **Import YAML** at the top of the navigation.
         3. **Insert the YAML** below into the YAML editor, add your Red Hat Developer Hub URL as `href`, and update the link `text` if needed.
 
-            ```
-            apiVersion: console.openshift.io/v1
+        ```
+        apiVersion: console.openshift.io/v1
         kind: ConsoleLink
         metadata:
           name: developer-hub-link
