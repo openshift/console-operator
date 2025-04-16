@@ -33,7 +33,7 @@ spec:
     - description: >-
         Follow these steps to create a HelmChartRepository CR:
 
-        1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation, and select **Administrator**.
+        1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
         
         1. In the navigation menu, click [Home]{{highlight qs-nav-home}}.
         
@@ -48,16 +48,13 @@ spec:
             ```
             apiVersion: helm.openshift.io/v1beta1
             kind: HelmChartRepository
-
             metadata:
               name: azure-sample-repo
-
             spec:
               name: azure-sample-repo
-
               connectionConfig:
                 url: https://raw.githubusercontent.com/Azure-Samples/helm-charts/master/docs
-            ```
+            ```{{copy}}
 
         1. Click **Create**.
 
