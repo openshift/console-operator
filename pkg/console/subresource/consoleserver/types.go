@@ -117,6 +117,7 @@ type Customization struct {
 	// perspectives allows enabling/disabling of perspective(s) that user can see in the Perspective switcher dropdown.
 	Perspectives []Perspective           `yaml:"perspectives,omitempty"`
 	Capabilities []operatorv1.Capability `yaml:"capabilities,omitempty"`
+	Logos        []operatorv1.Logo       `yaml:"logos,omitempty"`
 }
 
 // QuickStarts contains options for quick starts
