@@ -20,6 +20,8 @@ spec:
       description: |-
         To create a sample application:
         
+        1. As a cluster admin enable the **Developer** perspective by following the "Enable the Developer Perspective" quick start. 
+        
         1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation, and select **Developer**.
         
         1. In the navigation menu, click [Add]{{highlight qs-nav-add}}.

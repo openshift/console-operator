@@ -111,12 +111,13 @@ spec:
       description: |-
         To install Red Hat Developer Hub via Helm:
 
-        1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Developer**.
-        2. In the navigation menu, click [Add]{{highlight qs-nav-add}} and then select **Helm Chart**.
+        1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
+        2. In the main navigation menu, select [Helm]{{highlight qs-admin-nav-helm}} and select **Releases**.
         3. If needed, switch or create a new project from the **Project dropdown**.
-        4. Search for **Red Hat Developer Hub**
-        5. Select the card **Red Hat Developer Hub, Provided by Red Hat**, and press **Create** to open a page to configure the Helm Chart.
-        6. **Optional:** Change the default configuration via the form (click on Root Schema to expand the configuration) or YAML based on your needs.
+        4. On the **Helm Releases** page, click **Create Helm Release** button.
+        5. Search for **Red Hat Developer Hub**
+        6. Select the card **Red Hat Developer Hub, Provided by Red Hat**, and press **Create** to open a page to configure the Helm Chart.
+        7. **Optional:** Change the default configuration via the form (click on Root Schema to expand the configuration) or YAML based on your needs.
            
            You can update the configuration later as well.
         7. Click **Create** to install the Red Hat Developer Hub Helm Chart.
@@ -143,7 +144,7 @@ spec:
         To update your Red Hat Developer Hub installation:
 
         1. Ensure you have a **backup** of your installation.
-        2. In the navigation menu, click [Helm]{{highlight qs-nav-helm}}.
+        2. In the main navigation menu, select [Helm]{{highlight qs-admin-nav-helm}} and select **Releases**.
         3. Select your **developer-hub** Helm Release. You can see your current version under **Chart version**.
         4. Click the **Actions** menu button in the top right corner and select **Upgrade**.
         5. Switch to the **YAML view** and **save your current YAML configuration.**
@@ -154,7 +155,7 @@ spec:
         instructions: |-
           #### To verify the application was successfully upgraded:
 
-          1. Navigate back to [Helm]{{highlight qs-nav-helm}} and select your "developer-hub" Helm Release.
+          1. In the main navigation menu, select [Helm]{{highlight qs-admin-nav-helm}} and select **Releases**.
           2. Your Helm Chart should show "Deployed" again and an updated **Chart version**.
           3. The **Revision history** tab should show a new revision with the message "Upgrade complete".
         failedTaskHelp: |-
@@ -166,13 +167,13 @@ spec:
       description: |-
         To use a custom domain name, you must change some of **Helm Chart values**:
 
-        1. In the navigation menu, click [Helm]{{highlight qs-nav-helm}}.
+        1. In the main navigation menu, select [Helm]{{highlight qs-admin-nav-helm}} and select **Releases**.
         2. Select your **developer-hub** Helm Release.
         3. Click the **Actions** menu button in the top right corner and select **Upgrade**.
         4. You can apply the following configuration with the Form view by clicking on **Root Schema > Global**
            or in the YAML view by applying as shown below:
 
-           ```
+        ```
         global:
           clusterRouterBase: developer-hub.example.com
           host: developer-hub.example.com
@@ -189,7 +190,7 @@ spec:
         instructions: |-
           #### To verify the application was successfully updated:
 
-          1. Navigate to [Topology]{{highlight qs-nav-topology}}
+          1. In the main navigation menu, select [Workloads]{{highlight qs-nav-workloads}} and select **Topology**.
           2. Click on the URL decorator in the top-right corner of the "developer-hub" Deployment to open your Red Hat Developer Hub instance.
           3. Verify that the correct URL is used and the Red Hat Developer Hub installation works fine.
         failedTaskHelp: |-
@@ -204,12 +205,12 @@ spec:
         This resource is not created automatically because you can have multiple Red Hat Developer Hub installations on one cluster.
         And this way, you can also link a single RHDH instance from multiple OpenShift clusters.
 
-        1. Please copy the actual **Red Hat Developer Hub URL** from [Topology]{{highlight qs-nav-topology}}, or open it in another browser tab.
-        2. Click on the [Import YAML (plus icon)]{{highlight qs-masthead-import}} button at the top of the navigation.
+        1. Please copy the actual **Red Hat Developer Hub URL** from [Workloads]{{highlight qs-nav-workloads}} select **Topology**, or open it in another browser tab.
+        2. Click on the [plus icon]{{highlight qs-masthead-import}} button and select **Import YAML** at the top of the navigation.
         3. **Insert the YAML** below into the YAML editor, add your Red Hat Developer Hub URL as `href`, and update the link `text` if needed.
 
-            ```
-            apiVersion: console.openshift.io/v1
+        ```
+        apiVersion: console.openshift.io/v1
         kind: ConsoleLink
         metadata:
           name: developer-hub-link
