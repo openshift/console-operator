@@ -55,7 +55,6 @@ type ConsoleServerCLIConfigBuilder struct {
 	quickStarts                  operatorv1.QuickStarts
 	addPage                      operatorv1.AddPage
 	perspectives                 []operatorv1.Perspective
-	customLogoFile               string
 	CAFile                       string
 	monitoring                   map[string]string
 	customHostnameRedirectPort   int
@@ -78,6 +77,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	capabilities                 []operatorv1.Capability
 	contentSecurityPolicyEnabled bool
 	contentSecurityPolicyList    map[v1.DirectiveType][]string
+	logos                        []operatorv1.Logo
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -128,9 +128,40 @@ func (b *ConsoleServerCLIConfigBuilder) Perspectives(perspectives []operatorv1.P
 	b.perspectives = perspectives
 	return b
 }
-func (b *ConsoleServerCLIConfigBuilder) CustomLogoFile(customLogoFile string) *ConsoleServerCLIConfigBuilder {
-	if customLogoFile != "" {
-		b.customLogoFile = "/var/logo/" + customLogoFile // append path here to prevent customLogoFile from always being just /var/logo/
+
+// TODO Remove deprecated CustomLogoFile API.
+func (b *ConsoleServerCLIConfigBuilder) CustomLogoFile(customLogoFile configv1.ConfigMapFileReference) *ConsoleServerCLIConfigBuilder {
+	if customLogoFile.Key != "" && customLogoFile.Name != "" {
+		configMapReference := operatorv1.ConfigMapFileReference(customLogoFile)
+		b.logos = []operatorv1.Logo{
+			{
+				Type: operatorv1.LogoTypeMasthead,
+				Themes: []operatorv1.Theme{
+					{
+						Mode: operatorv1.ThemeModeDark,
+						Source: operatorv1.FileReferenceSource{
+							From:      "ConfigMap",
+							ConfigMap: &configMapReference,
+						},
+					},
+					{
+						Mode: operatorv1.ThemeModeLight,
+						Source: operatorv1.FileReferenceSource{
+							From:      "ConfigMap",
+							ConfigMap: &configMapReference,
+						},
+					},
+				},
+			},
+		}
+	}
+	return b
+}
+
+// Update/replace this function
+func (b *ConsoleServerCLIConfigBuilder) CustomLogos(customLogos []operatorv1.Logo) *ConsoleServerCLIConfigBuilder {
+	if len(customLogos) > 0 {
+		b.logos = customLogos
 	}
 	return b
 }
@@ -395,8 +426,8 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 	if len(b.customProductName) > 0 {
 		conf.CustomProductName = b.customProductName
 	}
-	if len(b.customLogoFile) > 0 {
-		conf.CustomLogoFile = b.customLogoFile
+	if len(b.logos) > 0 {
+		conf.Logos = b.logos
 	}
 
 	if b.devCatalogCustomization.Categories != nil {
