@@ -28,6 +28,7 @@ type Config struct {
 	Providers                    `yaml:"providers"`
 	MonitoringInfo               `yaml:"monitoringInfo,omitempty"`
 	Plugins                      map[string]string             `yaml:"plugins,omitempty"`
+	PluginsOrder                 []string                      `yaml:"pluginsOrder,omitempty"`
 	I18nNamespaces               []string                      `yaml:"i18nNamespaces,omitempty"`
 	Proxy                        Proxy                         `yaml:"proxy,omitempty"`
 	ContentSecurityPolicy        map[v1.DirectiveType][]string `yaml:"contentSecurityPolicy,omitempty"`

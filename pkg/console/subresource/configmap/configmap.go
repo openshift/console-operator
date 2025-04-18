@@ -85,6 +85,7 @@ func DefaultConfigMap(
 		TopologyMode(infrastructureConfig.Status.ControlPlaneTopology).
 		Monitoring(monitoringSharedConfig).
 		Plugins(getPluginsEndpointMap(availablePlugins)).
+		PluginsOrder(operatorConfig).
 		I18nNamespaces(pluginsWithI18nNamespace(availablePlugins)).
 		ContentSecurityPolicies(aggregateCSPDirectives(availablePlugins)).
 		ContentSecurityPolicyEnabled(contentSecurityPolicyEnabled).
