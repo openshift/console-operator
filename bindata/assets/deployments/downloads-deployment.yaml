@@ -45,6 +45,7 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             failureThreshold: 3
+            initialDelaySeconds: 5
           name: download-server
           securityContext:
             readOnlyRootFilesystem: false
@@ -63,6 +64,7 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             failureThreshold: 3
+            initialDelaySeconds: 5
           ports:
             - name: http
               containerPort: 8080
@@ -77,6 +79,8 @@ spec:
               import errno, http.server, os, re, signal, socket, sys, tarfile, tempfile, threading, time, zipfile
 
               signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
+
+              ready = threading.Event()
 
               def write_index(path, message):
                 with open(path, 'wb') as f:
@@ -112,7 +116,8 @@ spec:
                   # https://stackoverflow.com/questions/46210672/
                   httpd.socket = self.socket
                   httpd.server_bind = self.server_close = lambda self: None
-
+                  if self.i == 0:
+                    ready.set()
                   httpd.serve_forever()
 
               temp_dir = tempfile.mkdtemp()
@@ -186,12 +191,13 @@ spec:
                   addr = ('', 8080)
                   sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 else:
-                  raise    
+                  raise
               sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
               sock.bind(addr)
               sock.listen(5)
 
               [Thread(i, socket=sock) for i in range(100)]
+              ready.wait()
               time.sleep(9e9)
               EOF
               exec python3 /tmp/serve.py
