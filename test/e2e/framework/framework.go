@@ -109,8 +109,8 @@ func GetResource(client *ClientSet, resource TestingResource) (runtime.Object, e
 }
 
 // custom-logo in openshift-console should exist when custom branding is used
-func GetCustomLogoConfigMap(client *ClientSet) (*corev1.ConfigMap, error) {
-	return client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(context.TODO(), consoleapi.OpenShiftCustomLogoConfigMapName, metav1.GetOptions{})
+func GetCustomLogoConfigMap(client *ClientSet, name string) (*corev1.ConfigMap, error) {
+	return client.Core.ConfigMaps(consoleapi.OpenShiftConsoleNamespace).Get(context.TODO(), name, metav1.GetOptions{})
 }
 
 func GetConsoleConfigMap(client *ClientSet) (*corev1.ConfigMap, error) {

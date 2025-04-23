@@ -470,7 +470,7 @@ func createTLSSecret(t *testing.T, client *framework.ClientSet, tlsSecretName, h
 	if tlsSecretName == "" {
 		return
 	}
-	tlsCert, err := crypto.MakeSelfSignedCAConfig(hostname, 1)
+	tlsCert, err := crypto.MakeSelfSignedCAConfig(hostname, time.Hour)
 	if err != nil {
 		t.Errorf("error: %s", err)
 	}
