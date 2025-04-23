@@ -35,12 +35,11 @@ spec:
     - description: >-
         To create a JBoss EAP 7 application:
         
-        1. In the main navigation, click the dropdown menu [perspective switcher]{{highlight qs-perspective-switcher}} and select **Developer**.
+        1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} and select **Administrator**.
         
-        1. In the navigation menu, click [Add]{{highlight qs-nav-add}}.  
-           The **Add** page opens.
+        1. In the main navigation menu, select [Home]{{highlight qs-nav-home}} and select **Software Catalog**.
 
-        1. In the **Add** page, click **Helm Chart**.
+        1. In the **Software Catalog** page, click **Helm Charts** in the **Type** filter.
         
         1. In the **Helm Charts** catalog, search for **JBoss EAP 7.4**.
         
@@ -86,7 +85,7 @@ spec:
     - description: >-
         To view the Helm release:
 
-        1. In the navigation menu, click [Helm]{{highlight qs-nav-helm}}.
+        1. In the main navigation menu, select [Helm]{{highlight qs-admin-nav-helm}} and select **Releases**.
 
         1. Click **eap74** Helm release.  
            The **Helm Release details** page opens. It shows all the information related to the Helm release that you installed.
@@ -105,7 +104,7 @@ spec:
     - description: >-
         To view the associated code:
 
-        1. In the navigation menu, click [Topology]{{highlight qs-nav-topology}}.  
+        1. In the main navigation menu, select [Workloads]{{highlight qs-nav-workloads}} and select **Topology**.  
            In the Topology view, the **eap74** deployment displays a code icon in the bottom right-hand corner. This icon either represents the Git repository
            of the associated code, or if the appropriate operators are installed, it will bring up the associated code in your IDE.
 
@@ -126,7 +125,7 @@ spec:
     - description: >-
         To view the build status of the JBoss EAP 7 application:
 
-        1. In the navigation menu, click [Topology]{{highlight qs-nav-topology}}.
+        1. In the main navigation menu, select [Workloads]{{highlight qs-nav-workloads}} and select **Topology**.  
 
         1. In the Topology view, click **D eap74**.  
            A side panel opens with detailed information about the application.
@@ -165,7 +164,7 @@ spec:
     - description: >-
         To view the pod status:
 
-        1. In the navigation menu, click [Topology]{{highlight qs-nav-topology}}.
+        1. In the main navigation menu, select [Workloads]{{highlight qs-nav-workloads}} and select **Topology**.  
 
         1. In the **Topology** view, click **D eap74**.  
            A side panel opens with detailed information about the application.

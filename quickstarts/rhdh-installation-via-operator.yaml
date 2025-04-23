@@ -111,7 +111,7 @@ spec:
       description: |-
         To install the Red Hat Developer Hub Operator:
 
-        1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
+        1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
         2. In the Administrator perspective, go to the **OperatorHub** page from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
         3. Search for **Red Hat Developer Hub**
         4. Select the card **Red Hat Developer Hub** with the **Red Hat** badge and press **Install** to open a page to install the Operator.
@@ -174,8 +174,8 @@ spec:
         instructions: |-
           #### To verify the application was successfully created:
 
-          1. In the **Administrator** perspective you should now see a RHDH "backstage-my-rhdh” Deployment under Workloads > Deployments,
-             or in the [Topology]{{highlight qs-nav-topology}} view of the **Developer** perspective.
+          1. In the **Administrator** perspective you should now see a RHDH "backstage-my-rhdh” Deployment under [Workloads]{{highlight qs-nav-workloads}} > Deployments,
+             or in the [Workloads]{{highlight qs-nav-workloads}} **Topology** view.
           2. It might take a moment for your deployment status to update to "Running".
           3. In the **Administrator** perspective, you can find the URL of your RHDH instance under Networking > Routes.
              In the **Developer** perspective Topology, you can click on the URL decorator in the Deployment to open your RHDH instance.
@@ -200,7 +200,7 @@ spec:
 
         1. To **create a random secret** for the backend auth key, use this command:
 
-            ```
+        ```
         node -p 'require("crypto").randomBytes(24).toString("base64")'
         ```{{copy}}
 
@@ -212,7 +212,7 @@ spec:
 
            Enter ConfigMap name `my-rhdh-app-config`, key `app-config-extras.yaml` and the following `app-config` YAML:
 
-            ```
+        ```
         app:
           title: Acme Inc. Developer Hub
         organization:
@@ -225,7 +225,7 @@ spec:
 
         4. **Update the `Backstage` resource** and use the new Secret and ConfigMap by adding additional options like:
 
-            ```
+        ```
         ...
         spec:
           ...
@@ -308,11 +308,11 @@ spec:
         This way, you can also link a single RHDH instance from multiple OpenShift clusters.
 
         1. Please copy the actual **Red Hat Developer Hub URL** from [Topology]{{highlight qs-nav-topology}}, or open it in another browser tab.
-        2. Click on the [Import YAML (plus icon)]{{highlight qs-masthead-import}} button at the top of the navigation.
+        2. Click on the [plus icon]{{highlight qs-masthead-import}} button and select **Import YAML** at the top of the navigation.
         3. **Insert the YAML** below into the YAML editor, add your Red Hat Developer Hub URL as `href`, and update the link `text` if needed.
 
-            ```
-            apiVersion: console.openshift.io/v1
+        ```
+        apiVersion: console.openshift.io/v1
         kind: ConsoleLink
         metadata:
           name: developer-hub-link
