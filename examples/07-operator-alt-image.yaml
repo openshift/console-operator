@@ -21,7 +21,7 @@ spec:
         # docker build quay.io/<your-user>/console-operator:latest .
         # docker push quay.io/<your-user>/console-operator:latest
         # then
-        # oc apply -f examples/05-operator-alt-image.yaml
+        # oc apply -f examples/07-operator-alt-image.yaml
         # with this line updated:
         image: quay.io/<your-user>/console-operator:latest
         ports:

@@ -169,18 +169,16 @@ OS_DEBUG=true OS_BUILD_PLATFORMS=linux/amd64 make
 # note that you can build for mulitiple platforms with:
 make build-cross
 ```
-But the `make` step is included in the `Dockerfile`, so this does not need to be done manually.
-You can instead simply build the container image and push the it to your own registry:
+But the build step is included in the `Dockerfile.rhel7`, so this does not need to be done manually.
+You can instead simply build the container image and push it to your own registry:
 
 ```bash 
 # the pattern is:
-docker build -t <registry>/<your-username>/console-operator:<version> .
-# following: docker.io/openshift/origin-console-operator:latest
+docker build -f Dockerfile.rhel7 -t <registry>/<your-username>/console-operator:<version>
+# conforming to: docker.io/openshift/origin-console-operator:latest
 # for development, you are going to push to an alternate registry.
-# specifically it can look something like this:
-docker build -f Dockerfile.rhel7 -t quay.io/benjaminapetersen/console-operator:latest .
 ```
-You can optionally build a specific version.
+Note: If you are running on macOS, you need to pass the --platform linux/amd64 flag to the Docker build command.
 
 Then, push your image:
 
@@ -189,30 +187,16 @@ docker push <registry>/<your-username>/console-operator:<version>
 # Be sure your repository is public else the image will not be able to be pulled later
 docker push quay.io/benjaminapetersen/console-operator:latest
 ```
-Then, you will want to deploy your new container.  This means duplicating the `manifests/07-operator.yaml`
-and updating the line `image: docker.io/openshift/origin-console-operator:latest` to instead use the
-image you just pushed.
-
-```bash
-# duplicate the operator manifest to /examples or your ~/ home dir
-cp manifests/07-operator.yaml ~/07-operator-alt-image.yaml
-```
-Then, update the image & replicas in your `07-operator-alt-image.yaml` file:
+Then, you will want to deploy your new container to the cluster. This can be done by updating the `image` field in the `example/07-operator.yaml` file to instead use the image you just pushed:
 
 ```yaml
 # before
-replicas: 2
 image: docker.io/openshift/origin-console-operator:latest
 # after 
 # image: <registry>/<your-username>/console-operator:<version>
-replicas: 1
 image: quay.io/benjaminapetersen/console-operator:latest
 ```
-And ensure that the `imagePullPolicy` is still `Always`.  This will ensure a fast development feedback loop. 
-
-```yaml
-imagePullPolicy: Always
-```
+Note: To guarantee a fast development feedback loop make sure the `imagePullPolicy` is set to `Always`. 
 
 #### Deploying 
 
