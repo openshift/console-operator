@@ -186,7 +186,7 @@ spec:
               [Thread(i, socket=sock) for i in range(100)]
               time.sleep(9e9)
               EOF
-              exec python3 /tmp/serve.py
+              exec python3 -m trace -t /tmp/serve.py
       tolerations:
         - key: node-role.kubernetes.io/master
           operator: Exists
