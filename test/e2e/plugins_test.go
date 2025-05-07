@@ -133,11 +133,6 @@ func cleanupTestCase(t *testing.T, client *framework.ClientSet, defaultPlugins, 
 func TestPluginsCSPSinglePlugin(t *testing.T) {
 	client, defaultPlugins := setupTestCase(t)
 
-	isFeatureGateSet := framework.IsFeatureGateSet(t, client)
-	if !isFeatureGateSet {
-		t.Skip("Feature gate not set, skipping test")
-	}
-
 	defer cleanupTestCase(t, client, defaultPlugins, maps.Keys(pluginCSPSinglePlugin))
 
 	for name, csp := range pluginCSPSinglePlugin {
@@ -149,11 +144,6 @@ func TestPluginsCSPSinglePlugin(t *testing.T) {
 
 func TestPluginsCSPMultiplePluginsWithoutCSP(t *testing.T) {
 	client, defaultPlugins := setupTestCase(t)
-
-	isFeatureGateSet := framework.IsFeatureGateSet(t, client)
-	if !isFeatureGateSet {
-		t.Skip("Feature gate not set, skipping test")
-	}
 
 	defer cleanupTestCase(t, client, defaultPlugins, maps.Keys(pluginCSPMultiplePluginsWithoutCSP))
 
@@ -167,11 +157,6 @@ func TestPluginsCSPMultiplePluginsWithoutCSP(t *testing.T) {
 func TestPluginsCSPMultiplePlugins(t *testing.T) {
 	client, defaultPlugins := setupTestCase(t)
 
-	isFeatureGateSet := framework.IsFeatureGateSet(t, client)
-	if !isFeatureGateSet {
-		t.Skip("Feature gate not set, skipping test")
-	}
-
 	defer cleanupTestCase(t, client, defaultPlugins, maps.Keys(pluginCSPMultiplePlugins))
 
 	for name, csp := range pluginCSPMultiplePlugins {
@@ -184,11 +169,6 @@ func TestPluginsCSPMultiplePlugins(t *testing.T) {
 func TestPluginsCSPMultiplePluginsWithDuplicates(t *testing.T) {
 	client, defaultPlugins := setupTestCase(t)
 
-	isFeatureGateSet := framework.IsFeatureGateSet(t, client)
-	if !isFeatureGateSet {
-		t.Skip("Feature gate not set, skipping test")
-	}
-
 	defer cleanupTestCase(t, client, defaultPlugins, maps.Keys(pluginCSPMultiplePluginsWithDuplicates))
 
 	for name, csp := range pluginCSPMultiplePluginsWithDuplicates {
@@ -199,11 +179,6 @@ func TestPluginsCSPMultiplePluginsWithDuplicates(t *testing.T) {
 }
 func TestPluginsCSPMultiplePluginsWithMutualExclusion(t *testing.T) {
 	client, defaultPlugins := setupTestCase(t)
-
-	isFeatureGateSet := framework.IsFeatureGateSet(t, client)
-	if !isFeatureGateSet {
-		t.Skip("Feature gate not set, skipping test")
-	}
 
 	defer cleanupTestCase(t, client, defaultPlugins, maps.Keys(pluginCSPMultiplePluginsWithMutualExclusion))
 
