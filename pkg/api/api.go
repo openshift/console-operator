@@ -19,7 +19,6 @@ const (
 	OAuthConfigMapName                  = "oauth-openshift"
 	OAuthServingCertConfigMapName       = "oauth-serving-cert"
 	OCCLIDownloadsCustomResourceName    = "oc-cli-downloads"
-	ODOCLIDownloadsCustomResourceName   = "odo-cli-downloads"
 	OLMConfigGroup                      = "operators.coreos.com"
 	OLMConfigResource                   = "olmconfigs"
 	OLMConfigVersion                    = "v1"

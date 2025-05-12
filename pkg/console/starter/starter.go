@@ -493,10 +493,12 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 			// we are need to backport the removal of these conditions all the way down to 4.10
 			// since we only remove them in https://github.com/openshift/console-operator/pull/662
 			// and its causing upgrade issues to the customers
+			// in 4.20 we removed ODOConsoleCLIDownloads and can remove ODODownloadsSyncDegraded in 4.21
 			"CustomRouteSyncDegraded",
 			"CustomRouteSyncProgressing",
 			"DefaultRouteSyncDegraded",
 			"DefaultRouteSyncProgressing",
+			"ODODownloadsSyncDegraded",
 		},
 		operatorClient,
 		controllerContext.EventRecorder,
