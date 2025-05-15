@@ -155,12 +155,6 @@ func (c *CLIDownloadsSyncController) Sync(ctx context.Context, controllerContext
 		return statusHandler.FlushAndReturn(ocCLIDownloadsErr)
 	}
 
-	_, odoCLIDownloadsErrReason, odoCLIDownloadsErr := ApplyCLIDownloads(ctx, c.consoleCliDownloadsClient, ODOConsoleCLIDownloads())
-	statusHandler.AddCondition(status.HandleDegraded("ODODownloadsSync", odoCLIDownloadsErrReason, odoCLIDownloadsErr))
-	if odoCLIDownloadsErr != nil {
-		return statusHandler.FlushAndReturn(odoCLIDownloadsErr)
-	}
-
 	return statusHandler.FlushAndReturn(nil)
 }
 
@@ -168,7 +162,6 @@ func (c *CLIDownloadsSyncController) removeCLIDownloads(ctx context.Context) err
 	defer klog.V(4).Info("finished deleting ConsoleCliDownloads custom resources")
 	var errs []error
 	errs = append(errs, c.consoleCliDownloadsClient.Delete(ctx, api.OCCLIDownloadsCustomResourceName, metav1.DeleteOptions{}))
-	errs = append(errs, c.consoleCliDownloadsClient.Delete(ctx, api.ODOCLIDownloadsCustomResourceName, metav1.DeleteOptions{}))
 	return utilerrors.FilterOut(utilerrors.NewAggregate(errs), errors.IsNotFound)
 }
 
@@ -216,27 +209,6 @@ The oc binary offers the same capabilities as the kubectl binary, but it is furt
 `,
 			DisplayName: "oc - OpenShift Command Line Interface (CLI)",
 			Links:       links,
-		},
-	}
-}
-
-func ODOConsoleCLIDownloads() *v1.ConsoleCLIDownload {
-	return &v1.ConsoleCLIDownload{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: api.ODOCLIDownloadsCustomResourceName,
-		},
-		Spec: v1.ConsoleCLIDownloadSpec{
-			Description: `odo is a fast, iterative, and straightforward CLI tool for developers who write, build, and deploy applications on OpenShift.
-
-odo abstracts away complex Kubernetes and OpenShift concepts, thus allowing developers to focus on what is most important to them: code.
-`,
-			DisplayName: "odo - Developer-focused CLI for OpenShift (Community Support)",
-			Links: []v1.CLIDownloadLink{
-				{
-					Href: "https://developers.redhat.com/content-gateway/rest/mirror/pub/openshift-v4/clients/odo/latest",
-					Text: "Download odo",
-				},
-			},
 		},
 	}
 }

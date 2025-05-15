@@ -75,7 +75,6 @@ func TestEditUnmanagedConsoleCLIDownloads(t *testing.T) {
 		t.Fatalf("error: %s", err)
 	}
 
-	err = patchAndCheckConsoleCLIDownloads(t, client, false, api.ODOCLIDownloadsCustomResourceName)
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}

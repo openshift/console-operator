@@ -47,7 +47,6 @@ func getTestingResources() []TestingResource {
 	return []TestingResource{
 		{"ConfigMap", consoleapi.OpenShiftConsoleConfigMapName, consoleapi.OpenShiftConsoleNamespace},
 		{"ConsoleCLIDownloads", consoleapi.OCCLIDownloadsCustomResourceName, ""},
-		{"ConsoleCLIDownloads", consoleapi.ODOCLIDownloadsCustomResourceName, ""},
 		{"Deployment", consoleapi.OpenShiftConsoleDeploymentName, consoleapi.OpenShiftConsoleNamespace},
 		{"Deployment", consoleapi.OpenShiftConsoleDownloadsDeploymentName, consoleapi.OpenShiftConsoleNamespace},
 		{"Route", consoleapi.OpenShiftConsoleRouteName, consoleapi.OpenShiftConsoleNamespace},
