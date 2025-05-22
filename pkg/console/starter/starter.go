@@ -36,6 +36,7 @@ import (
 	pdb "github.com/openshift/console-operator/pkg/console/controllers/poddisruptionbudget"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
+	"github.com/openshift/console-operator/pkg/console/controllers/storageversionmigration"
 	upgradenotification "github.com/openshift/console-operator/pkg/console/controllers/upgradenotification"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
@@ -532,6 +533,14 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		recorder,
 	)
 
+	// Create the StorageVersionMigration controller
+	storageversionmigrationController := storageversionmigration.NewStorageVersionMigrationController(
+		operatorClient,
+		dynamicClient,
+		dynamicInformers,
+		recorder,
+	)
+
 	configUpgradeableController := unsupportedconfigoverridescontroller.NewUnsupportedConfigOverridesController("UnsupportedConfigOverridesController", operatorClient, controllerContext.EventRecorder)
 	logLevelController := loglevel.NewClusterOperatorLoggingController(operatorClient, controllerContext.EventRecorder)
 	managementStateController := managementstatecontroller.NewOperatorManagementStateController(api.ClusterOperatorName, operatorClient, controllerContext.EventRecorder)
@@ -580,6 +589,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		cliOIDCClientStatusController,
 		upgradeNotificationController,
 		staleConditionsController,
+		storageversionmigrationController,
 	} {
 		go controller.Run(ctx, 1)
 	}
