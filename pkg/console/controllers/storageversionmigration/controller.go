@@ -22,6 +22,10 @@ const (
 	resourceName                = "storageversionmigrations"
 )
 
+var (
+	storageVersionMigrationGVR = storagemigrationv1alpha1.SchemeGroupVersion.WithResource(resourceName)
+)
+
 type StorageVersionMigrationController struct {
 	dynamicClient  dynamic.Interface
 	operatorClient v1helpers.OperatorClient
@@ -40,7 +44,7 @@ func NewStorageVersionMigrationController(
 
 	return factory.New().
 		WithInformers(
-			dynamicInformers.ForResource(storagemigrationv1alpha1.SchemeGroupVersion.WithResource(resourceName)).Informer(),
+			dynamicInformers.ForResource(storageVersionMigrationGVR).Informer(),
 		).
 		WithSync(c.sync).
 		ToController("StorageVersionMigrationController", recorder)
@@ -50,7 +54,7 @@ func (c *StorageVersionMigrationController) sync(ctx context.Context, syncContex
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
 	// Get the StorageVersionMigration instance
-	svm, err := c.dynamicClient.Resource(storagemigrationv1alpha1.SchemeGroupVersion.WithResource(resourceName)).Get(ctx, storageVersionMigrationName, metav1.GetOptions{})
+	svm, err := c.dynamicClient.Resource(storageVersionMigrationGVR).Get(ctx, storageVersionMigrationName, metav1.GetOptions{})
 	if err != nil {
 		// Error reading the object - requeue the request.
 		klog.Errorf("Failed to get StorageVersionMigration: %v", err)
@@ -70,7 +74,7 @@ func (c *StorageVersionMigrationController) sync(ctx context.Context, syncContex
 
 	if slices.Contains(storedVersions, "v1alpha1") {
 		klog.Infof("Found v1alpha1 in storedVersions, deleting StorageVersionMigration")
-		err = c.dynamicClient.Resource(storagemigrationv1alpha1.SchemeGroupVersion.WithResource(resourceName)).Delete(ctx, storageVersionMigrationName, metav1.DeleteOptions{})
+		err = c.dynamicClient.Resource(storageVersionMigrationGVR).Delete(ctx, storageVersionMigrationName, metav1.DeleteOptions{})
 		statusHandler.AddCondition(status.HandleDegraded("StorageVersionMigration", "FailedDelete", err))
 		if err != nil {
 			klog.Errorf("Failed to delete StorageVersionMigration: %v", err)
