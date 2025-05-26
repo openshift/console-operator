@@ -4,9 +4,9 @@ import (
 	"context"
 	"slices"
 
-	storagemigrationv1alpha1 "k8s.io/api/storagemigration/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/klog/v2"
@@ -23,7 +23,11 @@ const (
 )
 
 var (
-	storageVersionMigrationGVR = storagemigrationv1alpha1.SchemeGroupVersion.WithResource(resourceName)
+	storageVersionMigrationGVR = schema.GroupVersionResource{
+		Group:    "migration.k8s.io",
+		Version:  "v1alpha1",
+		Resource: resourceName,
+	}
 )
 
 type StorageVersionMigrationController struct {
@@ -75,9 +79,9 @@ func (c *StorageVersionMigrationController) sync(ctx context.Context, syncContex
 	if slices.Contains(storedVersions, "v1alpha1") {
 		klog.Infof("Found v1alpha1 in storedVersions, deleting StorageVersionMigration")
 		err = c.dynamicClient.Resource(storageVersionMigrationGVR).Delete(ctx, storageVersionMigrationName, metav1.DeleteOptions{})
-		statusHandler.AddCondition(status.HandleDegraded("StorageVersionMigration", "FailedDelete", err))
 		if err != nil {
 			klog.Errorf("Failed to delete StorageVersionMigration: %v", err)
+			statusHandler.AddCondition(status.HandleDegraded("StorageVersionMigration", "FailedDelete", err))
 			return statusHandler.FlushAndReturn(err)
 		}
 	}
