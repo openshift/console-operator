@@ -135,7 +135,7 @@ rules:
       - list
       - watch
   - apiGroups:
-      - migration.k8s.io
+      - storagemigration.k8s.io
     resources:
       - storageversionmigrations
       - storageversionmigrations/status
