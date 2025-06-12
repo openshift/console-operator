@@ -1,6 +1,7 @@
 - op: replace
   path: /metadata/annotations
   value:
+    capability.openshift.io/name: Console
     config.openshift.io/inject-proxy: console-operator
     include.release.openshift.io/hypershift: "true"
     include.release.openshift.io/ibm-cloud-managed: "true"
