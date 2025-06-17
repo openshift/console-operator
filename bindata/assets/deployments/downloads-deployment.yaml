@@ -45,7 +45,6 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             failureThreshold: 3
-            initialDelaySeconds: 5
           name: download-server
           securityContext:
             readOnlyRootFilesystem: false
@@ -64,7 +63,6 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             failureThreshold: 3
-            initialDelaySeconds: 5
           ports:
             - name: http
               containerPort: 8080
@@ -79,8 +77,6 @@ spec:
               import errno, http.server, os, re, signal, socket, sys, tarfile, tempfile, threading, time, zipfile
 
               signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
-
-              ready = threading.Event()
 
               def write_index(path, message):
                 with open(path, 'wb') as f:
@@ -116,8 +112,7 @@ spec:
                   # https://stackoverflow.com/questions/46210672/
                   httpd.socket = self.socket
                   httpd.server_bind = self.server_close = lambda self: None
-                  if self.i == 0:
-                    ready.set()
+
                   httpd.serve_forever()
 
               temp_dir = tempfile.mkdtemp()
@@ -130,26 +125,19 @@ spec:
 
               for arch, operating_system, path in [
                   ('amd64', 'linux', '/usr/share/openshift/linux_amd64/oc'),
-                  ('amd64', 'linux', '/usr/share/openshift/linux_amd64/oc.rhel8'),
-                  ('amd64', 'linux', '/usr/share/openshift/linux_amd64/oc.rhel9'),
                   ('amd64', 'mac', '/usr/share/openshift/mac/oc'),
                   ('amd64', 'windows', '/usr/share/openshift/windows/oc.exe'),
                   ('arm64', 'linux', '/usr/share/openshift/linux_arm64/oc'),
-                  ('arm64', 'linux', '/usr/share/openshift/linux_arm64/oc.rhel8'),
-                  ('arm64', 'linux', '/usr/share/openshift/linux_arm64/oc.rhel9'),
                   ('arm64', 'mac', '/usr/share/openshift/mac_arm64/oc'),
                   ('ppc64le', 'linux', '/usr/share/openshift/linux_ppc64le/oc'),
-                  ('ppc64le', 'linux', '/usr/share/openshift/linux_ppc64le/oc.rhel8'),
-                  ('ppc64le', 'linux', '/usr/share/openshift/linux_ppc64le/oc.rhel9'),
                   ('s390x', 'linux', '/usr/share/openshift/linux_s390x/oc'),
-                  ('s390x', 'linux', '/usr/share/openshift/linux_s390x/oc.rhel8'),
-                  ('s390x', 'linux', '/usr/share/openshift/linux_s390x/oc.rhel9'),
                   ]:
                 basename = os.path.basename(path)
                 target_path = os.path.join(arch, operating_system, basename)
-                os.makedirs(os.path.join(arch, operating_system), exist_ok=True)
+                os.mkdir(os.path.join(arch, operating_system))
                 os.symlink(path, target_path)
-                archive_path_root = os.path.join(arch, operating_system, basename)
+                base_root, _ = os.path.splitext(basename)
+                archive_path_root = os.path.join(arch, operating_system, base_root)
                 with tarfile.open('{}.tar'.format(archive_path_root), 'w') as tar:
                   tar.add(path, basename)
                 with zipfile.ZipFile('{}.zip'.format(archive_path_root), 'w') as zip:
@@ -191,32 +179,12 @@ spec:
                   addr = ('', 8080)
                   sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 else:
-                  raise
+                  raise    
               sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
               sock.bind(addr)
               sock.listen(5)
 
-              # Start server threads - using 10 threads to handle a good number of concurrent
-              # downloads while maintaining reasonable resource usage
-              threads = [Thread(i, socket=sock) for i in range(10)]
-              
-              # Wait for server to be ready
-              ready.wait()
-              
-              # Verify server is actually listening
-              for _ in range(30):  # Try for 30 seconds
-                  try:
-                      test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                      test_sock.connect(('localhost', 8080))
-                      test_sock.close()
-                      break
-                  except socket.error:
-                      time.sleep(1)
-              else:
-                  print("Failed to verify server is listening", file=sys.stderr)
-                  sys.exit(1)
-
-              print("Server is ready and listening on port 8080")
+              [Thread(i, socket=sock) for i in range(100)]
               time.sleep(9e9)
               EOF
               exec python3 /tmp/serve.py
