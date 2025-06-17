@@ -59,6 +59,13 @@ else
 	go-junit-report --version
 endif
 
+# download the dependencies and put them in the /vendor directory.
+.PHONY: vendor
+vendor:
+	go mod tidy
+	go mod vendor
+	go mod verify
+
 # Remove all build artifacts.
 #
 # Example:
