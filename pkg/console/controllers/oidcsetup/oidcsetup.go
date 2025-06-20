@@ -138,6 +138,16 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 	}
 
 	if authnConfig.Spec.Type != configv1.AuthenticationTypeOIDC {
+		// If the authentication type is not "OIDC", set the CurrentOIDCClient
+		// on the authStatusHandler to an empty string. This is necessary during a
+		// scenario where the authentication type goes from OIDC to non-OIDC because
+		// the CurrentOIDCClient would have been set while the authentication type was OIDC.
+		// If the CurrentOIDCClient value isn't reset on this transition the authStatusHandler
+		// will think OIDC is still configured and attempt to update the OIDC client in the
+		// status to have an empty providerName and issuerURL, violating the validations
+		// on the Authentication CRD as seen in https://issues.redhat.com/browse/OCPBUGS-44953
+		c.authStatusHandler.WithCurrentOIDCClient("")
+
 		applyErr := c.authStatusHandler.Apply(ctx, authnConfig)
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthStatusHandler", "FailedApply", applyErr))
 
@@ -209,7 +219,6 @@ func (c *oidcSetupController) syncAuthTypeOIDC(ctx context.Context, authnConfig 
 			api.TargetNamespace, caCM.Name,
 			sets.New[string]("ca-bundle.crt"),
 			[]metav1.OwnerReference{*utilsub.OwnerRefFrom(operatorConfig)})
-
 		if err != nil {
 			return fmt.Errorf("failed to sync the provider's CA configMap: %w", err)
 		}
