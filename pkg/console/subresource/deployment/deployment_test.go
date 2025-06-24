@@ -1617,19 +1617,19 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 
 	downloadsDeploymentPodSpecSingleReplica := corev1.PodSpec{
 		NodeSelector: map[string]string{
-			"kubernetes.io/os": "linux",
+			"node-role.kubernetes.io/master": "",
 		},
 		Affinity: &corev1.Affinity{},
 		Tolerations: []corev1.Toleration{
 			{
 				Key:      "node-role.kubernetes.io/master",
-				Operator: corev1.TolerationOpExists,
-				Effect:   corev1.TaintEffectNoSchedule,
+					Operator: corev1.TolerationOpExists,
+					Effect:   corev1.TaintEffectNoSchedule,
 			},
 			{
 				Key:               "node.kubernetes.io/unreachable",
 				Operator:          corev1.TolerationOpExists,
-				Effect:            corev1.TaintEffectNoExecute,
+					Effect:            corev1.TaintEffectNoExecute,
 				TolerationSeconds: &tolerationSeconds,
 			},
 		},

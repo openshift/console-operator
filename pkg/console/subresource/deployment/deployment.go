@@ -121,6 +121,7 @@ func DefaultDownloadsDeployment(
 	withAffinity(downloadsDeployment, infrastructureConfig, "downloads")
 	withStrategy(downloadsDeployment, infrastructureConfig)
 	withDownloadsContainerImage(downloadsDeployment)
+	withConsoleNodeSelector(downloadsDeployment, infrastructureConfig)
 	util.AddOwnerRef(downloadsDeployment, util.OwnerRefFrom(operatorConfig))
 	return downloadsDeployment
 }
