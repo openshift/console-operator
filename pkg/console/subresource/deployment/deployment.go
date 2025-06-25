@@ -331,9 +331,12 @@ func withConsoleNodeSelector(
 ) {
 	nodeSelector := deployment.Spec.Template.Spec.NodeSelector
 
-	// If running with an externalized control plane, remove the master node selector
+	// If running with an externalized control plane, remove only the master node selector
 	if infrastructureConfig.Status.ControlPlaneTopology == configv1.ExternalTopologyMode {
-		nodeSelector = map[string]string{}
+		if nodeSelector == nil {
+			nodeSelector = map[string]string{}
+		}
+		delete(nodeSelector, "node-role.kubernetes.io/master")
 	}
 
 	deployment.Spec.Template.Spec.NodeSelector = nodeSelector
