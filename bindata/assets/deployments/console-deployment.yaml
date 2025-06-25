@@ -24,6 +24,7 @@ spec:
         openshift.io/required-scc: restricted-v2
     spec:
       nodeSelector:
+        kubernetes.io/os: linux
         node-role.kubernetes.io/master: ""
       restartPolicy: Always
       serviceAccountName: console
