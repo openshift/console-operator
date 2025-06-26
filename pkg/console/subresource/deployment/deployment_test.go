@@ -1561,7 +1561,7 @@ func TestWithConsoleNodeSelector(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withConsoleNodeSelector(tt.args.deployment, tt.args.infrastructureConfig)
+			withNodeSelector(tt.args.deployment, tt.args.infrastructureConfig)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
 			}
