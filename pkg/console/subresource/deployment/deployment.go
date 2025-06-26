@@ -105,7 +105,7 @@ func DefaultDeployment(
 		canMountCustomLogo,
 	)
 	withConsoleContainerImage(deployment, operatorConfig, proxyConfig)
-	withConsoleNodeSelector(deployment, infrastructureConfig)
+	withNodeSelector(deployment, infrastructureConfig)
 	util.AddOwnerRef(deployment, util.OwnerRefFrom(operatorConfig))
 	return deployment
 }
@@ -121,7 +121,7 @@ func DefaultDownloadsDeployment(
 	withAffinity(downloadsDeployment, infrastructureConfig, "downloads")
 	withStrategy(downloadsDeployment, infrastructureConfig)
 	withDownloadsContainerImage(downloadsDeployment)
-	withConsoleNodeSelector(downloadsDeployment, infrastructureConfig)
+	withNodeSelector(downloadsDeployment, infrastructureConfig)
 	util.AddOwnerRef(downloadsDeployment, util.OwnerRefFrom(operatorConfig))
 	return downloadsDeployment
 }
@@ -325,7 +325,7 @@ func withConsoleContainerImage(
 	deployment.Spec.Template.Spec.Containers[0].Image = util.GetImageEnv("CONSOLE_IMAGE")
 }
 
-func withConsoleNodeSelector(
+func withNodeSelector(
 	deployment *appsv1.Deployment,
 	infrastructureConfig *configv1.Infrastructure,
 ) {
