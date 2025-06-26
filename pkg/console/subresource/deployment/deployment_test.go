@@ -237,6 +237,7 @@ func TestDefaultDeployment(t *testing.T) {
 							ServiceAccountName: "console",
 							// we want to deploy on master nodes
 							NodeSelector: map[string]string{
+								"kubernetes.io/os": "linux",
 								// empty string is correct
 								"node-role.kubernetes.io/master": "",
 							},
@@ -318,6 +319,7 @@ func TestDefaultDeployment(t *testing.T) {
 							ServiceAccountName: "console",
 							// we want to deploy on master nodes
 							NodeSelector: map[string]string{
+								"kubernetes.io/os": "linux",
 								// empty string is correct
 								"node-role.kubernetes.io/master": "",
 							},
@@ -399,6 +401,7 @@ func TestDefaultDeployment(t *testing.T) {
 							ServiceAccountName: "console",
 							// we want to deploy on master nodes
 							NodeSelector: map[string]string{
+								"kubernetes.io/os": "linux",
 								// empty string is correct
 								"node-role.kubernetes.io/master": "",
 							},
@@ -472,8 +475,10 @@ func TestDefaultDeployment(t *testing.T) {
 						Spec: corev1.PodSpec{
 							ServiceAccountName: "console",
 							// we do not want to deploy on master nodes
-							NodeSelector: map[string]string{},
-							Affinity:     consoleDeploymentAffinity,
+							NodeSelector: map[string]string{
+								"kubernetes.io/os": "linux",
+							},
+							Affinity: consoleDeploymentAffinity,
 							// toleration is a taint override. we can and should be scheduled on a master node.
 							Tolerations:                   consoleDeploymentTolerations,
 							PriorityClassName:             "system-cluster-critical",
@@ -1545,7 +1550,9 @@ func TestWithConsoleNodeSelector(t *testing.T) {
 				Spec: appsv1.DeploymentSpec{
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
-							NodeSelector: map[string]string{},
+							NodeSelector: map[string]string{
+								"foo": "bar",
+							},
 						},
 					},
 				},
