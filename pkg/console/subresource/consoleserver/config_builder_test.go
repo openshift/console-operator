@@ -1718,3 +1718,117 @@ providers: {}
 		})
 	}
 }
+
+func TestBuildIntelligentCapabilities(t *testing.T) {
+	tests := []struct {
+		name                 string
+		existingCapabilities []v1.Capability
+		nodeArchitectures    []string
+		expectedCapabilities []v1.Capability
+		shouldUseExisting    bool
+	}{
+		{
+			name:                 "Homogeneous AMD64 cluster - enables Lightspeed",
+			existingCapabilities: []v1.Capability{}, // empty, should be auto-configured
+			nodeArchitectures:    []string{"amd64"},
+			expectedCapabilities: []v1.Capability{
+				{
+					Name: "LightspeedButton",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityEnabled,
+					},
+				},
+				{
+					Name: "GettingStartedBanner",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityEnabled,
+					},
+				},
+			},
+			shouldUseExisting: false,
+		},
+		{
+			name:                 "Mixed architecture cluster - disables Lightspeed",
+			existingCapabilities: []v1.Capability{}, // empty, should be auto-configured
+			nodeArchitectures:    []string{"amd64", "ppc64le"},
+			expectedCapabilities: []v1.Capability{
+				{
+					Name: "LightspeedButton",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityDisabled,
+					},
+				},
+				{
+					Name: "GettingStartedBanner",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityEnabled,
+					},
+				},
+			},
+			shouldUseExisting: false,
+		},
+		{
+			name:                 "Power-only cluster - disables Lightspeed",
+			existingCapabilities: []v1.Capability{}, // empty, should be auto-configured
+			nodeArchitectures:    []string{"ppc64le"},
+			expectedCapabilities: []v1.Capability{
+				{
+					Name: "LightspeedButton",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityDisabled,
+					},
+				},
+				{
+					Name: "GettingStartedBanner",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityEnabled,
+					},
+				},
+			},
+			shouldUseExisting: false,
+		},
+		{
+			name: "Pre-configured capabilities - respects admin choice",
+			existingCapabilities: []v1.Capability{
+				{
+					Name: "LightspeedButton",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityEnabled,
+					},
+				},
+			},
+			nodeArchitectures: []string{"ppc64le"}, // Power cluster, but admin explicitly enabled
+			expectedCapabilities: []v1.Capability{
+				{
+					Name: "LightspeedButton",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityEnabled,
+					},
+				},
+			},
+			shouldUseExisting: true, // Should use admin's explicit configuration
+		},
+		{
+			name:                 "Empty node architectures - uses existing behavior",
+			existingCapabilities: []v1.Capability{}, // empty, should remain empty
+			nodeArchitectures:    []string{},
+			expectedCapabilities: []v1.Capability{}, // Should remain empty (existing behavior)
+			shouldUseExisting:    true,              // Uses existing empty slice
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := &ConsoleServerCLIConfigBuilder{
+				capabilities:      tt.existingCapabilities,
+				nodeArchitectures: tt.nodeArchitectures,
+			}
+
+			result := builder.buildIntelligentCapabilities()
+
+			if diff := deep.Equal(tt.expectedCapabilities, result); diff != nil {
+				t.Errorf("Expected capabilities don't match: %v", diff)
+			}
+		})
+	}
+}
