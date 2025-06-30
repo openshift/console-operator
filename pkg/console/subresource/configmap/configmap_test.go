@@ -276,6 +276,13 @@ session: {}
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
+  capabilities:
+  - name: LightspeedButton
+    visibility:
+      state: Disabled
+  - name: GettingStartedBanner
+    visibility:
+      state: Enabled
   perspectives:
     - id: dev
       visibility:
