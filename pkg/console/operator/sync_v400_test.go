@@ -1,6 +1,7 @@
 package operator
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -208,6 +209,80 @@ func TestGetNodeComputeEnvironments(t *testing.T) {
 			if diff := deep.Equal(tt.expectedOperatingSystems, actualOperatingSystems); diff != nil {
 				t.Error(diff)
 				return
+			}
+		})
+	}
+}
+
+// TestGetNodeComputeEnvironmentsWithManyNodes demonstrates that the deduplication works correctly
+func TestGetNodeComputeEnvironmentsWithManyNodes(t *testing.T) {
+	tests := []struct {
+		name                     string
+		nodeList                 []*v1.Node
+		expectedArchitectures    []string
+		expectedOperatingSystems []string
+	}{
+		{
+			name: "1000 AMD64 nodes - should return single architecture",
+			nodeList: func() []*v1.Node {
+				nodes := make([]*v1.Node, 1000)
+				for i := 0; i < 1000; i++ {
+					nodes[i] = &v1.Node{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: fmt.Sprintf("node-%d", i),
+							Labels: map[string]string{
+								api.NodeArchitectureLabel:    "amd64",
+								api.NodeOperatingSystemLabel: "linux",
+							},
+						},
+					}
+				}
+				return nodes
+			}(),
+			expectedArchitectures:    []string{"amd64"}, // Single architecture despite 1000 nodes
+			expectedOperatingSystems: []string{"linux"},
+		},
+		{
+			name: "999 AMD64 + 1 Power node - should return both architectures",
+			nodeList: func() []*v1.Node {
+				nodes := make([]*v1.Node, 1000)
+				// 999 AMD64 nodes
+				for i := 0; i < 999; i++ {
+					nodes[i] = &v1.Node{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: fmt.Sprintf("amd64-node-%d", i),
+							Labels: map[string]string{
+								api.NodeArchitectureLabel:    "amd64",
+								api.NodeOperatingSystemLabel: "linux",
+							},
+						},
+					}
+				}
+				// 1 Power node
+				nodes[999] = &v1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "power-node",
+						Labels: map[string]string{
+							api.NodeArchitectureLabel:    "ppc64le",
+							api.NodeOperatingSystemLabel: "linux",
+						},
+					},
+				}
+				return nodes
+			}(),
+			expectedArchitectures:    []string{"amd64", "ppc64le"}, // Both architectures
+			expectedOperatingSystems: []string{"linux"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actualArchitectures, actualOperatingSystems := getNodeComputeEnvironments(tt.nodeList)
+			if diff := deep.Equal(tt.expectedArchitectures, actualArchitectures); diff != nil {
+				t.Errorf("Architecture mismatch: %v", diff)
+			}
+			if diff := deep.Equal(tt.expectedOperatingSystems, actualOperatingSystems); diff != nil {
+				t.Errorf("OS mismatch: %v", diff)
 			}
 		})
 	}
