@@ -558,7 +558,8 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 		conf.Perspectives = perspectives
 	}
 
-	conf.Capabilities = b.capabilities
+	// Apply intelligent capabilities configuration based on cluster architecture
+	conf.Capabilities = b.buildIntelligentCapabilities()
 
 	return conf
 }
@@ -600,4 +601,62 @@ func (b *ConsoleServerCLIConfigBuilder) proxy() Proxy {
 
 func (b *ConsoleServerCLIConfigBuilder) Telemetry() map[string]string {
 	return b.telemetry
+}
+
+// buildIntelligentCapabilities will configure the capabilities based on cluster characteristics
+func (b *ConsoleServerCLIConfigBuilder) buildIntelligentCapabilities() []operatorv1.Capability {
+	// If capabilities are already explicitly configured by admin, respect their choice
+	if len(b.capabilities) > 0 {
+		klog.V(4).Infoln("capabilities already configured by admin, using explicit configuration")
+		return b.capabilities
+	}
+
+	// Only apply intelligent configuration if we have node architecture information
+	// This prevents breaking existing behavior when no architecture info is available
+	if len(b.nodeArchitectures) == 0 {
+		klog.V(4).Infoln("no node architecture information available, skipping intelligent capabilities configuration")
+		return b.capabilities
+	}
+
+	// Check if cluster is homogeneous AMD64
+	// Only enable Lightspeed if ALL nodes are AMD64 (homogeneous cluster)
+	// nodeArchitectures contains deduplicated architectures from all nodes
+	var isHomogeneousAMD64 bool
+	if len(b.nodeArchitectures) == 1 {
+		isHomogeneousAMD64 = b.nodeArchitectures[0] == "amd64"
+	} else {
+		// Mixed architecture cluster - disable Lightspeed
+		isHomogeneousAMD64 = false
+	}
+
+	// Configure LightspeedButton based on architecture
+	lightspeedState := operatorv1.CapabilityDisabled
+	if isHomogeneousAMD64 {
+		lightspeedState = operatorv1.CapabilityEnabled
+		klog.V(4).Infof("enabling LightspeedButton capability for homogeneous AMD64 cluster")
+	} else {
+		klog.V(4).Infof("disabling LightspeedButton capability for non-homogeneous or non-AMD64 cluster, architectures: %v", b.nodeArchitectures)
+	}
+
+	// Build intelligent capabilities configuration
+	intelligentCapabilities := []operatorv1.Capability{
+		{
+			Name: "LightspeedButton",
+			Visibility: operatorv1.CapabilityVisibility{
+				State: lightspeedState,
+			},
+		},
+		{
+			Name: "GettingStartedBanner",
+			Visibility: operatorv1.CapabilityVisibility{
+				State: operatorv1.CapabilityEnabled,
+				// Default to enabled for now
+			},
+		},
+	}
+
+	klog.V(4).Infof("intelligent capabilities configured: LightspeedButton=%s, GettingStartedBanner=%s",
+		lightspeedState, operatorv1.CapabilityEnabled)
+
+	return intelligentCapabilities
 }
