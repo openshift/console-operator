@@ -1824,7 +1824,7 @@ func TestBuildIntelligentCapabilities(t *testing.T) {
 				nodeArchitectures: tt.nodeArchitectures,
 			}
 
-			result := builder.buildIntelligentCapabilities()
+			result := builder.buildCapabilities()
 
 			if diff := deep.Equal(tt.expectedCapabilities, result); diff != nil {
 				t.Errorf("Expected capabilities don't match: %v", diff)

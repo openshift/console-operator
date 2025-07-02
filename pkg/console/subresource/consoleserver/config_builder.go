@@ -552,7 +552,7 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 	}
 
 	// Apply intelligent capabilities configuration based on cluster architecture
-	conf.Capabilities = b.buildIntelligentCapabilities()
+	conf.Capabilities = b.buildCapabilities()
 
 	return conf
 }
@@ -600,13 +600,6 @@ func (b *ConsoleServerCLIConfigBuilder) buildCapabilities() []operatorv1.Capabil
 		return b.capabilities
 	}
 
-	// Only apply intelligent configuration if we have node architecture information
-	// This prevents breaking existing behavior when no architecture info is available
-	if len(b.nodeArchitectures) == 0 {
-		klog.V(4).Infoln("no node architecture information available, skipping intelligent capabilities configuration")
-		return b.capabilities
-	}
-
 	// Check if cluster is homogeneous AMD64
 	// Only enable Lightspeed if ALL nodes are AMD64 (homogeneous cluster)
 	// nodeArchitectures contains deduplicated architectures from all nodes
@@ -647,5 +640,5 @@ func (b *ConsoleServerCLIConfigBuilder) buildCapabilities() []operatorv1.Capabil
 	klog.V(4).Infof("intelligent capabilities configured: LightspeedButton=%s, GettingStartedBanner=%s",
 		lightspeedState, operatorv1.CapabilityEnabled)
 
-	return intelligentCapabilities
+	return capabilities
 }
