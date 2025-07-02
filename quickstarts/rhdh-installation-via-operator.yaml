@@ -10,7 +10,7 @@ metadata:
     capability.openshift.io/name: Console
 spec:
   displayName: Install Red Hat Developer Hub (RHDH) using the Operator
-  description: Install RHDH, a enterprise-grade, open developer platform for building developer portals, build on Backstage.
+  description: Install RHDH, an enterprise-grade, open developer platform for building developer portals, built on Backstage.
   durationMinutes: 30
   tags:
     - rhdh
@@ -99,7 +99,7 @@ spec:
     * A **catalog** of all your services, components, and more.
     * **Software Templates** provide your developers an easy way to set up new projects with best practices.
     * Preinstalled with **additional plugins**.
-    * Your developer portal is **extendable with plugins** from Backstage.
+    * Your developer portal is **extensible with plugins** from Backstage.
 
     This **Red Hat Developer Hub Operator** has some additional features enabled by default:
 
@@ -115,14 +115,14 @@ spec:
         2. In the Administrator perspective, go to the **OperatorHub** page from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
         3. Search for **Red Hat Developer Hub**
         4. Select the card **Red Hat Developer Hub** with the **Red Hat** badge and press **Install** to open a page to install the Operator.
-        5. **Optional:** Choice the correct version, update strategy, and if this Operator should be available for all namespaces or just a specific namespace.
+        5. **Optional:** Choose the correct version, update strategy, and whether this Operator should be available for all namespaces or just a specific namespace.
         6. Press **Create** again to install the Red Hat Developer Hub Operator.
 
         > <small>
         > For enhanced security, you should deploy the Red Hat Developer Hub Operator in a dedicated default namespace such as `rhdh-operator`.
         > The cluster administrator can restrict access to the Operator resources through role bindings or cluster role bindings.
         > You can choose to deploy the Operator in the `openshift-operators` namespace instead,
-        > but, note the Red Hat Developer Hub Operator shares the namespace with other Operators.
+        > but, note the Red Hat Developer Hub Operator then shares the namespace with other Operators.
         > Any users who can create workloads in that namespace can get their privileges escalated from the Operator service account.
         > </small>
       review:
@@ -294,13 +294,13 @@ spec:
           1. In the **Administrator** perspective you should now see a RHDH "backstage-my-rhdh” Deployment under Workloads > Deployments,
              or in the [Topology]{{highlight qs-nav-topology}} view of the **Developer** perspective.
           2. It might take a moment for your Deployment to update. Check that the status of the Pods changes to "Running".
-          3. You should see a RHDH instance that let you select a sign-in method and your updated RHDH title in your browser tab and organization name on the catalog page.
+          3. You should see a RHDH instance that lets you select a sign-in method and your updated RHDH title in your browser tab and organization name on the catalog page.
         failedTaskHelp: |-
           Open the **Deployment details** page and check the Pod status or the Pod log to investigate underlying issues.
       summary:
         success: You have installed RHDH!
         failed: Try the steps again.
-    - title: "Add your Red Hat Developer Hub insance to the OpenShift Console Application menu"
+    - title: "Add your Red Hat Developer Hub instance to the OpenShift Console Application menu"
       description: |-
         To add a new link to the application menu, you can create a `ConsoleLink` resource on your cluster.
 
@@ -331,9 +331,9 @@ spec:
           2. Click the Application launcher icon to check if your application menu item is shown.
           3. Verify that it opens your RHDH instance.
         failedTaskHelp: |-
-          Doublecheck your `ConsoleLink` resource or try to reload the OpenShift Console.
+          Double-check your `ConsoleLink` resource or try to reload the OpenShift Console.
       summary:
-        success: You have upgraded your RHDH instance!
+        success: You have added your Red Hat Developer Hub instance to the OpenShift Console menu!
         failed: Try the steps again.
   conclusion: |
     Your Red Hat Developer Hub installation is deployed and ready.
