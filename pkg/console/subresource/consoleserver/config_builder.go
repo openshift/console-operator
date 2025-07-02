@@ -593,7 +593,7 @@ func (b *ConsoleServerCLIConfigBuilder) Telemetry() map[string]string {
 }
 
 // buildIntelligentCapabilities will configure the capabilities based on cluster characteristics
-func (b *ConsoleServerCLIConfigBuilder) buildIntelligentCapabilities() []operatorv1.Capability {
+func (b *ConsoleServerCLIConfigBuilder) buildCapabilities() []operatorv1.Capability {
 	// If capabilities are already explicitly configured by admin, respect their choice
 	if len(b.capabilities) > 0 {
 		klog.V(4).Infoln("capabilities already configured by admin, using explicit configuration")
@@ -624,11 +624,11 @@ func (b *ConsoleServerCLIConfigBuilder) buildIntelligentCapabilities() []operato
 		lightspeedState = operatorv1.CapabilityEnabled
 		klog.V(4).Infof("enabling LightspeedButton capability for homogeneous AMD64 cluster")
 	} else {
-		klog.V(4).Infof("disabling LightspeedButton capability for non-homogeneous or non-AMD64 cluster, architectures: %v", b.nodeArchitectures)
+		klog.V(4).Infof("disabling LightspeedButton capability for heterogenous cluster, architectures: %v", b.nodeArchitectures)
 	}
 
 	// Build intelligent capabilities configuration
-	intelligentCapabilities := []operatorv1.Capability{
+	capabilities := []operatorv1.Capability{
 		{
 			Name: "LightspeedButton",
 			Visibility: operatorv1.CapabilityVisibility{
