@@ -594,12 +594,6 @@ func (b *ConsoleServerCLIConfigBuilder) Telemetry() map[string]string {
 
 // buildIntelligentCapabilities will configure the capabilities based on cluster characteristics
 func (b *ConsoleServerCLIConfigBuilder) buildCapabilities() []operatorv1.Capability {
-	// If capabilities are already explicitly configured by admin, respect their choice
-	if len(b.capabilities) > 0 {
-		klog.V(4).Infoln("capabilities already configured by admin, using explicit configuration")
-		return b.capabilities
-	}
-
 	// Check if cluster is homogeneous AMD64
 	// Only enable Lightspeed if ALL nodes are AMD64 (homogeneous cluster)
 	// nodeArchitectures contains deduplicated architectures from all nodes
