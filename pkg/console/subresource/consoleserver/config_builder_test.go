@@ -13,6 +13,23 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// defaultTestCapabilities represents the default capabilities as defined in the operator manifest
+// This mirrors the configuration in manifests/01-operator-config.yaml
+var defaultTestCapabilities = []v1.Capability{
+	{
+		Name: v1.LightspeedButton,
+		Visibility: v1.CapabilityVisibility{
+			State: v1.CapabilityEnabled,
+		},
+	},
+	{
+		Name: v1.GettingStartedBanner,
+		Visibility: v1.CapabilityVisibility{
+			State: v1.CapabilityEnabled,
+		},
+	},
+}
+
 // Tests that the builder will return a correctly structured
 // Console Server Config struct when builder.Config() is called
 func TestConsoleServerCLIConfigBuilder(t *testing.T) {
@@ -88,11 +105,13 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				},
 				Providers: Providers{},
 			},
-		}, {
+		},
+		{
 			name: "Config builder should handle customization with LightspeedButton capability",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
 				return b.
+					NodeArchitectures([]string{"amd64"}).
 					Capabilities([]v1.Capability{
 						{
 							Name: v1.LightspeedButton,
@@ -112,7 +131,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					KeyFile:     keyFilePath,
 				},
 				ClusterInfo: ClusterInfo{
-					ConsoleBasePath: "",
+					ConsoleBasePath:   "",
+					NodeArchitectures: []string{"amd64"},
 				},
 				Auth: Auth{
 					ClientID:         api.OpenShiftConsoleName,
@@ -136,7 +156,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				},
 				Providers: Providers{},
 			},
-		}, {
+		},
+		{
 			name: "Config builder should handle cluster info with internal OAuth",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
@@ -168,6 +189,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					LogoutRedirect:      "https://foobar.com/logout",
 				},
 				Customization: Customization{
+
 					Perspectives: []Perspective{
 						{
 							ID:         "dev",
@@ -177,7 +199,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				},
 				Providers: Providers{},
 			},
-		}, {
+		},
+		{
 			name: "Config builder should handle cluster info with external OIDC",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
@@ -239,7 +262,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				},
 				Providers: Providers{},
 			},
-		}, {
+		},
+		{
 			name: "Config builder should handle monitoring and info",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
@@ -292,7 +316,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				},
 				Providers: Providers{},
 			},
-		}, {
+		},
+		{
 			name: "Config builder should handle StatuspageID",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
@@ -1704,7 +1729,7 @@ customization:
   capabilities:
   - name: LightspeedButton
     visibility:
-      state: Enabled
+      state: Disabled
 providers: {}
 `,
 		},
@@ -1713,24 +1738,22 @@ providers: {}
 		t.Run(tt.name, func(t *testing.T) {
 			input, _ := tt.input()
 			if diff := cmp.Diff(tt.output, string(input)); len(diff) > 0 {
+
 				t.Error(diff)
 			}
 		})
 	}
 }
 
-func TestBuildIntelligentCapabilities(t *testing.T) {
+func TestBuildCapabilities(t *testing.T) {
 	tests := []struct {
 		name                 string
-		existingCapabilities []v1.Capability
 		nodeArchitectures    []string
 		expectedCapabilities []v1.Capability
-		shouldUseExisting    bool
 	}{
 		{
-			name:                 "Homogeneous AMD64 cluster - enables Lightspeed",
-			existingCapabilities: []v1.Capability{}, // empty, should be auto-configured
-			nodeArchitectures:    []string{"amd64"},
+			name:              "Homogeneous AMD64 cluster - enables Lightspeed",
+			nodeArchitectures: []string{"amd64"},
 			expectedCapabilities: []v1.Capability{
 				{
 					Name: "LightspeedButton",
@@ -1745,12 +1768,10 @@ func TestBuildIntelligentCapabilities(t *testing.T) {
 					},
 				},
 			},
-			shouldUseExisting: false,
 		},
 		{
-			name:                 "Mixed architecture cluster - disables Lightspeed",
-			existingCapabilities: []v1.Capability{}, // empty, should be auto-configured
-			nodeArchitectures:    []string{"amd64", "ppc64le"},
+			name:              "Mixed architecture cluster - disables Lightspeed",
+			nodeArchitectures: []string{"amd64", "ppc64le"},
 			expectedCapabilities: []v1.Capability{
 				{
 					Name: "LightspeedButton",
@@ -1765,12 +1786,10 @@ func TestBuildIntelligentCapabilities(t *testing.T) {
 					},
 				},
 			},
-			shouldUseExisting: false,
 		},
 		{
-			name:                 "Power-only cluster - disables Lightspeed",
-			existingCapabilities: []v1.Capability{}, // empty, should be auto-configured
-			nodeArchitectures:    []string{"ppc64le"},
+			name:              "Power-only cluster - disables Lightspeed",
+			nodeArchitectures: []string{"ppc64le"},
 			expectedCapabilities: []v1.Capability{
 				{
 					Name: "LightspeedButton",
@@ -1785,43 +1804,32 @@ func TestBuildIntelligentCapabilities(t *testing.T) {
 					},
 				},
 			},
-			shouldUseExisting: false,
 		},
 		{
-			name: "Pre-configured capabilities - respects admin choice",
-			existingCapabilities: []v1.Capability{
-				{
-					Name: "LightspeedButton",
-					Visibility: v1.CapabilityVisibility{
-						State: v1.CapabilityEnabled,
-					},
-				},
-			},
-			nodeArchitectures: []string{"ppc64le"}, // Power cluster, but admin explicitly enabled
+			name:              "Empty node architectures - disables Lightspeed",
+			nodeArchitectures: []string{},
 			expectedCapabilities: []v1.Capability{
 				{
 					Name: "LightspeedButton",
 					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityDisabled,
+					},
+				},
+				{
+					Name: "GettingStartedBanner",
+					Visibility: v1.CapabilityVisibility{
 						State: v1.CapabilityEnabled,
 					},
 				},
 			},
-			shouldUseExisting: true, // Should use admin's explicit configuration
-		},
-		{
-			name:                 "Empty node architectures - uses existing behavior",
-			existingCapabilities: []v1.Capability{}, // empty, should remain empty
-			nodeArchitectures:    []string{},
-			expectedCapabilities: []v1.Capability{}, // Should remain empty (existing behavior)
-			shouldUseExisting:    true,              // Uses existing empty slice
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			builder := &ConsoleServerCLIConfigBuilder{
-				capabilities:      tt.existingCapabilities,
 				nodeArchitectures: tt.nodeArchitectures,
+				capabilities:      defaultTestCapabilities,
 			}
 
 			result := builder.buildCapabilities()
