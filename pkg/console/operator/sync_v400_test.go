@@ -1,7 +1,6 @@
 package operator
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/go-test/deep"
