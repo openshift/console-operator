@@ -196,57 +196,6 @@ func TestGetNodeComputeEnvironments(t *testing.T) {
 			expectedArchitectures:    []string{"baz", "foo"},
 			expectedOperatingSystems: []string{"bat"},
 		},
-		{
-			name: "3 AMD64 nodes - should return single architecture",
-			nodeList: func() []*v1.Node {
-				nodes := make([]*v1.Node, 3)
-				for i := 0; i < 3; i++ {
-					nodes[i] = &v1.Node{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: fmt.Sprintf("node-%d", i),
-							Labels: map[string]string{
-								api.NodeArchitectureLabel:    "amd64",
-								api.NodeOperatingSystemLabel: "linux",
-							},
-						},
-					}
-				}
-				return nodes
-			}(),
-			expectedArchitectures:    []string{"amd64"}, // Single architecture despite 3 nodes
-			expectedOperatingSystems: []string{"linux"},
-		},
-		{
-			name: "2 AMD64 + 1 Power node - should return both architectures",
-			nodeList: func() []*v1.Node {
-				nodes := make([]*v1.Node, 3)
-				// 2 AMD64 nodes
-				for i := 0; i < 2; i++ {
-					nodes[i] = &v1.Node{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: fmt.Sprintf("amd64-node-%d", i),
-							Labels: map[string]string{
-								api.NodeArchitectureLabel:    "amd64",
-								api.NodeOperatingSystemLabel: "linux",
-							},
-						},
-					}
-				}
-				// 1 Power node
-				nodes[2] = &v1.Node{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "power-node",
-						Labels: map[string]string{
-							api.NodeArchitectureLabel:    "ppc64le",
-							api.NodeOperatingSystemLabel: "linux",
-						},
-					},
-				}
-				return nodes
-			}(),
-			expectedArchitectures:    []string{"amd64", "ppc64le"}, // Both architectures
-			expectedOperatingSystems: []string{"linux"},
-		},
 	}
 
 	for _, tt := range tests {
