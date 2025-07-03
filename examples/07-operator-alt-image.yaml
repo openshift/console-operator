@@ -44,6 +44,8 @@ spec:
           value: docker.io/openshift/origin-console:latest
         - name: OPERATOR_NAME
           value: "console-operator"
+        - name: CONSOLE_IMAGE
+          value: quay.io/<your-user>/console:latest
       volumes:
       - name: config
         configMap:
