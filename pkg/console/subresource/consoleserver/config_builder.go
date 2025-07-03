@@ -615,16 +615,11 @@ func (b *ConsoleServerCLIConfigBuilder) buildCapabilities() []operatorv1.Capabil
 	// Check if cluster is homogeneous AMD64
 	// Only enable Lightspeed if ALL nodes are AMD64 (homogeneous cluster)
 	// nodeArchitectures contains deduplicated architectures from all nodes
-	var isHomogeneousAMD64 bool
-	if len(b.nodeArchitectures) == 1 {
-		isHomogeneousAMD64 = b.nodeArchitectures[0] == "amd64"
-	} else {
-		// Mixed architecture cluster - disable Lightspeed
-		isHomogeneousAMD64 = false
-	}
+	isHomogeneousAMD64 := len(b.nodeArchitectures) == 1 && b.nodeArchitectures[0] == "amd64"
 
 	// Configure LightspeedButton based on architecture
 	lightspeedState := operatorv1.CapabilityEnabled // Default to enabled
+
 	if !isHomogeneousAMD64 {
 		lightspeedState = operatorv1.CapabilityDisabled
 		klog.V(4).Infof("disabling LightspeedButton capability for heterogenous cluster, architectures: %v", b.nodeArchitectures)
