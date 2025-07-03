@@ -31,7 +31,6 @@ cd console-operator
 # Build the operator binary
 make
 
-
 # Build for specific platform (e.g., Linux AMD64)
 GOOS=linux GOARCH=amd64 make
 ```
@@ -72,42 +71,58 @@ For detailed development instructions, see [DEVELOPMENT.md](DEVELOPMENT.md).
    # Push to registry
    docker push quay.io/your-username/console-operator:latest
    
-   # Deploy to cluster
+      ```
+
+2. **Update image paths in the deployment configuration**:
+   ```bash
+   # Edit the deployment file to use your custom images
+   # Update both the operator image and console image paths
+   vim examples/07-operator-alt-image.yaml
+   ```
+   
+   **Important**: Before running the deployment script, you must update the following in `examples/07-operator-alt-image.yaml`:
+   
+   - **Operator Image**: Change `quay.io/<your username>/console-operator:latest` to your custom operator image path
+   - **Console Image**: Change `quay.io/<your username>/console:latest` to your custom console image path (if you have one)
+   
+   Example configuration:
+   ```yaml
+   # In examples/07-operator-alt-image.yaml
+   containers:
+   - name: console-operator
+     image: quay.io/your-username/console-operator:latest  # ← Update this
+     # ... other config ...
+     env:
+     - name: CONSOLE_IMAGE
+       value: quay.io/your-username/console:latest  # ← Update this if needed
+   ```
+
+3. **Deploy using the custom operator script**:
+   ```bash
+   # Make the script executable
+   chmod +x deploy-custom-operator.sh
+   
+   # Run the deployment script
    ./deploy-custom-operator.sh
    ```
-
-2. **Make changes and update**:
-   ```bash
-   # Update operator only
-   ./update-operator.sh
    
-   # Update operator and console UI
-   ./update-both.sh
-   ```
+   The script will:
+   - Verify your custom images are accessible
+   - Disable CVO management of the console operator
+   - Scale down the default operator
+   - Deploy your custom operator
+   - Wait for the deployment to be ready
+   - Show deployment status and logs
 
-### Project Structure
+**⚠️ Important Notes**:
+- Ensure your custom images are built and pushed to a registry before running the script
+- The script will prompt for confirmation that you've updated the image paths
+- Make sure you have cluster admin permissions to modify operator deployments
+- The deployment may take several minutes to complete
 
-```
-├── cmd/                    # Command-line applications
-│   └── console/           # Main operator binary
-├── pkg/                   # Core packages
-│   └── console/           # Console operator logic
-│       ├── controllers/   # Kubernetes controllers
-│       ├── subresource/   # Resource management
-│       └── operator/      # Operator lifecycle
-├── bindata/               # Embedded assets
-│   └── assets/           # Kubernetes manifests
-├── manifests/             # Operator manifests
-├── test/                  # Test files
-│   └── e2e/              # End-to-end tests
-├── examples/              # Example configurations
-└── quickstarts/           # Console quick starts
-```
+**Troubleshooting**:
+- If the deployment fails, check the operator logs: `oc logs -n openshift-console-operator -l name=console-operator`
+- To revert to the default operator: `oc apply -f examples/cvo-manage-operator.yaml`
 
+   
 
-
-### Key Components
-- **Controllers**: Manage different aspects of the console (deployment, routes, services, etc.)
-- **Subresources**: Handle resource creation and updates
-- **Bindata**: Embedded Kubernetes manifests for console deployment
-- **Manifests**: Operator installation and configuration files
