@@ -628,12 +628,16 @@ func (b *ConsoleServerCLIConfigBuilder) buildCapabilities() []operatorv1.Capabil
 	}
 
 	if len(capabilities) > 0 {
-		// Update the capabilities with the new LightspeedButton state
-		capabilities[0].Visibility.State = lightspeedState
+		// Find and update the LightspeedButton capability
+		for i := range capabilities {
+			if capabilities[i].Name == "LightspeedButton" {
+				capabilities[i].Visibility.State = lightspeedState
+				klog.V(4).Infof("capabilities configured automatically: LightspeedButton=%s, GettingStartedBanner=%s",
+					capabilities[i].Visibility.State, operatorv1.CapabilityEnabled)
+				break
+			}
+		}
 	}
-
-	klog.V(4).Infof("capabilities configured automatically: LightspeedButton=%s, GettingStartedBanner=%s",
-		lightspeedState, operatorv1.CapabilityEnabled)
 
 	return capabilities
 }
