@@ -25,6 +25,10 @@ const (
 	keyFilePath  = "/var/serving-cert/tls.key"
 )
 
+// SupportedLightspeedArchitectures defines the list of architectures that support Lightspeed.
+// Currently only amd64 is supported, but this can be expanded in the future.
+var SupportedLightspeedArchitectures = []string{"amd64"}
+
 // ConsoleServerCLIConfigBuilder
 // Director will be DefaultConfigMap()
 //
@@ -605,30 +609,39 @@ func (b *ConsoleServerCLIConfigBuilder) Telemetry() map[string]string {
 
 // buildCapabilities will configure the capabilities based on the cluster architecture.
 func (b *ConsoleServerCLIConfigBuilder) buildCapabilities() []operatorv1.Capability {
-	// Get the default capabilities / user-defined capabilities
 	capabilities := b.capabilities
 
-	// Check if cluster is homogeneous AMD64
-	// Only enable Lightspeed if ALL nodes are AMD64 (homogeneous cluster)
-	// nodeArchitectures contains deduplicated architectures from all nodes
-	isHomogeneousAMD64 := len(b.nodeArchitectures) == 1 && b.nodeArchitectures[0] == "amd64"
-
-	// Find the LightspeedButton capability
+	// Find and configure the LightspeedButton capability
 	for i := range capabilities {
 		if capabilities[i].Name == "LightspeedButton" {
-			if !isHomogeneousAMD64 {
-				// Always disable for heterogeneous clusters
+			if !b.isLightspeedSupportedArchitecture() {
 				capabilities[i].Visibility.State = operatorv1.CapabilityDisabled
-				klog.V(4).Infof("disabling LightspeedButton capability for heterogenous cluster, architectures: %v", b.nodeArchitectures)
+				klog.V(4).Infof("disabling LightspeedButton capability - unsupported or mixed architectures: %v", b.nodeArchitectures)
 			} else {
 				klog.V(4).Infof("keeping LightspeedButton capability state: %s", capabilities[i].Visibility.State)
 			}
-
-			klog.V(4).Infof("capabilities configured automatically: LightspeedButton=%s",
-				capabilities[i].Visibility.State)
 			break
 		}
 	}
 
 	return capabilities
+}
+
+// isLightspeedSupportedArchitecture checks if the cluster has a homogeneous architecture
+// that supports Lightspeed.
+func (b *ConsoleServerCLIConfigBuilder) isLightspeedSupportedArchitecture() bool {
+	// Must have exactly one architecture (homogeneous cluster)
+	if len(b.nodeArchitectures) != 1 {
+		return false
+	}
+
+	// Check if the architecture is in the supported list
+	clusterArch := b.nodeArchitectures[0]
+	for _, supportedArch := range SupportedLightspeedArchitectures {
+		if clusterArch == supportedArch {
+			return true
+		}
+	}
+
+	return false
 }
