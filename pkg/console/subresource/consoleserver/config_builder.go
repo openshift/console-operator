@@ -627,21 +627,26 @@ func (b *ConsoleServerCLIConfigBuilder) buildCapabilities() []operatorv1.Capabil
 	return capabilities
 }
 
-// isLightspeedSupportedArchitecture checks if the cluster has a homogeneous architecture
-// that supports Lightspeed.
+// isLightspeedSupportedArchitecture checks if all cluster architectures support Lightspeed.
 func (b *ConsoleServerCLIConfigBuilder) isLightspeedSupportedArchitecture() bool {
-	// Must have exactly one architecture (homogeneous cluster)
-	if len(b.nodeArchitectures) != 1 {
+	// No architectures means disabled
+	if len(b.nodeArchitectures) == 0 {
 		return false
 	}
 
-	// Check if the architecture is in the supported list
-	clusterArch := b.nodeArchitectures[0]
-	for _, supportedArch := range SupportedLightspeedArchitectures {
-		if clusterArch == supportedArch {
-			return true
+	// Check if all architectures are supported
+	for _, clusterArch := range b.nodeArchitectures {
+		isSupported := false
+		for _, supportedArch := range SupportedLightspeedArchitectures {
+			if clusterArch == supportedArch {
+				isSupported = true
+				break
+			}
+		}
+		if !isSupported {
+			return false
 		}
 	}
 
-	return false
+	return true
 }
