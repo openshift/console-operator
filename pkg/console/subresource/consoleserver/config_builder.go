@@ -603,11 +603,9 @@ func (b *ConsoleServerCLIConfigBuilder) buildCapabilities() []operatorv1.Capabil
 	// Find and configure the LightspeedButton capability
 	for i := range capabilities {
 		if capabilities[i].Name == "LightspeedButton" {
-			if !b.isLightspeedSupportedArchitecture() {
+			if capabilities[i].Visibility.State == operatorv1.CapabilityEnabled && !b.isLightspeedSupportedArchitecture() {
 				capabilities[i].Visibility.State = operatorv1.CapabilityDisabled
 				klog.V(4).Infof("disabling LightspeedButton capability - unsupported or mixed architectures: %v", b.nodeArchitectures)
-			} else {
-				klog.V(4).Infof("keeping LightspeedButton capability state: %s", capabilities[i].Visibility.State)
 			}
 			break
 		}
