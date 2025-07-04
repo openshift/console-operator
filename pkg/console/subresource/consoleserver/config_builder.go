@@ -622,8 +622,9 @@ func (b *ConsoleServerCLIConfigBuilder) isLightspeedSupportedArchitecture() bool
 	}
 
 	// Check if all architectures are supported
+	isSupported := true
 	for _, clusterArch := range b.nodeArchitectures {
-		isSupported := false
+		isSupported = false
 		for _, supportedArch := range SupportedLightspeedArchitectures {
 			if clusterArch == supportedArch {
 				isSupported = true
