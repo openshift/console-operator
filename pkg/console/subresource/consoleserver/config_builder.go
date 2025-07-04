@@ -635,5 +635,5 @@ func (b *ConsoleServerCLIConfigBuilder) isLightspeedSupportedArchitecture() bool
 		}
 	}
 
-	return true
+	return isSupported
 }
