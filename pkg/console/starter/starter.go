@@ -456,6 +456,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	)
 
 	// Show all ConsolePlugin instances as related objects
+	// Show all namespaces that are used by ConsolePlugin instances as related objects
 	clusterOperatorStatus.WithRelatedObjectsFunc(func() (bool, []configv1.ObjectReference) {
 		relatedObjects := []configv1.ObjectReference{}
 		consolePlugins, err := consoleClient.ConsoleV1().ConsolePlugins().List(ctx, metav1.ListOptions{})
@@ -463,13 +464,21 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 			return false, nil
 		}
 		for _, plugin := range consolePlugins.Items {
-			relatadPlugin := configv1.ObjectReference{
+			relatedObjects = append(relatedObjects, configv1.ObjectReference{
 				Group:    "console.openshift.io",
 				Resource: "consoleplugins",
 				Name:     plugin.GetName(),
+			})
+			if plugin.Spec.Backend.Service != nil {
+				ns := plugin.Spec.Backend.Service.Namespace
+				relatedObjects = append(relatedObjects, configv1.ObjectReference{
+					Group:    corev1.GroupName,
+					Resource: "namespaces",
+					Name:     ns,
+				})
 			}
-			relatedObjects = append(relatedObjects, relatadPlugin)
 		}
+
 		return true, relatedObjects
 	})
 
