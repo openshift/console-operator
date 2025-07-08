@@ -98,3 +98,11 @@ func IsExternalControlPlaneWithIngressDisabled(infrastructureConfig *configv1.In
 
 	return infrastructureConfig.Status.ControlPlaneTopology == configv1.ExternalTopologyMode && !isIngressCapabilityEnabled
 }
+
+// IsExternalControlPlaneWithNLB returns true if the cluster is in external control plane topology (hypershift)
+func IsExternalControlPlaneWithNLB(infrastructureConfig *configv1.Infrastructure, ingressConfig *configv1.Ingress) bool {
+	return infrastructureConfig.Status.ControlPlaneTopology == configv1.ExternalTopologyMode &&
+		infrastructureConfig.Status.PlatformStatus.Type == configv1.AWSPlatformType &&
+		ingressConfig.Spec.LoadBalancer.Platform.Type == configv1.AWSPlatformType &&
+		ingressConfig.Spec.LoadBalancer.Platform.AWS.Type == configv1.NLB
+}
