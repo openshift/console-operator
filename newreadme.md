@@ -21,7 +21,7 @@ The Console Operator is responsible for:
 - OpenShift CLI (`oc`)
 - Access to an OpenShift cluster
 
-### Building the Operator
+### Clone the Repo & Build Locally
 
 ```bash
 # Clone the repository
@@ -113,6 +113,56 @@ For detailed development instructions, see [DEVELOPMENT.md](DEVELOPMENT.md).
    - Deploy your custom operator
    - Wait for the deployment to be ready
    - Show deployment status and logs
+
+
+If you prefer the manual way, that works too. Here are the manual steps to disable CVO management of the console operator:
+
+1. **Instruct CVO to stop managing the console operator:**
+
+   Apply the provided override manifest to tell the Cluster Version Operator (CVO) to stop managing the console operator resources:
+
+   ```bash
+   oc apply -f examples/cvo-unmanage-operator.yaml
+   ```
+
+   This manifest sets the `unmanaged: true` flag for the console-operator deployment and related resources.
+
+2. **Scale down the default console operator:**
+
+   After disabling CVO management, scale down the default console operator deployment so it does not interfere with your custom operator:
+
+   ```bash
+   oc scale --replicas 0 deployment console-operator --namespace openshift-console-operator
+   ```
+
+   This ensures the default operator is not running while you deploy your custom version.
+
+Once these steps are complete, you can proceed to build, push, and deploy your custom operator image as described above.
+
+
+### Manifest Changes
+
+If you need to make changes to the operator's deployment manifest (for example, to update environment variables, add volumes, or change resource limits), you should edit your custom manifest file (such as `examples/07-operator-alt-image.yaml`). 
+
+After making your changes, apply the updated manifest to your cluster.
+
+### Helpful Debugging Commands
+
+```bash
+# inspect the clusteroperator object
+oc describe clusteroperator console
+# get all events in openshift-console-operator namespace
+oc get events -n openshift-console-operator
+# retrieve deployment info (including related events)
+oc describe deployment console-operator -n openshift-console-operator
+# retrieve pod info (including related events)
+oc describe pod console-operator-<sha> -n openshift-console-operator
+# watch the logs of the operator pod (scale down to 1, no need for mulitple during dev)
+oc logs -f console-operator-<sha> -n openshift-console-operator
+# exec into the pod
+ oc exec -it console-operator-<sha> -- /bin/bash
+
+ ```
 
 **⚠️ Important Notes**:
 - Ensure your custom images are built and pushed to a registry before running the script
