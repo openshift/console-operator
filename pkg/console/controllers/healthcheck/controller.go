@@ -18,7 +18,7 @@ import (
 	"k8s.io/klog/v2"
 
 	// openshift
-	configv1 "github.com/openshift/api/config/v1"
+
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
@@ -48,6 +48,7 @@ type HealthCheckController struct {
 	routeLister                routev1listers.RouteLister
 	ingressConfigLister        configlistersv1.IngressLister
 	operatorConfigLister       operatorv1listers.ConsoleLister
+	clusterVersionLister       configlistersv1.ClusterVersionLister
 }
 
 func NewHealthCheckController(
@@ -68,6 +69,7 @@ func NewHealthCheckController(
 		operatorConfigLister:       operatorConfigInformer.Lister(),
 		infrastructureConfigLister: configInformer.Config().V1().Infrastructures().Lister(),
 		ingressConfigLister:        configInformer.Config().V1().Ingresses().Lister(),
+		clusterVersionLister:       configInformer.Config().V1().ClusterVersions().Lister(),
 		routeLister:                routeInformer.Lister(),
 		configMapLister:            coreInformer.ConfigMaps().Lister(),
 	}
@@ -122,10 +124,14 @@ func (c *HealthCheckController) Sync(ctx context.Context, controllerContext fact
 		klog.Errorf("infrastructure config error: %v", err)
 		return statusHandler.FlushAndReturn(err)
 	}
+	clusterVersionConfig, err := c.clusterVersionLister.Get("version")
+	if err != nil {
+		return statusHandler.FlushAndReturn(err)
+	}
 
 	// Disable the health check for external control plane topology (hypershift) and ingress NLB.
 	// This is to avoid an issue with internal NLB see https://issues.redhat.com/browse/OCPBUGS-23300
-	if isExternalControlPlaneWithNLB(infrastructureConfig, ingressConfig) {
+	if util.IsExternalControlPlaneWithNLB(infrastructureConfig, ingressConfig) || util.IsExternalControlPlaneWithIngressDisabled(infrastructureConfig, clusterVersionConfig) {
 		return nil
 	}
 
@@ -257,13 +263,6 @@ func clientWithCA(caPool *x509.CertPool) *http.Client {
 			},
 		},
 	}
-}
-
-func isExternalControlPlaneWithNLB(infrastructureConfig *configv1.Infrastructure, ingressConfig *configv1.Ingress) bool {
-	return infrastructureConfig.Status.ControlPlaneTopology == configv1.ExternalTopologyMode &&
-		infrastructureConfig.Status.PlatformStatus.Type == configv1.AWSPlatformType &&
-		ingressConfig.Spec.LoadBalancer.Platform.Type == configv1.AWSPlatformType &&
-		ingressConfig.Spec.LoadBalancer.Platform.AWS.Type == configv1.NLB
 }
 
 func logHealthCheckError(errStr string) {
