@@ -201,13 +201,11 @@ func TestGetNodeComputeEnvironments(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			actualArchitectures, actualOperatingSystems := getNodeComputeEnvironments(tt.nodeList)
 			if diff := deep.Equal(tt.expectedArchitectures, actualArchitectures); diff != nil {
-				t.Error(diff)
-				return
+				t.Errorf("Architecture mismatch: %v", diff)
 			}
 
 			if diff := deep.Equal(tt.expectedOperatingSystems, actualOperatingSystems); diff != nil {
-				t.Error(diff)
-				return
+				t.Errorf("OS mismatch: %v", diff)
 			}
 		})
 	}
