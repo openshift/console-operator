@@ -25,6 +25,10 @@ const (
 	keyFilePath  = "/var/serving-cert/tls.key"
 )
 
+// SupportedLightspeedArchitectures defines the list of architectures that support Lightspeed.
+// Currently only amd64 is supported, but this can be expanded in the future.
+var SupportedLightspeedArchitectures = []string{"amd64"}
+
 // ConsoleServerCLIConfigBuilder
 // Director will be DefaultConfigMap()
 //
@@ -551,7 +555,8 @@ func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
 		conf.Perspectives = perspectives
 	}
 
-	conf.Capabilities = b.capabilities
+	// Apply capabilities configuration. This will configure the capability based on the cluster architecture.
+	conf.Capabilities = b.buildCapabilities()
 
 	return conf
 }
@@ -589,4 +594,47 @@ func (b *ConsoleServerCLIConfigBuilder) proxy() Proxy {
 
 func (b *ConsoleServerCLIConfigBuilder) Telemetry() map[string]string {
 	return b.telemetry
+}
+
+// buildCapabilities will configure the capabilities based on the cluster architecture.
+func (b *ConsoleServerCLIConfigBuilder) buildCapabilities() []operatorv1.Capability {
+	capabilities := b.capabilities
+
+	// Find and configure the LightspeedButton capability
+	for i := range capabilities {
+		if capabilities[i].Name == "LightspeedButton" {
+			if capabilities[i].Visibility.State == operatorv1.CapabilityEnabled && !b.isLightspeedSupportedArchitecture() {
+				capabilities[i].Visibility.State = operatorv1.CapabilityDisabled
+				klog.V(4).Infof("disabling LightspeedButton capability - unsupported or mixed architectures: %v", b.nodeArchitectures)
+			}
+			break
+		}
+	}
+
+	return capabilities
+}
+
+// isLightspeedSupportedArchitecture checks if all cluster architectures support Lightspeed.
+func (b *ConsoleServerCLIConfigBuilder) isLightspeedSupportedArchitecture() bool {
+	// No architectures means disabled
+	if len(b.nodeArchitectures) == 0 {
+		return false
+	}
+
+	// Check if all architectures are supported
+	isSupported := true
+	for _, clusterArch := range b.nodeArchitectures {
+		isSupported = false
+		for _, supportedArch := range SupportedLightspeedArchitectures {
+			if clusterArch == supportedArch {
+				isSupported = true
+				break
+			}
+		}
+		if !isSupported {
+			return false
+		}
+	}
+
+	return isSupported
 }
