@@ -236,11 +236,8 @@ func TestDefaultDeployment(t *testing.T) {
 						Spec: corev1.PodSpec{
 							ServiceAccountName: "console",
 							// we want to deploy on master nodes
-							NodeSelector: map[string]string{
-								// empty string is correct
-								"node-role.kubernetes.io/master": "",
-							},
-							Affinity: consoleDeploymentAffinity,
+							NodeSelector: map[string]string{"node-role.kubernetes.io/master": ""},
+							Affinity:     consoleDeploymentAffinity,
 							// toleration is a taint override. we can and should be scheduled on a master node.
 							Tolerations:                   consoleDeploymentTolerations,
 							PriorityClassName:             "system-cluster-critical",
@@ -317,11 +314,8 @@ func TestDefaultDeployment(t *testing.T) {
 						Spec: corev1.PodSpec{
 							ServiceAccountName: "console",
 							// we want to deploy on master nodes
-							NodeSelector: map[string]string{
-								// empty string is correct
-								"node-role.kubernetes.io/master": "",
-							},
-							Affinity: consoleDeploymentAffinity,
+							NodeSelector: map[string]string{"node-role.kubernetes.io/master": ""},
+							Affinity:     consoleDeploymentAffinity,
 							// toleration is a taint override. we can and should be scheduled on a master node.
 							Tolerations:                   consoleDeploymentTolerations,
 							PriorityClassName:             "system-cluster-critical",
@@ -398,11 +392,8 @@ func TestDefaultDeployment(t *testing.T) {
 						Spec: corev1.PodSpec{
 							ServiceAccountName: "console",
 							// we want to deploy on master nodes
-							NodeSelector: map[string]string{
-								// empty string is correct
-								"node-role.kubernetes.io/master": "",
-							},
-							Affinity: &corev1.Affinity{},
+							NodeSelector: map[string]string{"node-role.kubernetes.io/master": ""},
+							Affinity:     &corev1.Affinity{},
 							// toleration is a taint override. we can and should be scheduled on a master node.
 							Tolerations:                   consoleDeploymentTolerations,
 							PriorityClassName:             "system-cluster-critical",
@@ -1545,7 +1536,9 @@ func TestWithConsoleNodeSelector(t *testing.T) {
 				Spec: appsv1.DeploymentSpec{
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
-							NodeSelector: map[string]string{},
+							NodeSelector: map[string]string{
+								"foo": "bar",
+							},
 						},
 					},
 				},
@@ -1554,7 +1547,7 @@ func TestWithConsoleNodeSelector(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withConsoleNodeSelector(tt.args.deployment, tt.args.infrastructureConfig)
+			withNodeSelector(tt.args.deployment, tt.args.infrastructureConfig)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
 			}
@@ -1617,7 +1610,8 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 
 	downloadsDeploymentPodSpecSingleReplica := corev1.PodSpec{
 		NodeSelector: map[string]string{
-			"kubernetes.io/os": "linux",
+			"kubernetes.io/os":               "linux",
+			"node-role.kubernetes.io/master": "",
 		},
 		Affinity: &corev1.Affinity{},
 		Tolerations: []corev1.Toleration{
