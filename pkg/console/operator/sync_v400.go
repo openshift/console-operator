@@ -102,7 +102,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	case configv1.AuthenticationTypeOIDC:
 		if len(authnConfig.Spec.OIDCProviders) > 0 {
 			oidcProvider := authnConfig.Spec.OIDCProviders[0]
-			authServerCAConfig, err = co.configNSConfigMapLister.ConfigMaps(api.OpenShiftConfigNamespace).Get(oidcProvider.Issuer.CertificateAuthority.Name)
+			authServerCAConfig, err = co.configNSConfigMapLister.ConfigMaps(api.OpenShiftConsoleNamespace).Get(oidcProvider.Issuer.CertificateAuthority.Name)
 			if err != nil && !apierrors.IsNotFound(err) {
 				return statusHandler.FlushAndReturn(err)
 			}
