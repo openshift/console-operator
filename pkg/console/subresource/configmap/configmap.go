@@ -23,6 +23,7 @@ import (
 const (
 	consoleConfigYamlFile = "console-config.yaml"
 	defaultLogoutURL      = ""
+	sessionDir            = "/tmp/sessions"
 	pluginProxyEndpoint   = "/api/proxy/plugin/"
 )
 
@@ -105,6 +106,7 @@ func DefaultConfigMap(
 		NodeArchitectures(nodeArchitectures).
 		NodeOperatingSystems(nodeOperatingSystems).
 		AuthConfig(authConfig, apiServerURL).
+		SessionDir(sessionDir).
 		Capabilities(operatorConfig.Spec.Customization.Capabilities).
 		ConfigYAML()
 	if err != nil {

@@ -63,6 +63,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	monitoring                   map[string]string
 	customHostnameRedirectPort   int
 	inactivityTimeoutSeconds     int
+	sessionDir                   string
 	pluginsList                  map[string]string
 	pluginsOrder                 []string
 	i18nNamespaceList            []string
@@ -235,6 +236,11 @@ func (b *ConsoleServerCLIConfigBuilder) Monitoring(monitoringConfig *corev1.Conf
 
 func (b *ConsoleServerCLIConfigBuilder) InactivityTimeout(timeout int) *ConsoleServerCLIConfigBuilder {
 	b.inactivityTimeoutSeconds = timeout
+	return b
+}
+
+func (b *ConsoleServerCLIConfigBuilder) SessionDir(sessionDir string) *ConsoleServerCLIConfigBuilder {
+	b.sessionDir = sessionDir
 	return b
 }
 
