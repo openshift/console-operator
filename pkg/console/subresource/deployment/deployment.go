@@ -58,9 +58,10 @@ type volumeConfig struct {
 	name     string
 	readOnly bool
 	path     string
-	// isSecret or isConfigMap are mutually exclusive
+	// isSecret, isConfigMap, and isEmptyDir are mutually exclusive
 	isSecret    bool
 	isConfigMap bool
+	isEmptyDir  bool
 	mappedKeys  map[string]string
 }
 
@@ -87,7 +88,6 @@ func DefaultDeployment(
 	withStrategy(deployment, infrastructureConfig)
 	withConsoleAnnotations(
 		deployment,
-		consoleConfigMap,
 		serviceCAConfigMap,
 		authnCATrustConfigMap,
 		trustedCAConfigMap,
@@ -194,7 +194,6 @@ func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.
 // version changes.
 func withConsoleAnnotations(
 	deployment *appsv1.Deployment,
-	consoleConfigMap *corev1.ConfigMap,
 	serviceCAConfigMap *corev1.ConfigMap,
 	authServerCAConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
@@ -203,8 +202,9 @@ func withConsoleAnnotations(
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
 ) {
+	// Avoid rolling out when the console-config configmap is updated.
+	// Console now watches the configmap for changes without needing to redeploy.
 	deployment.ObjectMeta.Annotations = map[string]string{
-		configMapResourceVersionAnnotation:            consoleConfigMap.GetResourceVersion(),
 		serviceCAConfigMapResourceVersionAnnotation:   serviceCAConfigMap.GetResourceVersion(),
 		trustedCAConfigMapResourceVersionAnnotation:   trustedCAConfigMap.GetResourceVersion(),
 		proxyConfigResourceVersionAnnotation:          proxyConfig.GetResourceVersion(),
@@ -300,6 +300,16 @@ func withConsoleVolumes(
 							Name: item.name,
 						},
 						Items: items,
+					},
+				},
+			}
+		}
+		if item.isEmptyDir {
+			vols[i] = corev1.Volume{
+				Name: item.name,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{
+						Medium: corev1.StorageMediumMemory,
 					},
 				},
 			}
@@ -518,6 +528,12 @@ func defaultVolumeConfig() []volumeConfig {
 			readOnly:    true,
 			path:        "/var/service-ca",
 			isConfigMap: true,
+		},
+		{
+			name:       api.SessionStorageVolumeName,
+			readOnly:   false,
+			path:       "/var/sessions",
+			isEmptyDir: true,
 		},
 	}
 }

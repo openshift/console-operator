@@ -38,6 +38,7 @@ const (
 	RedirectContainerPortName           = "custom-route-redirect"
 	ServiceCAConfigMapName              = "service-ca"
 	SessionSecretName                   = "session-secret"
+	SessionStorageVolumeName            = "session-storage"
 	TargetNamespace                     = "openshift-console"
 	TrustedCABundleKey                  = "ca-bundle.crt"
 	TrustedCABundleMountDir             = "/etc/pki/ca-trust/extracted/pem"
