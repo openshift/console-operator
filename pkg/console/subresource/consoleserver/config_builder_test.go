@@ -139,16 +139,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					OAuthEndpointCAFile: "/var/oauth-serving-cert/ca-bundle.crt",
 					LogoutRedirect:      "https://foobar.com/logout",
 				},
-				Customization: Customization{
-
-					Perspectives: []Perspective{
-						{
-							ID:         "dev",
-							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
-						},
-					},
-				},
-				Providers: Providers{},
+				Customization: Customization{},
+				Providers:     Providers{},
 			},
 		},
 		{
