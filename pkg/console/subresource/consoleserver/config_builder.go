@@ -64,6 +64,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	customHostnameRedirectPort   int
 	inactivityTimeoutSeconds     int
 	pluginsList                  map[string]string
+	pluginsOrder                 []string
 	i18nNamespaceList            []string
 	proxyServices                []ProxyService
 	telemetry                    map[string]string
@@ -242,6 +243,11 @@ func (b *ConsoleServerCLIConfigBuilder) Plugins(plugins map[string]string) *Cons
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) PluginsOrder(consoleConfig *operatorv1.Console) *ConsoleServerCLIConfigBuilder {
+	b.pluginsOrder = consoleConfig.Spec.Plugins
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) ContentSecurityPolicies(cspList map[v1.DirectiveType][]string) *ConsoleServerCLIConfigBuilder {
 	b.contentSecurityPolicyList = cspList
 	return b
@@ -299,6 +305,7 @@ func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 		Providers:                    b.providers(),
 		MonitoringInfo:               b.monitoringInfo(),
 		Plugins:                      b.plugins(),
+		PluginsOrder:                 b.getPluginsOrder(),
 		I18nNamespaces:               b.i18nNamespaces(),
 		Proxy:                        b.proxy(),
 		ContentSecurityPolicy:        b.contentSecurityPolicy(),
@@ -572,6 +579,10 @@ func (b *ConsoleServerCLIConfigBuilder) providers() Providers {
 
 func (b *ConsoleServerCLIConfigBuilder) plugins() map[string]string {
 	return b.pluginsList
+}
+
+func (b *ConsoleServerCLIConfigBuilder) getPluginsOrder() []string {
+	return b.pluginsOrder
 }
 
 func (b *ConsoleServerCLIConfigBuilder) i18nNamespaces() []string {
