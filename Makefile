@@ -26,7 +26,7 @@ IMAGE_REGISTRY?=registry.svc.ci.openshift.org
 # $3 - Dockerfile path
 # $4 - context directory for image build
 # It will generate target "image-$(1)" for building the image and binding it as a prerequisite to target "images".
-$(call build-image,ocp-console-operator,$(IMAGE_REGISTRY)/ocp/4.5:console-operator,./Dockerfile.rhel7,.)
+$(call build-image,ocp-console-operator,$(IMAGE_REGISTRY)/ocp/4.5:console-operator,./Dockerfile.ocp,.)
 
 # This will include additional actions on the update and verify targets to ensure that profile patches are applied
 # to manifest files
