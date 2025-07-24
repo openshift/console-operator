@@ -96,16 +96,20 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	}
 
 	var (
-		authServerCAConfig *corev1.ConfigMap
-		sessionSecret      *corev1.Secret
+		targetNamespaceAuthServerCA *corev1.ConfigMap
+		sessionSecret               *corev1.Secret
 	)
 	switch authnConfig.Spec.Type {
 	case configv1.AuthenticationTypeOIDC:
 		if len(authnConfig.Spec.OIDCProviders) > 0 {
 			oidcProvider := authnConfig.Spec.OIDCProviders[0]
-			authServerCAConfig, err = co.configNSConfigMapLister.ConfigMaps(api.OpenShiftConsoleNamespace).Get(oidcProvider.Issuer.CertificateAuthority.Name)
-			if err != nil && !apierrors.IsNotFound(err) {
-				return statusHandler.FlushAndReturn(err)
+			certAuthorityName := oidcProvider.Issuer.CertificateAuthority.Name
+			if certAuthorityName != "" {
+				targetNamespaceAuthServerCA, err = co.targetNSConfigMapLister.ConfigMaps(api.OpenShiftConsoleNamespace).Get(certAuthorityName)
+				statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCProviderTrustedAuthorityConfigGet", "FailedGet", err))
+				if err != nil {
+					return statusHandler.FlushAndReturn(err)
+				}
 			}
 		}
 
@@ -127,7 +131,6 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		set.Console,
 		set.Infrastructure,
 		set.OAuth,
-		authServerCAConfig,
 		authnConfig,
 		consoleRoute,
 		controllerContext.Recorder(),
@@ -179,7 +182,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		cm,
 		serviceCAConfigMap,
 		oauthServingCertConfigMap,
-		authServerCAConfig,
+		targetNamespaceAuthServerCA,
 		trustedCAConfigMap,
 		clientSecret,
 		sessionSecret,
@@ -333,7 +336,6 @@ func (co *consoleOperator) SyncConfigMap(
 	consoleConfig *configv1.Console,
 	infrastructureConfig *configv1.Infrastructure,
 	oauthConfig *configv1.OAuth,
-	authServerCAConfig *corev1.ConfigMap,
 	authConfig *configv1.Authentication,
 	activeConsoleRoute *routev1.Route,
 	recorder events.Recorder,
@@ -400,7 +402,6 @@ func (co *consoleOperator) SyncConfigMap(
 		operatorConfig,
 		consoleConfig,
 		authConfig,
-		authServerCAConfig,
 		managedConfig,
 		monitoringSharedConfig,
 		infrastructureConfig,
