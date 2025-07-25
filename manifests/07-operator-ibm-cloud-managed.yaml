@@ -75,6 +75,8 @@ spec:
           name: serving-cert
         - mountPath: /etc/pki/ca-trust/extracted/pem
           name: trusted-ca
+        - mountPath: /tmp
+          name: temp-dir
       priorityClassName: system-cluster-critical
       securityContext:
         runAsNonRoot: true
@@ -107,3 +109,5 @@ spec:
             path: tls-ca-bundle.pem
           name: trusted-ca
         name: trusted-ca
+      - emptyDir: {}
+        name: temp-dir
