@@ -13,6 +13,23 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// defaultTestCapabilities represents the default capabilities as defined in the operator manifest
+// This mirrors the configuration in manifests/01-operator-config.yaml
+var defaultTestCapabilities = []v1.Capability{
+	{
+		Name: v1.LightspeedButton,
+		Visibility: v1.CapabilityVisibility{
+			State: v1.CapabilityEnabled,
+		},
+	},
+	{
+		Name: v1.GettingStartedBanner,
+		Visibility: v1.CapabilityVisibility{
+			State: v1.CapabilityEnabled,
+		},
+	},
+}
+
 // Tests that the builder will return a correctly structured
 // Console Server Config struct when builder.Config() is called
 func TestConsoleServerCLIConfigBuilder(t *testing.T) {
@@ -45,11 +62,13 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Customization: Customization{},
 				Providers:     Providers{},
 			},
-		}, {
+		},
+		{
 			name: "Config builder should handle customization with LightspeedButton capability",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
 				return b.
+					NodeArchitectures([]string{"amd64"}).
 					Capabilities([]v1.Capability{
 						{
 							Name: v1.LightspeedButton,
@@ -69,7 +88,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					KeyFile:     keyFilePath,
 				},
 				ClusterInfo: ClusterInfo{
-					ConsoleBasePath: "",
+					ConsoleBasePath:   "",
+					NodeArchitectures: []string{"amd64"},
 				},
 				Auth: Auth{
 					ClientID:         api.OpenShiftConsoleName,
@@ -87,7 +107,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				},
 				Providers: Providers{},
 			},
-		}, {
+		},
+		{
 			name: "Config builder should handle cluster info with internal OAuth",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
@@ -121,7 +142,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Customization: Customization{},
 				Providers:     Providers{},
 			},
-		}, {
+		},
+		{
 			name: "Config builder should handle cluster info with external OIDC",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
@@ -176,7 +198,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Customization: Customization{},
 				Providers:     Providers{},
 			},
-		}, {
+		},
+		{
 			name: "Config builder should handle monitoring and info",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
@@ -222,7 +245,8 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Customization: Customization{},
 				Providers:     Providers{},
 			},
-		}, {
+		},
+		{
 			name: "Config builder should handle StatuspageID",
 			input: func() Config {
 				b := &ConsoleServerCLIConfigBuilder{}
@@ -1508,7 +1532,7 @@ customization:
   capabilities:
   - name: LightspeedButton
     visibility:
-      state: Enabled
+      state: Disabled
 providers: {}
 `,
 		},
@@ -1517,7 +1541,104 @@ providers: {}
 		t.Run(tt.name, func(t *testing.T) {
 			input, _ := tt.input()
 			if diff := cmp.Diff(tt.output, string(input)); len(diff) > 0 {
+
 				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestBuildCapabilities(t *testing.T) {
+	tests := []struct {
+		name                 string
+		nodeArchitectures    []string
+		expectedCapabilities []v1.Capability
+	}{
+		{
+			name:              "Homogeneous AMD64 cluster - enables Lightspeed",
+			nodeArchitectures: []string{"amd64"},
+			expectedCapabilities: []v1.Capability{
+				{
+					Name: "LightspeedButton",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityEnabled,
+					},
+				},
+				{
+					Name: "GettingStartedBanner",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityEnabled,
+					},
+				},
+			},
+		},
+		{
+			name:              "Mixed architecture cluster - disables Lightspeed",
+			nodeArchitectures: []string{"amd64", "ppc64le"},
+			expectedCapabilities: []v1.Capability{
+				{
+					Name: "LightspeedButton",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityDisabled,
+					},
+				},
+				{
+					Name: "GettingStartedBanner",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityEnabled,
+					},
+				},
+			},
+		},
+		{
+			name:              "Power-only cluster - disables Lightspeed",
+			nodeArchitectures: []string{"ppc64le"},
+			expectedCapabilities: []v1.Capability{
+				{
+					Name: "LightspeedButton",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityDisabled,
+					},
+				},
+				{
+					Name: "GettingStartedBanner",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityEnabled,
+					},
+				},
+			},
+		},
+		{
+			name:              "Empty node architectures - disables Lightspeed",
+			nodeArchitectures: []string{},
+			expectedCapabilities: []v1.Capability{
+				{
+					Name: "LightspeedButton",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityDisabled,
+					},
+				},
+				{
+					Name: "GettingStartedBanner",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityEnabled,
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := &ConsoleServerCLIConfigBuilder{
+				nodeArchitectures: tt.nodeArchitectures,
+				capabilities:      defaultTestCapabilities,
+			}
+
+			result := builder.buildCapabilities()
+
+			if diff := deep.Equal(tt.expectedCapabilities, result); diff != nil {
+				t.Errorf("Expected capabilities don't match: %v", diff)
 			}
 		})
 	}
