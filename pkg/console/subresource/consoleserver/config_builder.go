@@ -63,6 +63,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	monitoring                   map[string]string
 	customHostnameRedirectPort   int
 	inactivityTimeoutSeconds     int
+	sessionDir                   string
 	pluginsList                  map[string]string
 	pluginsOrder                 []string
 	i18nNamespaceList            []string
@@ -196,6 +197,9 @@ func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authent
 		b.authType = "openshift"
 		b.oauthClientID = api.OAuthClientName
 		b.CAFile = oauthServingCertFilePath
+		b.sessionAuthenticationFile = "/var/session-secret/sessionAuthenticationKey"
+		b.sessionEncryptionFile = "/var/session-secret/sessionEncryptionKey"
+
 		return b
 
 	case configv1.AuthenticationTypeOIDC:
@@ -235,6 +239,11 @@ func (b *ConsoleServerCLIConfigBuilder) Monitoring(monitoringConfig *corev1.Conf
 
 func (b *ConsoleServerCLIConfigBuilder) InactivityTimeout(timeout int) *ConsoleServerCLIConfigBuilder {
 	b.inactivityTimeoutSeconds = timeout
+	return b
+}
+
+func (b *ConsoleServerCLIConfigBuilder) SessionDir(sessionDir string) *ConsoleServerCLIConfigBuilder {
+	b.sessionDir = sessionDir
 	return b
 }
 
