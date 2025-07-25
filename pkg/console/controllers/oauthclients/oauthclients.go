@@ -16,6 +16,7 @@ import (
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
+	configinformer "github.com/openshift/client-go/config/informers/externalversions"
 	configv1informers "github.com/openshift/client-go/config/informers/externalversions/config/v1"
 	configv1lister "github.com/openshift/client-go/config/listers/config/v1"
 	oauthclient "github.com/openshift/client-go/oauth/clientset/versioned"
@@ -56,6 +57,8 @@ type oauthClientsController struct {
 	routesLister                routev1listers.RouteLister
 	ingressConfigLister         configv1lister.IngressLister
 	targetNSSecretsLister       corev1listers.SecretLister
+	infrastructureConfigLister  configv1lister.InfrastructureLister
+	clusterVersionLister        configv1lister.ClusterVersionLister
 }
 
 func NewOAuthClientsController(
@@ -66,6 +69,7 @@ func NewOAuthClientsController(
 	routeInformer routev1informers.RouteInformer,
 	ingressConfigInformer configv1informers.IngressInformer,
 	targetNSsecretsInformer corev1informers.SecretInformer,
+	configInformer configinformer.SharedInformerFactory,
 	oauthClientSwitchedInformer *util.InformerWithSwitch,
 	recorder events.Recorder,
 ) factory.Controller {
@@ -79,6 +83,8 @@ func NewOAuthClientsController(
 		consoleOperatorLister:       consoleOperatorInformer.Lister(),
 		routesLister:                routeInformer.Lister(),
 		ingressConfigLister:         ingressConfigInformer.Lister(),
+		infrastructureConfigLister:  configInformer.Config().V1().Infrastructures().Lister(),
+		clusterVersionLister:        configInformer.Config().V1().ClusterVersions().Lister(),
 		targetNSSecretsLister:       targetNSsecretsInformer.Lister(),
 	}
 
@@ -108,6 +114,20 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 	}
 
 	statusHandler := status.NewStatusHandler(c.operatorClient)
+
+	infrastructureConfig, err := c.infrastructureConfigLister.Get(api.ConfigResourceName)
+	if err != nil {
+		return statusHandler.FlushAndReturn(err)
+	}
+
+	clusterVersionConfig, err := c.clusterVersionLister.Get("version")
+	if err != nil {
+		return statusHandler.FlushAndReturn(err)
+	}
+
+	if util.IsExternalControlPlaneWithIngressDisabled(infrastructureConfig, clusterVersionConfig) {
+		return statusHandler.FlushAndReturn(nil)
+	}
 
 	authnConfig, err := c.authnLister.Get(api.ConfigResourceName)
 	if err != nil {
