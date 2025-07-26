@@ -156,7 +156,7 @@ spec:
         For example, a minimal YAML configuration could be:
 
         ```
-        apiVersion: rhdh.redhat.com/v1alpha1
+        apiVersion: rhdh.redhat.com/v1alpha3
         kind: Backstage
         metadata:
           name: my-rhdh
@@ -270,7 +270,7 @@ spec:
                 keys:
                   - secret: "${BACKEND_SECRET}"
         ---
-        apiVersion: rhdh.redhat.com/v1alpha1
+        apiVersion: rhdh.redhat.com/v1alpha3
         kind: Backstage
         metadata:
           name: my-rhdh

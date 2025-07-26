@@ -67,6 +67,7 @@ import (
 
 	telemetry "github.com/openshift/console-operator/pkg/console/telemetry"
 
+	"github.com/go-test/deep"
 	consoleoperator "github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/library-go/pkg/operator/loglevel"
 )
@@ -456,6 +457,9 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	)
 
 	// Show all ConsolePlugin instances as related objects
+	// Show all namespaces that are used by ConsolePlugin Backend Service as related objects
+	// Show all namespaces that are used by Proxy Service configs as related objects
+	// Deduplicate related objects
 	clusterOperatorStatus.WithRelatedObjectsFunc(func() (bool, []configv1.ObjectReference) {
 		relatedObjects := []configv1.ObjectReference{}
 		consolePlugins, err := consoleClient.ConsoleV1().ConsolePlugins().List(ctx, metav1.ListOptions{})
@@ -463,14 +467,31 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 			return false, nil
 		}
 		for _, plugin := range consolePlugins.Items {
-			relatadPlugin := configv1.ObjectReference{
+			relatedObjects = append(relatedObjects, configv1.ObjectReference{
 				Group:    "console.openshift.io",
 				Resource: "consoleplugins",
 				Name:     plugin.GetName(),
+			})
+			if plugin.Spec.Backend.Service != nil {
+				ns := plugin.Spec.Backend.Service.Namespace
+				relatedObjects = append(relatedObjects, configv1.ObjectReference{
+					Group:    corev1.GroupName,
+					Resource: "namespaces",
+					Name:     ns,
+				})
 			}
-			relatedObjects = append(relatedObjects, relatadPlugin)
+			for _, proxy := range plugin.Spec.Proxy {
+				if proxy.Endpoint.Service != nil && proxy.Endpoint.Service.Namespace != "" {
+					relatedObjects = append(relatedObjects, configv1.ObjectReference{
+						Group:    corev1.GroupName,
+						Resource: "namespaces",
+						Name:     proxy.Endpoint.Service.Namespace,
+					})
+				}
+			}
 		}
-		return true, relatedObjects
+
+		return true, deduplicateObjectReferences(relatedObjects)
 	})
 
 	// NOTE: be sure to uncomment the .Run() below if using this
@@ -660,4 +681,21 @@ func extractStaticPodOperatorStatus(obj *unstructured.Unstructured, fieldManager
 		return nil, nil
 	}
 	return &ret.Status.OperatorStatusApplyConfiguration, nil
+}
+
+func deduplicateObjectReferences(objs []configv1.ObjectReference) []configv1.ObjectReference {
+	result := make([]configv1.ObjectReference, 0, len(objs))
+	for _, obj := range objs {
+		duplicate := false
+		for _, existing := range result {
+			if len(deep.Equal(obj, existing)) == 0 {
+				duplicate = true
+				break
+			}
+		}
+		if !duplicate {
+			result = append(result, obj)
+		}
+	}
+	return result
 }
