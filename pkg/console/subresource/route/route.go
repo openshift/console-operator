@@ -236,7 +236,7 @@ func GetCustomTLS(customCertSecret *corev1.Secret) (*CustomTLSCert, error) {
 	}
 	certificateVerifyErr := certificateVerifier(cert)
 	if certificateVerifyErr != nil {
-		return nil, fmt.Errorf("failed to verify custom certificate PEM: " + certificateVerifyErr.Error())
+		return nil, fmt.Errorf("failed to verify custom certificate PEM: %w", certificateVerifyErr)
 	}
 	customTLS.Certificate = string(cert)
 
@@ -247,7 +247,7 @@ func GetCustomTLS(customCertSecret *corev1.Secret) (*CustomTLSCert, error) {
 
 	privateKeyVerifyErr := privateKeyVerifier(key)
 	if privateKeyVerifyErr != nil {
-		return nil, fmt.Errorf("failed to verify custom key PEM: " + privateKeyVerifyErr.Error())
+		return nil, fmt.Errorf("failed to verify custom key PEM: %w", privateKeyVerifyErr)
 	}
 	customTLS.Key = string(key)
 
