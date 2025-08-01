@@ -178,7 +178,7 @@ docker build -t <registry>/<your-username>/console-operator:<version> .
 # following: docker.io/openshift/origin-console-operator:latest
 # for development, you are going to push to an alternate registry.
 # specifically it can look something like this:
-docker build -f Dockerfile.ocp -t quay.io/<your-username>/console-operator:latest .
+docker build -f Dockerfile.ocp -t quay.io/<your-quay-repo>/console-operator:latest .
 ```
 You can optionally build a specific version.
 
