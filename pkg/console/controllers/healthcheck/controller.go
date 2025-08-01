@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -174,7 +175,7 @@ func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorCo
 					reason = "RouteNotAdmitted"
 					errStr := fmt.Sprintf("%s route is not admitted", route.Name)
 					logHealthCheckError(errStr)
-					return fmt.Errorf(errStr)
+					return errors.New(errStr)
 				}
 			} else {
 				url, err = url.Parse(operatorConfig.Spec.Ingress.ConsoleURL)
@@ -182,7 +183,7 @@ func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorCo
 					reason = "FailedParseConsoleURL"
 					errStr := fmt.Sprintf("failed to parse console url: %v", err)
 					logHealthCheckError(errStr)
-					return fmt.Errorf(errStr)
+					return errors.New(errStr)
 				}
 			}
 
@@ -191,7 +192,7 @@ func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorCo
 				reason = "FailedLoadCA"
 				errStr := fmt.Sprintf("failed to read CA to check route health: %v", err)
 				logHealthCheckError(errStr)
-				return fmt.Errorf(errStr)
+				return errors.New(errStr)
 			}
 			client := clientWithCA(caPool)
 
@@ -200,7 +201,7 @@ func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorCo
 				reason = "FailedRequest"
 				errStr := fmt.Sprintf("failed to build request to route (%s): %v", url, err)
 				logHealthCheckError(errStr)
-				return fmt.Errorf(errStr)
+				return errors.New(errStr)
 			}
 			resp, err := client.Do(req)
 			if err != nil {
@@ -215,7 +216,7 @@ func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorCo
 				reason = "StatusError"
 				errStr := fmt.Sprintf("route not yet available, %s returns '%s'", url, resp.Status)
 				logHealthCheckError(errStr)
-				return fmt.Errorf(errStr)
+				return errors.New(errStr)
 			}
 			reason = ""
 			return nil

@@ -634,7 +634,7 @@ func (co *consoleOperator) UpdateCustomLogoSyncSources(configMapNames []string) 
 		if len(errors) > 0 {
 			msg := fmt.Sprintf("error syncing custom logo configmap resources:\n%v", errors)
 			klog.V(4).Infof("[UpdateCustomLogoSyncSources] %s", msg)
-			return fmt.Errorf(msg), "FailedResourceSync"
+			return fmt.Errorf("%s", msg), "FailedResourceSync"
 		}
 	}
 
@@ -652,7 +652,7 @@ func (co *consoleOperator) UpdateCustomLogoSyncSources(configMapNames []string) 
 		if len(errors) > 0 {
 			msg := fmt.Sprintf("error syncing custom logo configmap resources:\n%v", errors)
 			klog.V(4).Infof("[UpdateCustomLogoSyncSources] %s", msg)
-			return fmt.Errorf(msg), "FailedResourceSync"
+			return fmt.Errorf("%s", msg), "FailedResourceSync"
 		}
 	}
 
