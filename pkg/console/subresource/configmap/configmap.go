@@ -37,7 +37,6 @@ func DefaultConfigMap(
 	operatorConfig *operatorv1.Console,
 	consoleConfig *configv1.Console,
 	authConfig *configv1.Authentication,
-	authServerCAConfig *corev1.ConfigMap,
 	managedConfig *corev1.ConfigMap,
 	monitoringSharedConfig *corev1.ConfigMap,
 	infrastructureConfig *configv1.Infrastructure,

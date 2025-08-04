@@ -1060,7 +1060,6 @@ providers: {}
 				tt.args.operatorConfig,
 				tt.args.consoleConfig,
 				tt.args.authConfig,
-				tt.args.authServerCAConfig,
 				tt.args.managedConfig,
 				tt.args.monitoringSharedConfig,
 				tt.args.infrastructureConfig,
