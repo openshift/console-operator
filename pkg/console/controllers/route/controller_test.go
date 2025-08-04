@@ -168,7 +168,7 @@ func TestValidateCustomCertSecret(t *testing.T) {
 			},
 			want: want{
 				customTLSCert: nil,
-				err:           fmt.Errorf("failed to verify custom certificate PEM: x509: malformed certificate"),
+				err:           fmt.Errorf("failed to verify custom certificate PEM: %w", fmt.Errorf("x509: malformed certificate")),
 			},
 		},
 		{
@@ -184,7 +184,7 @@ func TestValidateCustomCertSecret(t *testing.T) {
 			},
 			want: want{
 				customTLSCert: nil,
-				err:           fmt.Errorf("failed to verify custom key PEM: block RSA PRIVATE KEY is not valid key PEM"),
+				err:           fmt.Errorf("failed to verify custom key PEM: %w", fmt.Errorf("block RSA PRIVATE KEY is not valid key PEM")),
 			},
 		},
 	}
