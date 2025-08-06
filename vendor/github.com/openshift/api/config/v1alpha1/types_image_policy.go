@@ -134,7 +134,7 @@ type FulcioCAWithRekor struct {
 	RekorKeyData []byte `json:"rekorKeyData"`
 	// fulcioSubject specifies OIDC issuer and the email of the Fulcio authentication configuration.
 	// +required
-	FulcioSubject PolicyFulcioSubject `json:"fulcioSubject"`
+	FulcioSubject PolicyFulcioSubject `json:"fulcioSubject,omitempty"`
 }
 
 // PolicyFulcioSubject defines the OIDC issuer and the email of the Fulcio authentication configuration.
@@ -261,7 +261,6 @@ type ImagePolicyStatus struct {
 	// conditions provide details on the status of this API Resource.
 	// +listType=map
 	// +listMapKey=type
-	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 

@@ -26,7 +26,7 @@ type Authentication struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// +required
-	Spec AuthenticationSpec `json:"spec"`
+	Spec AuthenticationSpec `json:"spec,omitempty"`
 	// +optional
 	Status AuthenticationStatus `json:"status,omitempty"`
 }
