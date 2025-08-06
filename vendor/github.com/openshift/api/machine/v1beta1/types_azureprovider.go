@@ -368,7 +368,7 @@ type DataDisk struct {
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=63
 	// +required
-	Lun int32 `json:"lun"`
+	Lun int32 `json:"lun,omitempty"`
 	// cachingType specifies the caching requirements.
 	// Empty value means no opinion and the platform chooses a default, which is subject to change over time.
 	// Currently the default is CachingTypeNone.
@@ -518,7 +518,7 @@ type SecuritySettings struct {
 	// +kubebuilder:validation:Enum=ConfidentialVM;TrustedLaunch
 	// +required
 	// +unionDiscriminator
-	SecurityType SecurityTypes `json:"securityType"`
+	SecurityType SecurityTypes `json:"securityType,omitempty"`
 	// confidentialVM specifies the security configuration of the virtual machine.
 	// For more information regarding Confidential VMs, please refer to:
 	// https://learn.microsoft.com/azure/confidential-computing/confidential-vm-overview
@@ -535,14 +535,14 @@ type SecuritySettings struct {
 type ConfidentialVM struct {
 	// uefiSettings specifies the security settings like secure boot and vTPM used while creating the virtual machine.
 	// +required
-	UEFISettings UEFISettings `json:"uefiSettings"`
+	UEFISettings UEFISettings `json:"uefiSettings,omitempty"`
 }
 
 // TrustedLaunch defines the UEFI settings for the virtual machine.
 type TrustedLaunch struct {
 	// uefiSettings specifies the security settings like secure boot and vTPM used while creating the virtual machine.
 	// +required
-	UEFISettings UEFISettings `json:"uefiSettings"`
+	UEFISettings UEFISettings `json:"uefiSettings,omitempty"`
 }
 
 // UEFISettings specifies the security settings like secure boot and vTPM used while creating the

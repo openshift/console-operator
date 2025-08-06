@@ -46,7 +46,7 @@ type SharedSecret struct {
 
 	// spec is the specification of the desired shared secret
 	// +required
-	Spec SharedSecretSpec `json:"spec"`
+	Spec SharedSecretSpec `json:"spec,omitempty"`
 
 	// status is the observed status of the shared secret
 	Status SharedSecretStatus `json:"status,omitempty"`
