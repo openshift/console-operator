@@ -7,6 +7,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	corev1informers "k8s.io/client-go/informers/core/v1"
@@ -15,6 +16,7 @@ import (
 	"k8s.io/klog/v2"
 
 	configv1 "github.com/openshift/api/config/v1"
+	oauthv1 "github.com/openshift/api/oauth/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	configv1informers "github.com/openshift/client-go/config/informers/externalversions/config/v1"
 	configv1lister "github.com/openshift/client-go/config/listers/config/v1"
@@ -40,7 +42,7 @@ import (
 // oauthClientsController:
 //
 //	updates:
-//	- oauthclient.oauth.openshift.io/console (created by CVO)
+//	- oauthclient.oauth.openshift.io/console (creates if doesn't exist)
 //	writes:
 //	- consoles.operator.openshift.io/cluster .status.conditions:
 //		- type=OAuthClientSyncProgressing
@@ -206,10 +208,21 @@ func (c *oauthClientsController) syncOAuthClient(
 	consoleURL string,
 ) (reason string, err error) {
 	oauthClient, err := c.oauthClientLister.Get(oauthsub.Stub().Name)
-	if err != nil {
+	if err != nil && !errors.IsNotFound(err) {
 		// at this point we must die & wait for someone to fix the lack of an outhclient. there is nothing we can do.
-		return "FailedGet", fmt.Errorf("oauth client for console does not exist and cannot be created (%w)", err)
+		return "FailedGet", fmt.Errorf("getting console oauth client (%w)", err)
 	}
+
+	if errors.IsNotFound(err) {
+		oauthClient = &oauthv1.OAuthClient{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: oauthsub.Stub().Name,
+			},
+			GrantMethod:           oauthv1.GrantHandlerAuto,
+			RespondWithChallenges: false,
+		}
+	}
+
 	clientCopy := oauthClient.DeepCopy()
 	oauthsub.RegisterConsoleToOAuthClient(clientCopy, consoleURL, secretsub.GetSecretString(sec))
 	_, _, oauthErr := oauthsub.CustomApplyOAuth(c.oauthClient, clientCopy, ctx)
@@ -233,5 +246,4 @@ func (c *oauthClientsController) deregisterClient(ctx context.Context) error {
 	updated := oauthsub.DeRegisterConsoleFromOAuthClient(existingOAuthClient.DeepCopy())
 	_, err = c.oauthClient.OAuthClients().Update(ctx, updated, metav1.UpdateOptions{})
 	return err
-
 }
