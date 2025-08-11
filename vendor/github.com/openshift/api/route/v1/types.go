@@ -354,7 +354,6 @@ type RouteStatus struct {
 	// ingress points may contain duplicate Host or RouterName values. Routes
 	// are considered live once they are `Ready`
 	// +listType=atomic
-	// +optional
 	Ingress []RouteIngress `json:"ingress,omitempty" protobuf:"bytes,1,rep,name=ingress"`
 }
 

@@ -124,7 +124,6 @@ type OperatorStatus struct {
 	Version string `json:"version,omitempty"`
 
 	// readyReplicas indicates how many replicas are ready and at the desired state
-	// +optional
 	ReadyReplicas int32 `json:"readyReplicas"`
 
 	// latestAvailableRevision is the deploymentID of the most recent deployment
@@ -208,7 +207,7 @@ type OperatorCondition struct {
 	// +required
 	// +kubebuilder:validation:Type=string
 	// +kubebuilder:validation:Format=date-time
-	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 
 	Reason string `json:"reason,omitempty"`
 

@@ -339,7 +339,7 @@ type ConsolePluginBackend struct {
 	// Service serving certificate. The console backend will proxy the
 	// plugins assets from the Service using the service CA bundle.
 	// +optional
-	Service *ConsolePluginService `json:"service,omitempty"`
+	Service *ConsolePluginService `json:"service"`
 }
 
 // ConsolePluginService holds information on Service that is serving
@@ -368,7 +368,7 @@ type ConsolePluginService struct {
 	// +kubebuilder:validation:Pattern=`^[a-zA-Z0-9.\-_~!$&'()*+,;=:@\/]*$`
 	// +kubebuilder:default:="/"
 	// +optional
-	BasePath string `json:"basePath,omitempty"`
+	BasePath string `json:"basePath"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

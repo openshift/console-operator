@@ -57,8 +57,7 @@ type EtcdSpec struct {
 
 type EtcdStatus struct {
 	StaticPodOperatorStatus `json:",inline"`
-	// +optional
-	HardwareSpeed ControlPlaneHardwareSpeed `json:"controlPlaneHardwareSpeed"`
+	HardwareSpeed           ControlPlaneHardwareSpeed `json:"controlPlaneHardwareSpeed"`
 }
 
 const (
