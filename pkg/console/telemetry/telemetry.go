@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	configlistersv1 "github.com/openshift/client-go/config/listers/config/v1"
@@ -24,6 +25,17 @@ const (
 	TelemetryAnnotationPrefix          = "telemetry.console.openshift.io/"
 	TelemeterClientDeploymentNamespace = "openshift-monitoring"
 	PullSecretName                     = "pull-secret"
+	// FetchInterval defines how often we can fetch from OCM after the last successful fetch
+	FetchInterval = 24 * time.Hour
+	// FailureBackoffInterval defines how often we retry after a failed or missing-data attempt
+	FailureBackoffInterval = 5 * time.Minute
+)
+
+var (
+	// Global timestamps for rate limiting
+	lastAttemptTime time.Time
+	lastSuccessTime time.Time
+	fetchMutex      sync.RWMutex
 )
 
 func IsTelemeterClientAvailable(deploymentLister appsv1listers.DeploymentLister) (bool, error) {
@@ -93,24 +105,79 @@ func GetOrganizationMeta(telemetryConfig map[string]string, cachedOrganizationID
 		return customOrganizationID, customAccountMail, false
 	}
 
+	// If both cached values are available, prefer them without fetching
 	if cachedOrganizationID != "" && cachedAccountEmail != "" {
 		klog.V(4).Infoln("telemetry config: using cached organization metadata")
 		return cachedOrganizationID, cachedAccountEmail, false
 	}
 
-	fetchedOCMRespose, err := FetchSubscription(clusterID, accessToken)
+	// Attempt rate-limited fetch of subscription
+	// We need to do this bacause in some cases the organization ID and account mail are not
+	// not available in the telemetry configmap, so we need to fetch it from OCM. But event there
+	// one of the value might not be available, so we need to check periodically.
+	fetchedOCMRespose, fetched, err := getSubscriptionWithRateLimit(clusterID, accessToken)
 	if err != nil {
 		klog.Errorf("telemetry config error: %s", err)
-		return "", "", false // Ensure safe return in case of error
+	}
+	// If not fetched or error, proceed with cached values without clearing
+
+	// Merge per-field: only overwrite when the fetched value is non-empty
+	resolvedOrgID := cachedOrganizationID
+	if fetched && fetchedOCMRespose != nil && fetchedOCMRespose.Organization.ExternalId != "" {
+		resolvedOrgID = fetchedOCMRespose.Organization.ExternalId
 	}
 
-	// Check if the fetched response is nil before accessing fields
-	if fetchedOCMRespose == nil {
-		klog.Errorf("telemetry config error: FetchSubscription returned nil response")
-		return "", "", false
+	resolvedAccountMail := cachedAccountEmail
+	if fetched && fetchedOCMRespose != nil && fetchedOCMRespose.Creator.Email != "" {
+		resolvedAccountMail = fetchedOCMRespose.Creator.Email
 	}
 
-	return fetchedOCMRespose.Organization.ExternalId, fetchedOCMRespose.Creator.Email, true
+	refresh := resolvedOrgID != cachedOrganizationID || resolvedAccountMail != cachedAccountEmail
+	return resolvedOrgID, resolvedAccountMail, refresh
+}
+
+// getSubscriptionWithRateLimit applies rate limiting using last attempt and last success timestamps
+// and returns a subscription only if a fetch was performed and succeeded.
+// fetched indicates whether a fetch was attempted and succeeded.
+func getSubscriptionWithRateLimit(clusterID, accessToken string) (*Subscription, bool, error) {
+	// Check freshness windows
+	fetchMutex.RLock()
+	successFresh := !lastSuccessTime.IsZero() && time.Since(lastSuccessTime) < FetchInterval
+	attemptFresh := !lastAttemptTime.IsZero() && time.Since(lastAttemptTime) < FailureBackoffInterval
+	fetchMutex.RUnlock()
+
+	if successFresh || attemptFresh {
+		return nil, false, nil
+	}
+
+	// Mark attempt time, guarding against races
+	fetchMutex.Lock()
+	if !lastSuccessTime.IsZero() && time.Since(lastSuccessTime) < FetchInterval {
+		fetchMutex.Unlock()
+		return nil, false, nil
+	}
+	if !lastAttemptTime.IsZero() && time.Since(lastAttemptTime) < FailureBackoffInterval {
+		fetchMutex.Unlock()
+		return nil, false, nil
+	}
+	lastAttemptTime = time.Now()
+	fetchMutex.Unlock()
+
+	// Perform fetch
+	subscription, err := FetchSubscription(clusterID, accessToken)
+	if err != nil {
+		return nil, false, err
+	}
+	if subscription == nil {
+		return nil, false, fmt.Errorf("nil subscription response")
+	}
+
+	// Mark success time
+	fetchMutex.Lock()
+	lastSuccessTime = time.Now()
+	fetchMutex.Unlock()
+
+	return subscription, true, nil
 }
 
 // Needed to create our own types for OCM Subscriptions since their types and client are useless
