@@ -159,15 +159,11 @@ Now we should be ready to build & deploy the operator with our changes.
 
 #### Preparation to Deploy Operator Changes Quickly
 
-Typically to build your binary you will use the `make` command:
+Typically to build your binary you would use the `make` command:
 
 ```bash
-# this will build for your platform:
+# this will build locally:
 make
-# if you are running OSX, you will need to build for linux doing something like:
-OS_DEBUG=true OS_BUILD_PLATFORMS=linux/amd64 make
-# note that you can build for mulitiple platforms with:
-make build-cross
 ```
 But the build step is included in the `Dockerfile.rhel7`, so this does not need to be done manually.
 You can instead simply build the container image and push it to your own registry:

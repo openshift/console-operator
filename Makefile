@@ -18,6 +18,8 @@ check: | verify test-unit
 
 IMAGE_REGISTRY?=registry.svc.ci.openshift.org
 
+TAGS ?= ocp
+
 # This will call a macro called "build-image" which will generate image specific targets based on the parameters:
 # $0 - macro name
 # $1 - target name
@@ -36,6 +38,9 @@ $(call build-image,ocp-console-operator,$(IMAGE_REGISTRY)/ocp/4.5:console-operat
 $(call add-profile-manifests,manifests,./profile-patches,./manifests)
 
 GO_UNIT_TEST_PACKAGES :=./pkg/... ./cmd/...
+
+build:
+	go build -tags '$(TAGS)' -o $@ ./cmd/console/main.go
 
 # Run tests
 test: test-unit test-e2e
