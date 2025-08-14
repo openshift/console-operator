@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-test/deep"
 	configv1 "github.com/openshift/api/config/v1"
+	"github.com/openshift/console-operator/pkg/console/controllers/util"
 )
 
 func TestGetPlatformURL(t *testing.T) {
@@ -94,7 +95,7 @@ func TestGetPlatformURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(isExternalControlPlaneWithNLB(tt.args.infrastructureConfig, tt.args.ingressConfig), tt.want); diff != nil {
+			if diff := deep.Equal(util.IsExternalControlPlaneWithNLB(tt.args.infrastructureConfig, tt.args.ingressConfig), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
