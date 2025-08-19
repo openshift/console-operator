@@ -194,7 +194,7 @@ spec:
           2. Click on the URL decorator in the top-right corner of the "developer-hub" Deployment to open your Red Hat Developer Hub instance.
           3. Verify that the correct URL is used and the Red Hat Developer Hub installation works fine.
         failedTaskHelp: |-
-          Double-check your Helm Chart hostname and TLS configuration, and if needed, the external DNS configuration.
+          Double check your Helm Chart hostname and TLS configuration, and if needed, the external DNS configuration.
       summary:
         success: You have upgraded Red Hat Developer Hub!
         failed: Try the steps again.
@@ -231,7 +231,7 @@ spec:
         failedTaskHelp: |-
           Double-check your `ConsoleLink` resource or try to reload the OpenShift Console.
       summary:
-        success: You have added your Red Hat Developer Hub instance to the OpenShift Console menu!
+        success: You have added your instance of Red Hat Developer Hub to the OpenShift Console menu!
         failed: Try the steps again.
   conclusion: |
     Your Red Hat Developer Hub installation is deployed and ready.
