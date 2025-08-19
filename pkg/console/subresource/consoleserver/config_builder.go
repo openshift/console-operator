@@ -63,6 +63,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	monitoring                   map[string]string
 	customHostnameRedirectPort   int
 	inactivityTimeoutSeconds     int
+	sessionDir                   string
 	pluginsList                  map[string]string
 	pluginsOrder                 []string
 	i18nNamespaceList            []string
@@ -190,12 +191,17 @@ func (b *ConsoleServerCLIConfigBuilder) Capabilities(capabilities []operatorv1.C
 }
 
 func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authentication, apiServerURL string) *ConsoleServerCLIConfigBuilder {
+	b.sessionDir = "/var/sessions"
+
 	switch authnConfig.Spec.Type {
 	// We don't disable auth since the internal OAuth server is not disabled even with auth type 'None'.
 	case "", configv1.AuthenticationTypeIntegratedOAuth, configv1.AuthenticationTypeNone:
 		b.authType = "openshift"
 		b.oauthClientID = api.OAuthClientName
 		b.CAFile = oauthServingCertFilePath
+		b.sessionAuthenticationFile = "/var/session-secret/sessionAuthenticationKey"
+		b.sessionEncryptionFile = "/var/session-secret/sessionEncryptionKey"
+
 		return b
 
 	case configv1.AuthenticationTypeOIDC:
@@ -419,6 +425,7 @@ func (b *ConsoleServerCLIConfigBuilder) session() Session {
 	conf := Session{
 		CookieAuthenticationKeyFile: b.sessionAuthenticationFile,
 		CookieEncryptionKeyFile:     b.sessionEncryptionFile,
+		SessionDir:                  b.sessionDir,
 	}
 	return conf
 }
