@@ -331,7 +331,7 @@ spec:
           2. Click the Application launcher icon to check if your application menu item is shown.
           3. Verify that it opens your RHDH instance.
         failedTaskHelp: |-
-          Double-check your `ConsoleLink` resource or try to reload the OpenShift Console.
+          Double check your `ConsoleLink` resource or try to reload the OpenShift Console.
       summary:
         success: You have added your Red Hat Developer Hub instance to the OpenShift Console menu!
         failed: Try the steps again.
