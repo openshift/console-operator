@@ -1,0 +1,64 @@
+apiVersion: console.openshift.io/v1
+kind: ConsoleQuickStart
+metadata:
+  name: netobserv
+spec:
+  conclusion: Your Network Observability Operator is installed and configured.
+  description: Install Network Observability Operator and deploy a FlowCollector to monitor your network.
+  displayName: Observe the cluster network traffic
+  durationMinutes: 5
+  icon: 'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIGlkPSJMYXllcl8xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHg9IjAiIHk9IjAiIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiB4bWw6c3BhY2U9InByZXNlcnZlIj48c3R5bGU+LnN0MXtmaWxsOiNmZmZ9LnN0M3tvcGFjaXR5Oi41fTwvc3R5bGU+PHBhdGggZD0iTTUwIDk5Yy0xMy4zIDAtMjUuNC01LjMtMzQuMi0xMy45QzYuNyA3Ni4yIDEgNjMuNyAxIDUwIDEgMjIuOSAyMi45IDEgNTAgMWMxMy43IDAgMjYuMiA1LjcgMzUuMSAxNC44QzkzLjcgMjQuNiA5OSAzNi43IDk5IDUwYzAgMjcuMS0yMS45IDQ5LTQ5IDQ5IiBzdHlsZT0iZmlsbDojMDAwIj48L3BhdGg+PGNpcmNsZSBjbGFzcz0ic3QxIiBjeD0iMzcuNSIgY3k9IjgxLjkiIHI9IjUiPjwvY2lyY2xlPjxwYXRoIGNsYXNzPSJzdDEiIGQ9Im00OC42IDkxLjkgMTguOC00My4zYy0yLjUtLjEtNS0uNy03LjItMmwtMjcgMjEuNiAxLjQtMS44IDIwLTI1LjFjLTEuNS0yLjQtMi4zLTUuMS0yLjMtNy45TDkgNTIuMmw0Ny42LTI5LjkuMi0uMmM2LjEtNi4xIDE1LjktNi4xIDIyIDBsLjEuMWM2IDYuMSA2IDE1LjktLjEgMjEuOWwtLjIuMnoiPjwvcGF0aD48Y2lyY2xlIGNsYXNzPSJzdDEiIGN4PSI1MC4zIiBjeT0iMTQuNyIgcj0iMy4xIiBzdHlsZT0ib3BhY2l0eTouNiI+PC9jaXJjbGU+PGcgY2xhc3M9InN0MyI+PGNpcmNsZSBjbGFzcz0ic3QxIiBjeD0iMjcuNyIgY3k9IjU4IiByPSIxLjciPjwvY2lyY2xlPjwvZz48Y2lyY2xlIGNsYXNzPSJzdDEiIGN4PSI3Ny40IiBjeT0iNjkuMyIgcj0iMS43Ij48L2NpcmNsZT48Y2lyY2xlIGNsYXNzPSJzdDEiIGN4PSIxNi4zIiBjeT0iMzYuNiIgcj0iMS43Ij48L2NpcmNsZT48Y2lyY2xlIGNsYXNzPSJzdDEiIGN4PSI2My43IiBjeT0iODUuOSIgcj0iMi4yIiBzdHlsZT0ib3BhY2l0eTouNCI+PC9jaXJjbGU+PGNpcmNsZSBjbGFzcz0ic3QxIiBjeD0iMjkuNCIgY3k9IjE5LjYiIHI9IjQuOCI+PC9jaXJjbGU+PGcgY2xhc3M9InN0MyI+PGNpcmNsZSBjbGFzcz0ic3QxIiBjeD0iODgiIGN5PSI1MCIgcj0iNC44Ij48L2NpcmNsZT48L2c+PC9zdmc+'
+  introduction: |-
+    ### In this quick start, you'll deploy and configure Network Observability Operator to get an overview of your cluster network traffic including ingress and egress traffic.
+    For more information on Network Observability, see the related [OpenShift documentation](https://docs.openshift.com/container-platform/latest/observability/network_observability/network-observability-overview.html)'.
+  tags:
+    - network
+    - observability
+    - netobserv
+  tasks:
+    - description: |-
+        You can install the Network Observability Operator using the OpenShift Container Platform web console Operator Hub. When you install the Operator, it provides the FlowCollector custom resource definition (CRD). You can set specifications in the web console when you create the FlowCollector.
+        1. In the OpenShift Container Platform web console, click **OperatorHub** from the [Operators]{{highlight qs-nav-operators}} → OperatorHub.
+        2. Choose **Network Observability Operator** from the list of available Operators in the OperatorHub, and click **Install**.
+        3. Select the checkbox **Enable Operator recommended cluster monitoring on this Namespace**.
+      review:
+        failedTaskHelp: This task isn’t verified yet. Try the task again.
+        instructions: |-
+          #### Verify the operator was successfully installed:
+          Navigate to **Operators** → **Installed Operators**.
+          Is the Network Observability Operator listed?
+      summary:
+        failed: Try the steps again.
+        success: Great work! You successfully installed the Network Observability Operator.
+      title: Install the Network Observability Operator
+    - description: |-
+        In order to start capturing traffic, you need to create a **FlowCollector** resource to configure the components of Network Observability Operator.
+
+        1. Navigate to Operators → Installed Operators and select **Network Observability Operator**.
+
+        2. Navigate to the **FlowCollector** tab, and click **Create FlowCollector**. Make the following selections in the form view:
+          
+          2.1 **spec.agent.ebpf.Sampling**: Specify a sampling value for flows. Lower sampling values will have higher impact on resource utilization. For more information, see the "FlowCollector API reference", spec.agent.ebpf.
+          
+          2.2 If you are not using Loki, click Loki client settings and change **Enable** to **False**. The setting is True by default.
+          
+          2.3 If you are using Loki, set the following specifications:
+          
+            i. **spec.loki.mode**: Set this to the **LokiStack** mode, which automatically sets URLs, TLS, cluster roles and a cluster role binding, as well as the authToken value. Alternatively, the Manual mode allows more control over configuration of these settings.
+          
+            ii. **spec.loki.lokistack.name**: Set this to the name of your LokiStack resource. In this documentation, loki is used.
+          
+          2.4 Optional: If you are in a large-scale environment, consider configuring the FlowCollector with **Kafka** for forwarding data in a more resilient, scalable way. See "Configuring the Flow Collector resource with Kafka storage" in the "Important Flow Collector configuration considerations" section.
+          
+
+        3. Click Create.
+      review:
+        failedTaskHelp: This task isn’t verified yet. Try the task again.
+        instructions: |-
+          #### Verify the traffic captured:
+          Do you see Network Traffic listed in the **Observe** section in the administrator perspective?
+          In the absence of Application Traffic within the OpenShift Container Platform cluster, default filters might show that there are "No results", which results in no visual flow. Beside the filter selections, select **Clear all filters** to see the flow.
+      summary:
+        failed: Try the steps again.
+        success: Great work! You configured the Network Observability FlowCollector.
+      title: Configure the FlowCollector
