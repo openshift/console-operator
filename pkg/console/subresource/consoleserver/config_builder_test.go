@@ -7,10 +7,12 @@ import (
 	"github.com/go-test/deep"
 	"github.com/google/go-cmp/cmp"
 	configv1 "github.com/openshift/api/config/v1"
+	consolev1 "github.com/openshift/api/console/v1"
 	v1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // defaultTestCapabilities represents the default capabilities as defined in the operator manifest
@@ -905,6 +907,56 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					"plugin2": "plugin2_url",
 				},
 				I18nNamespaces: []string{"plugin__plugin1"},
+			},
+		},
+		{
+			name: "Config builder should set plugins order from available plugins",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{}
+				b.Plugins(map[string]string{
+					"plugin1": "plugin1_url",
+					"plugin2": "plugin2_url",
+				}).
+					PluginsOrder([]*consolev1.ConsolePlugin{
+						{ObjectMeta: metav1.ObjectMeta{Name: "plugin1"}},
+						{ObjectMeta: metav1.ObjectMeta{Name: "plugin2"}},
+					}, &v1.Console{
+						Spec: v1.ConsoleSpec{
+							Plugins: []string{"plugin1", "plugin2", "plugin3"},
+						},
+					})
+				return b.Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{
+					ConsoleBasePath: "",
+				},
+				Auth: Auth{
+					ClientID:         api.OpenShiftConsoleName,
+					ClientSecretFile: clientSecretFilePath,
+				},
+				Session: Session{},
+				Customization: Customization{
+					Perspectives: []Perspective{
+						{
+							ID:         "dev",
+							Visibility: PerspectiveVisibility{State: PerspectiveDisabled},
+						},
+					},
+				},
+				Providers: Providers{},
+				Plugins: map[string]string{
+					"plugin1": "plugin1_url",
+					"plugin2": "plugin2_url",
+				},
+				PluginsOrder: []string{"plugin1", "plugin2"},
 			},
 		},
 		{

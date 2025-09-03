@@ -243,8 +243,26 @@ func (b *ConsoleServerCLIConfigBuilder) Plugins(plugins map[string]string) *Cons
 	return b
 }
 
-func (b *ConsoleServerCLIConfigBuilder) PluginsOrder(consoleConfig *operatorv1.Console) *ConsoleServerCLIConfigBuilder {
-	b.pluginsOrder = consoleConfig.Spec.Plugins
+func (b *ConsoleServerCLIConfigBuilder) PluginsOrder(availablePlugins []*v1.ConsolePlugin, consoleConfig *operatorv1.Console) *ConsoleServerCLIConfigBuilder {
+	// Build a fast lookup set of available plugin names
+	availableSet := map[string]struct{}{}
+	for _, plugin := range availablePlugins {
+		if plugin == nil {
+			continue
+		}
+		availableSet[plugin.ObjectMeta.Name] = struct{}{}
+	}
+
+	// Preserve the order from consoleConfig.Spec.Plugins, but include only those
+	// plugins that are actually available on the cluster.
+	ordered := []string{}
+	for _, name := range consoleConfig.Spec.Plugins {
+		if _, ok := availableSet[name]; ok {
+			ordered = append(ordered, name)
+		}
+	}
+
+	b.pluginsOrder = ordered
 	return b
 }
 
