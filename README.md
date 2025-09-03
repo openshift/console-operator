@@ -178,7 +178,7 @@ docker build -t <registry>/<your-username>/console-operator:<version> .
 # following: docker.io/openshift/origin-console-operator:latest
 # for development, you are going to push to an alternate registry.
 # specifically it can look something like this:
-docker build -f Dockerfile.rhel7 -t quay.io/benjaminapetersen/console-operator:latest .
+docker build -f Dockerfile.ocp -t quay.io/<your-username>/console-operator:latest .
 ```
 You can optionally build a specific version.
 
@@ -187,7 +187,7 @@ Then, push your image:
 ```bash 
 docker push <registry>/<your-username>/console-operator:<version>
 # Be sure your repository is public else the image will not be able to be pulled later
-docker push quay.io/benjaminapetersen/console-operator:latest
+docker push quay.io/<your-username>/console-operator:latest
 ```
 Then, you will want to deploy your new container.  This means duplicating the `manifests/07-operator.yaml`
 and updating the line `image: docker.io/openshift/origin-console-operator:latest` to instead use the
@@ -206,7 +206,7 @@ image: docker.io/openshift/origin-console-operator:latest
 # after 
 # image: <registry>/<your-username>/console-operator:<version>
 replicas: 1
-image: quay.io/benjaminapetersen/console-operator:latest
+image: quay.io/<your-username>/console-operator:latest
 ```
 And ensure that the `imagePullPolicy` is still `Always`.  This will ensure a fast development feedback loop. 
 
@@ -229,9 +229,9 @@ Which looks like the following:
 
 ```bash
 # build binary + container
-docker build -t quay.io/benjaminapetersen/console-operator:latest .
+docker build -t quay.io/<your-username>/console-operator:latest .
 # push container
-docker push quay.io/benjaminapetersen/console-operator:latest
+docker push quay.io/<your-username>/console-operator:latest
 # delete pod, trigger a new pull & deploy
 oc delete pod console-operator --namespace openshift-console-operator
 ```
