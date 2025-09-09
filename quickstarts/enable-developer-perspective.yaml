@@ -45,7 +45,7 @@ spec:
         failedTaskHelp: This task isn’t verified yet. Try the task again.
         instructions: |-
           To verify that you are in the right place:
-          1. You should see a configration with name **Console** and **operator.openshift.io** group.
+          1. You should see a configuration with name **Console** and **operator.openshift.io** group.
       summary:
         failed: Try the steps again.
         success: Great work!
@@ -59,7 +59,7 @@ spec:
         instructions: |-
           To verify that you are in the right place:
           1. You should see details related to the Console Operator, including configurations and status.
-          2. The Cluster Configuration page should open, showing different customization options.
+          2. The Cluster configuration page should open, showing different customization options.
       summary:
         failed: Try the steps again.
         success: Great work!
@@ -79,7 +79,7 @@ spec:
         instructions: |-
           To verify that you are in the right place:
           1. You should see details related to the Console Operator, including configurations and status.
-          2. The Cluster Configuration page should open, showing different customization options.
+          2. The Cluster configuration page should open, showing different customization options.
       summary:
         failed: Try the steps again.
         success: Great work!

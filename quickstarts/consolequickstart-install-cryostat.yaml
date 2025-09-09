@@ -144,4 +144,4 @@ spec:
           **Note:** It may take some time for the **Cryostat Conditions** to be set to true as Cryostat is being deployed.
 
   conclusion: >-
-    Your Red Hat build of Cryostat operator has been installed and an instance of Cryostat has been created. To profile your Java applications with Cryostat, please follow this [guide](https://access.redhat.com/documentation/en-us/red_hat_build_of_cryostat/2/html/getting_started_with_cryostat/assembly_configuing-java-applications_cryostat).
+    Your Red Hat build of Cryostat operator has been installed and an instance of Cryostat has been created. To profile your Java applications with Cryostat, please follow this [guide](https://docs.redhat.com/en/documentation/red_hat_build_of_cryostat/2/html/getting_started_with_cryostat/configuring_java_applications).
