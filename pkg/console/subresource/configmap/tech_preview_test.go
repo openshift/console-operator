@@ -89,14 +89,14 @@ func TestTechPreviewEnabled(t *testing.T) {
 				&corev1.ConfigMap{},
 				infrastructureConfig,
 				route,
-				0,                         // inactivityTimeoutSeconds
+				0,                            // inactivityTimeoutSeconds
 				[]*consolev1.ConsolePlugin{}, // availablePlugins
-				[]string{"amd64"},         // nodeArchitectures
-				[]string{"linux"},         // nodeOperatingSystems
-				false,                     // copiedCSVsDisabled
-				false,                     // contentSecurityPolicyEnabled
-				map[string]string{},       // telemetryConfig
-				"console.test.cluster",    // consoleHost
+				[]string{"amd64"},            // nodeArchitectures
+				[]string{"linux"},            // nodeOperatingSystems
+				false,                        // copiedCSVsDisabled
+				false,                        // contentSecurityPolicyEnabled
+				map[string]string{},          // telemetryConfig
+				"console.test.cluster",       // consoleHost
 				tt.args.techPreviewEnabled,
 			)
 

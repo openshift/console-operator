@@ -418,4 +418,3 @@ func (c *consoleOperator) removeConsole(ctx context.Context, operatorConfig *ope
 	statusHandler.AddConditions(statusHandler.ResetConditions(operatorConfig.Status.Conditions))
 	return statusHandler.FlushAndReturn(err)
 }
-
