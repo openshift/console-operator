@@ -75,6 +75,7 @@ type ClusterInfo struct {
 	NodeArchitectures    []string              `yaml:"nodeArchitectures,omitempty"`
 	NodeOperatingSystems []string              `yaml:"nodeOperatingSystems,omitempty"`
 	CopiedCSVsDisabled   bool                  `yaml:"copiedCSVsDisabled,omitempty"`
+	TechPreviewEnabled   bool                  `yaml:"techPreviewEnabled,omitempty"`
 }
 
 // MonitoringInfo holds configuration for monitoring related services

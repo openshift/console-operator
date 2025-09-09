@@ -67,6 +67,7 @@ type consoleOperator struct {
 	oauthConfigLister    configlistersv1.OAuthLister
 	authnConfigLister    configlistersv1.AuthenticationLister
 	clusterVersionLister configlistersv1.ClusterVersionLister
+	featureGateLister    configlistersv1.FeatureGateLister
 	dynamicClient        dynamic.Interface
 	// core kube
 	secretsClient            coreclientv1.SecretsGetter
@@ -165,6 +166,7 @@ func NewConsoleOperator(
 		proxyConfigLister:     configInformer.Config().V1().Proxies().Lister(),
 		oauthConfigLister:     configInformer.Config().V1().OAuths().Lister(),
 		clusterVersionLister:  configInformer.Config().V1().ClusterVersions().Lister(),
+		featureGateLister:     configInformer.Config().V1().FeatureGates().Lister(),
 		authnConfigLister:     configV1Informers.Authentications().Lister(),
 		// console resources
 		// core kube
@@ -202,6 +204,7 @@ func NewConsoleOperator(
 		configV1Informers.Proxies().Informer(),
 		configV1Informers.OAuths().Informer(),
 		configV1Informers.Authentications().Informer(),
+		configV1Informers.FeatureGates().Informer(),
 	}
 
 	olmGroupVersionResource := schema.GroupVersionResource{
@@ -415,3 +418,4 @@ func (c *consoleOperator) removeConsole(ctx context.Context, operatorConfig *ope
 	statusHandler.AddConditions(statusHandler.ResetConditions(operatorConfig.Status.Conditions))
 	return statusHandler.FlushAndReturn(err)
 }
+
