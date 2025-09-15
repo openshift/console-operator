@@ -200,7 +200,7 @@ func (c *oidcSetupController) syncAuthTypeOIDC(ctx context.Context, authnConfig 
 		return nil
 	}
 
-	clientSecret, err := c.targetNSSecretsLister.Secrets(api.OpenShiftConfigNamespace).Get(clientConfig.ClientSecret.Name)
+	clientSecret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get("console-oauth-config")
 	if err != nil {
 		c.authStatusHandler.Degraded("OIDCClientSecretGet", err.Error())
 		return err
