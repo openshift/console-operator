@@ -125,6 +125,12 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(customLogosErr)
 	}
 
+	techPreviewEnabled, techPreviewErrReason, techPreviewErr := co.SyncTechPreview()
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("TechPreviewSync", techPreviewErrReason, techPreviewErr))
+	if techPreviewErr != nil {
+		return statusHandler.FlushAndReturn(techPreviewErr)
+	}
+
 	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(
 		ctx,
 		set.Operator,
@@ -135,6 +141,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		consoleRoute,
 		controllerContext.Recorder(),
 		consoleURL.Hostname(),
+		techPreviewEnabled,
 	)
 	toUpdate = toUpdate || cmChanged
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
@@ -340,6 +347,7 @@ func (co *consoleOperator) SyncConfigMap(
 	activeConsoleRoute *routev1.Route,
 	recorder events.Recorder,
 	consoleHost string,
+	techPreviewEnabled bool,
 ) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
 
 	managedConfig, mcErr := co.managedNSConfigMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName)
@@ -414,6 +422,7 @@ func (co *consoleOperator) SyncConfigMap(
 		co.contentSecurityPolicyEnabled,
 		telemetryConfig,
 		consoleHost,
+		techPreviewEnabled,
 	)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
@@ -550,6 +559,22 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorC
 	}
 	klog.V(4).Infoln("trusted-ca-bundle configmap updated")
 	return actual, true, "", err
+}
+
+// SyncTechPreview determines if tech preview features should be enabled based on cluster FeatureSet
+func (co *consoleOperator) SyncTechPreview() (techPreviewEnabled bool, reason string, err error) {
+	featureGate, err := co.featureGateLister.Get(api.ConfigResourceName)
+	if err != nil {
+		klog.V(4).Infof("failed to get FeatureGate resource: %v.", err)
+		return false, "FailedGet", err
+	}
+
+	techPreviewEnabled = featureGate.Spec.FeatureSet == configv1.TechPreviewNoUpgrade
+
+	if techPreviewEnabled {
+		klog.V(4).Infoln("Console Technology Preview features enabled based on cluster FeatureSet TechPreviewNoUpgrade.")
+	}
+	return techPreviewEnabled, "", nil
 }
 
 func (co *consoleOperator) SyncCustomLogos(operatorConfig *operatorv1.Console) (error, string) {
