@@ -101,7 +101,7 @@ func TestTechPreviewEnabled(t *testing.T) {
 			)
 
 			if err != nil {
-				t.Errorf("DefaultConfigMap() error = %v", err)
+				t.Errorf("DefaultConfigMap() error = %v.", err)
 				return
 			}
 
@@ -109,13 +109,13 @@ func TestTechPreviewEnabled(t *testing.T) {
 			var config consoleserver.Config
 			err = yaml.Unmarshal([]byte(cm.Data["console-config.yaml"]), &config)
 			if err != nil {
-				t.Errorf("Failed to unmarshal config: %v", err)
+				t.Errorf("Failed to unmarshal config: %v.", err)
 				return
 			}
 
 			// Verify tech preview setting
 			if config.ClusterInfo.TechPreviewEnabled != tt.want {
-				t.Errorf("TechPreviewEnabled: got %t, want %t (case %q, techPreviewEnabled input=%t)", config.ClusterInfo.TechPreviewEnabled, tt.want, tt.name, tt.args.techPreviewEnabled)
+				t.Errorf("TechPreviewEnabled: got %t, want %t (case %q, techPreviewEnabled input=%t).", config.ClusterInfo.TechPreviewEnabled, tt.want, tt.name, tt.args.techPreviewEnabled)
 			}
 		})
 	}

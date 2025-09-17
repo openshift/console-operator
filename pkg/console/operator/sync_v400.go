@@ -565,14 +565,14 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorC
 func (co *consoleOperator) SyncTechPreview() (techPreviewEnabled bool, reason string, err error) {
 	featureGate, err := co.featureGateLister.Get(api.ConfigResourceName)
 	if err != nil {
-		klog.V(4).Infof("failed to get FeatureGate resource: %v", err)
+		klog.V(4).Infof("failed to get FeatureGate resource: %v.", err)
 		return false, "FailedGet", err
 	}
 
 	techPreviewEnabled = featureGate.Spec.FeatureSet == configv1.TechPreviewNoUpgrade
 
 	if techPreviewEnabled {
-		klog.V(4).Infoln("Console Technology Preview features enabled based on cluster FeatureSet TechPreviewNoUpgrade")
+		klog.V(4).Infoln("Console Technology Preview features enabled based on cluster FeatureSet TechPreviewNoUpgrade.")
 	}
 	return techPreviewEnabled, "", nil
 }
