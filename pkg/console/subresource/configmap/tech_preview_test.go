@@ -25,14 +25,14 @@ func TestTechPreviewEnabled(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "Tech preview enabled",
+			name: "Technology Preview enabled",
 			args: args{
 				techPreviewEnabled: true,
 			},
 			want: true,
 		},
 		{
-			name: "Tech preview disabled",
+			name: "Technology Preview disabled",
 			args: args{
 				techPreviewEnabled: false,
 			},
@@ -115,7 +115,7 @@ func TestTechPreviewEnabled(t *testing.T) {
 
 			// Verify tech preview setting
 			if config.ClusterInfo.TechPreviewEnabled != tt.want {
-				t.Errorf("TechPreviewEnabled = %v, want %v", config.ClusterInfo.TechPreviewEnabled, tt.want)
+				t.Errorf("TechPreviewEnabled: got %t, want %t (case %q, techPreviewEnabled input=%t)", config.ClusterInfo.TechPreviewEnabled, tt.want, tt.name, tt.args.techPreviewEnabled)
 			}
 		})
 	}

@@ -572,7 +572,7 @@ func (co *consoleOperator) SyncTechPreview() (techPreviewEnabled bool, reason st
 	techPreviewEnabled = featureGate.Spec.FeatureSet == configv1.TechPreviewNoUpgrade
 
 	if techPreviewEnabled {
-		klog.V(4).Infoln("console tech preview features enabled based on cluster FeatureSet TechPreviewNoUpgrade")
+		klog.V(4).Infoln("Console Technology Preview features enabled based on cluster FeatureSet TechPreviewNoUpgrade")
 	}
 	return techPreviewEnabled, "", nil
 }
