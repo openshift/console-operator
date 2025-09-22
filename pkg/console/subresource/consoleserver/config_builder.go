@@ -83,6 +83,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	contentSecurityPolicyEnabled bool
 	contentSecurityPolicyList    map[v1.DirectiveType][]string
 	logos                        []operatorv1.Logo
+	techPreviewEnabled           bool
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -311,6 +312,11 @@ func (b *ConsoleServerCLIConfigBuilder) CopiedCSVsDisabled(copiedCSVsDisabled bo
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) TechPreviewEnabled(techPreviewEnabled bool) *ConsoleServerCLIConfigBuilder {
+	b.techPreviewEnabled = techPreviewEnabled
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
 		Kind:                         "ConsoleConfig",
@@ -381,6 +387,7 @@ func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {
 		conf.NodeOperatingSystems = b.nodeOperatingSystems
 	}
 	conf.CopiedCSVsDisabled = b.copiedCSVsDisabled
+	conf.TechPreviewEnabled = b.techPreviewEnabled
 	return conf
 }
 
