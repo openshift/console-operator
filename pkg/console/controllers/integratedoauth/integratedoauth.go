@@ -1,4 +1,4 @@
-package oauthclientsecret
+package integratedoauth
 
 import (
 	"context"
@@ -24,18 +24,18 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	v1helpers "github.com/openshift/library-go/pkg/operator/v1helpers"
 
-	authnsub "github.com/openshift/console-operator/pkg/console/subresource/authentication"
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
 )
 
-// oauthClientSecretController behaves differently based on authentication/cluster .spec.type:
+// integratedOAuthController manages client secrets for IntegratedOAuth and None authentication types.
 //
-//   - IntegratedOAuth - self-manage the client secret string
-//   - OIDC - lookup our client in the authentication/cluster .spec.oidcProviders[x].oidcClients
-//     slice and use the 'clientSecret' from the secret referred to by .clientSecret.name
-//   - None - do nothing
+// Responsibilities:
+//   - IntegratedOAuth - self-generate and manage the client secret string
+//   - None - self-generate and manage the client secret string (OAuth server still runs)
 //
 // The secret written is 'openshift-console/console-oauth-config' in .Data['clientSecret']
+//
+// Note: OIDC authentication type is handled by the oidcController, not this controller.
 //
 // ==========
 //
@@ -44,32 +44,29 @@ import (
 //	- consoles.operator.openshift.io/cluster .status.conditions:
 //		- type=OAuthClientSecretSyncProgressing
 //		- type=OAuthClientSecretSyncDegraded
-type oauthClientSecretController struct {
+type integratedOAuthController struct {
 	operatorClient v1helpers.OperatorClient
 	secretsClient  corev1clients.SecretsGetter
 
 	authConfigLister      configv1listers.AuthenticationLister
 	consoleOperatorLister operatorv1listers.ConsoleLister
-	configSecretsLister   corev1listers.SecretLister
 	targetNSSecretsLister corev1listers.SecretLister
 }
 
-func NewOAuthClientSecretController(
+func NewIntegratedOAuthController(
 	operatorClient v1helpers.OperatorClient,
 	secretsClient corev1clients.SecretsGetter,
 	authnInformer configv1informers.AuthenticationInformer,
 	consoleOperatorInformer operatorv1informers.ConsoleInformer,
-	configSecretsInformer corev1informers.SecretInformer,
 	targetNSsecretsInformer corev1informers.SecretInformer,
 	recorder events.Recorder,
 ) factory.Controller {
-	c := &oauthClientSecretController{
+	c := &integratedOAuthController{
 		operatorClient: operatorClient,
 		secretsClient:  secretsClient,
 
 		authConfigLister:      authnInformer.Lister(),
 		consoleOperatorLister: consoleOperatorInformer.Lister(),
-		configSecretsLister:   configSecretsInformer.Lister(),
 		targetNSSecretsLister: targetNSsecretsInformer.Lister(),
 	}
 
@@ -78,15 +75,14 @@ func NewOAuthClientSecretController(
 		WithInformers(
 			authnInformer.Informer(),
 			consoleOperatorInformer.Informer(),
-			configSecretsInformer.Informer(),
 		).
 		WithFilteredEventsInformers(
 			factory.NamesFilter("console-oauth-config"), targetNSsecretsInformer.Informer(),
 		).
-		ToController("OAuthClientSecretController", recorder.WithComponentSuffix("oauthclient-secret-controller"))
+		ToController("IntegratedOAuthController", recorder.WithComponentSuffix("integrated-oauth-controller"))
 }
 
-func (c *oauthClientSecretController) sync(ctx context.Context, syncCtx factory.SyncContext) error {
+func (c *integratedOAuthController) sync(ctx context.Context, syncCtx factory.SyncContext) error {
 	if shouldSync, err := c.handleManaged(); err != nil {
 		return err
 	} else if !shouldSync {
@@ -117,30 +113,10 @@ func (c *oauthClientSecretController) sync(ctx context.Context, syncCtx factory.
 			secretString = crypto.Random256BitsString()
 		}
 	case configv1.AuthenticationTypeOIDC:
-		_, clientConfig := authnsub.GetOIDCClientConfig(authConfig, api.TargetNamespace, api.OpenShiftConsoleName)
-		if clientConfig == nil {
-			// no config, flush the condition and return
-			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "", nil))
-			return statusHandler.FlushAndReturn(nil)
-		}
-
-		if len(clientConfig.ClientSecret.Name) == 0 {
-			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "MissingClientSecretConfig", fmt.Errorf("missing client secret name reference in config")))
-			return statusHandler.FlushAndReturn(nil)
-		}
-
-		conficClientSecret, err := c.configSecretsLister.Secrets(api.OpenShiftConfigNamespace).Get(clientConfig.ClientSecret.Name)
-		if err != nil {
-			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "FailedClientSecretGet", err))
-			return statusHandler.FlushAndReturn(err)
-		}
-
-		secretString = secretsub.GetSecretString(conficClientSecret)
-		if len(secretString) == 0 {
-			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "ClientSecretKeyMissing", fmt.Errorf("missing the 'clientSecret' key in the client secret secret %q", clientConfig.ClientSecret.Name)))
-			return statusHandler.FlushAndReturn(nil)
-		}
-
+		// OIDC authentication is handled by the oidcController, not this controller
+		klog.V(4).Infoln("OIDC authentication type - skipping integratedOAuthController")
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "", nil))
+		return statusHandler.FlushAndReturn(nil)
 	default:
 		klog.V(2).Infof("unknown authentication type: %s", authConfig.Spec.Type)
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "", nil))
@@ -152,7 +128,7 @@ func (c *oauthClientSecretController) sync(ctx context.Context, syncCtx factory.
 	return statusHandler.FlushAndReturn(err)
 }
 
-func (c *oauthClientSecretController) syncSecret(ctx context.Context, clientSecret string, recorder events.Recorder) error {
+func (c *integratedOAuthController) syncSecret(ctx context.Context, clientSecret string, recorder events.Recorder) error {
 	operatorConfig, err := c.consoleOperatorLister.Get(api.ConfigResourceName)
 	if err != nil {
 		return err
@@ -168,7 +144,7 @@ func (c *oauthClientSecretController) syncSecret(ctx context.Context, clientSecr
 // handleStatus returns whether sync should happen and any error encountering
 // determining the operator's management state
 // TODO: extract this logic to where it can be used for all controllers
-func (c *oauthClientSecretController) handleManaged() (bool, error) {
+func (c *integratedOAuthController) handleManaged() (bool, error) {
 	operatorSpec, _, _, err := c.operatorClient.GetOperatorState()
 	if err != nil {
 		return false, fmt.Errorf("failed to retrieve operator config: %w", err)

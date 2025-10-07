@@ -1,4 +1,4 @@
-package oidcsetup
+package oidc
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -32,12 +33,21 @@ import (
 
 	authnsub "github.com/openshift/console-operator/pkg/console/subresource/authentication"
 	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
+	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
 	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
-// oidcSetupController:
+// oidcController manages all OIDC authentication resources for the console.
+//
+// Responsibilities:
+//   - Fetches OIDC client secret from openshift-config namespace
+//   - Syncs OIDC client secret to openshift-console/console-oauth-config
+//   - Syncs CA configmaps from openshift-config to openshift-console
+//   - Updates Authentication CR status with OIDC client information
+//   - Only runs when authentication type is OIDC
 //
 //	writes:
+//	- secrets.console-oauth-config -n openshift-console .Data['clientSecret']
 //	- authentication.config.openshift.io/cluster .status.oidcClients:
 //		- componentName=console
 //		- componentNamespace=openshift-console
@@ -51,9 +61,10 @@ import (
 //		- type=OIDCClientConfigDegraded
 //		- type=AuthStatusHandlerProgressing
 //		- type=AuthStatusHandlerDegraded
-type oidcSetupController struct {
+type oidcController struct {
 	operatorClient  v1helpers.OperatorClient
 	configMapClient corev1client.ConfigMapsGetter
+	secretsClient   corev1client.SecretsGetter
 
 	authnLister               configv1listers.AuthenticationLister
 	consoleOperatorLister     operatorv1listers.ConsoleLister
@@ -68,9 +79,10 @@ type oidcSetupController struct {
 	authStatusHandler *status.AuthStatusHandler
 }
 
-func NewOIDCSetupController(
+func NewOIDCController(
 	operatorClient v1helpers.OperatorClient,
 	configMapClient corev1client.ConfigMapsGetter,
+	secretsClient corev1client.SecretsGetter,
 	authnInformer configv1informers.AuthenticationInformer,
 	authenticationClient configv1client.AuthenticationInterface,
 	consoleOperatorInformer operatorv1informers.ConsoleInformer,
@@ -82,9 +94,10 @@ func NewOIDCSetupController(
 	externalOIDCFeatureEnabled bool,
 	recorder events.Recorder,
 ) factory.Controller {
-	c := &oidcSetupController{
+	c := &oidcController{
 		operatorClient:  operatorClient,
 		configMapClient: configMapClient,
+		secretsClient:   secretsClient,
 
 		authnLister:               authnInformer.Lister(),
 		consoleOperatorLister:     consoleOperatorInformer.Lister(),
@@ -110,10 +123,10 @@ func NewOIDCSetupController(
 			targetNSDeploymentsInformer.Informer(),
 			targetNSConfigMapInformer.Informer(),
 		).
-		ToController("OIDCSetupController", recorder.WithComponentSuffix("oidc-setup-controller"))
+		ToController("OIDCController", recorder.WithComponentSuffix("oidc-controller"))
 }
 
-func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncContext) error {
+func (c *oidcController) sync(ctx context.Context, syncCtx factory.SyncContext) error {
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
 	if shouldSync, err := c.handleManaged(); err != nil {
@@ -186,7 +199,7 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 	return statusHandler.FlushAndReturn(nil)
 }
 
-func (c *oidcSetupController) syncAuthTypeOIDC(ctx context.Context, authnConfig *configv1.Authentication, operatorConfig *operatorv1.Console, recorder events.Recorder) error {
+func (c *oidcController) syncAuthTypeOIDC(ctx context.Context, authnConfig *configv1.Authentication, operatorConfig *operatorv1.Console, recorder events.Recorder) error {
 	oidcProvider, clientConfig := authnsub.GetOIDCClientConfig(authnConfig, api.TargetNamespace, api.OpenShiftConsoleName)
 	if clientConfig == nil {
 		c.authStatusHandler.WithCurrentOIDCClient("")
@@ -228,6 +241,22 @@ func (c *oidcSetupController) syncAuthTypeOIDC(ctx context.Context, authnConfig 
 		}
 	}
 
+	// Sync OIDC client secret to target namespace
+	// This secret is used by the console deployment to authenticate with the OIDC provider
+	clientSecretString := secretsub.GetSecretString(clientSecret)
+	if len(clientSecretString) == 0 {
+		return fmt.Errorf("missing the 'clientSecret' key in the client secret %q", clientConfig.ClientSecret.Name)
+	}
+
+	targetSecret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get("console-oauth-config")
+	if apierrors.IsNotFound(err) || secretsub.GetSecretString(targetSecret) != clientSecretString {
+		_, _, err = resourceapply.ApplySecret(ctx, c.secretsClient, recorder,
+			secretsub.DefaultSecret(operatorConfig, clientSecretString))
+		if err != nil {
+			return fmt.Errorf("failed to sync OIDC client secret to target namespace: %w", err)
+		}
+	}
+
 	if valid, msg, err := c.checkClientConfigStatus(authnConfig, clientSecret); err != nil {
 		c.authStatusHandler.Degraded("DeploymentOIDCConfig", err.Error())
 		return err
@@ -245,7 +274,7 @@ func (c *oidcSetupController) syncAuthTypeOIDC(ctx context.Context, authnConfig 
 // by looking at the deployment status. It checks whether the deployment is available and updated,
 // and also whether the resource versions for the oauth secret and server CA trust configmap match
 // the deployment.
-func (c *oidcSetupController) checkClientConfigStatus(authnConfig *configv1.Authentication, clientSecret *corev1.Secret) (bool, string, error) {
+func (c *oidcController) checkClientConfigStatus(authnConfig *configv1.Authentication, clientSecret *corev1.Secret) (bool, string, error) {
 	depl, err := c.targetNSDeploymentsLister.Deployments(api.OpenShiftConsoleNamespace).Get(api.OpenShiftConsoleDeploymentName)
 	if err != nil {
 		return false, "", err
@@ -282,7 +311,7 @@ func (c *oidcSetupController) checkClientConfigStatus(authnConfig *configv1.Auth
 // handleStatus returns whether sync should happen and any error encountering
 // determining the operator's management state
 // TODO: extract this logic to where it can be used for all controllers
-func (c *oidcSetupController) handleManaged() (bool, error) {
+func (c *oidcController) handleManaged() (bool, error) {
 	operatorSpec, _, _, err := c.operatorClient.GetOperatorState()
 	if err != nil {
 		return false, fmt.Errorf("failed to retrieve operator config: %w", err)
