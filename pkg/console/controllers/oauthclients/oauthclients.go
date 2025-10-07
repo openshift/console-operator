@@ -34,6 +34,7 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	"github.com/openshift/console-operator/pkg/console/status"
+	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
 	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
@@ -163,7 +164,7 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 		return statusHandler.FlushAndReturn(fmt.Errorf("timed out waiting for OAuthClients cache sync"))
 	}
 
-	clientSecret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get("console-oauth-config")
+	clientSecret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get(deploymentsub.ConsoleOauthConfigName)
 	if err != nil {
 		return err
 	}

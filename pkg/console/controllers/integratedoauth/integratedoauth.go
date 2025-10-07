@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	v1helpers "github.com/openshift/library-go/pkg/operator/v1helpers"
 
+	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
 )
 
@@ -77,7 +78,7 @@ func NewIntegratedOAuthController(
 			consoleOperatorInformer.Informer(),
 		).
 		WithFilteredEventsInformers(
-			factory.NamesFilter("console-oauth-config"), targetNSsecretsInformer.Informer(),
+			factory.NamesFilter(deploymentsub.ConsoleOauthConfigName), targetNSsecretsInformer.Informer(),
 		).
 		ToController("IntegratedOAuthController", recorder.WithComponentSuffix("integrated-oauth-controller"))
 }
@@ -91,7 +92,7 @@ func (c *integratedOAuthController) sync(ctx context.Context, syncCtx factory.Sy
 
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
-	clientSecret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get("console-oauth-config")
+	clientSecret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get(deploymentsub.ConsoleOauthConfigName)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
@@ -134,7 +135,7 @@ func (c *integratedOAuthController) syncSecret(ctx context.Context, clientSecret
 		return err
 	}
 
-	secret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get("console-oauth-config")
+	secret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get(deploymentsub.ConsoleOauthConfigName)
 	if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) != clientSecret {
 		_, _, err = resourceapply.ApplySecret(ctx, c.secretsClient, recorder, secretsub.DefaultSecret(operatorConfig, clientSecret))
 	}

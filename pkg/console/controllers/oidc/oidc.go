@@ -40,27 +40,46 @@ import (
 // oidcController manages all OIDC authentication resources for the console.
 //
 // Responsibilities:
+//
 //   - Fetches OIDC client secret from openshift-config namespace
+//
 //   - Syncs OIDC client secret to openshift-console/console-oauth-config
+//
 //   - Syncs CA configmaps from openshift-config to openshift-console
+//
 //   - Updates Authentication CR status with OIDC client information
+//
 //   - Only runs when authentication type is OIDC
 //
-//	writes:
-//	- secrets.console-oauth-config -n openshift-console .Data['clientSecret']
-//	- authentication.config.openshift.io/cluster .status.oidcClients:
-//		- componentName=console
-//		- componentNamespace=openshift-console
-//		- currentOIDCClients
-//		- conditions:
-//			- Available
-//			- Progressing
-//			- Degraded
-//	- consoles.operator.openshift.io/cluster .status.conditions:
-//		- type=OIDCClientConfigProgressing
-//		- type=OIDCClientConfigDegraded
-//		- type=AuthStatusHandlerProgressing
-//		- type=AuthStatusHandlerDegraded
+//     writes:
+//
+//   - secrets.console-oauth-config -n openshift-console .Data['clientSecret']
+//
+//   - authentication.config.openshift.io/cluster .status.oidcClients:
+//
+//   - componentName=console
+//
+//   - componentNamespace=openshift-console
+//
+//   - currentOIDCClients
+//
+//   - conditions:
+//
+//   - Available
+//
+//   - Progressing
+//
+//   - Degraded
+//
+//   - consoles.operator.openshift.io/cluster .status.conditions:
+//
+//   - type=OIDCClientConfigProgressing
+//
+//   - type=OIDCClientConfigDegraded
+//
+//   - type=AuthStatusHandlerProgressing
+//
+//   - type=AuthStatusHandlerDegraded
 type oidcController struct {
 	operatorClient  v1helpers.OperatorClient
 	configMapClient corev1client.ConfigMapsGetter
@@ -248,7 +267,7 @@ func (c *oidcController) syncAuthTypeOIDC(ctx context.Context, authnConfig *conf
 		return fmt.Errorf("missing the 'clientSecret' key in the client secret %q", clientConfig.ClientSecret.Name)
 	}
 
-	targetSecret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get("console-oauth-config")
+	targetSecret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get(deploymentsub.ConsoleOauthConfigName)
 	if apierrors.IsNotFound(err) || secretsub.GetSecretString(targetSecret) != clientSecretString {
 		_, _, err = resourceapply.ApplySecret(ctx, c.secretsClient, recorder,
 			secretsub.DefaultSecret(operatorConfig, clientSecretString))
