@@ -30,9 +30,9 @@ import (
 	"github.com/openshift/console-operator/pkg/console/controllers/clioidcclientstatus"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
 	"github.com/openshift/console-operator/pkg/console/controllers/healthcheck"
+	"github.com/openshift/console-operator/pkg/console/controllers/integratedoauth"
 	"github.com/openshift/console-operator/pkg/console/controllers/oauthclients"
-	"github.com/openshift/console-operator/pkg/console/controllers/oauthclientsecret"
-	"github.com/openshift/console-operator/pkg/console/controllers/oidcsetup"
+	"github.com/openshift/console-operator/pkg/console/controllers/oidc"
 	pdb "github.com/openshift/console-operator/pkg/console/controllers/poddisruptionbudget"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
@@ -277,19 +277,19 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		recorder,
 	)
 
-	oauthClientSecretController := oauthclientsecret.NewOAuthClientSecretController(
+	integratedOAuthController := integratedoauth.NewIntegratedOAuthController(
 		operatorClient,
 		kubeClient.CoreV1(),
 		configInformers.Config().V1().Authentications(),
 		operatorConfigInformers.Operator().V1().Consoles(),
-		kubeInformersConfigNamespaced.Core().V1().Secrets(),
 		kubeInformersNamespaced.Core().V1().Secrets(),
 		recorder,
 	)
 
 	externalOIDCEnabled := featureGates.Enabled("ExternalOIDC")
-	oidcSetupController := oidcsetup.NewOIDCSetupController(
+	oidcController := oidc.NewOIDCController(
 		operatorClient,
+		kubeClient.CoreV1(),
 		kubeClient.CoreV1(),
 		configInformers.Config().V1().Authentications(),
 		configClient.ConfigV1().Authentications(),
@@ -599,8 +599,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consolePDBController,
 		downloadsPDBController,
 		oauthClientController,
-		oauthClientSecretController,
-		oidcSetupController,
+		integratedOAuthController,
+		oidcController,
 		cliOIDCClientStatusController,
 		upgradeNotificationController,
 		staleConditionsController,
