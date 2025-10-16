@@ -117,9 +117,6 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		if err != nil {
 			return statusHandler.FlushAndReturn(err)
 		}
-	default:
-		// Clear OIDC-related conditions when auth type is not OIDC
-		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCProviderTrustedAuthorityConfigGet", "", nil))
 	}
 
 	customLogosErr, customLogosErrReason := co.SyncCustomLogos(updatedOperatorConfig)
