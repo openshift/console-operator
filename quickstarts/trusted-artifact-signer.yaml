@@ -1,0 +1,59 @@
+﻿apiVersion: console.openshift.io/v1
+kind: ConsoleQuickStart
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"console.openshift.io/v1","kind":"ConsoleQuickStart","metadata":{"annotations":{"openshift.io/display-name":"Getting started with Trusted Artifact Signer"},"name":"trusted-artifact-signer-getting-started"},"spec":{"conclusion":"You installed the TAS operator, created an instance, generated a demo keypair, and signed and verified an image. Continue by integrating TAS with your CI and enforcing signature policies.","description":"Install the operator, create an instance, and sign your first artifact with Red Hat Trusted Artifact Signer (TAS).","displayName":"Getting started with Trusted Artifact Signer","durationMinutes":15,"icon":"data:image/svg+xml;utf8,\u003csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231F4392'\u003e\u003cpath d='M19 3H5a2 2 0 00-2 2v14l4-2h12a2 2 0 002-2V5a2 2 0 00-2-2z'/\u003e\u003cpath fill='%23fff' d='M8 12l2 2 5-5 1.5 1.5-6.5 6.5L6.5 13z'/\u003e\u003c/svg\u003e","introduction":"Red Hat Trusted Artifact Signer enables you to sign and verify container images and other build artifacts to ensure integrity and provenance. In this quick start, you will install the operator, create an instance, and sign your first artifact.","nextSteps":[{"description":"Product documentation and integration patterns.","links":[{"href":"https://docs.redhat.com/en/documentation/red_hat_trusted_artifact_signer/","text":"Trusted Artifact Signer documentation"}],"title":"Learn more"},{"description":"Explore complementary tools for provenance and vulnerability management.","links":[{"href":"https://docs.redhat.com/en/documentation/red_hat_trusted_profile_analyzer/","text":"Trusted Profile Analyzer"},{"href":"https://docs.redhat.com/en/documentation/red_hat_advanced_cluster_security_for_kubernetes/","text":"Advanced Cluster Security"}],"title":"Related security capabilities"}],"prerequisites":["Administrator access to the OpenShift cluster","Access to Operators → OperatorHub"],"tasks":[{"description":"Create or select a project (for example `tas-system`) to host the operator and the TAS instance.","title":"Choose or create a project for TAS"},{"description":"Go to Operators → OperatorHub and search for \"Trusted Artifact Signer\". Open the tile and click Install. After installation, verify the operator shows Succeeded under Operators → Installed Operators.","links":[{"href":"https://docs.redhat.com/en/documentation/red_hat_trusted_artifact_signer/","text":"Operator installation docs"}],"title":"Install the Trusted Artifact Signer operator"},{"description":"From Operators → Installed Operators → Trusted Artifact Signer, click Create instance. Accept defaults for evaluation or configure storage, routes, and keys as required.","title":"Create a Trusted Artifact Signer instance"},{"description":"For evaluation, generate a test keypair using cosign and store it in a Kubernetes secret.\nmacOS (Homebrew):\n``` brew install sigstore/tap/cosign cosign generate-key-pair --kms \"\" ```{{copy}}\nCreate a secret:\n``` oc create secret generic tas-cosign-keys --from-file=cosign.key --from-file=cosign.pub -n $(oc project -q) ```{{copy}}","links":[{"href":"https://docs.sigstore.dev/cosign/overview/","text":"Cosign project"}],"title":"Generate a signing key (development)"},{"description":"Sign a small image and verify its signature.\n``` cosign sign --key cosign.key registry.access.redhat.com/ubi9/ubi:latest cosign verify --key cosign.pub registry.access.redhat.com/ubi9/ubi:latest ```{{copy}}","links":[{"href":"https://docs.redhat.com/en/documentation/red_hat_trusted_artifact_signer/","text":"TAS documentation"}],"title":"Sign a sample image and verify"}]}}
+    openshift.io/display-name: Getting started with Trusted Artifact Signer
+  name: trusted-artifact-signer-getting-started
+spec:
+  conclusion: 'You installed the TAS operator, created an instance, generated a demo keypair, and signed and verified an image. To learn more, read the [deployment guide](https://docs.redhat.com/en/documentation/red_hat_trusted_artifact_signer/1.2/html/deployment_guide/index) for additional information on how to properly configure and deploy Trusted Artifact Signer.'
+  description: 'Install TAS, configure signing, and validate signatures and attestations. TAS verifies artifact integrity and provenance with Sigstore/cosign and policy checks.'
+  displayName: Get started with Trusted Artifact Signer
+  durationMinutes: 15
+  icon: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjM4IiBoZWlnaHQ9IjM4IiB2aWV3Qm94PSIwIDAgMzggMzgiPjxnIGlkPSJ1dWlkLTA0NmE3ODMyLTY5MjUtNDgwMy05NzgyLWYyM2M0YWIyZjNlYSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjM2IiBoZWlnaHQ9IjM2IiByeD0iOSIgcnk9IjkiIHN0cm9rZS13aWR0aD0iMCIvPjxwYXRoIGQ9Im0yOCwyLjI1YzQuMjczMzYsMCw3Ljc1LDMuNDc2NjQsNy43NSw3Ljc1djE4YzAsNC4yNzMzNi0zLjQ3NjY0LDcuNzUtNy43NSw3Ljc1SDEwYy00LjI3MzM2LDAtNy43NS0zLjQ3NjY0LTcuNzUtNy43NVYxMGMwLTQuMjczMzYsMy40NzY2NC03Ljc1LDcuNzUtNy43NWgxOG0wLTEuMjVIMTBDNS4wMjk0NCwxLDEsNS4wMjk0MywxLDEwdjE4YzAsNC45NzA1Nyw0LjAyOTQ0LDksOSw5aDE4YzQuOTcwNTcsMCw5LTQuMDI5NDMsOS05VjEwYzAtNC45NzA1Ny00LjAyOTQzLTktOS05aDBaIiBmaWxsPSIjNGQ0ZDRkIiBzdHJva2Utd2lkdGg9IjAiLz48L2c+PGcgaWQ9InV1aWQtMzAxYWZhNzMtOTM3MS00NjM0LTgwMmYtYzQ3MjUwZmMwOWMwIj48cGF0aCBkPSJtMTcsMTQuMzc1aC0uMzc1di0uODc1YzAtMS43MjMxNC0xLjQwMjM0LTMuMTI1LTMuMTI1LTMuMTI1cy0zLjEyNSwxLjQwMTg2LTMuMTI1LDMuMTI1di44NzVoLS4zNzVjLS4zNDQ3MywwLS42MjUuMjc5NzktLjYyNS42MjV2N2MwLC4zNDUyMS4yODAyNy42MjUuNjI1LjYyNWg3Yy4zNDQ3MywwLC42MjUtLjI3OTc5LjYyNS0uNjI1di03YzAtLjM0NTIxLS4yODAyNy0uNjI1LS42MjUtLjYyNVptLTUuMzc1LS44NzVjMC0xLjAzMzY5Ljg0MDgyLTEuODc1LDEuODc1LTEuODc1czEuODc1Ljg0MTMxLDEuODc1LDEuODc1di44NzVoLTMuNzV2LS44NzVabTQuNzUsNy44NzVoLTUuNzV2LTUuNzVoNS43NXY1Ljc1WiIgZmlsbD0iI2UwMCIgc3Ryb2tlLXdpZHRoPSIwIi8+PHBhdGggZD0ibTI5LDI0LjM3NUg5Yy0uMzQ0NzMsMC0uNjI1LjI3OTc5LS42MjUuNjI1cy4yODAyNy42MjUuNjI1LjYyNWgyMGMuMzQ0NzMsMCwuNjI1LS4yNzk3OS42MjUtLjYyNXMtLjI4MDI3LS42MjUtLjYyNS0uNjI1WiIgZmlsbD0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIwIi8+PHBhdGggZD0ibTIwLDIyLjYyNWMuMDg1OTQsMCwuMTcyODUtLjAxNzU4LjI1MzkxLS4wNTQybDMuNTkwMzMtMS41OTgyN2MuMDAwNDktLjAwMDI0LjAwMTA0LS4wMDA0My4wMDE1My0uMDAwNjdsLjAxMzYxLS4wMDYwNGMuMDI3OTUtLjAxMjM5LjA0NjU3LS4wMzUxLjA3MTcyLS4wNTA5LjAzOTg2LS4wMjQ5LjA4MzAxLS4wNDQyNS4xMTY3Ni0uMDc4bDQuMzk0NTMtNC4zOTUwMmMuMjQzMTYtLjI0NDE0LjI0MzE2LS42Mzk2NSwwLS44ODM3OS0uMjQ0MTQtLjI0NDE0LS42NDA2Mi0uMjQ0MTQtLjg4NDc3LDBsLTMuOTUyMTUsMy45NTMxMi0xLjExNjIxLTEuMTE2MjEsNS45NTMxMi01Ljk1MzEyYy4yNDMxNi0uMjQ0MTQuMjQzMTYtLjYzOTY1LDAtLjg4Mzc5LS4yNDQxNC0uMjQ0MTQtLjY0MDYyLS4yNDQxNC0uODg0NzcsMGwtNi4zOTQ1Myw2LjM5NTAyYy0uMDI3ODMuMDI3OTUtLjA0MTE0LjA2MzIzLS4wNjI2Mi4wOTQ2Ny0uMDIxNzkuMDMxNDMtLjA1MDE3LjA1NjctLjA2NjI4LjA5MjgzbC0xLjYwNTQ3LDMuNjA0OThjLS4xMDQ0OS4yMzYzMy0uMDUzNzEuNTEzMTguMTI4OTEuNjk2MjkuMTIwMTIuMTE5NjMuMjgwMjcuMTgzMTEuNDQyMzguMTgzMTFabTEuODA2NTItMy4xNDQ2NWwuNzEzNzUuNzEzNzUtMS4yODY4Ny41NzI1MS41NzMxMi0xLjI4NjI1WiIgZmlsbD0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIwIi8+PC9nPjwvc3ZnPg=='
+  introduction: 'Red Hat Trusted Artifact Signer enables you to sign and verify container images and other build artifacts to ensure integrity and provenance. In this quick start, you will install the operator, create an instance, and sign your first artifact.'
+  prerequisites:
+    - Administrator access to the OpenShift cluster
+    - Access to Operators → OperatorHub
+  tasks:
+    - description: |-
+        Trusted Artifact Signer brings verifiable integrity and provenance to your software supply chain by signing container images and other build artifacts. Use signatures and attestations to enable admission policies and establish trusted builds.
+
+        Highlights:
+        - Sign images and generate attestations with Sigstore/cosign
+        - Enforce signature policies at admission
+        - Integrates with Trusted Profile Analyzer (SBOM analysis) and Advanced Cluster Security (runtime)
+
+        Watch next:
+        - [Trusted Artifact Signer overview](https://www.youtube.com/watch?v=C3I7DTBmTg8)
+        - [Trusted Software Supply Chain overview](https://www.youtube.com/watch?v=xRmBjklNXhc)
+        - [Trusted Software Supply Chain interactive demo](https://app.arcade.software/share/nkfw8tMy4MNE6zxiET31?ref=share-link)
+      title: Why Trusted Artifact Signer?
+    - description: |-
+        Go to Operators → OperatorHub and search for "Trusted Artifact Signer". Open the tile and click Install. After installation, verify the operator shows Succeeded under Operators → Installed Operators. 
+
+        Once the installation finishes, a new project is automatically created for you. The new project name is "trusted-artifact-signer".
+      title: Install the Trusted Artifact Signer operator
+    - description: 'From Operators → Installed Operators → Trusted Artifact Signer, click Create instance. Accept defaults for evaluation or configure storage, routes, and keys as required.'
+      title: Create a Trusted Artifact Signer instance
+    - description: |-
+        For evaluation, generate a test keypair using cosign and store it in a Kubernetes secret.
+
+        macOS (Homebrew):
+
+        ``` brew install sigstore/tap/cosign ```
+
+        ``` cosign generate-key-pair ```
+
+        Create a secret:
+          
+        ``` oc create secret generic tas-cosign-keys --from-file=cosign.key --from-file=cosign.pub -n $(oc project -q) ```
+      title: Generate a signing key (development)
+    - description: |-
+        Sign a small image and verify its signature.
+
+        ``` cosign sign --key cosign.key registry.access.redhat.com/ubi9/ubi:latest ```
+
+        ``` cosign verify --key cosign.pub registry.access.redhat.com/ubi9/ubi:latest ```
+      title: Sign a sample image and verify
