@@ -91,6 +91,7 @@ type AuthenticationSpec struct {
 	// +kubebuilder:validation:MaxItems=1
 	// +openshift:enable:FeatureGate=ExternalOIDC
 	// +openshift:enable:FeatureGate=ExternalOIDCWithUIDAndExtraClaimMappings
+	// +optional
 	OIDCProviders []OIDCProvider `json:"oidcProviders,omitempty"`
 }
 
@@ -108,6 +109,7 @@ type AuthenticationStatus struct {
 	// If the config map or expected key is not found, no metadata is served.
 	// If the specified metadata is not valid, no metadata is served.
 	// The namespace for this config map is openshift-config-managed.
+	// +optional
 	IntegratedOAuthMetadata ConfigMapNameReference `json:"integratedOAuthMetadata"`
 
 	// oidcClients is where participating operators place the current OIDC client status
@@ -119,6 +121,7 @@ type AuthenticationStatus struct {
 	// +kubebuilder:validation:MaxItems=20
 	// +openshift:enable:FeatureGate=ExternalOIDC
 	// +openshift:enable:FeatureGate=ExternalOIDCWithUIDAndExtraClaimMappings
+	// +optional
 	OIDCClients []OIDCClientStatus `json:"oidcClients"`
 }
 
@@ -207,7 +210,7 @@ type OIDCProvider struct {
 	Name string `json:"name"`
 
 	// issuer is a required field that configures how the platform interacts
-	// with the identity provider and how tokens issued from the identity provider 
+	// with the identity provider and how tokens issued from the identity provider
 	// are evaluated by the Kubernetes API server.
 	//
 	// +required
@@ -251,9 +254,16 @@ type TokenIssuer struct {
 	// The Kubernetes API server determines how authentication tokens should be handled
 	// by matching the 'iss' claim in the JWT to the issuerURL of configured identity providers.
 	//
-	// issuerURL must use the 'https' scheme.
+	// Must be at least 1 character and must not exceed 512 characters in length.
+	// Must be a valid URL that uses the 'https' scheme and does not contain a query, fragment or user.
 	//
-	// +kubebuilder:validation:Pattern=`^https:\/\/[^\s]`
+	// +kubebuilder:validation:XValidation:rule="isURL(self)",message="must be a valid URL"
+	// +kubebuilder:validation:XValidation:rule="isURL(self) && url(self).getScheme() == 'https'",message="must use the 'https' scheme"
+	// +kubebuilder:validation:XValidation:rule="isURL(self) && url(self).getQuery() == {}",message="must not have a query"
+	// +kubebuilder:validation:XValidation:rule="self.find('#(.+)$') == ''",message="must not have a fragment"
+	// +kubebuilder:validation:XValidation:rule="self.find('@') == ''",message="must not have user info"
+	// +kubebuilder:validation:MaxLength=512
+	// +kubebuilder:validation:MinLength=1
 	// +required
 	URL string `json:"issuerURL"`
 
@@ -318,10 +328,10 @@ type TokenClaimMappings struct {
 	// used to construct the extra attribute for the cluster identity.
 	// When omitted, no extra attributes will be present on the cluster identity.
 	// key values for extra mappings must be unique.
-	// A maximum of 64 extra attribute mappings may be provided.
+	// A maximum of 32 extra attribute mappings may be provided.
 	//
 	// +optional
-	// +kubebuilder:validation:MaxItems=64
+	// +kubebuilder:validation:MaxItems=32
 	// +listType=map
 	// +listMapKey=key
 	// +openshift:enable:FeatureGate=ExternalOIDCWithUIDAndExtraClaimMappings
@@ -373,10 +383,10 @@ type TokenClaimOrExpressionMapping struct {
 	// Precisely one of claim or expression must be set.
 	// expression must not be specified when claim is set.
 	// When specified, expression must be at least 1 character in length
-	// and must not exceed 4096 characters in length.
+	// and must not exceed 1024 characters in length.
 	//
 	// +optional
-	// +kubebuilder:validation:MaxLength=4096
+	// +kubebuilder:validation:MaxLength=1024
 	// +kubebuilder:validation:MinLength=1
 	Expression string `json:"expression,omitempty"`
 }
@@ -435,12 +445,12 @@ type ExtraMapping struct {
 	// For example, the 'sub' claim value can be accessed as 'claims.sub'.
 	// Nested claims can be accessed using dot notation ('claims.foo.bar').
 	//
-	// valueExpression must not exceed 4096 characters in length.
+	// valueExpression must not exceed 1024 characters in length.
 	// valueExpression must not be empty.
 	//
 	// +required
 	// +kubebuilder:validation:MinLength=1
-	// +kubebuilder:validation:MaxLength=4096
+	// +kubebuilder:validation:MaxLength=1024
 	ValueExpression string `json:"valueExpression"`
 }
 
@@ -737,7 +747,7 @@ type TokenClaimValidationRule struct {
 	// JWT is valid for this identity provider.
 	//
 	// +optional
-	RequiredClaim *TokenRequiredClaim `json:"requiredClaim"`
+	RequiredClaim *TokenRequiredClaim `json:"requiredClaim,omitempty"`
 }
 
 type TokenRequiredClaim struct {
