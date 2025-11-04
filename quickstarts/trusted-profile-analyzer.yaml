@@ -31,7 +31,7 @@ spec:
         - [Trusted Software Supply Chain overview](https://www.youtube.com/watch?v=xRmBjklNXhc)
         - [Trusted Software Supply Chain interactive demo](https://app.arcade.software/share/nkfw8tMy4MNE6zxiET31?ref=share-link)
       title: Why Trusted Profile Analyzer?
-    - description: 'In the Administrator perspective, open Projects and create a new project (for example `tpa-system`), or select an existing project where you want to run the operator and its instance.'
+    - description: 'In the **Administrator** perspective, open **Projects** and create a new project (for example **tpa-system**), or select an existing project where you want to run the operator and its instance.'
       title: Choose or create a project for TPA
     - description: Go to Operators → OperatorHub and search for "Trusted Profile Analyzer". Open the tile and click Install. Use the default channel and approve the install plan. Wait until the operator status shows Succeeded under Operators → Installed Operators in your chosen project.
       title: Install the Trusted Profile Analyzer operator
@@ -44,9 +44,13 @@ spec:
 
         On macOS with Homebrew:
 
-        ``` brew install syft ```
+        ```
+        brew install syft
+        ```
 
-        ``` syft packages registry.access.redhat.com/ubi9/ubi:latest -o cyclonedx-json > ubi9-sbom.json ```
+        ```
+        syft packages registry.access.redhat.com/ubi9/ubi:latest -o cyclonedx-json > ubi9-sbom.json
+        ```
       title: Generate a sample SBOM locally (optional)
-    - description: 'In the TPA UI, choose Upload SBOM and select the generated `ubi9-sbom.json` file. After processing, navigate through components, vulnerabilities, and relationships. Use filters to focus on critical issues and drill into affected packages.'
+    - description: 'In the TPA UI, choose Upload SBOM and select the generated **ubi9-sbom.json** file. After processing, navigate through components, vulnerabilities, and relationships. Use filters to focus on critical issues and drill into affected packages.'
       title: Upload the SBOM and review findings

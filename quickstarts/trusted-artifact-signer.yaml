@@ -41,19 +41,27 @@ spec:
         For evaluation, generate a test keypair using cosign and store it in a Kubernetes secret.
 
         macOS (Homebrew):
-
-        ``` brew install sigstore/tap/cosign ```
-
-        ``` cosign generate-key-pair ```
+        ```
+        brew install sigstore/tap/cosign
+        ```
+        ```
+        cosign generate-key-pair
+        ```
 
         Create a secret:
           
-        ``` oc create secret generic tas-cosign-keys --from-file=cosign.key --from-file=cosign.pub -n $(oc project -q) ```
+        ```
+        oc create secret generic tas-cosign-keys --from-file=cosign.key --from-file=cosign.pub -n $(oc project -q)
+        ```
       title: Generate a signing key (development)
     - description: |-
         Sign a small image and verify its signature.
 
-        ``` cosign sign --key cosign.key registry.access.redhat.com/ubi9/ubi:latest ```
+        ```
+        cosign sign --key cosign.key registry.access.redhat.com/ubi9/ubi:latest
+        ```
 
-        ``` cosign verify --key cosign.pub registry.access.redhat.com/ubi9/ubi:latest ```
+        ```
+        cosign verify --key cosign.pub registry.access.redhat.com/ubi9/ubi:latest
+        ```
       title: Sign a sample image and verify
