@@ -441,7 +441,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 			{Group: configv1.GroupName, Resource: "infrastructures", Name: api.ConfigResourceName},
 			{Group: configv1.GroupName, Resource: "proxies", Name: api.ConfigResourceName},
 			{Group: configv1.GroupName, Resource: "oauths", Name: api.ConfigResourceName},
-			{Group: oauth.GroupName, Resource: "oauthclients", Name: api.OAuthClientName},
 			{Group: corev1.GroupName, Resource: "namespaces", Name: api.OpenShiftConsoleOperatorNamespace},
 			{Group: corev1.GroupName, Resource: "namespaces", Name: api.OpenShiftConsoleNamespace},
 			{Group: corev1.GroupName, Resource: "configmaps", Name: api.OpenShiftConsolePublicConfigMapName, Namespace: api.OpenShiftConfigManagedNamespace},
@@ -490,6 +489,18 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 					})
 				}
 			}
+		}
+
+		authn, err := configInformers.Config().V1().Authentications().Lister().Get("cluster")
+		if err != nil {
+			return false, nil
+		}
+		switch authn.Spec.Type {
+		case "", configv1.AuthenticationTypeIntegratedOAuth:
+			relatedObjects = append(relatedObjects, configv1.ObjectReference{
+				Group:    oauth.GroupName,
+				Resource: "oauthclients",
+				Name:     api.OAuthClientName})
 		}
 
 		return true, deduplicateObjectReferences(relatedObjects)
