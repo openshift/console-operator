@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       annotations:
-        openshift.io/required-scc: restricted-v2
+        openshift.io/required-scc: restricted-v3
         target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
       labels:
         name: console-operator
@@ -75,6 +75,7 @@ spec:
           name: serving-cert
         - mountPath: /etc/pki/ca-trust/extracted/pem
           name: trusted-ca
+      hostUsers: false
       priorityClassName: system-cluster-critical
       securityContext:
         runAsNonRoot: true
