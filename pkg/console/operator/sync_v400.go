@@ -95,10 +95,15 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(err)
 	}
 
+	sessionSecret, err := co.syncSessionSecret(ctx, updatedOperatorConfig, controllerContext.Recorder())
+	if err != nil {
+		return statusHandler.FlushAndReturn(err)
+	}
+
 	var (
 		targetNamespaceAuthServerCA *corev1.ConfigMap
-		sessionSecret               *corev1.Secret
 	)
+
 	switch authnConfig.Spec.Type {
 	case configv1.AuthenticationTypeOIDC:
 		if len(authnConfig.Spec.OIDCProviders) > 0 {
@@ -111,11 +116,6 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 					return statusHandler.FlushAndReturn(err)
 				}
 			}
-		}
-
-		sessionSecret, err = co.syncSessionSecret(ctx, updatedOperatorConfig, controllerContext.Recorder())
-		if err != nil {
-			return statusHandler.FlushAndReturn(err)
 		}
 	}
 
