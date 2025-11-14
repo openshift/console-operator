@@ -163,7 +163,7 @@ rules:
     verbs:
       - get
   - apiGroups:
-      - operators.coreos.com
+      - olm.operatorframework.io
     resources:
       - clustercatalogs
     verbs:
