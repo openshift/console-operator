@@ -30,6 +30,7 @@ import (
 	"github.com/openshift/console-operator/pkg/console/controllers/clioidcclientstatus"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
 	"github.com/openshift/console-operator/pkg/console/controllers/healthcheck"
+	"github.com/openshift/console-operator/pkg/console/controllers/migration"
 	"github.com/openshift/console-operator/pkg/console/controllers/oauthclients"
 	"github.com/openshift/console-operator/pkg/console/controllers/oauthclientsecret"
 	"github.com/openshift/console-operator/pkg/console/controllers/oidcsetup"
@@ -526,6 +527,11 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		controllerContext.EventRecorder,
 	)
 
+	migrationCleanupController := migration.NewMigrationCleanupController(
+		kubeClient,
+		recorder,
+	)
+
 	// instantiate pdb client
 	policyClient, err := policyv1client.NewForConfig(controllerContext.KubeConfig)
 	if err != nil {
@@ -591,6 +597,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	for _, controller := range []interface {
 		Run(ctx context.Context, workers int)
 	}{
+		migrationCleanupController,
 		resourceSyncer,
 		clusterOperatorStatus,
 		logLevelController,
