@@ -112,7 +112,7 @@ spec:
         To install Red Hat Developer Hub via Helm:
 
         1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Core platform**.
-        2. In the main navigation menu, select [Helm]{{highlight qs-admin-nav-helm}} and select **Releases**.
+        2. In the main navigation menu, select [Ecosystem]{{highlight qs-nav-ecosystem}} and select [Helm]{{highlight qs-nav-helm}}.
         3. If needed, switch or create a new project from the **Project dropdown**.
         4. On the **Helm Releases** page, click the **Create Helm Release** button.
         5. Search for **Red Hat Developer Hub**
@@ -129,7 +129,7 @@ spec:
           2. After a few seconds, the Deployment should show a blue ring around the Red Hat Developer Hub icon to indicate that the Red Hat Developer Hub Pod is running.
           3. Click on the URL decorator in the top-right corner of the "developer-hub" Deployment to open your Red Hat Developer Hub instance.
         failedTaskHelp: |-
-          You can also click in the navigation menu on [Helm]{{highlight qs-nav-helm}} and check the Helm Release status. The status column should show "Deployed".
+          You can also click in the navigation menu on [Ecosystem]{{highlight qs-nav-ecosystem}} -> [Helm]{{highlight qs-nav-helm}} and check the Helm Release status. The status column should show "Deployed".
           
           Click on the Helm Chart and open the **Resources** tab to see if any Kubernetes resources are pending or to investigate underlying issues.
       summary:
@@ -144,7 +144,7 @@ spec:
         To update your Red Hat Developer Hub installation:
 
         1. Ensure you have a **backup** of your installation.
-        2. In the main navigation menu, select [Helm]{{highlight qs-admin-nav-helm}} and select **Releases**.
+        2. In the main navigation menu, select [Ecosystem]{{highlight qs-nav-ecosystem}} and select [Helm]{{highlight qs-nav-helm}}.
         3. Select your **developer-hub** Helm Release. You can see your current version under **Chart version**.
         4. Click the **Actions** menu button in the top right corner and select **Upgrade**.
         5. Switch to the **YAML view** and **save your current YAML configuration.**
@@ -155,7 +155,7 @@ spec:
         instructions: |-
           #### To verify the application was successfully upgraded:
 
-          1. In the main navigation menu, select [Helm]{{highlight qs-admin-nav-helm}} and select **Releases**.
+          1. In the main navigation menu, select [Ecosystem]{{highlight qs-nav-ecosystem}} and select [Helm]{{highlight qs-nav-helm}}.
           2. Your Helm Chart should show "Deployed" again and an updated **Chart version**.
           3. The **Revision history** tab should show a new revision with the message "Upgrade complete".
         failedTaskHelp: |-
@@ -167,7 +167,7 @@ spec:
       description: |-
         To use a custom domain name, you must change some of **Helm Chart values**:
 
-        1. In the main navigation menu, select [Helm]{{highlight qs-admin-nav-helm}} and select **Releases**.
+        1. In the main navigation menu, select [Ecosystem]{{highlight qs-nav-ecosystem}} and select [Helm]{{highlight qs-nav-helm}}.
         2. Select your **developer-hub** Helm Release.
         3. Click the **Actions** menu button in the top right corner and select **Upgrade**.
         4. You can apply the following configuration with the Form view by clicking on **Root Schema > Global**

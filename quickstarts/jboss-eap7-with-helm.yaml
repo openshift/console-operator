@@ -85,7 +85,7 @@ spec:
     - description: >-
         To view the Helm release:
 
-        1. In the main navigation menu, select [Helm]{{highlight qs-admin-nav-helm}} and select **Releases**.
+        1. In the main navigation menu, select [Ecosystem]{{highlight qs-nav-ecosystem}} and select [Helm]{{highlight qs-nav-helm}}.
 
         1. Click **eap74** Helm release.  
            The **Helm Release details** page opens. It shows all the information related to the Helm release that you installed.
