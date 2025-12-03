@@ -60,6 +60,7 @@ func NewStorageVersionMigrationController(
 		WithInformers(
 			dynamicInformers.ForResource(storageVersionMigrationGVR).Informer(),
 		).
+		ResyncEvery(10*time.Minute).
 		WithSync(c.sync).
 		ToController("StorageVersionMigrationController", recorder)
 }
@@ -67,52 +68,55 @@ func NewStorageVersionMigrationController(
 func (c *StorageVersionMigrationController) sync(ctx context.Context, syncContext factory.SyncContext) error {
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
+	reason, err := c.syncStorageVersionMigration(ctx)
+	statusHandler.AddCondition(status.HandleDegraded("StorageVersionMigration", reason, err))
+	return statusHandler.FlushAndReturn(err)
+}
+
+func (c *StorageVersionMigrationController) syncStorageVersionMigration(ctx context.Context) (string, error) {
 	// Check if the ConsolePlugin CRD still has v1alpha1 in storedVersions
 	hasV1Alpha1, err := c.checkCRDStoredVersions(ctx)
 	if err != nil {
 		klog.Errorf("Failed to check CRD storedVersions: %v", err)
-		statusHandler.AddCondition(status.HandleDegraded("StorageVersionMigration", "FailedCheckCRDStoredVersions", err))
-		return statusHandler.FlushAndReturn(err)
+		return "FailedCheckCRDStoredVersions", err
 	}
 
 	if !hasV1Alpha1 {
 		klog.V(4).Infof("ConsolePlugin CRD does not have v1alpha1 in storedVersions, migration already complete")
-		return statusHandler.FlushAndReturn(nil)
+		return "", nil
 	}
 
 	// Get the StorageVersionMigration instance
 	svm, err := c.dynamicClient.Resource(storageVersionMigrationGVR).Get(ctx, storageVersionMigrationName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("Failed to get StorageVersionMigration: %v", err)
-		return statusHandler.FlushAndReturn(err)
+		return "FailedGetSVM", err
 	}
 
 	// Check if the migration has succeeded with retry logic
 	succeeded, err := c.hasSucceededConditionWithRetry(svm)
 	if err != nil {
 		klog.Errorf("Failed to check conditions for StorageVersionMigration after %d retries: %v", maxRetries, err)
-		return statusHandler.FlushAndReturn(err)
+		return "FailedCheckSVMConditions", err
 	}
 
 	if !succeeded {
 		klog.V(4).Infof("StorageVersionMigration has not succeeded yet")
 		// Delete the StorageVersionMigration if it has not succeeded yet
 		if err := c.deleteStorageVersionMigration(ctx); err != nil {
-			statusHandler.AddCondition(status.HandleDegraded("StorageVersionMigration", "FailedDeleteSVM", err))
-			return statusHandler.FlushAndReturn(err)
+			return "FailedDeleteSVM", err
 		}
-		return statusHandler.FlushAndReturn(nil)
+		return "", nil
 	}
 
 	klog.Infof("StorageVersionMigration has succeeded, setting ConsolePlugin CRD storedVersions to v1")
 
 	// Set CRD storedVersions to v1
 	if err := c.removeV1Alpha1FromCRD(ctx); err != nil {
-		statusHandler.AddCondition(status.HandleDegraded("StorageVersionMigration", "FailedPatchCRD", err))
-		return statusHandler.FlushAndReturn(err)
+		return "FailedPatchCRD", err
 	}
 
-	return statusHandler.FlushAndReturn(nil)
+	return "", nil
 }
 
 // checkCRDStoredVersions checks if the ConsolePlugin CRD has v1alpha1 in its storedVersions
