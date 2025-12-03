@@ -35,7 +35,7 @@ spec:
       
       To install OpenShift Data Foundation, follow these steps:
 
-      1. Enter the administrator perspective: In the main navigation, select the dropdown menu and select **Administrator**.
+      1. Enter the **Core platform** perspective: In the main navigation, select the dropdown menu and select **Core platform**.
 
       1. In the main navigation menu, select [Operators]{{highlight qs-nav-operators}} and select **OperatorHub**
 
@@ -65,7 +65,7 @@ spec:
 
       To create a StorageSystem:
 
-      1. Select [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation, and select **Administrator.**
+      1. Select [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation, and select **Core platform.**
 
       2. In the main navigation menu, select [Operators]{{highlight qs-nav-operators}} and select **Installed Operators.**
       

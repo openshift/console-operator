@@ -38,7 +38,7 @@ spec:
       description: >
         To install the **cert-manager Operator for Red Hat OpenShift**:
 
-        1. From the **Administrator** perspective, go to the **OperatorHub** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
+        1. From the **Core platform** perspective, go to the **OperatorHub** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
         
         1. In the **Filter by keyword** field, type `cert-manager`.
           
@@ -63,7 +63,7 @@ spec:
         instructions: >-
           #### Verify that **cert-manager Operator for Red Hat OpenShift** is installed:
 
-            - From the **Administrator** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
+            - From the **Core platform** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
             - The cert-manager Operator for Red Hat OpenShift should be shown in the list of Operators
             - In the **Status** column, do you see the status of **cert-manager Operator for Red Hat OpenShift** as **Succeeded**?
 
@@ -71,7 +71,7 @@ spec:
       description: >
         To install the Red Hat build of Cryostat operator:
        
-        1. From the **Administrator** perspective, go to the **OperatorHub** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
+        1. From the **Core platform** perspective, go to the **OperatorHub** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
         
         1. In the **Filter by keyword** field, type `Red Hat build of Cryostat`.
         
@@ -95,7 +95,7 @@ spec:
         instructions: >
           #### Verify that the Red Hat build of Cryostat is installed:
           
-          - From the **Administrator** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
+          - From the **Core platform** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
 
           - The Red Hat build of Cryostat should be shown in the list of Operators.
 
@@ -104,7 +104,7 @@ spec:
       description: >
         To create a Cryostat instance:
 
-        1. From the **Administrator** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
+        1. From the **Core platform** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
         
         1. From the **Project** list, select the OpenShift project that hosts your containerized Java applications.
         
@@ -130,7 +130,7 @@ spec:
         instructions: >
           #### Verify that your Cryostat instance has been created:
 
-          From the **Administrator** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
+          From the **Core platform** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation. 
 
           - Go to the Red Hat build of Cryostat operator and click the **Cryostat** tab.
 

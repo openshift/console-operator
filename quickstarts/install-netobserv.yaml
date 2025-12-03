@@ -56,7 +56,7 @@ spec:
         failedTaskHelp: This task isn’t verified yet. Try the task again.
         instructions: |-
           #### Verify the traffic captured:
-          Do you see Network Traffic listed in the **Observe** section in the administrator perspective?
+          Do you see Network Traffic listed in the **Observe** section in the Core platform perspective?
           In the absence of Application Traffic within the OpenShift Container Platform cluster, default filters might show that there are "No results", which results in no visual flow. Beside the filter selections, select **Clear all filters** to see the flow.
       summary:
         failed: Try the steps again.

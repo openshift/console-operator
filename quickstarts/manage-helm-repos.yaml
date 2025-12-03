@@ -33,7 +33,7 @@ spec:
     - description: >-
         Follow these steps to create a HelmChartRepository CR:
 
-        1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
+        1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Core platform**.
         
         1. In the navigation menu, click [Home]{{highlight qs-nav-home}}.
         
