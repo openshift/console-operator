@@ -111,8 +111,8 @@ spec:
       description: |-
         To install the Red Hat Developer Hub Operator:
 
-        1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
-        2. In the Administrator perspective, go to the **OperatorHub** page from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
+        1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Core platform**.
+        2. In the Core platform perspective, go to the **OperatorHub** page from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
         3. Search for **Red Hat Developer Hub**
         4. Select the card **Red Hat Developer Hub** with the **Red Hat** badge and press **Install** to open a page to install the Operator.
         5. **Optional:** Choose the correct version, update strategy, and whether this Operator should be available for all namespaces or just a specific namespace.
@@ -129,7 +129,7 @@ spec:
         instructions: |-
           #### To verify that the Operator was successfully installed:
 
-          1. From the **Administrator** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
+          1. From the **Core platform** perspective, go to **Installed Operators** from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
           2. The "Red Hat Developer Hub" Operator should be shown in the list of Operators.
           3. The **Status** column should show **Succeeded**.
         failedTaskHelp: |-
@@ -143,8 +143,8 @@ spec:
       description: |-
         To create a Red Hat Developer Hub instance, you should create a `Backstage` custom resource.
 
-        1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
-        2. In the Administrator perspective, go to the **Installed Operators** page from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
+        1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Core platform**.
+        2. In the Core platform perspective, go to the **Installed Operators** page from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
         3. If needed, switch or create a new project from the **Project dropdown**.
         4. Select the "Red Hat Developer Hub" Operator and navigate to the **Red Hat Developer Hub** tab.
         5. Click on **Create Backstage** button in the top right corner of that tab view.
@@ -174,10 +174,10 @@ spec:
         instructions: |-
           #### To verify the application was successfully created:
 
-          1. In the **Administrator** perspective you should now see a RHDH "backstage-my-rhdh” Deployment under [Workloads]{{highlight qs-nav-workloads}} > Deployments,
+          1. In the **Core platform** perspective you should now see a RHDH "backstage-my-rhdh” Deployment under [Workloads]{{highlight qs-nav-workloads}} > Deployments,
              or in the [Workloads]{{highlight qs-nav-workloads}} **Topology** view.
           2. It might take a moment for your deployment status to update to "Running".
-          3. In the **Administrator** perspective, you can find the URL of your RHDH instance under Networking > Routes.
+          3. In the **Core platform** perspective, you can find the URL of your RHDH instance under Networking > Routes.
              In the **Developer** perspective Topology, you can click on the URL decorator in the Deployment to open your RHDH instance.
           4. You should see a RHDH instance that lets you select a sign-in method.
         failedTaskHelp: |-
@@ -190,7 +190,7 @@ spec:
         To customize your Red Hat Developer Hub instance, you can extend your `Backstage` resource
         by adding additional `app-config` options to your RHDH instance.
 
-        You can extend your `Backstage` resource in the **Administrator** perspective under **Installed Operators** > **Red Hat Developer Hub** > **Red Hat Developer Hub**
+        You can extend your `Backstage` resource in the **Core platform** perspective under **Installed Operators** > **Red Hat Developer Hub** > **Red Hat Developer Hub**
         or by clicking on [Search]{{highlight qs-nav-search}} and selecting **Backstage** from the resource list.
 
         **Tip:** You can also pin the resource list in the developer perspective to your navigation.
@@ -291,7 +291,7 @@ spec:
         instructions: |-
           #### To verify the application was successfully created:
 
-          1. In the **Administrator** perspective you should now see a RHDH "backstage-my-rhdh” Deployment under Workloads > Deployments,
+          1. In the **Core platform** perspective you should now see a RHDH "backstage-my-rhdh” Deployment under Workloads > Deployments,
              or in the [Topology]{{highlight qs-nav-topology}} view of the **Developer** perspective.
           2. It might take a moment for your Deployment to update. Check that the status of the Pods changes to "Running".
           3. You should see a RHDH instance that lets you select a sign-in method and your updated RHDH title in your browser tab and organization name on the catalog page.

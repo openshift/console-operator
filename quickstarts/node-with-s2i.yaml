@@ -34,7 +34,7 @@ spec:
     - description: >-
         To create a Node application:
         
-        1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
+        1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Core platform**.
         
         1. In the main navigation menu, select [Home]{{highlight qs-nav-home}} and select **Projects**.
         

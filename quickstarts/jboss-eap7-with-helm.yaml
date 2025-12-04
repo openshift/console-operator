@@ -35,7 +35,7 @@ spec:
     - description: >-
         To create a JBoss EAP 7 application:
         
-        1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} and select **Administrator**.
+        1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} and select **Core platform**.
         
         1. In the main navigation menu, select [Home]{{highlight qs-nav-home}} and select **Software Catalog**.
 
@@ -85,7 +85,7 @@ spec:
     - description: >-
         To view the Helm release:
 
-        1. In the main navigation menu, select [Helm]{{highlight qs-admin-nav-helm}} and select **Releases**.
+        1. In the main navigation menu, select [Ecosystem]{{highlight qs-nav-ecosystem}} and select [Helm]{{highlight qs-nav-helm}}.
 
         1. Click **eap74** Helm release.  
            The **Helm Release details** page opens. It shows all the information related to the Helm release that you installed.

@@ -20,7 +20,7 @@ spec:
     description: |-
       ### To install the multicluster engine for Kubernetes operator:
 
-      1. In the OpenShift Container Platform web console, check the navigation in the upper-left corner to ensure that you are in the **Administrator** perspective.
+      1. In the OpenShift Container Platform web console, check the navigation in the upper-left corner to ensure that you are in the **Core platform** perspective.
 
       2. Click **Operators > OperatorHub**.
 
