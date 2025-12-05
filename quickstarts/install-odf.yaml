@@ -31,13 +31,13 @@ spec:
   tasks:
   - title: Install OpenShift Data Foundation
     description: |- 
-      The OperatorHub is where you can find a catalog of available Operators to install on your cluster.
+      The "Software Catalog" is where you can find a catalog of available Operators to install on your cluster.
       
       To install OpenShift Data Foundation, follow these steps:
 
       1. Enter the **Core platform** perspective: In the main navigation, select the dropdown menu and select **Core platform**.
 
-      1. In the main navigation menu, select [Operators]{{highlight qs-nav-operators}} and select **OperatorHub**
+      1. In the main navigation menu, select [Ecosystem]{{highlight qs-nav-ecosystem}} and select **Software Catalog**
 
       1. In the **Filter by keyword** field, type `OpenShift Data Foundation`
 
@@ -52,7 +52,7 @@ spec:
       instructions: |-
         ####  Verify that the OpenShift Data Foundation operator is installed:
 
-        In the navigation menu, select **Operators > Installed Operators**. 
+        In the navigation menu, select **Ecosystem > Installed Operators**. 
         
         Does the **Status** column for **OpenShift Data Foundation** show **Succeeded**?
       failedTaskHelp: This task isn’t verified yet. Try the task again.
@@ -67,7 +67,7 @@ spec:
 
       1. Select [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation, and select **Core platform.**
 
-      2. In the main navigation menu, select [Operators]{{highlight qs-nav-operators}} and select **Installed Operators.**
+      2. In the main navigation menu, select [Ecosystem]{{highlight qs-nav-ecosystem}} and select **Installed Operators.**
       
       3. From your list of installed operators, select **OpenShift Data Foundation.**
       

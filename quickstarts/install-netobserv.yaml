@@ -18,14 +18,14 @@ spec:
   tasks:
     - description: |-
         You can install the Network Observability Operator using the OpenShift Container Platform web console Operator Hub. When you install the Operator, it provides the FlowCollector custom resource definition (CRD). You can set specifications in the web console when you create the FlowCollector.
-        1. In the OpenShift Container Platform web console, click **OperatorHub** from the [Operators]{{highlight qs-nav-operators}} → OperatorHub.
-        2. Choose **Network Observability Operator** from the list of available Operators in the OperatorHub, and click **Install**.
+        1. In the OpenShift Container Platform web console, click **Software Catalog** from the [Ecosystem]{{highlight qs-nav-ecosystem}} → Software Catalog.
+        2. Choose **Network Observability Operator** from the list of available Operators in the Software Catalog, and click **Install**.
         3. Select the checkbox **Enable Operator recommended cluster monitoring on this Namespace**.
       review:
         failedTaskHelp: This task isn’t verified yet. Try the task again.
         instructions: |-
           #### Verify the operator was successfully installed:
-          Navigate to **Operators** → **Installed Operators**.
+          Navigate to **Ecosystem** → **Installed Operators**.
           Is the Network Observability Operator listed?
       summary:
         failed: Try the steps again.
@@ -34,7 +34,7 @@ spec:
     - description: |-
         In order to start capturing traffic, you need to create a **FlowCollector** resource to configure the components of Network Observability Operator.
 
-        1. Navigate to Operators → Installed Operators and select **Network Observability Operator**.
+        1. Navigate to Ecosystem → Installed Operators and select **Network Observability Operator**.
 
         2. Navigate to the **FlowCollector** tab, and click **Create FlowCollector**. Make the following selections in the form view:
           
