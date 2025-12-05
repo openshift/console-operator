@@ -39,8 +39,8 @@ spec:
       description: >
         To install the Serverless Operator:
 
-        1. From the **Administrator** perspective, go to the **OperatorHub**
-        from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
+        1. From the **Core platform** perspective, go to the **Software Catalog**
+        from the [Ecosystem]{{highlight qs-nav-ecosystem}} section of the navigation.
 
         1. In the **Filter by keyword** field, type `Serverless`.
 
@@ -84,7 +84,7 @@ spec:
 
         ##### To create the Knative Serving API:
 
-        1. In the main navigation menu, click **Operators > Installed
+        1. In the main navigation menu, click **Ecosystem > Installed
         Operators**.
 
         1. Click the **Red Hat OpenShift Serverless** Operator.
@@ -129,7 +129,7 @@ spec:
 
         ##### To create the Knative Eventing API:
 
-        1. In the main navigation menu, click **Operators > Installed
+        1. In the main navigation menu, click **Ecosystem > Installed
         Operators**.
 
         1. Click the **Red Hat OpenShift Serverless** Operator.
