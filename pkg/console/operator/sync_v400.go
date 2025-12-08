@@ -145,7 +145,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(cmErr)
 	}
 
-	serviceCAConfigMap, serviceCAErrReason, serviceCAErr := co.SyncServiceCAConfigMap(ctx, set.Operator)
+	serviceCAErrReason, serviceCAErr := co.SyncServiceCAConfigMap(ctx, set.Operator)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ServiceCASync", serviceCAErrReason, serviceCAErr))
 	if serviceCAErr != nil {
 		return statusHandler.FlushAndReturn(serviceCAErr)
@@ -181,7 +181,6 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		ctx,
 		set.Operator,
 		cm,
-		serviceCAConfigMap,
 		oauthServingCertConfigMap,
 		targetNamespaceAuthServerCA,
 		trustedCAConfigMap,
@@ -268,7 +267,6 @@ func (co *consoleOperator) SyncDeployment(
 	ctx context.Context,
 	operatorConfig *operatorv1.Console,
 	cm *corev1.ConfigMap,
-	serviceCAConfigMap *corev1.ConfigMap,
 	oauthServingCertConfigMap *corev1.ConfigMap,
 	authServerCAConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
@@ -282,7 +280,6 @@ func (co *consoleOperator) SyncDeployment(
 	requiredDeployment := deploymentsub.DefaultDeployment(
 		operatorConfig,
 		cm,
-		serviceCAConfigMap,
 		oauthServingCertConfigMap,
 		authServerCAConfigMap,
 		trustedCAConfigMap,
@@ -476,36 +473,36 @@ func (co *consoleOperator) GetTelemetryConfiguration(ctx context.Context, operat
 }
 
 // apply service-ca configmap
-func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorConfig *operatorv1.Console) (consoleCM *corev1.ConfigMap, reason string, err error) {
+func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorConfig *operatorv1.Console) (reason string, err error) {
 	required := configmapsub.DefaultServiceCAConfigMap(operatorConfig)
 	// we can't use `resourceapply.ApplyConfigMap` since it compares data, and the service serving cert operator injects the data
 	existing, err := co.targetNSConfigMapLister.ConfigMaps(required.Namespace).Get(required.Name)
 	if apierrors.IsNotFound(err) {
-		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
+		_, err := co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
 		if err == nil {
 			klog.V(4).Infoln("service-ca configmap created")
-			return actual, "", err
+			return "", err
 		} else {
-			return actual, "FailedCreate", err
+			return "FailedCreate", err
 		}
 	}
 	if err != nil {
-		return nil, "FailedGet", err
+		return "FailedGet", err
 	}
 
 	modified := resourcemerge.BoolPtr(false)
 	resourcemerge.EnsureObjectMeta(modified, &existing.ObjectMeta, required.ObjectMeta)
 	if !*modified {
 		klog.V(4).Infoln("service-ca configmap exists and is in the correct state")
-		return existing, "", nil
+		return "", nil
 	}
 
-	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
+	_, err = co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
 	if err == nil {
 		klog.V(4).Infoln("service-ca configmap updated")
-		return actual, "", err
+		return "", err
 	} else {
-		return actual, "FailedUpdate", err
+		return "FailedUpdate", err
 	}
 }
 

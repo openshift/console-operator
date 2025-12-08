@@ -46,7 +46,6 @@ var (
 		configMapResourceVersionAnnotation,
 		proxyConfigResourceVersionAnnotation,
 		infrastructureConfigResourceVersionAnnotation,
-		serviceCAConfigMapResourceVersionAnnotation,
 		authnCATrustConfigMapResourceVersionAnnotation,
 		trustedCAConfigMapResourceVersionAnnotation,
 		secretResourceVersionAnnotation,
@@ -67,7 +66,6 @@ type volumeConfig struct {
 func DefaultDeployment(
 	operatorConfig *operatorv1.Console,
 	consoleConfigMap *corev1.ConfigMap,
-	serviceCAConfigMap *corev1.ConfigMap,
 	localOAuthServingCertConfigMap *corev1.ConfigMap,
 	authServerCAConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
@@ -88,7 +86,6 @@ func DefaultDeployment(
 	withConsoleAnnotations(
 		deployment,
 		consoleConfigMap,
-		serviceCAConfigMap,
 		authnCATrustConfigMap,
 		trustedCAConfigMap,
 		oAuthClientSecret,
@@ -195,7 +192,6 @@ func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.
 func withConsoleAnnotations(
 	deployment *appsv1.Deployment,
 	consoleConfigMap *corev1.ConfigMap,
-	serviceCAConfigMap *corev1.ConfigMap,
 	authServerCAConfigMap *corev1.ConfigMap,
 	trustedCAConfigMap *corev1.ConfigMap,
 	oAuthClientSecret *corev1.Secret,
@@ -205,7 +201,6 @@ func withConsoleAnnotations(
 ) {
 	deployment.ObjectMeta.Annotations = map[string]string{
 		configMapResourceVersionAnnotation:            consoleConfigMap.GetResourceVersion(),
-		serviceCAConfigMapResourceVersionAnnotation:   serviceCAConfigMap.GetResourceVersion(),
 		trustedCAConfigMapResourceVersionAnnotation:   trustedCAConfigMap.GetResourceVersion(),
 		proxyConfigResourceVersionAnnotation:          proxyConfig.GetResourceVersion(),
 		infrastructureConfigResourceVersionAnnotation: infrastructureConfig.GetResourceVersion(),
