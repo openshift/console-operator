@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Bash(make)",
+      "Bash(go)",
+      "Bash(gofmt)",
+      "Bash(oc)",
+      "Bash(kubectl)",
+      "Bash(docker)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(git push --force)"
+    ]
+  }
+}
