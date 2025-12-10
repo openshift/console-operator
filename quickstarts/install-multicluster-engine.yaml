@@ -22,7 +22,7 @@ spec:
 
       1. In the OpenShift Container Platform web console, check the navigation in the upper-left corner to ensure that you are in the **Core platform** perspective.
 
-      2. Click **Operators > OperatorHub**.
+      2. Click **Ecosystem > Software Catalog**.
 
       3. To start with basic cluster lifecycle management, search for **multicluster engine for Kubernetes**. This operator support is included in the OpenShift subscription you've already purchased.
 
@@ -41,7 +41,7 @@ spec:
     review:
       instructions: |-
         #### Verify that the Operator you chose was successfully installed:
-        From the navigation menu, click **Operators > Installed Operators**.
+        From the navigation menu, click **Ecosystem > Installed Operators**.
 
         Does the Status column indicate that the installation succeeded?
       failedTaskHelp: This task isn't verified yet. Try the task again.
