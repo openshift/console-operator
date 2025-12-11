@@ -1,7 +1,12 @@
 # OpenShift Console Operator - AI Context Hub
 
 This file serves as the central AI documentation hub for the OpenShift Console Operator project. AI assistants (Claude, Cursor, Copilot, CodeRabbit, etc.) use this and the linked documents to understand project context.
+## Go Version and Dependencies
 
+- **Go version**: 1.24.0 (toolchain: go1.24.4)
+- **Dependency management**: Uses `go.mod` with vendoring
+- **Build flags**: Use `GOFLAGS="-mod=vendor"` for builds and tests to ensure vendored dependencies are used
+- **Key dependencies**: openshift/api, openshift/library-go, k8s.io client libraries
 ## Quick Reference
 
 ### This Repository
