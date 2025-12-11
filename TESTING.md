@@ -131,4 +131,9 @@ OS_DEBUG=true OS_BUILD_PLATFORMS=linux/amd64 make
 ```
 
 The binary output is: `./_output/local/bin/<os>/<arch>/console`
+## Manual Build with Version Info
 
+To build the binary directly with proper version information embedded:
+
+```bash
+go build -ldflags "-X $GO_PACKAGE/pkg/version.versionFromGit=$(git describe --long --tags --abbrev=7 --match 'v[0-9]*')" -tags="ocp" -o console ./cmd/console
