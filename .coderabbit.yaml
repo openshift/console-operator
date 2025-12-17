@@ -1,0 +1,56 @@
+# CodeRabbit Configuration
+# https://docs.coderabbit.ai/guides/configure-coderabbit
+
+version: 2
+
+language: en-US
+
+early_access: false
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  path_instructions:
+    - path: "pkg/**/*.go"
+      instructions: |
+        Review Go code following OpenShift operator patterns.
+        See CONVENTIONS.md for coding standards and patterns.
+        Controllers should use the library-go factory pattern.
+        Status conditions should use status.Handle* functions.
+    - path: "bindata/assets/**/*.yaml"
+      instructions: |
+        Review YAML assets for Kubernetes resource correctness.
+        Ensure proper annotations for cluster profiles.
+    - path: "manifests/**/*.yaml"
+      instructions: |
+        Review CVO manifests carefully.
+        These are deployed to clusters and changes have wide impact.
+    - path: "quickstarts/**/*.yaml"
+      instructions: |
+        Review quickstart YAML definitions.
+        Ensure cluster profile annotations are present.
+        See quickstarts/README.md for guidelines.
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  learnings:
+    scope: auto
+  issues:
+    scope: auto
+  jira:
+    project_keys: []
+  linear:
+    team_keys: []
+  pull_requests:
+    scope: auto
+
+path_filters:
+  - "!vendor/**"
+  - "!**/*_test.go"
+
