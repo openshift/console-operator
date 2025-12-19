@@ -141,20 +141,27 @@ spec:
                   ('s390x', 'linux', '/usr/share/openshift/linux_s390x/oc.rhel8'),
                   ('s390x', 'linux', '/usr/share/openshift/linux_s390x/oc.rhel9'),
                   ]:
+                if not os.path.exists(path):
+                  print('Skipping {} (not found)'.format(path))
+                  continue
                 basename = os.path.basename(path)
                 target_path = os.path.join(arch, operating_system, basename)
                 os.makedirs(os.path.join(arch, operating_system), exist_ok=True)
-                os.symlink(path, target_path)
-                archive_path_root = os.path.join(arch, operating_system, basename)
-                with tarfile.open('{}.tar'.format(archive_path_root), 'w') as tar:
-                  tar.add(path, basename)
-                with zipfile.ZipFile('{}.zip'.format(archive_path_root), 'w') as zip:
-                  zip.write(path, basename)
-                content.append(
-                  '<a href="{0}">oc ({1} {2})</a> (<a href="{3}.tar">tar</a> <a href="{3}.zip">zip</a>)'.format(
-                    target_path, arch, operating_system, archive_path_root
+                try:
+                  os.symlink(path, target_path)
+                  archive_path_root = os.path.join(arch, operating_system, basename)
+                  with tarfile.open('{}.tar'.format(archive_path_root), 'w') as tar:
+                    tar.add(path, basename)
+                  with zipfile.ZipFile('{}.zip'.format(archive_path_root), 'w') as zip:
+                    zip.write(path, basename)
+                  content.append(
+                    '<a href="{0}">oc ({1} {2})</a> (<a href="{3}.tar">tar</a> <a href="{3}.zip">zip</a>)'.format(
+                      target_path, arch, operating_system, archive_path_root
+                    )
                   )
-                )
+                except (OSError, FileNotFoundError) as e:
+                  print('Error processing {}: {}, skipping'.format(path, e))
+                  continue
 
               for root, directories, filenames in os.walk(temp_dir):
                 root_link = os.path.relpath(temp_dir, os.path.join(root, 'child')).replace(os.path.sep, '/')
