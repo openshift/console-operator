@@ -29,7 +29,7 @@ spec:
         
         To install the Red Hat OpenShift Pipelines:
         
-          1. From the **Core platform** perspective, go to the **Software Catalog**
+          1. From the **Administrator** perspective, go to the **Software Catalog**
           from the [Ecosystem]{{highlight qs-nav-ecosystem}} section of the navigation.
 
           

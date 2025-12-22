@@ -111,8 +111,8 @@ spec:
       description: |-
         To install the Red Hat Developer Hub Operator:
 
-        1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Core platform**.
-        2. In the Core platform perspective, go to the **Software Catalog** page from the [Ecosystem]{{highlight qs-nav-ecosystem}} section of the navigation.
+        1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
+        2. In the Administrator perspective, go to the **Software Catalog** page from the [Ecosystem]{{highlight qs-nav-ecosystem}} section of the navigation.
         3. Search for **Red Hat Developer Hub**
         4. Select the card **Red Hat Developer Hub** with the **Red Hat** badge and press **Install** to open a page to install the Operator.
         5. **Optional:** Choose the correct version, update strategy, and whether this Operator should be available for all namespaces or just a specific namespace.
@@ -129,7 +129,7 @@ spec:
         instructions: |-
           #### To verify that the Operator was successfully installed:
 
-          1. From the **Core platform** perspective, go to **Installed Operators** from the [Ecosystem]{{highlight qs-nav-ecosystem}} section of the navigation.
+          1. From the **Administrator** perspective, go to **Installed Operators** from the [Ecosystem]{{highlight qs-nav-ecosystem}} section of the navigation.
           2. The "Red Hat Developer Hub" Operator should be shown in the list of Operators.
           3. The **Status** column should show **Succeeded**.
         failedTaskHelp: |-
@@ -143,8 +143,8 @@ spec:
       description: |-
         To create a Red Hat Developer Hub instance, you should create a `Backstage` custom resource.
 
-        1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Core platform**.
-        2. In the Core platform perspective, go to the **Installed Operators** page from the [Ecosystem]{{highlight qs-nav-ecosystem}} section of the navigation.
+        1. Click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Administrator**.
+        2. In the Administrator perspective, go to the **Installed Operators** page from the [Ecosystem]{{highlight qs-nav-ecosystem}} section of the navigation.
         3. If needed, switch or create a new project from the **Project dropdown**.
         4. Select the "Red Hat Developer Hub" Operator and navigate to the **Red Hat Developer Hub** tab.
         5. Click on **Create Backstage** button in the top right corner of that tab view.
