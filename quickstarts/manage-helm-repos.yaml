@@ -63,7 +63,7 @@ spec:
         instructions: >-
           Verify that the HelmChartRepository was successfully installed:
 
-          1. In the main navigation menu, select [Home]{{highlight qs-nav-home}} and select **Software Catalog**.
+          1. In the main navigation menu, select [Ecosystem]{{highlight qs-nav-ecosystem}} and select **Software Catalog**.
 
           1. On the **Software Catalog** page, click **Helm Charts** in the **Type** filter.
           
