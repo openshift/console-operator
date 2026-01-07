@@ -40,7 +40,15 @@ chat:
 
 knowledge_base:
   learnings:
-    scope: auto
+    scope: local
+  code_guidelines:
+    enabled: true
+    filePatterns: 
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "ARCHITECTURE.md"
+      - "CONVENTIONS.md"
+      - "TESTING.md"
   issues:
     scope: auto
   jira:
