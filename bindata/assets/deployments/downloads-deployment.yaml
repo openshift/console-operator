@@ -126,28 +126,42 @@ spec:
 
               for arch, operating_system, path in [
                   ('amd64', 'linux', '/usr/share/openshift/linux_amd64/oc'),
+                  ('amd64', 'linux', '/usr/share/openshift/linux_amd64/oc.rhel8'),
+                  ('amd64', 'linux', '/usr/share/openshift/linux_amd64/oc.rhel9'),
                   ('amd64', 'mac', '/usr/share/openshift/mac/oc'),
                   ('amd64', 'windows', '/usr/share/openshift/windows/oc.exe'),
                   ('arm64', 'linux', '/usr/share/openshift/linux_arm64/oc'),
+                  ('arm64', 'linux', '/usr/share/openshift/linux_arm64/oc.rhel8'),
+                  ('arm64', 'linux', '/usr/share/openshift/linux_arm64/oc.rhel9'),
                   ('arm64', 'mac', '/usr/share/openshift/mac_arm64/oc'),
                   ('ppc64le', 'linux', '/usr/share/openshift/linux_ppc64le/oc'),
+                  ('ppc64le', 'linux', '/usr/share/openshift/linux_ppc64le/oc.rhel8'),
+                  ('ppc64le', 'linux', '/usr/share/openshift/linux_ppc64le/oc.rhel9'),
                   ('s390x', 'linux', '/usr/share/openshift/linux_s390x/oc'),
+                  ('s390x', 'linux', '/usr/share/openshift/linux_s390x/oc.rhel8'),
+                  ('s390x', 'linux', '/usr/share/openshift/linux_s390x/oc.rhel9'),
                   ]:
+                if not os.path.exists(path):
+                  print('Skipping {} (not found)'.format(path))
+                  continue
                 basename = os.path.basename(path)
                 target_path = os.path.join(arch, operating_system, basename)
-                os.mkdir(os.path.join(arch, operating_system))
-                os.symlink(path, target_path)
-                base_root, _ = os.path.splitext(basename)
-                archive_path_root = os.path.join(arch, operating_system, base_root)
-                with tarfile.open('{}.tar'.format(archive_path_root), 'w') as tar:
-                  tar.add(path, basename)
-                with zipfile.ZipFile('{}.zip'.format(archive_path_root), 'w') as zip:
-                  zip.write(path, basename)
-                content.append(
-                  '<a href="{0}">oc ({1} {2})</a> (<a href="{3}.tar">tar</a> <a href="{3}.zip">zip</a>)'.format(
-                    target_path, arch, operating_system, archive_path_root
+                os.makedirs(os.path.join(arch, operating_system), exist_ok=True)
+                try:
+                  os.symlink(path, target_path)
+                  archive_path_root = os.path.join(arch, operating_system, basename)
+                  with tarfile.open('{}.tar'.format(archive_path_root), 'w') as tar:
+                    tar.add(path, basename)
+                  with zipfile.ZipFile('{}.zip'.format(archive_path_root), 'w') as zip:
+                    zip.write(path, basename)
+                  content.append(
+                    '<a href="{0}">oc ({1} {2})</a> (<a href="{3}.tar">tar</a> <a href="{3}.zip">zip</a>)'.format(
+                      target_path, arch, operating_system, archive_path_root
+                    )
                   )
-                )
+                except (OSError, FileNotFoundError) as e:
+                  print('Error processing {}: {}, skipping'.format(path, e))
+                  continue
 
               for root, directories, filenames in os.walk(temp_dir):
                 root_link = os.path.relpath(temp_dir, os.path.join(root, 'child')).replace(os.path.sep, '/')
