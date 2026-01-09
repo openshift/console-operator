@@ -8,6 +8,7 @@ import (
 
 	// kube
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apiexensionsinformers "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -71,6 +72,18 @@ import (
 	"github.com/go-test/deep"
 	consoleoperator "github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/library-go/pkg/operator/loglevel"
+)
+
+const (
+	clusterRoleResource    = "clusterroles"
+	namespaceResource      = "namespaces"
+	configMapResource      = "configmaps"
+	consoleResource        = "consoles"
+	infrastructureResource = "infrastructures"
+	proxyResource          = "proxies"
+	oauthResource          = "oauths"
+	oauthClientResource    = "oauthclients"
+	consolePluginResource  = "consoleplugins"
 )
 
 func RunOperator(ctx context.Context, controllerContext *controllercmd.ControllerContext) error {
@@ -436,14 +449,19 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	clusterOperatorStatus := status.NewClusterOperatorStatusController(
 		api.ClusterOperatorName,
 		[]configv1.ObjectReference{
-			{Group: operatorv1.GroupName, Resource: "consoles", Name: api.ConfigResourceName},
-			{Group: configv1.GroupName, Resource: "consoles", Name: api.ConfigResourceName},
-			{Group: configv1.GroupName, Resource: "infrastructures", Name: api.ConfigResourceName},
-			{Group: configv1.GroupName, Resource: "proxies", Name: api.ConfigResourceName},
-			{Group: configv1.GroupName, Resource: "oauths", Name: api.ConfigResourceName},
-			{Group: corev1.GroupName, Resource: "namespaces", Name: api.OpenShiftConsoleOperatorNamespace},
-			{Group: corev1.GroupName, Resource: "namespaces", Name: api.OpenShiftConsoleNamespace},
-			{Group: corev1.GroupName, Resource: "configmaps", Name: api.OpenShiftConsolePublicConfigMapName, Namespace: api.OpenShiftConfigManagedNamespace},
+			{Group: operatorv1.GroupName, Resource: consoleResource, Name: api.ConfigResourceName},
+			{Group: configv1.GroupName, Resource: consoleResource, Name: api.ConfigResourceName},
+			{Group: configv1.GroupName, Resource: infrastructureResource, Name: api.ConfigResourceName},
+			{Group: configv1.GroupName, Resource: proxyResource, Name: api.ConfigResourceName},
+			{Group: configv1.GroupName, Resource: oauthResource, Name: api.ConfigResourceName},
+			{Group: corev1.GroupName, Resource: namespaceResource, Name: api.OpenShiftConsoleOperatorNamespace},
+			{Group: corev1.GroupName, Resource: namespaceResource, Name: api.OpenShiftConsoleNamespace},
+			{Group: corev1.GroupName, Resource: configMapResource, Name: api.OpenShiftConsolePublicConfigMapName, Namespace: api.OpenShiftConfigManagedNamespace},
+			{Group: rbacv1.GroupName, Resource: clusterRoleResource, Name: api.OpenShiftConsoleOperator},
+			{Group: rbacv1.GroupName, Resource: clusterRoleResource, Name: api.OpenShiftConsoleName},
+			{Group: rbacv1.GroupName, Resource: clusterRoleResource, Name: api.HelmChartreposViewerRoleName},
+			{Group: rbacv1.GroupName, Resource: clusterRoleResource, Name: api.ProjectHelmChartrepositoryEditorRoleName},
+			{Group: rbacv1.GroupName, Resource: clusterRoleResource, Name: api.ConsoleExtensionsReaderRoleName},
 		},
 		// clusteroperator client
 		configClient.ConfigV1(),
@@ -469,14 +487,14 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		for _, plugin := range consolePlugins.Items {
 			relatedObjects = append(relatedObjects, configv1.ObjectReference{
 				Group:    "console.openshift.io",
-				Resource: "consoleplugins",
+				Resource: consolePluginResource,
 				Name:     plugin.GetName(),
 			})
 			if plugin.Spec.Backend.Service != nil {
 				ns := plugin.Spec.Backend.Service.Namespace
 				relatedObjects = append(relatedObjects, configv1.ObjectReference{
 					Group:    corev1.GroupName,
-					Resource: "namespaces",
+					Resource: namespaceResource,
 					Name:     ns,
 				})
 			}
@@ -484,7 +502,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 				if proxy.Endpoint.Service != nil && proxy.Endpoint.Service.Namespace != "" {
 					relatedObjects = append(relatedObjects, configv1.ObjectReference{
 						Group:    corev1.GroupName,
-						Resource: "namespaces",
+						Resource: namespaceResource,
 						Name:     proxy.Endpoint.Service.Namespace,
 					})
 				}
@@ -499,7 +517,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		case "", configv1.AuthenticationTypeIntegratedOAuth:
 			relatedObjects = append(relatedObjects, configv1.ObjectReference{
 				Group:    oauth.GroupName,
-				Resource: "oauthclients",
+				Resource: oauthClientResource,
 				Name:     api.OAuthClientName})
 		}
 
