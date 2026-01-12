@@ -210,7 +210,7 @@ func (AddPage) SwaggerDoc() map[string]string {
 
 var map_Capability = map[string]string{
 	"":           "Capabilities contains set of UI capabilities and their state in the console UI.",
-	"name":       "name is the unique name of a capability. Available capabilities are LightspeedButton and GettingStartedBanner.",
+	"name":       "name is the unique name of a capability. Available capabilities are LightspeedButton, GettingStartedBanner, and GuidedTour.",
 	"visibility": "visibility defines the visibility state of the capability.",
 }
 

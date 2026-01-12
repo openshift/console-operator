@@ -30,6 +30,12 @@ var defaultTestCapabilities = []v1.Capability{
 			State: v1.CapabilityEnabled,
 		},
 	},
+	{
+		Name: v1.GuidedTour,
+		Visibility: v1.CapabilityVisibility{
+			State: v1.CapabilityEnabled,
+		},
+	},
 }
 
 // Tests that the builder will return a correctly structured
@@ -1819,6 +1825,12 @@ func TestBuildCapabilities(t *testing.T) {
 						State: v1.CapabilityEnabled,
 					},
 				},
+				{
+					Name: "GuidedTour",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityEnabled,
+					},
+				},
 			},
 		},
 		{
@@ -1833,6 +1845,12 @@ func TestBuildCapabilities(t *testing.T) {
 				},
 				{
 					Name: "GettingStartedBanner",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityEnabled,
+					},
+				},
+				{
+					Name: "GuidedTour",
 					Visibility: v1.CapabilityVisibility{
 						State: v1.CapabilityEnabled,
 					},
@@ -1855,6 +1873,12 @@ func TestBuildCapabilities(t *testing.T) {
 						State: v1.CapabilityEnabled,
 					},
 				},
+				{
+					Name: "GuidedTour",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityEnabled,
+					},
+				},
 			},
 		},
 		{
@@ -1869,6 +1893,12 @@ func TestBuildCapabilities(t *testing.T) {
 				},
 				{
 					Name: "GettingStartedBanner",
+					Visibility: v1.CapabilityVisibility{
+						State: v1.CapabilityEnabled,
+					},
+				},
+				{
+					Name: "GuidedTour",
 					Visibility: v1.CapabilityVisibility{
 						State: v1.CapabilityEnabled,
 					},

@@ -107,6 +107,9 @@ const (
 
 	// gettingStartedBanner is the name of the 'Getting started resources' banner in the console UI Overview page.
 	GettingStartedBanner ConsoleCapabilityName = "GettingStartedBanner"
+
+	// guidedTour is the name of the 'Guided Tour' feature in console UI.
+	GuidedTour ConsoleCapabilityName = "GuidedTour"
 )
 
 // CapabilityState defines the state of the capability in the console UI.
@@ -134,8 +137,8 @@ type CapabilityVisibility struct {
 // Capabilities contains set of UI capabilities and their state in the console UI.
 type Capability struct {
 	// name is the unique name of a capability.
-	// Available capabilities are LightspeedButton and GettingStartedBanner.
-	// +kubebuilder:validation:Enum:="LightspeedButton";"GettingStartedBanner"
+	// Available capabilities are LightspeedButton, GettingStartedBanner, and GuidedTour.
+	// +kubebuilder:validation:Enum:="LightspeedButton";"GettingStartedBanner";"GuidedTour"
 	// +required
 	Name ConsoleCapabilityName `json:"name"`
 	// visibility defines the visibility state of the capability.

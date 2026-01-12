@@ -121,3 +121,7 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
+
+// Temporarily use fork with GuidedTour capability (PR: https://github.com/openshift/api/pull/2644)
+// Remove this replace directive once the API PR is merged
+replace github.com/openshift/api => github.com/krishagarwal278/console-api v0.0.0-20260112142440-6437ae3b1458
