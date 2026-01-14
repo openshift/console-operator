@@ -2,6 +2,12 @@ apiVersion: console.openshift.io/v1
 kind: ConsoleQuickStart
 metadata:
   name: netobserv
+  annotations:
+    include.release.openshift.io/hypershift: "true"
+    include.release.openshift.io/ibm-cloud-managed: "true"
+    include.release.openshift.io/self-managed-high-availability: "true"
+    include.release.openshift.io/single-node-developer: "true"
+    capability.openshift.io/name: Console
 spec:
   conclusion: Your Network Observability Operator is installed and configured.
   description: Install Network Observability Operator and deploy a FlowCollector to monitor your network.
