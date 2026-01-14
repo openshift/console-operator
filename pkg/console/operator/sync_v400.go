@@ -44,6 +44,8 @@ import (
 	telemetry "github.com/openshift/console-operator/pkg/console/telemetry"
 )
 
+// RANDOM CHANGE... move along
+
 // The sync loop starts from zero and works its way through the requirements for a running console.
 // If at any point something is missing, it creates/updates that piece and immediately dies.
 // The next loop will pick up where they previous left off and move the process forward one step.
