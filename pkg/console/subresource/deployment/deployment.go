@@ -39,6 +39,7 @@ const (
 	authnConfigVersionAnnotation                   = "console.openshift.io/authentication-config-version"
 	authnCATrustConfigMapResourceVersionAnnotation = "console.openshift.io/authn-ca-trust-config-version"
 	sessionSecretRVAnnotation                      = "console.openshift.io/session-secret-version"
+	servingCertSecretResourceVersionAnnotation     = "console.openshift.io/serving-cert-secret-version"
 )
 
 var (
@@ -51,6 +52,7 @@ var (
 		trustedCAConfigMapResourceVersionAnnotation,
 		secretResourceVersionAnnotation,
 		consoleImageAnnotation,
+		servingCertSecretResourceVersionAnnotation,
 	}
 )
 
@@ -73,6 +75,7 @@ func DefaultDeployment(
 	trustedCAConfigMap *corev1.ConfigMap,
 	oAuthClientSecret *corev1.Secret,
 	sessionSecret *corev1.Secret,
+	consoleServingCertSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
 ) *appsv1.Deployment {
@@ -93,6 +96,7 @@ func DefaultDeployment(
 		trustedCAConfigMap,
 		oAuthClientSecret,
 		sessionSecret,
+		consoleServingCertSecret,
 		proxyConfig,
 		infrastructureConfig,
 	)
@@ -200,6 +204,7 @@ func withConsoleAnnotations(
 	trustedCAConfigMap *corev1.ConfigMap,
 	oAuthClientSecret *corev1.Secret,
 	sessionSecret *corev1.Secret,
+	consoleServingCertSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
 ) {
@@ -211,6 +216,7 @@ func withConsoleAnnotations(
 		infrastructureConfigResourceVersionAnnotation: infrastructureConfig.GetResourceVersion(),
 		secretResourceVersionAnnotation:               oAuthClientSecret.GetResourceVersion(),
 		consoleImageAnnotation:                        util.GetImageEnv("CONSOLE_IMAGE"),
+		servingCertSecretResourceVersionAnnotation:    consoleServingCertSecret.GetResourceVersion(),
 	}
 
 	if authServerCAConfigMap != nil {

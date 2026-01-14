@@ -46,6 +46,7 @@ func TestDefaultDeployment(t *testing.T) {
 		trustedCAConfigMap             *corev1.ConfigMap
 		oAuthClientSecret              *corev1.Secret
 		sessionSecret                  *corev1.Secret
+		consoleServingCertSecret       *corev1.Secret
 		proxyConfig                    *configv1.Proxy
 		infrastructureConfig           *configv1.Infrastructure
 	}
@@ -82,6 +83,7 @@ func TestDefaultDeployment(t *testing.T) {
 			proxyConfigResourceVersionAnnotation:           "",
 			infrastructureConfigResourceVersionAnnotation:  "",
 			consoleImageAnnotation:                         "",
+			servingCertSecretResourceVersionAnnotation:     "",
 		},
 		OwnerReferences: []metav1.OwnerReference{{
 			APIVersion: "operator.openshift.io/v1",
@@ -136,6 +138,7 @@ func TestDefaultDeployment(t *testing.T) {
 		proxyConfigResourceVersionAnnotation:           "",
 		infrastructureConfigResourceVersionAnnotation:  "",
 		consoleImageAnnotation:                         "",
+		servingCertSecretResourceVersionAnnotation:     "",
 		workloadManagementAnnotation:                   workloadManagementAnnotationValue,
 		requiredSCCAnnotation:                          "restricted-v2",
 	}
@@ -213,8 +216,9 @@ func TestDefaultDeployment(t *testing.T) {
 					StringData: nil,
 					Type:       "",
 				},
-				proxyConfig:          proxyConfig,
-				infrastructureConfig: infrastructureConfigHighlyAvailable,
+				consoleServingCertSecret: &corev1.Secret{},
+				proxyConfig:              proxyConfig,
+				infrastructureConfig:     infrastructureConfigHighlyAvailable,
 			},
 			want: &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -292,8 +296,9 @@ func TestDefaultDeployment(t *testing.T) {
 					StringData: nil,
 					Type:       "",
 				},
-				proxyConfig:          proxyConfig,
-				infrastructureConfig: infrastructureConfigHighlyAvailable,
+				consoleServingCertSecret: &corev1.Secret{},
+				proxyConfig:              proxyConfig,
+				infrastructureConfig:     infrastructureConfigHighlyAvailable,
 			},
 			want: &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -370,8 +375,9 @@ func TestDefaultDeployment(t *testing.T) {
 					StringData: nil,
 					Type:       "",
 				},
-				proxyConfig:          proxyConfig,
-				infrastructureConfig: infrastructureConfigSingleReplica,
+				consoleServingCertSecret: &corev1.Secret{},
+				proxyConfig:              proxyConfig,
+				infrastructureConfig:     infrastructureConfigSingleReplica,
 			},
 			want: &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -441,8 +447,9 @@ func TestDefaultDeployment(t *testing.T) {
 					StringData: nil,
 					Type:       "",
 				},
-				proxyConfig:          proxyConfig,
-				infrastructureConfig: infrastructureConfigExternalTopologyMode,
+				consoleServingCertSecret: &corev1.Secret{},
+				proxyConfig:              proxyConfig,
+				infrastructureConfig:     infrastructureConfigExternalTopologyMode,
 			},
 			want: &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -514,6 +521,7 @@ func TestDefaultDeployment(t *testing.T) {
 				tt.args.trustedCAConfigMap,
 				tt.args.oAuthClientSecret,
 				tt.args.sessionSecret,
+				tt.args.consoleServingCertSecret,
 				tt.args.proxyConfig,
 				tt.args.infrastructureConfig,
 			), tt.want); diff != nil {
@@ -525,16 +533,17 @@ func TestDefaultDeployment(t *testing.T) {
 
 func TestWithConsoleAnnotations(t *testing.T) {
 	type args struct {
-		deployment            *appsv1.Deployment
-		consoleConfigMap      *corev1.ConfigMap
-		serviceCAConfigMap    *corev1.ConfigMap
-		authServerCAConfigMap *corev1.ConfigMap
-		trustedCAConfigMap    *corev1.ConfigMap
-		oAuthClientSecret     *corev1.Secret
-		sessionSecret         *corev1.Secret
-		proxyConfig           *configv1.Proxy
-		infrastructureConfig  *configv1.Infrastructure
-		authnConfig           *configv1.Authentication
+		deployment               *appsv1.Deployment
+		consoleConfigMap         *corev1.ConfigMap
+		serviceCAConfigMap       *corev1.ConfigMap
+		authServerCAConfigMap    *corev1.ConfigMap
+		trustedCAConfigMap       *corev1.ConfigMap
+		oAuthClientSecret        *corev1.Secret
+		sessionSecret            *corev1.Secret
+		consoleServingCertSecret *corev1.Secret
+		proxyConfig              *configv1.Proxy
+		infrastructureConfig     *configv1.Infrastructure
+		authnConfig              *configv1.Authentication
 	}
 
 	consoleConfigMap := &corev1.ConfigMap{
@@ -584,6 +593,12 @@ func TestWithConsoleAnnotations(t *testing.T) {
 		},
 	}
 
+	consoleServingCertSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			ResourceVersion: "202020",
+		},
+	}
+
 	tests := []struct {
 		name string
 		args args
@@ -606,13 +621,14 @@ func TestWithConsoleAnnotations(t *testing.T) {
 						},
 					},
 				},
-				consoleConfigMap:      consoleConfigMap,
-				serviceCAConfigMap:    serviceCAConfigMap,
-				authServerCAConfigMap: oauthServingCertConfigMap,
-				trustedCAConfigMap:    trustedCAConfigMap,
-				oAuthClientSecret:     oAuthClientSecret,
-				proxyConfig:           proxyConfig,
-				infrastructureConfig:  infrastructureConfig,
+				consoleConfigMap:         consoleConfigMap,
+				serviceCAConfigMap:       serviceCAConfigMap,
+				authServerCAConfigMap:    oauthServingCertConfigMap,
+				trustedCAConfigMap:       trustedCAConfigMap,
+				oAuthClientSecret:        oAuthClientSecret,
+				consoleServingCertSecret: consoleServingCertSecret,
+				proxyConfig:              proxyConfig,
+				infrastructureConfig:     infrastructureConfig,
 			},
 			want: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
@@ -625,6 +641,7 @@ func TestWithConsoleAnnotations(t *testing.T) {
 						infrastructureConfigResourceVersionAnnotation:  infrastructureConfig.GetResourceVersion(),
 						secretResourceVersionAnnotation:                oAuthClientSecret.GetResourceVersion(),
 						consoleImageAnnotation:                         util.GetImageEnv("CONSOLE_IMAGE"),
+						servingCertSecretResourceVersionAnnotation:     consoleServingCertSecret.GetResourceVersion(),
 					},
 				},
 				Spec: appsv1.DeploymentSpec{
@@ -640,6 +657,7 @@ func TestWithConsoleAnnotations(t *testing.T) {
 								infrastructureConfigResourceVersionAnnotation:  infrastructureConfig.GetResourceVersion(),
 								secretResourceVersionAnnotation:                oAuthClientSecret.GetResourceVersion(),
 								consoleImageAnnotation:                         util.GetImageEnv("CONSOLE_IMAGE"),
+								servingCertSecretResourceVersionAnnotation:     consoleServingCertSecret.GetResourceVersion(),
 							},
 						},
 					},
@@ -649,7 +667,7 @@ func TestWithConsoleAnnotations(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withConsoleAnnotations(tt.args.deployment, tt.args.consoleConfigMap, tt.args.serviceCAConfigMap, tt.args.authServerCAConfigMap, tt.args.trustedCAConfigMap, tt.args.oAuthClientSecret, tt.args.sessionSecret, tt.args.proxyConfig, tt.args.infrastructureConfig)
+			withConsoleAnnotations(tt.args.deployment, tt.args.consoleConfigMap, tt.args.serviceCAConfigMap, tt.args.authServerCAConfigMap, tt.args.trustedCAConfigMap, tt.args.oAuthClientSecret, tt.args.sessionSecret, tt.args.consoleServingCertSecret, tt.args.proxyConfig, tt.args.infrastructureConfig)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
 			}
