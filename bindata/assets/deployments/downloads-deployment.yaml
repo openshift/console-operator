@@ -8,6 +8,7 @@ metadata:
     component: downloads
   annotations: {}
 spec:
+  serviceAccountName: downloads
   selector:
     matchLabels:
       app: console
