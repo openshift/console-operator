@@ -21,13 +21,14 @@ spec:
         component: ui
       annotations:
         target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
-        openshift.io/required-scc: restricted-v2
+        openshift.io/required-scc: restricted-v3
     spec:
       nodeSelector:
         node-role.kubernetes.io/master: ""
       restartPolicy: Always
       serviceAccountName: console
       schedulerName: default-scheduler
+      hostUsers: false
       securityContext:
         runAsNonRoot: true
         seccompProfile:
