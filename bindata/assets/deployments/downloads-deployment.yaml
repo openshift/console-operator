@@ -27,7 +27,7 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
         node-role.kubernetes.io/master: ""
-      terminationGracePeriodSeconds: 0
+      terminationGracePeriodSeconds: 5
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -77,7 +77,9 @@ spec:
               cat <<EOF >>/tmp/serve.py
               import errno, http.server, os, re, signal, socket, sys, tarfile, tempfile, threading, time, zipfile
 
-              signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
+              def shutdown_handler(signum, frame):
+                os._exit(0)
+              signal.signal(signal.SIGTERM, shutdown_handler)
 
               def write_index(path, message):
                 with open(path, 'wb') as f:
