@@ -42,6 +42,7 @@ func TestDownloadsEndpoint(t *testing.T) {
 		req := getRequest(t, link.Href)
 		client := getInsecureClient()
 		resp, err := client.Do(req)
+		t.Logf("Requesting %s at %s...", link.Text, link.Href)
 
 		if err != nil {
 			t.Fatalf("http error getting %s at %s: %s", link.Text, link.Href, err)
@@ -50,6 +51,6 @@ func TestDownloadsEndpoint(t *testing.T) {
 			t.Fatalf("http error for %s at %s: %d %s", link.Text, link.Href, resp.StatusCode, http.StatusText(resp.StatusCode))
 		}
 		resp.Body.Close()
-		t.Logf("%s %s\n", link.Text, resp.Status)
+		t.Logf("%s %s...", link.Text, resp.Status)
 	}
 }
