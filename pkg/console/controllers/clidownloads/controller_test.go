@@ -116,13 +116,21 @@ func TestPlatformBasedOCConsoleCLIDownloads(t *testing.T) {
 				Spec: v1.ConsoleCLIDownloadSpec{
 					Description: `With the OpenShift command line interface, you can create applications and manage OpenShift projects from a terminal.
 
-The oc binary offers the same capabilities as the kubectl binary, but it is further extended to natively support OpenShift Container Platform features.
+The oc binary offers the same capabilities as the kubectl binary, but it is further extended to natively support OpenShift Container Platform features. You can download oc using the following links.
 `,
 					DisplayName: "oc - OpenShift Command Line Interface (CLI)",
 					Links: []v1.CLIDownloadLink{
 						{
 							Href: "https://www.example.com/amd64/linux/oc.tar",
 							Text: "Download oc for Linux for x86_64",
+						},
+						{
+							Href: "https://www.example.com/amd64/linux/oc.rhel8.tar",
+							Text: "Download oc for Linux for x86_64 - RHEL 8",
+						},
+						{
+							Href: "https://www.example.com/amd64/linux/oc.rhel9.tar",
+							Text: "Download oc for Linux for x86_64 - RHEL 9",
 						},
 						{
 							Href: "https://www.example.com/amd64/mac/oc.zip",
@@ -137,6 +145,14 @@ The oc binary offers the same capabilities as the kubectl binary, but it is furt
 							Text: "Download oc for Linux for ARM 64",
 						},
 						{
+							Href: "https://www.example.com/arm64/linux/oc.rhel8.tar",
+							Text: "Download oc for Linux for ARM 64 - RHEL 8",
+						},
+						{
+							Href: "https://www.example.com/arm64/linux/oc.rhel9.tar",
+							Text: "Download oc for Linux for ARM 64 - RHEL 9",
+						},
+						{
 							Href: "https://www.example.com/arm64/mac/oc.zip",
 							Text: "Download oc for Mac for ARM 64",
 						},
@@ -145,8 +161,24 @@ The oc binary offers the same capabilities as the kubectl binary, but it is furt
 							Text: "Download oc for Linux for IBM Power, little endian",
 						},
 						{
+							Href: "https://www.example.com/ppc64le/linux/oc.rhel8.tar",
+							Text: "Download oc for Linux for IBM Power, little endian - RHEL 8",
+						},
+						{
+							Href: "https://www.example.com/ppc64le/linux/oc.rhel9.tar",
+							Text: "Download oc for Linux for IBM Power, little endian - RHEL 9",
+						},
+						{
 							Href: "https://www.example.com/s390x/linux/oc.tar",
 							Text: "Download oc for Linux for IBM Z",
+						},
+						{
+							Href: "https://www.example.com/s390x/linux/oc.rhel8.tar",
+							Text: "Download oc for Linux for IBM Z - RHEL 8",
+						},
+						{
+							Href: "https://www.example.com/s390x/linux/oc.rhel9.tar",
+							Text: "Download oc for Linux for IBM Z - RHEL 9",
 						},
 						{
 							Href: "https://www.example.com/oc-license",
