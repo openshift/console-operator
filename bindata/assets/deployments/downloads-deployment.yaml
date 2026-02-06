@@ -27,7 +27,7 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
         node-role.kubernetes.io/master: ""
-      terminationGracePeriodSeconds: 0
+      terminationGracePeriodSeconds: 5
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -74,10 +74,13 @@ spec:
           args:
             - '-c'
             - |
-              cat <<EOF >>/tmp/serve.py
+              cat <<EOF >/tmp/serve.py
               import errno, http.server, os, re, signal, socket, sys, tarfile, tempfile, threading, time, zipfile
 
-              signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
+              def shutdown_handler(signum, frame):
+                print("Received signal {}, shutting down...".format(signum), flush=True)
+                os._exit(0)
+              signal.signal(signal.SIGTERM, shutdown_handler)
 
               def write_index(path, message):
                 with open(path, 'wb') as f:
@@ -116,14 +119,39 @@ spec:
 
                   httpd.serve_forever()
 
+              print('Starting downloads server...', flush=True)
               temp_dir = tempfile.mkdtemp()
-              print('serving from {}'.format(temp_dir))
+              print('Serving from: {}'.format(temp_dir), flush=True)
               os.chdir(temp_dir)
+              
+              print('Creating arch directories...', flush=True)
               for arch in ['amd64', 'arm64', 'ppc64le', 's390x']:
                 os.mkdir(arch)
+              
               content = ['<a href="oc-license">license</a>']
+              print('Creating license symlink...', flush=True)
               os.symlink('/usr/share/openshift/LICENSE', 'oc-license')
 
+              # Function to create archives in background
+              def create_archives_async(arch, operating_system, path, basename, archive_path_root):
+                try:
+                  print('  [Background] Creating archives for {} {}...'.format(arch, operating_system), flush=True)
+                  
+                  print('    [Background] Creating tar archive...', flush=True)
+                  with tarfile.open('{}.tar'.format(archive_path_root), 'w') as tar:
+                    tar.add(path, basename)
+                  
+                  print('    [Background] Creating zip archive...', flush=True)
+                  with zipfile.ZipFile('{}.zip'.format(archive_path_root), 'w') as zip:
+                    zip.write(path, basename)
+                  
+                  print('  [Background] Done with archives for {} {}'.format(arch, operating_system), flush=True)
+                except Exception as e:
+                  print('  [Background] ERROR creating archives for {} {}: {}'.format(arch, operating_system, str(e)), flush=True)
+
+              print('Creating oc binary symlinks (archives will be created asynchronously)...', flush=True)
+              archive_threads = []
+              
               for arch, operating_system, path in [
                   ('amd64', 'linux', '/usr/share/openshift/linux_amd64/oc'),
                   ('amd64', 'mac', '/usr/share/openshift/mac/oc'),
@@ -133,21 +161,48 @@ spec:
                   ('ppc64le', 'linux', '/usr/share/openshift/linux_ppc64le/oc'),
                   ('s390x', 'linux', '/usr/share/openshift/linux_s390x/oc'),
                   ]:
-                basename = os.path.basename(path)
-                target_path = os.path.join(arch, operating_system, basename)
-                os.mkdir(os.path.join(arch, operating_system))
-                os.symlink(path, target_path)
-                base_root, _ = os.path.splitext(basename)
-                archive_path_root = os.path.join(arch, operating_system, base_root)
-                with tarfile.open('{}.tar'.format(archive_path_root), 'w') as tar:
-                  tar.add(path, basename)
-                with zipfile.ZipFile('{}.zip'.format(archive_path_root), 'w') as zip:
-                  zip.write(path, basename)
-                content.append(
-                  '<a href="{0}">oc ({1} {2})</a> (<a href="{3}.tar">tar</a> <a href="{3}.zip">zip</a>)'.format(
-                    target_path, arch, operating_system, archive_path_root
+                try:
+                  print('  Processing {} {} ({})...'.format(arch, operating_system, path), flush=True)
+                  
+                  # Check if source file exists
+                  if not os.path.exists(path):
+                    print('    WARNING: {} does not exist, skipping'.format(path), flush=True)
+                    continue
+                  
+                  file_size = os.path.getsize(path)
+                  print('    Source file size: {} MB'.format(file_size // (1024*1024)), flush=True)
+                  
+                  basename = os.path.basename(path)
+                  target_path = os.path.join(arch, operating_system, basename)
+                  
+                  print('    Creating directory...', flush=True)
+                  os.mkdir(os.path.join(arch, operating_system))
+                  
+                  print('    Creating symlink...', flush=True)
+                  os.symlink(path, target_path)
+                  
+                  base_root, _ = os.path.splitext(basename)
+                  archive_path_root = os.path.join(arch, operating_system, base_root)
+                  
+                  # Start background thread to create archives
+                  archive_thread = threading.Thread(
+                    target=create_archives_async,
+                    args=(arch, operating_system, path, basename, archive_path_root),
+                    daemon=True
                   )
-                )
+                  archive_thread.start()
+                  archive_threads.append(archive_thread)
+                  
+                  content.append(
+                    '<a href="{0}">oc ({1} {2})</a> (<a href="{3}.tar">tar</a> <a href="{3}.zip">zip</a>)'.format(
+                      target_path, arch, operating_system, archive_path_root
+                    )
+                  )
+                  print('  Done with {} {} (archives creating in background)'.format(arch, operating_system), flush=True)
+                except Exception as e:
+                  print('  ERROR processing {} {}: {}'.format(arch, operating_system, str(e)), flush=True)
+              
+              print('All symlinks created. {} background threads creating archives...'.format(len(archive_threads)), flush=True)
 
               for root, directories, filenames in os.walk(temp_dir):
                 root_link = os.path.relpath(temp_dir, os.path.join(root, 'child')).replace(os.path.sep, '/')
@@ -160,6 +215,7 @@ spec:
               write_index(
                 path=os.path.join(temp_dir, 'index.html'),
                 message='\n'.join(
+                  ['<p><em>Note: Archive files (.tar, .zip) are generated on server startup and may take a few moments to become available.</em></p>'] +
                   ['<ul>'] +
                   ['  <li>{}</li>'.format(entry) for entry in content] +
                   ['</ul>']
@@ -182,10 +238,13 @@ spec:
                 else:
                   raise    
               sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+              print('Binding to {}...'.format(addr), flush=True)
               sock.bind(addr)
               sock.listen(5)
 
+              print('Starting 100 worker threads...', flush=True)
               [Thread(i, socket=sock) for i in range(100)]
+              print('Server ready on port 8080!', flush=True)
               time.sleep(9e9)
               EOF
               exec python3 /tmp/serve.py
