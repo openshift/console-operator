@@ -39,7 +39,7 @@ spec:
               memory: 50Mi
           readinessProbe:
             httpGet:
-              path: /
+              path: /healthz
               port: 8080
               scheme: HTTP
             timeoutSeconds: 1
@@ -57,7 +57,7 @@ spec:
             - /bin/sh
           livenessProbe:
             httpGet:
-              path: /
+              path: /healthz
               port: 8080
               scheme: HTTP
             timeoutSeconds: 1
@@ -76,6 +76,7 @@ spec:
             - |
               cat <<EOF >/tmp/serve.py
               import errno, http.server, os, re, signal, socket, sys, tarfile, tempfile, threading, time, zipfile
+              from http import HTTPStatus
 
               def shutdown_handler(signum, frame):
                 print("Received signal {}, shutting down...".format(signum), flush=True)
@@ -97,6 +98,15 @@ spec:
                     '',
                   ]).encode('utf-8'))
 
+              class HealthzSimpleHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
+                def do_GET(self):
+                  if self.path == '/healthz':
+                    self.send_response_only(HTTPStatus.OK)
+                    self.send_header("Content-Length", '0')
+                    self.end_headers()
+                    return
+                  return http.server.SimpleHTTPRequestHandler.do_GET(self)
+
               # Launch multiple listeners as threads
               class Thread(threading.Thread):
                 def __init__(self, i, socket):
@@ -107,7 +117,7 @@ spec:
                   self.start()
 
                 def run(self):
-                  server = http.server.SimpleHTTPRequestHandler
+                  server = HealthzSimpleHTTPRequestHandler
                   server.server_version = "OpenShift Downloads Server"
                   server.sys_version = ""
                   httpd = http.server.HTTPServer(addr, server, False)
