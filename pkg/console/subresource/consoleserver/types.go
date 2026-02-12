@@ -18,22 +18,21 @@ import (
 
 // Config is the top-level console server cli configuration.
 type Config struct {
-	APIVersion                   string `yaml:"apiVersion"`
-	Kind                         string `yaml:"kind"`
-	ServingInfo                  `yaml:"servingInfo"`
-	ClusterInfo                  `yaml:"clusterInfo"`
-	Auth                         `yaml:"auth"`
-	Session                      `yaml:"session"`
-	Customization                `yaml:"customization"`
-	Providers                    `yaml:"providers"`
-	MonitoringInfo               `yaml:"monitoringInfo,omitempty"`
-	Plugins                      map[string]string             `yaml:"plugins,omitempty"`
-	PluginsOrder                 []string                      `yaml:"pluginsOrder,omitempty"`
-	I18nNamespaces               []string                      `yaml:"i18nNamespaces,omitempty"`
-	Proxy                        Proxy                         `yaml:"proxy,omitempty"`
-	ContentSecurityPolicy        map[v1.DirectiveType][]string `yaml:"contentSecurityPolicy,omitempty"`
-	ContentSecurityPolicyEnabled bool                          `yaml:"contentSecurityPolicyEnabled,omitempty"`
-	Telemetry                    map[string]string             `yaml:"telemetry,omitempty"`
+	APIVersion            string `yaml:"apiVersion"`
+	Kind                  string `yaml:"kind"`
+	ServingInfo           `yaml:"servingInfo"`
+	ClusterInfo           `yaml:"clusterInfo"`
+	Auth                  `yaml:"auth"`
+	Session               `yaml:"session"`
+	Customization         `yaml:"customization"`
+	Providers             `yaml:"providers"`
+	MonitoringInfo        `yaml:"monitoringInfo,omitempty"`
+	Plugins               map[string]string             `yaml:"plugins,omitempty"`
+	PluginsOrder          []string                      `yaml:"pluginsOrder,omitempty"`
+	I18nNamespaces        []string                      `yaml:"i18nNamespaces,omitempty"`
+	Proxy                 Proxy                         `yaml:"proxy,omitempty"`
+	ContentSecurityPolicy map[v1.DirectiveType][]string `yaml:"contentSecurityPolicy,omitempty"`
+	Telemetry             map[string]string             `yaml:"telemetry,omitempty"`
 }
 
 type Proxy struct {
