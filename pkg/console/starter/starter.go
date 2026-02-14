@@ -30,6 +30,7 @@ import (
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/clioidcclientstatus"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
+	"github.com/openshift/console-operator/pkg/console/controllers/downloadsserviceaccount"
 	"github.com/openshift/console-operator/pkg/console/controllers/healthcheck"
 	"github.com/openshift/console-operator/pkg/console/controllers/migration"
 	"github.com/openshift/console-operator/pkg/console/controllers/oauthclients"
@@ -338,6 +339,17 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		recorder,
 	)
 
+	downloadsServiceAccountController := downloadsserviceaccount.NewDownloadsServiceAccountSyncController(
+		// clients
+		operatorClient,
+		// operator
+		operatorConfigInformers.Operator().V1().Consoles(),
+		// service accounts
+		kubeClient.CoreV1(),
+		kubeInformersNamespaced.Core().V1().ServiceAccounts(),
+		recorder,
+	)
+
 	cliDownloadsController := clidownloads.NewCLIDownloadsSyncController(
 		// top level config
 		configClient.ConfigV1(),
@@ -639,6 +651,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleOperator,
 		cliDownloadsController,
 		downloadsDeploymentController,
+		downloadsServiceAccountController,
 		consoleRouteHealthCheckController,
 		consolePDBController,
 		downloadsPDBController,
