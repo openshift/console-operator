@@ -231,7 +231,7 @@ func getProxyAuthorization(authorizationType v1.AuthorizationType) bool {
 func getProxyServiceURL(service *v1.ConsolePluginProxyServiceConfig) string {
 	pluginURL := &url.URL{
 		Scheme: "https",
-		Host:   fmt.Sprintf("%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, service.Port),
+		Host:   fmt.Sprintf("%s.%s.svc.cluster.local.:%d", service.Name, service.Namespace, service.Port),
 	}
 	return pluginURL.String()
 }
@@ -239,7 +239,7 @@ func getProxyServiceURL(service *v1.ConsolePluginProxyServiceConfig) string {
 func getServiceURL(pluginBackend *v1.ConsolePluginBackend) string {
 	pluginURL := &url.URL{
 		Scheme: "https",
-		Host:   fmt.Sprintf("%s.%s.svc.cluster.local:%d", pluginBackend.Service.Name, pluginBackend.Service.Namespace, pluginBackend.Service.Port),
+		Host:   fmt.Sprintf("%s.%s.svc.cluster.local.:%d", pluginBackend.Service.Name, pluginBackend.Service.Namespace, pluginBackend.Service.Port),
 		Path:   pluginBackend.Service.BasePath,
 	}
 	return pluginURL.String()
