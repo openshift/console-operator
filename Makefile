@@ -48,6 +48,9 @@ test-e2e: install-go-junit-report
 	./test-e2e.sh
 .PHONY: test-e2e
 
+build:
+	go build -ldflags "-X $GO_PACKAGE/pkg/version.versionFromGit=$(git describe --long --tags --abbrev=7 --match 'v[0-9]*')" -tags="ocp" -o console ./cmd/console
+
 # Automatically install go-junit-report if not found
 GO_JUNIT_REPORT := $(shell command -v go-junit-report 2> /dev/null)
 install-go-junit-report:

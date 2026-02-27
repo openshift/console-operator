@@ -8,7 +8,7 @@ cluster beyond the out-of-the-box set. Typically, quick starts for operators are
 created by the operator itself after the operator is installed. In a few cases,
 we have out-of-the-box quick starts that guide administrators through the
 process of installing an operator. These need to be created before operator
-installation through OperatorHub. Any out-of-the-box quick start should be
+installation through "Software Catalog". Any out-of-the-box quick start should be
 contributed to the `quickstarts` folder here in the console-operator repo.
 
 To contribute out-of-the-box quickstarts, follow the
@@ -21,10 +21,10 @@ Quick start resources in this repository should contain the following
 cluster profile annotations:
 
 ```yaml
-  annotations:
-    include.release.openshift.io/ibm-cloud-managed: "true"
-    include.release.openshift.io/self-managed-high-availability: "true"
-    include.release.openshift.io/single-node-developer: "true"
+annotations:
+  include.release.openshift.io/ibm-cloud-managed: "true"
+  include.release.openshift.io/self-managed-high-availability: "true"
+  include.release.openshift.io/single-node-developer: "true"
 ```
 
 See the

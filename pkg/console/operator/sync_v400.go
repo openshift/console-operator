@@ -2,7 +2,6 @@ package operator
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -55,10 +54,8 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 
 	var (
 		statusHandler = status.NewStatusHandler(co.operatorClient)
-		// track changes, may trigger ripples & update operator config or console config status
-		toUpdate     = false
-		consoleRoute *routev1.Route
-		consoleURL   *url.URL
+		consoleRoute  *routev1.Route
+		consoleURL    *url.URL
 	)
 
 	if len(set.Operator.Spec.Ingress.ConsoleURL) == 0 {
@@ -131,7 +128,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(techPreviewErr)
 	}
 
-	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(
+	cm, cmErrReason, cmErr := co.SyncConfigMap(
 		ctx,
 		set.Operator,
 		set.Console,
@@ -143,21 +140,18 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		consoleURL.Hostname(),
 		techPreviewEnabled,
 	)
-	toUpdate = toUpdate || cmChanged
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
 	if cmErr != nil {
 		return statusHandler.FlushAndReturn(cmErr)
 	}
 
-	serviceCAConfigMap, serviceCAChanged, serviceCAErrReason, serviceCAErr := co.SyncServiceCAConfigMap(ctx, set.Operator)
-	toUpdate = toUpdate || serviceCAChanged
+	serviceCAConfigMap, serviceCAErrReason, serviceCAErr := co.SyncServiceCAConfigMap(ctx, set.Operator)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ServiceCASync", serviceCAErrReason, serviceCAErr))
 	if serviceCAErr != nil {
 		return statusHandler.FlushAndReturn(serviceCAErr)
 	}
 
-	trustedCAConfigMap, trustedCAConfigMapChanged, trustedCAErrReason, trustedCAErr := co.SyncTrustedCAConfigMap(ctx, set.Operator)
-	toUpdate = toUpdate || trustedCAConfigMapChanged
+	trustedCAConfigMap, trustedCAErrReason, trustedCAErr := co.SyncTrustedCAConfigMap(ctx, set.Operator)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("TrustedCASync", trustedCAErrReason, trustedCAErr))
 	if trustedCAErr != nil {
 		return statusHandler.FlushAndReturn(trustedCAErr)
@@ -183,7 +177,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(secErr)
 	}
 
-	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(
+	actualDeployment, depErrReason, depErr := co.SyncDeployment(
 		ctx,
 		set.Operator,
 		cm,
@@ -197,7 +191,6 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		set.Infrastructure,
 		controllerContext.Recorder(),
 	)
-	toUpdate = toUpdate || depChanged
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DeploymentSync", depErrReason, depErr))
 	if depErr != nil {
 		return statusHandler.FlushAndReturn(depErr)
@@ -207,15 +200,13 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	statusHandler.UpdateReadyReplicas(actualDeployment.Status.ReadyReplicas)
 	statusHandler.UpdateObservedGeneration(set.Operator.ObjectMeta.Generation)
 
-	klog.V(4).Infoln("-----------------------")
-	klog.V(4).Infof("sync loop 4.0.0 resources updated: %v", toUpdate)
-	klog.V(4).Infoln("-----------------------")
-
 	statusHandler.AddCondition(status.HandleProgressing("SyncLoopRefresh", "InProgress", func() error {
-		if toUpdate {
-			return errors.New("changes made during sync updates, additional sync expected")
-		}
 		version := os.Getenv("OPERATOR_IMAGE_VERSION")
+		// Only report Progressing=True when the deployment is actually rolling out
+		// or the operator version is changing. Do NOT report Progressing just because
+		// resources were updated during reconciliation, as per the API guidelines:
+		// "Operators should not report Progressing when they are reconciling (without action)
+		// a previously known state."
 		if !deploymentsub.IsAvailableAndUpdated(actualDeployment) {
 			return fmt.Errorf("working toward version %s, %v replicas available", version, actualDeployment.Status.AvailableReplicas)
 		}
@@ -252,20 +243,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(consolePublicConfigErr)
 	}
 
-	defer func() {
-		klog.V(4).Infof("sync loop 4.0.0 complete")
-
-		if cmChanged {
-			klog.V(4).Infof("\t configmap changed: %v", cm.GetResourceVersion())
-		}
-		if serviceCAChanged {
-			klog.V(4).Infof("\t service-ca configmap changed: %v", serviceCAConfigMap.GetResourceVersion())
-		}
-		if depChanged {
-			klog.V(4).Infof("\t deployment changed: %v", actualDeployment.GetResourceVersion())
-		}
-	}()
-
+	klog.V(4).Infof("sync loop 4.0.0 complete")
 	return statusHandler.FlushAndReturn(nil)
 }
 
@@ -299,7 +277,7 @@ func (co *consoleOperator) SyncDeployment(
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
 	recorder events.Recorder,
-) (consoleDeployment *appsv1.Deployment, changed bool, reason string, err error) {
+) (consoleDeployment *appsv1.Deployment, reason string, err error) {
 	updatedOperatorConfig := operatorConfig.DeepCopy()
 	requiredDeployment := deploymentsub.DefaultDeployment(
 		operatorConfig,
@@ -320,7 +298,7 @@ func (co *consoleOperator) SyncDeployment(
 	}
 	deploymentsub.LogDeploymentAnnotationChanges(co.deploymentClient, requiredDeployment, ctx)
 
-	deployment, deploymentChanged, applyDepErr := resourceapply.ApplyDeployment(
+	deployment, _, applyDepErr := resourceapply.ApplyDeployment(
 		ctx,
 		co.deploymentClient,
 		recorder,
@@ -329,9 +307,9 @@ func (co *consoleOperator) SyncDeployment(
 	)
 
 	if applyDepErr != nil {
-		return nil, false, "FailedApply", applyDepErr
+		return nil, "FailedApply", applyDepErr
 	}
-	return deployment, deploymentChanged, "", nil
+	return deployment, "", nil
 }
 
 // apply configmap (needs route)
@@ -348,18 +326,18 @@ func (co *consoleOperator) SyncConfigMap(
 	recorder events.Recorder,
 	consoleHost string,
 	techPreviewEnabled bool,
-) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
+) (consoleConfigMap *corev1.ConfigMap, reason string, err error) {
 
 	managedConfig, mcErr := co.managedNSConfigMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName)
 	if mcErr != nil {
 		if !apierrors.IsNotFound(mcErr) {
-			return nil, false, "FailedGetManagedConfig", mcErr
+			return nil, "FailedGetManagedConfig", mcErr
 		}
 		managedConfig = &corev1.ConfigMap{}
 	}
 	nodeList, nodeListErr := co.nodeLister.List(labels.Everything())
 	if nodeListErr != nil {
-		return nil, false, "FailedListNodes", nodeListErr
+		return nil, "FailedListNodes", nodeListErr
 	}
 	nodeArchitectures, nodeOperatingSystems := getNodeComputeEnvironments(nodeList)
 
@@ -369,7 +347,7 @@ func (co *consoleOperator) SyncConfigMap(
 	case "", configv1.AuthenticationTypeIntegratedOAuth:
 		oauthClient, oacErr := co.oauthClientLister.Get(oauthsub.Stub().Name)
 		if oacErr != nil {
-			return nil, false, "FailedGetOAuthClient", oacErr
+			return nil, "FailedGetOAuthClient", oacErr
 		}
 		if oauthClient.AccessTokenInactivityTimeoutSeconds != nil {
 			inactivityTimeoutSeconds = int(*oauthClient.AccessTokenInactivityTimeoutSeconds)
@@ -385,14 +363,14 @@ func (co *consoleOperator) SyncConfigMap(
 	monitoringSharedConfig, mscErr := co.managedNSConfigMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftMonitoringConfigMapName)
 	if mscErr != nil {
 		if !apierrors.IsNotFound(mscErr) {
-			return nil, false, "FailedGetMonitoringSharedConfig", mscErr
+			return nil, "FailedGetMonitoringSharedConfig", mscErr
 		}
 		monitoringSharedConfig = &corev1.ConfigMap{}
 	}
 
 	telemetryConfig, tcErr := co.GetTelemetryConfiguration(ctx, operatorConfig)
 	if tcErr != nil {
-		return nil, false, "FailedGetTelemetryConfig", tcErr
+		return nil, "FailedGetTelemetryConfig", tcErr
 	}
 
 	var (
@@ -402,7 +380,7 @@ func (co *consoleOperator) SyncConfigMap(
 	if !co.trackables.isOLMDisabled {
 		copiedCSVsDisabled, ccdErr = co.isCopiedCSVsDisabled(ctx)
 		if ccdErr != nil {
-			return nil, false, "FailedGetOLMConfig", ccdErr
+			return nil, "FailedGetOLMConfig", ccdErr
 		}
 	}
 
@@ -425,17 +403,17 @@ func (co *consoleOperator) SyncConfigMap(
 		techPreviewEnabled,
 	)
 	if err != nil {
-		return nil, false, "FailedConsoleConfigBuilder", err
+		return nil, "FailedConsoleConfigBuilder", err
 	}
 	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, defaultConfigmap)
 	if cmErr != nil {
-		return nil, false, "FailedApply", cmErr
+		return nil, "FailedApply", cmErr
 	}
 	if cmChanged {
 		klog.V(4).Infoln("new console config yaml:")
 		klog.V(4).Infof("%s", cm.Data)
 	}
-	return cm, cmChanged, "ConsoleConfigBuilder", cmErr
+	return cm, "ConsoleConfigBuilder", cmErr
 }
 
 // Build telemetry configuration in following order:
@@ -498,7 +476,7 @@ func (co *consoleOperator) GetTelemetryConfiguration(ctx context.Context, operat
 }
 
 // apply service-ca configmap
-func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorConfig *operatorv1.Console) (consoleCM *corev1.ConfigMap, changed bool, reason string, err error) {
+func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorConfig *operatorv1.Console) (consoleCM *corev1.ConfigMap, reason string, err error) {
 	required := configmapsub.DefaultServiceCAConfigMap(operatorConfig)
 	// we can't use `resourceapply.ApplyConfigMap` since it compares data, and the service serving cert operator injects the data
 	existing, err := co.targetNSConfigMapLister.ConfigMaps(required.Namespace).Get(required.Name)
@@ -506,59 +484,59 @@ func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorC
 		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
 		if err == nil {
 			klog.V(4).Infoln("service-ca configmap created")
-			return actual, true, "", err
+			return actual, "", err
 		} else {
-			return actual, true, "FailedCreate", err
+			return actual, "FailedCreate", err
 		}
 	}
 	if err != nil {
-		return nil, false, "FailedGet", err
+		return nil, "FailedGet", err
 	}
 
 	modified := resourcemerge.BoolPtr(false)
 	resourcemerge.EnsureObjectMeta(modified, &existing.ObjectMeta, required.ObjectMeta)
 	if !*modified {
 		klog.V(4).Infoln("service-ca configmap exists and is in the correct state")
-		return existing, false, "", nil
+		return existing, "", nil
 	}
 
 	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
 	if err == nil {
 		klog.V(4).Infoln("service-ca configmap updated")
-		return actual, true, "", err
+		return actual, "", err
 	} else {
-		return actual, true, "FailedUpdate", err
+		return actual, "FailedUpdate", err
 	}
 }
 
-func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorConfig *operatorv1.Console) (trustedCA *corev1.ConfigMap, changed bool, reason string, err error) {
+func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorConfig *operatorv1.Console) (trustedCA *corev1.ConfigMap, reason string, err error) {
 	required := configmapsub.DefaultTrustedCAConfigMap(operatorConfig)
 	existing, err := co.targetNSConfigMapLister.ConfigMaps(required.Namespace).Get(required.Name)
 	if apierrors.IsNotFound(err) {
 		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
 		if err != nil {
-			return actual, true, "FailedCreate", err
+			return actual, "FailedCreate", err
 		}
 		klog.V(4).Infoln("trusted-ca-bundle configmap created")
-		return actual, true, "", err
+		return actual, "", err
 	}
 	if err != nil {
-		return nil, false, "FailedGet", err
+		return nil, "FailedGet", err
 	}
 
 	modified := resourcemerge.BoolPtr(false)
 	resourcemerge.EnsureObjectMeta(modified, &existing.ObjectMeta, required.ObjectMeta)
 	if !*modified {
 		klog.V(4).Infoln("trusted-ca-bundle configmap exists and is in the correct state")
-		return existing, false, "", nil
+		return existing, "", nil
 	}
 
 	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
 	if err != nil {
-		return actual, true, "FailedUpdate", err
+		return actual, "FailedUpdate", err
 	}
 	klog.V(4).Infoln("trusted-ca-bundle configmap updated")
-	return actual, true, "", err
+	return actual, "", err
 }
 
 // SyncTechPreview determines if tech preview features should be enabled based on cluster FeatureSet

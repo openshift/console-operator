@@ -1561,7 +1561,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 		defaultReplicaCount         int32 = DefaultConsoleReplicas
 		singleNodeReplicaCount      int32 = SingleNodeConsoleReplicas
 		labels                            = util.LabelsForDownloads()
-		gracePeriod                 int64 = 0
+		gracePeriod                 int64 = 5
 		tolerationSeconds           int64 = 120
 		downloadsDeploymentTemplate       = resourceread.ReadDeploymentV1OrDie(bindata.MustAsset("assets/deployments/downloads-deployment.yaml"))
 	)
