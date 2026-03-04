@@ -338,9 +338,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeInformersNamespaced.Core().V1().ServiceAccounts(), // ServiceAccount
 
 		recorder,
-		api.OpenshiftConsoleServiceAccountName,
+		api.OpenShiftConsoleServiceAccountName,
 		api.OpenShiftConsoleName, // controller name
-		api.OpenShiftConsoleSASyncControllerSuffix,
 	)
 
 	downloadsServiceAccountController := serviceaccounts.NewServiceAccountSyncController(
@@ -357,7 +356,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 		api.OpenShiftConsoleDownloadsServiceAccountName,
 		api.DownloadsResourceName,
-		api.OpenshiftConsoleDownloadsSASyncControllerPrefix,
 	)
 
 	downloadsDeploymentController := downloadsdeployment.NewDownloadsDeploymentSyncController(
