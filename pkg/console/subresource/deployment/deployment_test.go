@@ -1701,7 +1701,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				},
 				Args: downloadsDeploymentTemplate.Spec.Template.Spec.Containers[0].Args,
 				SecurityContext: &corev1.SecurityContext{
-					ReadOnlyRootFilesystem: utilpointer.Bool(false),
+					ReadOnlyRootFilesystem: utilpointer.Bool(true),
 					Capabilities: &corev1.Capabilities{
 						Drop: []corev1.Capability{
 							"ALL",
