@@ -47,6 +47,10 @@ const (
 	V1Alpha1PluginI18nAnnotation        = "console.openshift.io/use-i18n"
 	VersionResourceName                 = "version"
 
+	HelmChartreposViewerRoleName             = "helm-chartrepos-viewer"
+	ProjectHelmChartrepositoryEditorRoleName = "project-helm-chartrepository-editor"
+	ConsoleExtensionsReaderRoleName          = "console-extensions-reader"
+
 	// ingress instance named "default" is the OOTB ingresscontroller
 	// this is an implicit stable API
 	DefaultIngressController   = "default"
