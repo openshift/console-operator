@@ -153,12 +153,20 @@ rules:
     resources:
       - serviceaccounts
     verbs:
-      - get
-      - list
-      - delete
       - create
-      - update
+      - list
       - watch
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - serviceaccounts
+    verbs:
+      - update
+      - delete
+    resourceNames:
+      - console
+      - downloads
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1

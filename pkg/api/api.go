@@ -56,18 +56,16 @@ const (
 	DefaultIngressController   = "default"
 	IngressControllerNamespace = "openshift-ingress-operator"
 
-	OAuthClientName                                 = OpenShiftConsoleName
-	OpenShiftConsoleDeploymentName                  = OpenShiftConsoleName
-	OpenShiftConsoleDownloadsDeploymentName         = DownloadsResourceName
-	OpenShiftConsoleDownloadsPDBName                = DownloadsResourceName
-	OpenShiftConsoleDownloadsRouteName              = DownloadsResourceName
-	OpenShiftConsoleNamespace                       = TargetNamespace
-	OpenShiftConsolePDBName                         = OpenShiftConsoleName
-	OpenShiftConsoleRouteName                       = OpenShiftConsoleName
-	OpenShiftConsoleServiceName                     = OpenShiftConsoleName
-	OpenShiftConsoleDownloadsServiceAccountName     = OpenShiftConsoleDownloadsDeploymentName
-	OpenshiftConsoleServiceAccountName              = OpenShiftConsoleDeploymentName
-	RedirectContainerTargetPort                     = RedirectContainerPort
-	OpenShiftConsoleSASyncControllerSuffix          = "ConsoleServiceAccountSyncController"
-	OpenshiftConsoleDownloadsSASyncControllerPrefix = "DownloadsServiceAccountSyncController"
+	OAuthClientName                             = OpenShiftConsoleName
+	OpenShiftConsoleDeploymentName              = OpenShiftConsoleName
+	OpenShiftConsoleDownloadsDeploymentName     = DownloadsResourceName
+	OpenShiftConsoleDownloadsPDBName            = DownloadsResourceName
+	OpenShiftConsoleDownloadsRouteName          = DownloadsResourceName
+	OpenShiftConsoleNamespace                   = TargetNamespace
+	OpenShiftConsolePDBName                     = OpenShiftConsoleName
+	OpenShiftConsoleRouteName                   = OpenShiftConsoleName
+	OpenShiftConsoleServiceName                 = OpenShiftConsoleName
+	OpenShiftConsoleDownloadsServiceAccountName = OpenShiftConsoleDownloadsDeploymentName
+	OpenShiftConsoleServiceAccountName          = OpenShiftConsoleDeploymentName
+	RedirectContainerTargetPort                 = RedirectContainerPort
 )
