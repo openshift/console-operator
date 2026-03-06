@@ -54,6 +54,9 @@ spec:
             capabilities:
               drop:
               - ALL
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
           command:
             - /bin/sh
           livenessProbe:
@@ -261,6 +264,9 @@ spec:
               time.sleep(9e9)
               EOF
               exec python3 /tmp/serve.py
+      volumes:
+        - name: tmp
+          emptyDir: {}
       tolerations:
         - key: node-role.kubernetes.io/master
           operator: Exists

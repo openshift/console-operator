@@ -58,9 +58,10 @@ type volumeConfig struct {
 	name     string
 	readOnly bool
 	path     string
-	// isSecret or isConfigMap are mutually exclusive
+	// isSecret or isConfigMap and isEmptyDir are mutually exclusive
 	isSecret    bool
 	isConfigMap bool
+	isEmptyDir  bool
 	mappedKeys  map[string]string
 }
 
@@ -304,6 +305,14 @@ func withConsoleVolumes(
 				},
 			}
 		}
+		if item.isEmptyDir {
+			vols[i] = corev1.Volume{
+				Name: item.name,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			}
+		}
 	}
 	deployment.Spec.Template.Spec.Volumes = vols
 }
@@ -518,6 +527,12 @@ func defaultVolumeConfig() []volumeConfig {
 			readOnly:    true,
 			path:        "/var/service-ca",
 			isConfigMap: true,
+		},
+		{
+			name:       "tmp",
+			readOnly:   false,
+			path:       "/tmp",
+			isEmptyDir: true,
 		},
 	}
 }
