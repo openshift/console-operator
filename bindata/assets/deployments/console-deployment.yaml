@@ -47,7 +47,7 @@ spec:
                   - "25"
           name: console
           securityContext:
-            readOnlyRootFilesystem: false
+            readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
               drop:
