@@ -1649,7 +1649,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				ReadinessProbe: &corev1.Probe{
 					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
-							Path:   "/",
+							Path:   "/healthz",
 							Port:   intstr.FromInt(api.DownloadsPort),
 							Scheme: corev1.URIScheme("HTTP"),
 						},
@@ -1662,7 +1662,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				LivenessProbe: &corev1.Probe{
 					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
-							Path:   "/",
+							Path:   "/healthz",
 							Port:   intstr.FromInt(api.DownloadsPort),
 							Scheme: corev1.URIScheme("HTTP"),
 						},
