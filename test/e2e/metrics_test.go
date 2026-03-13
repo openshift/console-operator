@@ -6,7 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -104,7 +104,7 @@ func metricsRequest(t *testing.T, routeForMetrics string) string {
 		}
 
 		defer resp.Body.Close()
-		bytes, err = ioutil.ReadAll(resp.Body)
+		bytes, err = io.ReadAll(resp.Body)
 		if err != nil {
 			t.Logf("error reading metrics response: %s\n", err)
 			return false, err
