@@ -30,31 +30,31 @@ spec:
   tags:
     - helm
   tasks:
-    - description: >-
+    - description: |-
         Follow these steps to create a HelmChartRepository CR:
 
         1. If present, click on the [perspective switcher]{{highlight qs-perspective-switcher}} at the top of the navigation and select **Core platform**.
-        
+
         1. In the navigation menu, click [Home]{{highlight qs-nav-home}}.
-        
+
         1. In the [Home navigation section]{{highlight qs-nav-home}}, click **Search**.
-        
+
         1. Click the **Resources dropdown** menu and select **HelmChartRepository**.
-        
+
         1. Click **Create HelmChartRepository** to bring up the YAML editor.
-        
+
         1. Replace the contents of the YAML editor with:
 
-            ```
-            apiVersion: helm.openshift.io/v1beta1
-            kind: HelmChartRepository
-            metadata:
-              name: azure-sample-repo
-            spec:
-              name: azure-sample-repo
-              connectionConfig:
-                url: https://raw.githubusercontent.com/Azure-Samples/helm-charts/master/docs
-            ```{{copy}}
+        ```
+        apiVersion: helm.openshift.io/v1beta1
+        kind: HelmChartRepository
+        metadata:
+          name: azure-sample-repo
+        spec:
+          name: azure-sample-repo
+          connectionConfig:
+            url: https://raw.githubusercontent.com/Azure-Samples/helm-charts/master/docs
+        ```{{copy}}
 
         1. Click **Create**.
 
