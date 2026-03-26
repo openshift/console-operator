@@ -1609,6 +1609,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 		configv1.SingleReplicaTopologyMode)
 
 	downloadsDeploymentPodSpecSingleReplica := corev1.PodSpec{
+		ServiceAccountName: "downloads",
 		NodeSelector: map[string]string{
 			"kubernetes.io/os":               "linux",
 			"node-role.kubernetes.io/master": "",
