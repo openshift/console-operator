@@ -46,7 +46,6 @@ func DefaultConfigMap(
 	nodeArchitectures []string,
 	nodeOperatingSystems []string,
 	copiedCSVsDisabled bool,
-	contentSecurityPolicyEnabled bool,
 	telemeterConfig map[string]string,
 	consoleHost string,
 	techPreviewEnabled bool,
@@ -89,7 +88,6 @@ func DefaultConfigMap(
 		PluginsOrder(availablePlugins, operatorConfig).
 		I18nNamespaces(pluginsWithI18nNamespace(availablePlugins)).
 		ContentSecurityPolicies(aggregateCSPDirectives(availablePlugins)).
-		ContentSecurityPolicyEnabled(contentSecurityPolicyEnabled).
 		Proxy(getPluginsProxyServices(availablePlugins)).
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile). // TODO Remove deprecated CustomLogoFile API.
 		CustomLogos(operatorConfig.Spec.Customization.Logos).

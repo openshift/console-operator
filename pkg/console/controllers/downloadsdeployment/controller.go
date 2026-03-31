@@ -58,7 +58,7 @@ func NewDownloadsDeploymentSyncController(
 		operatorClient:        operatorClient,
 		consoleOperatorLister: operatorConfigInformer.Lister(),
 		infrastructureLister:  configInformer.Config().V1().Infrastructures().Lister(),
-		// client
+		// clients
 		deploymentClient: deploymentClient,
 	}
 

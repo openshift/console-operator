@@ -1,9 +1,7 @@
-# CodeRabbit Configuration
-# https://docs.coderabbit.ai/guides/configure-coderabbit
-
-version: 2
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 
 language: en-US
+inheritance: true
 
 early_access: false
 
@@ -14,6 +12,10 @@ reviews:
   poem: false
   review_status: true
   collapse_walkthrough: false
+  review_details: true
+  path_filters:
+  - "!vendor/**"
+  - "!**/*_test.go"
   path_instructions:
     - path: "pkg/**/*.go"
       instructions: |
@@ -43,12 +45,21 @@ knowledge_base:
     scope: local
   code_guidelines:
     enabled: true
-    filePatterns: 
+    filePatterns:
       - "AGENTS.md"
       - "CLAUDE.md"
       - "ARCHITECTURE.md"
       - "CONVENTIONS.md"
       - "TESTING.md"
+  linked_repositories:
+    - repository: "openshift/console"
+      instructions: >-
+        Console is the downstream UI that consumes this operator's configuration.
+        pkg/console/subresource/consoleserver/types.go is the canonical source
+        for config structs - console copies these to pkg/serverconfig/types.go
+        and they MUST remain in sync. Flag changes that affect: console startup
+        config, feature gate toggles, ConsolePlugin CRD lifecycle, plugin
+        enablement, or route/ingress configuration that console reads at runtime.
   issues:
     scope: auto
   jira:
@@ -57,8 +68,3 @@ knowledge_base:
     team_keys: []
   pull_requests:
     scope: auto
-
-path_filters:
-  - "!vendor/**"
-  - "!**/*_test.go"
-

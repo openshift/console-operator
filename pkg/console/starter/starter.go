@@ -38,6 +38,7 @@ import (
 	pdb "github.com/openshift/console-operator/pkg/console/controllers/poddisruptionbudget"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
+	"github.com/openshift/console-operator/pkg/console/controllers/serviceaccounts"
 	"github.com/openshift/console-operator/pkg/console/controllers/storageversionmigration"
 	upgradenotification "github.com/openshift/console-operator/pkg/console/controllers/upgradenotification"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
@@ -235,11 +236,9 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		return err
 	}
 
-	contentSecurityPolicyEnabled := featureGates.Enabled("ConsolePluginContentSecurityPolicy")
 	// TODO: rearrange these into informer,client pairs, NOT separated.
 	consoleOperator := consoleoperator.NewConsoleOperator(
 		ctx,
-		contentSecurityPolicyEnabled,
 		// top level config
 		configClient.ConfigV1(),
 		configInformers,
@@ -326,6 +325,37 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		recorder,
 	)
 
+	consoleServiceAccountController := serviceaccounts.NewServiceAccountSyncController(
+		// clients
+		operatorClient,
+		configInformers,
+		// operator
+		operatorConfigInformers.Operator().V1().Consoles(),
+
+		kubeClient.CoreV1(), // ServiceAccount
+		kubeInformersNamespaced.Core().V1().ServiceAccounts(), // ServiceAccount
+
+		recorder,
+		api.OpenShiftConsoleServiceAccountName,
+		api.OpenShiftConsoleName, // controller name
+	)
+
+	downloadsServiceAccountController := serviceaccounts.NewServiceAccountSyncController(
+		// clients
+		operatorClient,
+		configInformers,
+		// operator
+		operatorConfigInformers.Operator().V1().Consoles(),
+
+		kubeClient.CoreV1(), // ServiceAccount
+		kubeInformersNamespaced.Core().V1().ServiceAccounts(), // ServiceAccount
+
+		recorder,
+
+		api.OpenShiftConsoleDownloadsServiceAccountName,
+		api.DownloadsResourceName,
+	)
+
 	downloadsDeploymentController := downloadsdeployment.NewDownloadsDeploymentSyncController(
 		// clients
 		operatorClient,
@@ -335,6 +365,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 		kubeClient.AppsV1(), // Deployments
 		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
+
 		recorder,
 	)
 
@@ -632,6 +663,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		logLevelController,
 		managementStateController,
 		configUpgradeableController,
+		consoleServiceAccountController,
+		downloadsServiceAccountController,
 		consoleServiceController,
 		consoleRouteController,
 		downloadsServiceController,
