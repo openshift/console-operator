@@ -20,7 +20,9 @@ export GOBIN=${PWD}/bin:${GOBIN}
 export GOFLAGS="-mod=vendor"
 
 # Invoke ./cover for HTML output
-COVER=${COVER:-"-cover"}
+# TODO: Uncomment this once https://github.com/golang/go/issues/75031 is fixed
+# COVER_FLAG=${COVER_FLAG:-"-cover"}
+COVER=${COVER:-""}
 
 # https://ci-operator-configresolver-ui-ci.apps.ci.l2s4.p1.openshiftapps.com/help#env
 OPENSHIFT_CI=${OPENSHIFT_CI:=false}
@@ -49,15 +51,19 @@ TEST=("${split[@]/#/github.com/openshift/console-operator/}")
 
 echo "Running tests..."
 if [ "$OPENSHIFT_CI" = true ]; then
-    go test -v "${COVER}" "$@" "${TEST[@]}" 2>&1 | tee "$ARTIFACT_DIR/test.out"
+	# TODO: Uncomment this once https://github.com/golang/go/issues/75031 is fixed
+	# go test -v "${COVER}" "$@" "${TEST[@]}" 2>&1 | tee "$ARTIFACT_DIR/test.out"
+    go test -v ${COVER} "$@" "${TEST[@]}" 2>&1 | tee "$ARTIFACT_DIR/test.out"
     RESULT="${PIPESTATUS[0]}"
     go-junit-report < "$ARTIFACT_DIR/test.out" > "$ARTIFACT_DIR/junit.xml"
     if [ "$RESULT" -ne 0 ]; then
         exit 255
     fi
 else
-	echo "go test "${COVER}" "$@" "${TEST[@]}""
-    go test "${COVER}" "${TEST[@]}"
+	echo "go test ${COVER} "$@" "${TEST[@]}""
+	# TODO: Uncomment this once https://github.com/golang/go/issues/75031 is fixed
+	# go test "${COVER}" "${TEST[@]}"
+    go test ${COVER} "${TEST[@]}"
 fi
 
 echo "Checking gofmt..."

@@ -1,11 +1,62 @@
 package starter
 
 import (
+	"context"
 	"reflect"
 	"testing"
+	"time"
 
 	configv1 "github.com/openshift/api/config/v1"
+	operatorv1 "github.com/openshift/api/operator/v1"
+	"github.com/openshift/library-go/pkg/controller/controllercmd"
+	"github.com/openshift/library-go/pkg/operator/events"
+	v1helpers "github.com/openshift/library-go/pkg/operator/v1helpers"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes/fake"
+	clocktesting "k8s.io/utils/clock/testing"
 )
+
+func TestGetResourceSyncerInformersCacheSync(t *testing.T) {
+	kubeClient := fake.NewSimpleClientset()
+	operatorClient := v1helpers.NewFakeOperatorClient(
+		&operatorv1.OperatorSpec{ManagementState: operatorv1.Managed},
+		&operatorv1.OperatorStatus{},
+		nil,
+	)
+	recorder := events.NewInMemoryRecorder("test", clocktesting.NewFakePassiveClock(time.Now()))
+	controllerCtx := &controllercmd.ControllerContext{
+		EventRecorder: recorder,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	resourceSyncerInformers, _ := getResourceSyncer(controllerCtx, kubeClient, operatorClient)
+	resourceSyncerInformers.Start(ctx.Done())
+
+	// Verify that ConfigMap and Secret informers for all resource syncer namespaces
+	// can sync their caches. The ResourceSyncController registers both ConfigMap and
+	// Secret informers for each namespace; if any fail to sync, the controller will
+	// never start and configmap syncing (e.g. oauth-serving-cert) won't happen.
+	err := wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 5*time.Second, true, func(ctx context.Context) (done bool, err error) {
+		for ns := range resourceSyncerInformers.Namespaces() {
+			if len(ns) == 0 {
+				continue
+			}
+			inf := resourceSyncerInformers.InformersFor(ns)
+			if !inf.Core().V1().ConfigMaps().Informer().HasSynced() {
+				return false, nil
+			}
+			if !inf.Core().V1().Secrets().Informer().HasSynced() {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
+	if err != nil {
+		t.Fatalf("resource syncer informers failed to sync caches: %v", err)
+	}
+}
 
 func TestDeduplicateObjectReferences(t *testing.T) {
 	tests := []struct {

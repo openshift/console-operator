@@ -26,7 +26,7 @@ import (
 	"github.com/openshift/api/oauth"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/clientwrapper"
+
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/clioidcclientstatus"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
@@ -195,7 +195,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 	versionGetter := status.NewVersionGetter()
 
-	resourceSyncerInformers, resourceSyncer := getResourceSyncer(controllerContext, clientwrapper.WithoutSecret(kubeClient), operatorClient)
+	resourceSyncerInformers, resourceSyncer := getResourceSyncer(controllerContext, kubeClient, operatorClient)
 
 	oauthClientsSwitchedInformer := util.NewSwitchedInformer(ctx,
 		oauthClient,
