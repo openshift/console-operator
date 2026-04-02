@@ -58,6 +58,7 @@ type oidcSetupController struct {
 	authnLister               configv1listers.AuthenticationLister
 	consoleOperatorLister     operatorv1listers.ConsoleLister
 	configConfigMapLister     corev1listers.ConfigMapLister
+	configSecretsLister       corev1listers.SecretLister
 	targetNSSecretsLister     corev1listers.SecretLister
 	targetNSConfigMapLister   corev1listers.ConfigMapLister
 	targetNSDeploymentsLister appsv1listers.DeploymentLister
@@ -74,6 +75,7 @@ func NewOIDCSetupController(
 	authenticationClient configv1client.AuthenticationInterface,
 	consoleOperatorInformer operatorv1informers.ConsoleInformer,
 	configConfigMapInformer corev1informers.ConfigMapInformer,
+	configSecretInformer corev1informers.SecretInformer,
 	targetNSsecretsInformer corev1informers.SecretInformer,
 	targetNSConfigMapInformer corev1informers.ConfigMapInformer,
 	targetNSDeploymentsInformer appsv1informers.DeploymentInformer,
@@ -87,6 +89,7 @@ func NewOIDCSetupController(
 		authnLister:               authnInformer.Lister(),
 		consoleOperatorLister:     consoleOperatorInformer.Lister(),
 		configConfigMapLister:     configConfigMapInformer.Lister(),
+		configSecretsLister:       configSecretInformer.Lister(),
 		targetNSSecretsLister:     targetNSsecretsInformer.Lister(),
 		targetNSDeploymentsLister: targetNSDeploymentsInformer.Lister(),
 		targetNSConfigMapLister:   targetNSConfigMapInformer.Lister(),
@@ -102,6 +105,7 @@ func NewOIDCSetupController(
 			authnInformer.Informer(),
 			configConfigMapInformer.Informer(),
 			consoleOperatorInformer.Informer(),
+			configSecretInformer.Informer(),
 			targetNSsecretsInformer.Informer(),
 			targetNSDeploymentsInformer.Informer(),
 			targetNSConfigMapInformer.Informer(),
@@ -200,7 +204,7 @@ func (c *oidcSetupController) syncAuthTypeOIDC(ctx context.Context, authnConfig 
 		return nil
 	}
 
-	clientSecret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get("console-oauth-config")
+	clientSecret, err := c.configSecretsLister.Secrets(api.OpenShiftConfigNamespace).Get(clientConfig.ClientSecret.Name)
 	if err != nil {
 		c.authStatusHandler.Degraded("OIDCClientSecretGet", err.Error())
 		return err
@@ -252,7 +256,14 @@ func (c *oidcSetupController) checkClientConfigStatus(authnConfig *configv1.Auth
 		return false, "deployment unavailable or outdated", nil
 	}
 
-	if clientSecret.GetResourceVersion() != depl.ObjectMeta.Annotations["console.openshift.io/oauth-secret-version"] {
+	// Get the TARGET secret (synced copy in openshift-console namespace)
+	// to compare its resource version with the deployment annotation
+	targetClientSecret, err := c.targetNSSecretsLister.Secrets(api.OpenShiftConsoleNamespace).Get("console-oauth-config")
+	if err != nil {
+		return false, "", err
+	}
+
+	if targetClientSecret.GetResourceVersion() != depl.ObjectMeta.Annotations["console.openshift.io/oauth-secret-version"] {
 		return false, "client secret version not up to date in current deployment", nil
 	}
 
