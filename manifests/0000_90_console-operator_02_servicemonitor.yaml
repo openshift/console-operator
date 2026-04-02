@@ -26,4 +26,5 @@ spec:
   selector:
     matchLabels:
       name: console-operator
+  serviceDiscoveryRole: EndpointSlice
 
