@@ -983,6 +983,13 @@ func TestWithConsoleVolumes(t *testing.T) {
 		},
 	}
 
+	tmpVolume := corev1.Volume{
+		Name: "tmp",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+
 	customLogoVolume := corev1.Volume{
 		Name: api.OpenShiftCustomLogoConfigMapName,
 		VolumeSource: corev1.VolumeSource{
@@ -1051,6 +1058,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 		consoleOauthConfigVolume,
 		consoleConfigVolume,
 		serviceCAVolume,
+		tmpVolume,
 	}
 	trustedVolumes := append(defaultVolumes, trustedCAVolume)
 	customLogoVolumes := append(defaultVolumes, customLogoVolume)
@@ -1078,6 +1086,12 @@ func TestWithConsoleVolumes(t *testing.T) {
 		Name:      api.ServiceCAConfigMapName,
 		ReadOnly:  true,
 		MountPath: "/var/service-ca",
+	}
+
+	tmpVolumeMount := corev1.VolumeMount{
+		Name:      "tmp",
+		ReadOnly:  false,
+		MountPath: "/tmp",
 	}
 
 	trustedCAVolumeMount := corev1.VolumeMount{
@@ -1110,6 +1124,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 		consoleOauthConfigVolumeMount,
 		consoleConfigVolumeMount,
 		serviceCAVolumeMount,
+		tmpVolumeMount,
 	}
 	trustedVolumeMounts := append(defaultVolumeMounts, trustedCAVolumeMount)
 	customLogoVolumeMounts := append(defaultVolumeMounts, customLogoVolumeMount)
@@ -1665,6 +1680,11 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 					Protocol:      corev1.ProtocolTCP,
 					ContainerPort: api.DownloadsPort,
 				}},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "tmp",
+					ReadOnly:  false,
+					MountPath: "/tmp",
+				}},
 				ReadinessProbe: &corev1.Probe{
 					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
@@ -1700,7 +1720,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				},
 				Args: downloadsDeploymentTemplate.Spec.Template.Spec.Containers[0].Args,
 				SecurityContext: &corev1.SecurityContext{
-					ReadOnlyRootFilesystem: utilpointer.Bool(false),
+					ReadOnlyRootFilesystem: utilpointer.Bool(true),
 					Capabilities: &corev1.Capabilities{
 						Drop: []corev1.Capability{
 							"ALL",
@@ -1710,6 +1730,12 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				},
 			},
 		},
+		Volumes: []corev1.Volume{{
+			Name: "tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		}},
 	}
 	downloadsDeploymentPodSpecHighAvail := downloadsDeploymentPodSpecSingleReplica.DeepCopy()
 	downloadsDeploymentPodSpecHighAvail.Affinity = &corev1.Affinity{
