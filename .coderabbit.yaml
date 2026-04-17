@@ -1,5 +1,18 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 
+# CodeRabbit configuration for console-operator
+# This config integrates Claude Code skills for operator-specific reviews.
+# Skills are triggered based on CODE PATTERNS (function signatures, types, YAML kinds)
+# rather than file paths alone.
+#
+# Available skills (defined in .claude/skills/):
+#   /controller-review - When code has Controller types, factory.New() patterns
+#   /sync-handler-review - When code has sequential sync logic with early returns
+#   /manifest-review - When YAML has RBAC kinds or missing annotations
+#   /e2e-test-review - When tests use framework, wait.Poll, retry patterns
+#   /e2e-test-create - Scaffold new e2e tests with best practices
+#   /go-quality-review - Always applied; checks deprecated APIs, code smells
+
 language: en-US
 inheritance: true
 
@@ -17,25 +30,86 @@ reviews:
   - "!vendor/**"
   - "!**/*_test.go"
   path_instructions:
-    - path: "pkg/**/*.go"
+    - path: "**/*.go"
       instructions: |
         Review Go code following OpenShift operator patterns.
         See CONVENTIONS.md for coding standards and patterns.
-        Controllers should use the library-go factory pattern.
-        Status conditions should use status.Handle* functions.
-    - path: "bindata/assets/**/*.yaml"
+
+        Apply skills based on CODE PATTERNS, not just file paths:
+
+        **Apply /controller-review when code contains:**
+        - Controller struct types (e.g., `type *Controller struct`)
+        - `func New*Controller(` factory functions
+        - `factory.New().WithFilteredEventsInformers(` pattern
+        - `.ToController(` method calls
+        - `Sync(ctx context.Context, controllerContext factory.SyncContext)` methods
+        - `operatorConfig.Spec.ManagementState` checks
+        - `status.NewStatusHandler` or `status.Handle*` functions
+
+        **Apply /sync-handler-review when code contains:**
+        - Main operator sync functions (e.g., `sync_v400.go` content)
+        - Sequential resource syncing with early returns
+        - Incremental reconciliation loops
+        - Multiple `resourceapply.Apply*()` calls in sequence
+        - Dependency ordering of ConfigMaps → Secrets → Deployments → Routes
+        - Feature gate conditional logic
+
+        **Apply /go-quality-review for all Go code to check:**
+        - Deprecated imports: `ioutil.ReadFile`, `ioutil.WriteFile`, `ioutil.ReadAll`
+        - Deprecated patterns: `Dial` without `DialContext`
+        - Error handling: missing `%w` in fmt.Errorf
+        - Code smells: deep nesting (4+ levels), functions >100 lines
+        - Magic values: unexplained numbers/strings
+        - Context propagation: `context.Background()` instead of passed ctx
+        - Missing godoc on exported functions
+
+    - path: "**/*_test.go"
       instructions: |
-        Review YAML assets for Kubernetes resource correctness.
-        Ensure proper annotations for cluster profiles.
-    - path: "manifests/**/*.yaml"
+        Review test code for quality and patterns.
+
+        **Apply /e2e-test-review when test contains:**
+        - `framework.MustNewClientset(t, nil)` or similar e2e framework usage
+        - `wait.Poll` or `wait.PollImmediate` patterns
+        - `retry.RetryOnConflict` for updates
+        - Cleanup via `defer` functions
+        - Console/operator CR manipulations
+        - Test assertions on cluster state
+
+        **Suggest /e2e-test-create when:**
+        - PR adds new feature requiring e2e coverage
+        - Test file is empty or skeleton
+        - Comments indicate "TODO: add test"
+
+        **Review for common issues:**
+        - Missing cleanup (defer statements)
+        - Using `time.Sleep` instead of `wait.Poll`
+        - Missing context timeouts
+        - Vague error messages in assertions
+        - Tests without table-driven structure when testing multiple cases
+
+    - path: "**/*.yaml"
       instructions: |
-        Review CVO manifests carefully.
-        These are deployed to clusters and changes have wide impact.
-    - path: "quickstarts/**/*.yaml"
-      instructions: |
-        Review quickstart YAML definitions.
-        Ensure cluster profile annotations are present.
-        See quickstarts/README.md for guidelines.
+        Review YAML manifests based on content and kind.
+
+        **Apply /manifest-review when YAML contains:**
+        - `kind: Role` or `kind: ClusterRole` (RBAC review)
+        - `kind: RoleBinding` or `kind: ClusterRoleBinding`
+        - `annotations:` section (check for cluster profiles)
+        - `verbs: ["*"]` or wildcard permissions
+        - `apiGroups: ["*"]` or overly broad permissions
+        - ServiceAccount references in subjects
+
+        **Check for required annotations in manifests/:**
+        - `include.release.openshift.io/hypershift`
+        - `include.release.openshift.io/ibm-cloud-managed`
+        - `include.release.openshift.io/self-managed-high-availability`
+        - `include.release.openshift.io/single-node-developer`
+        - `capability.openshift.io/name: Console`
+
+        **For quickstarts/, additionally check:**
+        - QuickStart spec structure
+        - Task descriptions and prerequisites
+        - See quickstarts/README.md for guidelines
 
 chat:
   auto_reply: true
@@ -51,6 +125,7 @@ knowledge_base:
       - "ARCHITECTURE.md"
       - "CONVENTIONS.md"
       - "TESTING.md"
+      - ".claude/skills/*.md"
   linked_repositories:
     - repository: "openshift/console"
       instructions: >-
