@@ -250,7 +250,7 @@ func NewConsoleOperator(
 		factory.NamesFilter(api.OAuthClientName),
 		oauthClientSwitchedInformer.Informer(),
 	).WithFilteredEventsInformers(
-		util.IncludeNamesFilter(deployment.ConsoleOauthConfigName),
+		util.IncludeNamesFilter(deployment.ConsoleOauthConfigName, api.ConsoleServingCertName),
 		secretsInformer.Informer(),
 	).WithFilteredEventsInformers(
 		util.IncludeNamesFilter(telemetry.TelemetryConfigMapName),
