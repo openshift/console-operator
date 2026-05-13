@@ -1,5 +1,18 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 
+# CodeRabbit configuration for console-operator
+# This config integrates Claude Code skills for operator-specific reviews.
+# Skills are triggered based on CODE PATTERNS (function signatures, types, YAML kinds)
+# rather than file paths alone.
+#
+# Available skills (defined in .claude/skills/):
+#   /controller-review - When code has Controller types, factory.New() patterns
+#   /sync-handler-review - When code has sequential sync logic with early returns
+#   /manifest-review - When YAML has RBAC kinds or missing annotations
+#   /unit-test-review - When pkg/**/*_test.go has table-driven tests, go-test/deep
+#   /e2e-test-review - When test/e2e/ tests use framework, wait.Poll, retry patterns
+#   /go-quality-review - Always applied; checks deprecated APIs, code smells
+
 language: en-US
 inheritance: true
 
@@ -14,28 +27,99 @@ reviews:
   collapse_walkthrough: false
   review_details: true
   path_filters:
-  - "!vendor/**"
-  - "!**/*_test.go"
+    - '!vendor/**'
   path_instructions:
-    - path: "pkg/**/*.go"
+    - path: '**/*.go'
       instructions: |
         Review Go code following OpenShift operator patterns.
         See CONVENTIONS.md for coding standards and patterns.
-        Controllers should use the library-go factory pattern.
-        Status conditions should use status.Handle* functions.
-    - path: "bindata/assets/**/*.yaml"
+
+        Refer to the following skills based on CODE PATTERNS, not just file paths:
+
+        **Refer to /controller-review when code contains:**
+        - Controller struct types (e.g., `type *Controller struct`)
+        - `func New*Controller(` factory functions
+        - `factory.New().WithFilteredEventsInformers(` pattern
+        - `.ToController(` method calls
+        - `Sync(ctx context.Context, controllerContext factory.SyncContext)` methods
+        - `operatorConfig.Spec.ManagementState` checks
+        - `status.NewStatusHandler` or `status.Handle*` functions
+
+        **Refer to /sync-handler-review when code contains:**
+        - Main operator sync functions (e.g., `sync_v400.go` content)
+        - Sequential resource syncing with early returns
+        - Incremental reconciliation loops
+        - Multiple `resourceapply.Apply*()` calls in sequence
+        - Dependency ordering of ConfigMaps → Secrets → Service Accounts → RBAC → Services → Deployments → Routes
+        - Feature gate conditional logic
+
+        **Refer to /go-quality-review for all Go code to check:**
+        - Deprecated imports: `ioutil.ReadFile`, `ioutil.WriteFile`, `ioutil.ReadAll`
+        - Deprecated patterns: `Dial` without `DialContext`
+        - Error handling: missing `%w` in fmt.Errorf
+        - Code smells: deep nesting (4+ levels), functions >100 lines
+        - Magic values: unexplained numbers/strings
+        - Context propagation: `context.Background()` instead of passed ctx
+        - Missing godoc on exported functions
+
+    - path: '**/*_test.go'
       instructions: |
-        Review YAML assets for Kubernetes resource correctness.
-        Ensure proper annotations for cluster profiles.
-    - path: "manifests/**/*.yaml"
+        Review test code for quality and patterns.
+
+        **Refer to /unit-test-review when test is in pkg/**/*_test.go:**
+        - Table-driven test structure with test cases
+        - Use of `go-test/deep` for struct comparisons
+        - Test naming conventions (TestFunctionName)
+        - Error handling with `wantErr` pattern
+        - Edge case coverage (nil, empty, boundary values)
+        - Proper assertions with helpful error messages
+        - Test isolation (no shared mutable state)
+
+        **Refer to /e2e-test-review when test contains:**
+        - `framework.MustNewClientset(t, nil)` or similar e2e framework usage
+        - `wait.Poll` or `wait.PollImmediate` patterns
+        - `retry.RetryOnConflict` for updates
+        - Cleanup via `defer` functions
+        - Console/operator CR manipulations
+        - Test assertions on cluster state
+
+        **Suggest to use /e2e-test-review when:**
+        - PR adds new feature requiring e2e coverage
+        - Test file is empty or skeleton
+        - Comments indicate "TODO: add test"
+
+        **Review for common issues:**
+        - Missing cleanup (defer statements)
+        - Using `time.Sleep` instead of `wait.Poll`
+        - Missing context timeouts
+        - Vague error messages in assertions
+        - Tests without table-driven structure when testing multiple cases
+        - Ignoring errors with `_`
+        - Tests without assertions
+
+    - path: '**/*.yaml'
       instructions: |
-        Review CVO manifests carefully.
-        These are deployed to clusters and changes have wide impact.
-    - path: "quickstarts/**/*.yaml"
-      instructions: |
-        Review quickstart YAML definitions.
-        Ensure cluster profile annotations are present.
-        See quickstarts/README.md for guidelines.
+        Review YAML manifests based on content and kind.
+
+        **Refer to /manifest-review when YAML contains:**
+        - `kind: Role` or `kind: ClusterRole` (RBAC review)
+        - `kind: RoleBinding` or `kind: ClusterRoleBinding`
+        - `annotations:` section (check for cluster profiles)
+        - `verbs: ["*"]` or wildcard permissions
+        - `apiGroups: ["*"]` or overly broad permissions
+        - ServiceAccount references in subjects
+
+        **Check for required annotations in manifests/:**
+        - `include.release.openshift.io/hypershift`
+        - `include.release.openshift.io/ibm-cloud-managed`
+        - `include.release.openshift.io/self-managed-high-availability`
+        - `include.release.openshift.io/single-node-developer`
+        - `capability.openshift.io/name: Console`
+
+        **For quickstarts/, additionally check:**
+        - QuickStart spec structure
+        - Task descriptions and prerequisites
+        - See quickstarts/README.md for guidelines
 
 chat:
   auto_reply: true
@@ -46,13 +130,14 @@ knowledge_base:
   code_guidelines:
     enabled: true
     filePatterns:
-      - "AGENTS.md"
-      - "CLAUDE.md"
-      - "ARCHITECTURE.md"
-      - "CONVENTIONS.md"
-      - "TESTING.md"
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - 'ARCHITECTURE.md'
+      - 'CONVENTIONS.md'
+      - 'TESTING.md'
+      - '.claude/skills/*.md'
   linked_repositories:
-    - repository: "openshift/console"
+    - repository: 'openshift/console'
       instructions: >-
         Console is the downstream UI that consumes this operator's configuration.
         pkg/console/subresource/consoleserver/types.go is the canonical source
