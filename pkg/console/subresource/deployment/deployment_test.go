@@ -1668,12 +1668,11 @@ func TestWithConsoleNodeSelector(t *testing.T) {
 func TestDefaultDownloadsDeployment(t *testing.T) {
 
 	var (
-		defaultReplicaCount         int32 = DefaultConsoleReplicas
-		singleNodeReplicaCount      int32 = SingleNodeConsoleReplicas
-		labels                            = util.LabelsForDownloads()
-		gracePeriod                 int64 = 5
-		tolerationSeconds           int64 = 120
-		downloadsDeploymentTemplate       = resourceread.ReadDeploymentV1OrDie(bindata.MustAsset("assets/deployments/downloads-deployment.yaml"))
+		defaultReplicaCount    int32 = DefaultConsoleReplicas
+		singleNodeReplicaCount int32 = SingleNodeConsoleReplicas
+		labels                       = util.LabelsForDownloads()
+		gracePeriod            int64 = 5
+		tolerationSeconds      int64 = 120
 	)
 
 	type args struct {
@@ -1788,14 +1787,14 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 					SuccessThreshold: 1,
 					FailureThreshold: 3,
 				},
-				Command: []string{"/bin/sh"},
+				Command: []string{"/opt/downloads/downloads"},
 				Resources: corev1.ResourceRequirements{
 					Requests: map[corev1.ResourceName]resource.Quantity{
 						corev1.ResourceCPU:    resource.MustParse("10m"),
 						corev1.ResourceMemory: resource.MustParse("50Mi"),
 					},
 				},
-				Args: downloadsDeploymentTemplate.Spec.Template.Spec.Containers[0].Args,
+				Args: []string{"--config-path=/opt/downloads/defaultArtifactsConfig.yaml"},
 				SecurityContext: &corev1.SecurityContext{
 					ReadOnlyRootFilesystem: utilpointer.Bool(true),
 					Capabilities: &corev1.Capabilities{
