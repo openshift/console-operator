@@ -176,6 +176,12 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(secErr)
 	}
 
+	consoleServingCertSecret, servingCertErr := co.secretsLister.Secrets(api.TargetNamespace).Get(api.ConsoleServingCertName)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConsoleServingCertSecretGet", "FailedGet", servingCertErr))
+	if servingCertErr != nil {
+		return statusHandler.FlushAndReturn(servingCertErr)
+	}
+
 	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(
 		ctx,
 		set.Operator,
@@ -186,6 +192,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		trustedCAConfigMap,
 		clientSecret,
 		sessionSecret,
+		consoleServingCertSecret,
 		set.Proxy,
 		set.Infrastructure,
 		controllerContext.Recorder(),
@@ -289,6 +296,7 @@ func (co *consoleOperator) SyncDeployment(
 	trustedCAConfigMap *corev1.ConfigMap,
 	sec *corev1.Secret,
 	sessionSecret *corev1.Secret,
+	consoleServingCertSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
 	recorder events.Recorder,
@@ -303,6 +311,7 @@ func (co *consoleOperator) SyncDeployment(
 		trustedCAConfigMap,
 		sec,
 		sessionSecret,
+		consoleServingCertSecret,
 		proxyConfig,
 		infrastructureConfig,
 	)
