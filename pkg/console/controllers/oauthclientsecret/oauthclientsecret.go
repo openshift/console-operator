@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	v1helpers "github.com/openshift/library-go/pkg/operator/v1helpers"
 
+	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	authnsub "github.com/openshift/console-operator/pkg/console/subresource/authentication"
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
 )
@@ -160,7 +161,10 @@ func (c *oauthClientSecretController) syncSecret(ctx context.Context, clientSecr
 
 	secret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get("console-oauth-config")
 	if apierrors.IsNotFound(err) || secretsub.GetSecretString(secret) != clientSecret {
-		_, _, err = resourceapply.ApplySecret(ctx, c.secretsClient, recorder, secretsub.DefaultSecret(operatorConfig, clientSecret))
+		err = util.RetryOnTransientError(func() error {
+			_, _, e := resourceapply.ApplySecret(ctx, c.secretsClient, recorder, secretsub.DefaultSecret(operatorConfig, clientSecret))
+			return e
+		})
 	}
 	return err
 }

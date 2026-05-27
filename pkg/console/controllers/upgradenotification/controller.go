@@ -131,14 +131,19 @@ func (c *UpgradeNotificationController) syncClusterUpgradeNotification(ctx conte
 				BackgroundColor: "#F0AB00",
 			},
 		}
-		_, err = c.consoleNotificationClient.Create(ctx, notification, metav1.CreateOptions{})
-		if err != nil && !apierrors.IsAlreadyExists(err) {
-			return "FailedCreate", err
+		createErr := util.RetryOnTransientError(func() error {
+			_, e := c.consoleNotificationClient.Create(ctx, notification, metav1.CreateOptions{})
+			return e
+		})
+		if createErr != nil && !apierrors.IsAlreadyExists(createErr) {
+			return "FailedCreate", createErr
 		}
 	} else {
-		err = c.removeUpgradeNotification(ctx)
-		if err != nil {
-			return "FailedDelete", err
+		deleteErr := util.RetryOnTransientError(func() error {
+			return c.removeUpgradeNotification(ctx)
+		})
+		if deleteErr != nil {
+			return "FailedDelete", deleteErr
 		}
 	}
 

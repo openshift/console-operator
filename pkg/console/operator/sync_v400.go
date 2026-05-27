@@ -261,14 +261,27 @@ func (co *consoleOperator) SyncConsoleConfig(ctx context.Context, consoleConfig 
 		klog.V(4).Infof("updating console.config.openshift.io with url: %v", consoleURL)
 		updated := consoleConfig.DeepCopy()
 		updated.Status.ConsoleURL = consoleURL
-		return co.consoleConfigClient.UpdateStatus(ctx, updated, metav1.UpdateOptions{})
+		var result *configv1.Console
+		err := retryOnTransientError(func() error {
+			var e error
+			result, e = co.consoleConfigClient.UpdateStatus(ctx, updated, metav1.UpdateOptions{})
+			return e
+		})
+		return result, err
 	}
 	return consoleConfig, nil
 }
 
 func (co *consoleOperator) SyncConsolePublicConfig(ctx context.Context, consoleURL string, recorder events.Recorder) (*corev1.ConfigMap, bool, error) {
 	requiredConfigMap := configmapsub.DefaultPublicConfig(consoleURL)
-	return resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, requiredConfigMap)
+	var cm *corev1.ConfigMap
+	var changed bool
+	err := retryOnTransientError(func() error {
+		var e error
+		cm, changed, e = resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, requiredConfigMap)
+		return e
+	})
+	return cm, changed, err
 }
 
 func (co *consoleOperator) SyncDeployment(
@@ -307,13 +320,18 @@ func (co *consoleOperator) SyncDeployment(
 	}
 	deploymentsub.LogDeploymentAnnotationChanges(co.deploymentClient, requiredDeployment, ctx)
 
-	deployment, _, applyDepErr := resourceapply.ApplyDeployment(
-		ctx,
-		co.deploymentClient,
-		recorder,
-		requiredDeployment,
-		resourcemerge.ExpectedDeploymentGeneration(requiredDeployment, updatedOperatorConfig.Status.Generations),
-	)
+	var deployment *appsv1.Deployment
+	applyDepErr := retryOnTransientError(func() error {
+		var e error
+		deployment, _, e = resourceapply.ApplyDeployment(
+			ctx,
+			co.deploymentClient,
+			recorder,
+			requiredDeployment,
+			resourcemerge.ExpectedDeploymentGeneration(requiredDeployment, updatedOperatorConfig.Status.Generations),
+		)
+		return e
+	})
 
 	if applyDepErr != nil {
 		return nil, "FailedApply", applyDepErr
@@ -413,7 +431,13 @@ func (co *consoleOperator) SyncConfigMap(
 	if err != nil {
 		return nil, "FailedConsoleConfigBuilder", err
 	}
-	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, defaultConfigmap)
+	var cm *corev1.ConfigMap
+	var cmChanged bool
+	cmErr := retryOnTransientError(func() error {
+		var e error
+		cm, cmChanged, e = resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, defaultConfigmap)
+		return e
+	})
 	if cmErr != nil {
 		return nil, "FailedApply", cmErr
 	}
@@ -489,13 +513,17 @@ func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorC
 	// we can't use `resourceapply.ApplyConfigMap` since it compares data, and the service serving cert operator injects the data
 	existing, err := co.targetNSConfigMapLister.ConfigMaps(required.Namespace).Get(required.Name)
 	if apierrors.IsNotFound(err) {
-		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
-		if err == nil {
+		var actual *corev1.ConfigMap
+		createErr := retryOnTransientError(func() error {
+			var e error
+			actual, e = co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
+			return e
+		})
+		if createErr == nil {
 			klog.V(4).Infoln("service-ca configmap created")
-			return actual, "", err
-		} else {
-			return actual, "FailedCreate", err
+			return actual, "", nil
 		}
+		return actual, "FailedCreate", createErr
 	}
 	if err != nil {
 		return nil, "FailedGet", err
@@ -508,25 +536,34 @@ func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorC
 		return existing, "", nil
 	}
 
-	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
-	if err == nil {
+	var actual *corev1.ConfigMap
+	updateErr := retryOnTransientError(func() error {
+		var e error
+		actual, e = co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
+		return e
+	})
+	if updateErr == nil {
 		klog.V(4).Infoln("service-ca configmap updated")
-		return actual, "", err
-	} else {
-		return actual, "FailedUpdate", err
+		return actual, "", nil
 	}
+	return actual, "FailedUpdate", updateErr
 }
 
 func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorConfig *operatorv1.Console) (trustedCA *corev1.ConfigMap, reason string, err error) {
 	required := configmapsub.DefaultTrustedCAConfigMap(operatorConfig)
 	existing, err := co.targetNSConfigMapLister.ConfigMaps(required.Namespace).Get(required.Name)
 	if apierrors.IsNotFound(err) {
-		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
-		if err != nil {
-			return actual, "FailedCreate", err
+		var actual *corev1.ConfigMap
+		createErr := retryOnTransientError(func() error {
+			var e error
+			actual, e = co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
+			return e
+		})
+		if createErr != nil {
+			return actual, "FailedCreate", createErr
 		}
 		klog.V(4).Infoln("trusted-ca-bundle configmap created")
-		return actual, "", err
+		return actual, "", nil
 	}
 	if err != nil {
 		return nil, "FailedGet", err
@@ -539,12 +576,17 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorC
 		return existing, "", nil
 	}
 
-	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
-	if err != nil {
-		return actual, "FailedUpdate", err
+	var actual *corev1.ConfigMap
+	updateErr := retryOnTransientError(func() error {
+		var e error
+		actual, e = co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
+		return e
+	})
+	if updateErr != nil {
+		return actual, "FailedUpdate", updateErr
 	}
 	klog.V(4).Infoln("trusted-ca-bundle configmap updated")
-	return actual, "", err
+	return actual, "", nil
 }
 
 // SyncTechPreview determines if tech preview features should be enabled based on cluster FeatureSet
@@ -798,6 +840,11 @@ func (co *consoleOperator) syncSessionSecret(
 		}
 	}
 
-	secret, _, err := resourceapply.ApplySecret(ctx, co.secretsClient, recorder, required)
+	var secret *corev1.Secret
+	err = retryOnTransientError(func() error {
+		var e error
+		secret, _, e = resourceapply.ApplySecret(ctx, co.secretsClient, recorder, required)
+		return e
+	})
 	return secret, err
 }
