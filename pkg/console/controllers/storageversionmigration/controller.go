@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/klog/v2"
 
+	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	"github.com/openshift/console-operator/pkg/console/status"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
@@ -103,7 +104,9 @@ func (c *StorageVersionMigrationController) syncStorageVersionMigration(ctx cont
 	if !succeeded {
 		klog.V(4).Infof("StorageVersionMigration has not succeeded yet")
 		// Delete the StorageVersionMigration if it has not succeeded yet
-		if err := c.deleteStorageVersionMigration(ctx); err != nil {
+		if err := util.RetryOnTransientError(func() error {
+			return c.deleteStorageVersionMigration(ctx)
+		}); err != nil {
 			return "FailedDeleteSVM", err
 		}
 		return "", nil

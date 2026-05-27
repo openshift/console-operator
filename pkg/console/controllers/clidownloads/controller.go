@@ -228,10 +228,15 @@ func ApplyCLIDownloads(ctx context.Context, consoleClient consoleclientv1.Consol
 	existingCLIDownloads, err := consoleClient.Get(ctx, cliDownloadsName, metav1.GetOptions{})
 	existingCLIDownloadsCopy := existingCLIDownloads.DeepCopy()
 	if apierrors.IsNotFound(err) {
-		actualCLIDownloads, err := consoleClient.Create(ctx, requiredCLIDownloads, metav1.CreateOptions{})
-		if err != nil {
-			klog.V(4).Infof("error creating %s consoleclidownloads custom resource: %s", cliDownloadsName, err)
-			return nil, "FailedCreate", err
+		var actualCLIDownloads *v1.ConsoleCLIDownload
+		createErr := controllersutil.RetryOnTransientError(func() error {
+			var e error
+			actualCLIDownloads, e = consoleClient.Create(ctx, requiredCLIDownloads, metav1.CreateOptions{})
+			return e
+		})
+		if createErr != nil {
+			klog.V(4).Infof("error creating %s consoleclidownloads custom resource: %s", cliDownloadsName, createErr)
+			return nil, "FailedCreate", createErr
 		}
 		klog.V(4).Infof("%s consoleclidownloads custom resource created", cliDownloadsName)
 		return actualCLIDownloads, "", nil
@@ -249,10 +254,15 @@ func ApplyCLIDownloads(ctx context.Context, consoleClient consoleclientv1.Consol
 	}
 
 	existingCLIDownloadsCopy.Spec = requiredCLIDownloads.Spec
-	actualCLIDownloads, err := consoleClient.Update(ctx, existingCLIDownloadsCopy, metav1.UpdateOptions{})
-	if err != nil {
-		klog.V(4).Infof("error updating %s consoleclidownloads custom resource: %v", cliDownloadsName, err)
-		return nil, "FailedUpdate", err
+	var actualCLIDownloads *v1.ConsoleCLIDownload
+	updateErr := controllersutil.RetryOnTransientError(func() error {
+		var e error
+		actualCLIDownloads, e = consoleClient.Update(ctx, existingCLIDownloadsCopy, metav1.UpdateOptions{})
+		return e
+	})
+	if updateErr != nil {
+		klog.V(4).Infof("error updating %s consoleclidownloads custom resource: %v", cliDownloadsName, updateErr)
+		return nil, "FailedUpdate", updateErr
 	}
 	return actualCLIDownloads, "", nil
 }
