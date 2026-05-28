@@ -211,13 +211,13 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 
 	statusHandler.AddCondition(status.HandleProgressing("SyncLoopRefresh", "InProgress", func() error {
 		version := os.Getenv("OPERATOR_IMAGE_VERSION")
-		// Only report Progressing=True when the deployment is actually rolling out
-		// or the operator version is changing. Do NOT report Progressing just because
-		// resources were updated during reconciliation, as per the API guidelines:
-		// "Operators should not report Progressing when they are reconciling (without action)
-		// a previously known state."
-		if !deploymentsub.IsAvailableAndUpdated(actualDeployment) {
-			return fmt.Errorf("working toward version %s, %v replicas available", version, actualDeployment.Status.AvailableReplicas)
+		// Only report Progressing when the deployment controller hasn't yet
+		// processed a spec change made by the operator. Do not use replica
+		// counts — they fluctuate during external disruptions (node reboots)
+		// that the operator did not cause. See https://issues.redhat.com/browse/OCPBUGS-64688
+		if actualDeployment.Status.ObservedGeneration < actualDeployment.Generation {
+			return fmt.Errorf("deployment generation %d not yet observed (current: %d)",
+				actualDeployment.Generation, actualDeployment.Status.ObservedGeneration)
 		}
 
 		if co.versionGetter.GetVersions()["operator"] != version {
