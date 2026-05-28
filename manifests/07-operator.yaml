@@ -58,6 +58,9 @@ spec:
             - operator
           args:
             - "--config=/var/run/configmaps/config/controller-config.yaml"
+            - "--terminate-on-files=/var/run/configmaps/config/controller-config.yaml"
+            - "--terminate-on-files=/var/run/secrets/serving-cert/tls.crt"
+            - "--terminate-on-files=/var/run/secrets/serving-cert/tls.key"
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - mountPath: /var/run/configmaps/config
