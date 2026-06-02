@@ -675,6 +675,83 @@ func TestWithConsoleAnnotations(t *testing.T) {
 	}
 }
 
+func TestServingCertAnnotationChangesOnRotation(t *testing.T) {
+	consoleConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1"},
+	}
+	serviceCAConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{ResourceVersion: "2"},
+	}
+	trustedCAConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{ResourceVersion: "3"},
+	}
+	oAuthClientSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{ResourceVersion: "4"},
+	}
+	proxyConfig := &configv1.Proxy{
+		ObjectMeta: metav1.ObjectMeta{ResourceVersion: "5"},
+	}
+	infrastructureConfig := &configv1.Infrastructure{
+		ObjectMeta: metav1.ObjectMeta{ResourceVersion: "6"},
+	}
+
+	makeDeployment := func() *appsv1.Deployment {
+		return &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{}},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{}},
+				},
+			},
+		}
+	}
+
+	oldCert := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{ResourceVersion: "111111"},
+	}
+	newCert := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{ResourceVersion: "222222"},
+	}
+
+	depBefore := makeDeployment()
+	withConsoleAnnotations(depBefore, consoleConfigMap, serviceCAConfigMap, nil, trustedCAConfigMap, oAuthClientSecret, nil, oldCert, proxyConfig, infrastructureConfig)
+
+	depAfter := makeDeployment()
+	withConsoleAnnotations(depAfter, consoleConfigMap, serviceCAConfigMap, nil, trustedCAConfigMap, oAuthClientSecret, nil, newCert, proxyConfig, infrastructureConfig)
+
+	oldVal := depBefore.ObjectMeta.Annotations[servingCertSecretResourceVersionAnnotation]
+	newVal := depAfter.ObjectMeta.Annotations[servingCertSecretResourceVersionAnnotation]
+
+	if oldVal != "111111" {
+		t.Errorf("expected annotation value '111111' for old cert, got %q", oldVal)
+	}
+	if newVal != "222222" {
+		t.Errorf("expected annotation value '222222' for new cert, got %q", newVal)
+	}
+	if oldVal == newVal {
+		t.Error("annotation value did not change after cert rotation")
+	}
+
+	oldPodVal := depBefore.Spec.Template.ObjectMeta.Annotations[servingCertSecretResourceVersionAnnotation]
+	newPodVal := depAfter.Spec.Template.ObjectMeta.Annotations[servingCertSecretResourceVersionAnnotation]
+	if oldPodVal == newPodVal {
+		t.Error("pod template annotation value did not change after cert rotation — rollout would not be triggered")
+	}
+}
+
+func TestServingCertAnnotationInResourceAnnotations(t *testing.T) {
+	found := false
+	for _, a := range resourceAnnotations {
+		if a == servingCertSecretResourceVersionAnnotation {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("servingCertSecretResourceVersionAnnotation (%q) is not in resourceAnnotations — LogDeploymentAnnotationChanges will not detect cert rotation", servingCertSecretResourceVersionAnnotation)
+	}
+}
+
 func TestWithReplicas(t *testing.T) {
 	var (
 		singleNodeReplicaCount int32 = SingleNodeConsoleReplicas
