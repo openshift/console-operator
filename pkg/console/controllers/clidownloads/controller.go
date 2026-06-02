@@ -253,11 +253,15 @@ func ApplyCLIDownloads(ctx context.Context, consoleClient consoleclientv1.Consol
 		return existingCLIDownloadsCopy, "", nil
 	}
 
-	existingCLIDownloadsCopy.Spec = requiredCLIDownloads.Spec
 	var actualCLIDownloads *v1.ConsoleCLIDownload
 	updateErr := controllersutil.RetryOnTransientError(func() error {
-		var e error
-		actualCLIDownloads, e = consoleClient.Update(ctx, existingCLIDownloadsCopy, metav1.UpdateOptions{})
+		latest, e := consoleClient.Get(ctx, cliDownloadsName, metav1.GetOptions{})
+		if e != nil {
+			return e
+		}
+		latest.Spec = requiredCLIDownloads.Spec
+		resourcemerge.EnsureObjectMeta(resourcemerge.BoolPtr(false), &latest.ObjectMeta, requiredCLIDownloads.ObjectMeta)
+		actualCLIDownloads, e = consoleClient.Update(ctx, latest, metav1.UpdateOptions{})
 		return e
 	})
 	if updateErr != nil {

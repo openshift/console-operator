@@ -259,12 +259,14 @@ func (co *consoleOperator) SyncConsoleConfig(ctx context.Context, consoleConfig 
 	metrics.HandleConsoleURL(oldURL, consoleURL)
 	if oldURL != consoleURL {
 		klog.V(4).Infof("updating console.config.openshift.io with url: %v", consoleURL)
-		updated := consoleConfig.DeepCopy()
-		updated.Status.ConsoleURL = consoleURL
 		var result *configv1.Console
 		err := retryOnTransientError(func() error {
-			var e error
-			result, e = co.consoleConfigClient.UpdateStatus(ctx, updated, metav1.UpdateOptions{})
+			latest, e := co.consoleConfigClient.Get(ctx, consoleConfig.Name, metav1.GetOptions{})
+			if e != nil {
+				return e
+			}
+			latest.Status.ConsoleURL = consoleURL
+			result, e = co.consoleConfigClient.UpdateStatus(ctx, latest, metav1.UpdateOptions{})
 			return e
 		})
 		return result, err
@@ -538,8 +540,12 @@ func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorC
 
 	var actual *corev1.ConfigMap
 	updateErr := retryOnTransientError(func() error {
-		var e error
-		actual, e = co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
+		latest, e := co.configMapClient.ConfigMaps(required.Namespace).Get(ctx, required.Name, metav1.GetOptions{})
+		if e != nil {
+			return e
+		}
+		resourcemerge.EnsureObjectMeta(resourcemerge.BoolPtr(false), &latest.ObjectMeta, required.ObjectMeta)
+		actual, e = co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, latest, metav1.UpdateOptions{})
 		return e
 	})
 	if updateErr == nil {
@@ -578,8 +584,12 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorC
 
 	var actual *corev1.ConfigMap
 	updateErr := retryOnTransientError(func() error {
-		var e error
-		actual, e = co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
+		latest, e := co.configMapClient.ConfigMaps(required.Namespace).Get(ctx, required.Name, metav1.GetOptions{})
+		if e != nil {
+			return e
+		}
+		resourcemerge.EnsureObjectMeta(resourcemerge.BoolPtr(false), &latest.ObjectMeta, required.ObjectMeta)
+		actual, e = co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, latest, metav1.UpdateOptions{})
 		return e
 	})
 	if updateErr != nil {
