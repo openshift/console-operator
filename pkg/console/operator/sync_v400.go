@@ -417,12 +417,12 @@ func (co *consoleOperator) SyncConfigMap(
 	}
 	var cm *corev1.ConfigMap
 	var cmChanged bool
-	var cmErr error
 
 	// Retry on conflicts to handle concurrent ConfigMap updates
-	cmErr = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		cm, cmChanged, cmErr = resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, defaultConfigmap)
-		return cmErr
+	cmErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		var err error
+		cm, cmChanged, err = resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, defaultConfigmap)
+		return err
 	})
 	if cmErr != nil {
 		return nil, "FailedApply", cmErr
