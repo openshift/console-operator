@@ -9,6 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -313,6 +314,131 @@ func TestLoadCAFromSecret(t *testing.T) {
 			t.Error("expected error for invalid PEM")
 		}
 	})
+}
+
+func TestValidHTTP2Cert_ExpiredCert(t *testing.T) {
+	hostname := "console-openshift-console.apps.example.com"
+	ca := makeTestCA(t)
+
+	certConfig, err := ca.MakeServerCertForDuration(sets.New(hostname), 29*24*time.Hour)
+	if err != nil {
+		t.Fatalf("MakeServerCertForDuration() error: %v", err)
+	}
+	certPEM, keyPEM, err := certConfig.GetPEMBytes()
+	if err != nil {
+		t.Fatalf("GetPEMBytes() error: %v", err)
+	}
+	secret := &corev1.Secret{
+		Data: map[string][]byte{
+			"tls.crt": certPEM,
+			"tls.key": keyPEM,
+		},
+	}
+
+	_, valid := validHTTP2Cert(secret, hostname, nil)
+	if valid {
+		t.Error("expected cert within 30-day renewal buffer to be invalid")
+	}
+}
+
+func TestEnsureHTTP2Cert_CARotation(t *testing.T) {
+	hostname := "console-openshift-console.apps.example.com"
+	ca1 := makeTestCA(t)
+	ca2 := makeTestCA(t)
+
+	certSignedByCA1, err := GenerateHTTP2Cert(hostname, ca1)
+	if err != nil {
+		t.Fatalf("GenerateHTTP2Cert() error: %v", err)
+	}
+
+	existingSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            api.ConsoleHTTP2CertSecretName,
+			Namespace:       api.OpenShiftConsoleNamespace,
+			ResourceVersion: "100",
+		},
+		Type: corev1.SecretTypeTLS,
+		Data: map[string][]byte{
+			"tls.crt": []byte(certSignedByCA1.Certificate),
+			"tls.key": []byte(certSignedByCA1.Key),
+		},
+	}
+
+	fakeClient := kubefake.NewSimpleClientset(existingSecret)
+	lister := newFakeSecretLister(t, existingSecret)
+
+	newCert, err := EnsureHTTP2Cert(context.Background(), fakeClient.CoreV1(), lister, hostname, ca2)
+	if err != nil {
+		t.Fatalf("EnsureHTTP2Cert() error: %v", err)
+	}
+	if newCert.Certificate == certSignedByCA1.Certificate {
+		t.Error("expected cert to be regenerated when CA changed")
+	}
+
+	parsed := parseCert(t, newCert.Certificate)
+	roots := x509.NewCertPool()
+	roots.AddCert(ca2.Config.Certs[0])
+	if _, err := parsed.Verify(x509.VerifyOptions{Roots: roots}); err != nil {
+		t.Errorf("new cert does not chain to CA-2: %v", err)
+	}
+
+	updated, err := fakeClient.CoreV1().Secrets(api.OpenShiftConsoleNamespace).Get(context.Background(), api.ConsoleHTTP2CertSecretName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("expected secret to exist: %v", err)
+	}
+	if string(updated.Data["tls.crt"]) == certSignedByCA1.Certificate {
+		t.Error("expected secret to be updated with new cert")
+	}
+}
+
+func TestEnsureHTTP2Cert_HostnameChange(t *testing.T) {
+	hostnameA := "console-a.apps.example.com"
+	hostnameB := "console-b.apps.example.com"
+
+	certForA, err := GenerateHTTP2Cert(hostnameA, nil)
+	if err != nil {
+		t.Fatalf("GenerateHTTP2Cert() error: %v", err)
+	}
+
+	existingSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            api.ConsoleHTTP2CertSecretName,
+			Namespace:       api.OpenShiftConsoleNamespace,
+			ResourceVersion: "100",
+		},
+		Type: corev1.SecretTypeTLS,
+		Data: map[string][]byte{
+			"tls.crt": []byte(certForA.Certificate),
+			"tls.key": []byte(certForA.Key),
+		},
+	}
+
+	fakeClient := kubefake.NewSimpleClientset(existingSecret)
+	lister := newFakeSecretLister(t, existingSecret)
+
+	newCert, err := EnsureHTTP2Cert(context.Background(), fakeClient.CoreV1(), lister, hostnameB, nil)
+	if err != nil {
+		t.Fatalf("EnsureHTTP2Cert() error: %v", err)
+	}
+	if newCert.Certificate == certForA.Certificate {
+		t.Error("expected cert to be regenerated for new hostname")
+	}
+
+	parsed := parseCert(t, newCert.Certificate)
+	if err := parsed.VerifyHostname(hostnameB); err != nil {
+		t.Errorf("new cert does not verify for hostname %q: %v", hostnameB, err)
+	}
+	if err := parsed.VerifyHostname(hostnameA); err == nil {
+		t.Error("new cert should not verify for old hostname")
+	}
+
+	updated, err := fakeClient.CoreV1().Secrets(api.OpenShiftConsoleNamespace).Get(context.Background(), api.ConsoleHTTP2CertSecretName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("expected secret to exist: %v", err)
+	}
+	if string(updated.Data["tls.crt"]) == certForA.Certificate {
+		t.Error("expected secret to be updated with new cert")
+	}
 }
 
 func makeTestCA(t *testing.T) *crypto.CA {

@@ -1,18 +1,26 @@
 package route
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/go-test/deep"
 
 	// k8s
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubefake "k8s.io/client-go/kubernetes/fake"
+	corev1listers "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 
 	// console-operator
+	"github.com/openshift/console-operator/pkg/api"
 	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
+	"github.com/openshift/library-go/pkg/crypto"
 )
 
 const (
@@ -199,4 +207,127 @@ func TestValidateCustomCertSecret(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRemoveHTTP2CertSecret(t *testing.T) {
+	t.Run("secret exists and is deleted", func(t *testing.T) {
+		existingSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      api.ConsoleHTTP2CertSecretName,
+				Namespace: api.OpenShiftConsoleNamespace,
+			},
+			Type: corev1.SecretTypeTLS,
+		}
+		fakeClient := kubefake.NewSimpleClientset(existingSecret)
+		ctrl := &RouteSyncController{secretClient: fakeClient.CoreV1()}
+
+		err := ctrl.removeHTTP2CertSecret(context.Background())
+		if err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		_, getErr := fakeClient.CoreV1().Secrets(api.OpenShiftConsoleNamespace).Get(context.Background(), api.ConsoleHTTP2CertSecretName, metav1.GetOptions{})
+		if getErr == nil {
+			t.Error("expected secret to be deleted")
+		}
+	})
+
+	t.Run("secret does not exist", func(t *testing.T) {
+		fakeClient := kubefake.NewSimpleClientset()
+		ctrl := &RouteSyncController{secretClient: fakeClient.CoreV1()}
+
+		err := ctrl.removeHTTP2CertSecret(context.Background())
+		if err != nil {
+			t.Fatalf("expected no error for non-existent secret, got: %v", err)
+		}
+	})
+
+	t.Run("secretClient is nil", func(t *testing.T) {
+		ctrl := &RouteSyncController{secretClient: nil}
+
+		err := ctrl.removeHTTP2CertSecret(context.Background())
+		if err != nil {
+			t.Fatalf("expected no error when secretClient is nil, got: %v", err)
+		}
+	})
+}
+
+func TestLoadIngressCA(t *testing.T) {
+	t.Run("ingressCASecretLister is nil", func(t *testing.T) {
+		ctrl := &RouteSyncController{ingressCASecretLister: nil}
+		ca := ctrl.loadIngressCA()
+		if ca != nil {
+			t.Error("expected nil CA when lister is nil")
+		}
+	})
+
+	t.Run("secret not found", func(t *testing.T) {
+		lister := newControllerFakeSecretLister(t)
+		ctrl := &RouteSyncController{ingressCASecretLister: lister}
+		ca := ctrl.loadIngressCA()
+		if ca != nil {
+			t.Error("expected nil CA when secret not found")
+		}
+	})
+
+	t.Run("secret has invalid PEM", func(t *testing.T) {
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      api.IngressCASecretName,
+				Namespace: api.IngressControllerNamespace,
+			},
+			Data: map[string][]byte{
+				"tls.crt": []byte("not-valid-pem"),
+				"tls.key": []byte("not-valid-pem"),
+			},
+		}
+		lister := newControllerFakeSecretLister(t, secret)
+		ctrl := &RouteSyncController{ingressCASecretLister: lister}
+		ca := ctrl.loadIngressCA()
+		if ca != nil {
+			t.Error("expected nil CA for invalid PEM")
+		}
+	})
+
+	t.Run("secret has valid CA", func(t *testing.T) {
+		caConfig, err := crypto.MakeSelfSignedCAConfigForDuration("test-ingress-ca", 24*time.Hour)
+		if err != nil {
+			t.Fatalf("failed to create test CA: %v", err)
+		}
+		certPEM, keyPEM, err := caConfig.GetPEMBytes()
+		if err != nil {
+			t.Fatalf("failed to get PEM bytes: %v", err)
+		}
+
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      api.IngressCASecretName,
+				Namespace: api.IngressControllerNamespace,
+			},
+			Data: map[string][]byte{
+				"tls.crt": certPEM,
+				"tls.key": keyPEM,
+			},
+		}
+		lister := newControllerFakeSecretLister(t, secret)
+		ctrl := &RouteSyncController{ingressCASecretLister: lister}
+		ca := ctrl.loadIngressCA()
+		if ca == nil {
+			t.Fatal("expected non-nil CA")
+		}
+		if ca.Config.Certs[0].Subject.CommonName != "test-ingress-ca" {
+			t.Errorf("expected CN=test-ingress-ca, got CN=%s", ca.Config.Certs[0].Subject.CommonName)
+		}
+	})
+}
+
+func newControllerFakeSecretLister(t *testing.T, secrets ...*corev1.Secret) corev1listers.SecretLister {
+	t.Helper()
+	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	for _, s := range secrets {
+		if err := indexer.Add(s.DeepCopy()); err != nil {
+			t.Fatalf("failed to add secret to indexer: %v", err)
+		}
+	}
+	return corev1listers.NewSecretLister(indexer)
 }

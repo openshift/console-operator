@@ -416,15 +416,31 @@ func checkCustomTLSWasSet(t *testing.T, client *framework.ClientSet, routeName s
 }
 
 func checkCustomTLSWasUnset(t *testing.T, client *framework.ClientSet, routeName string) {
-	err := wait.Poll(1*time.Second, 20*time.Second, func() (stop bool, err error) {
+	var adminCert string
+	// capture the current admin-provided cert so we can detect when it's been replaced
+	route, err := client.Routes.Routes(api.OpenShiftConsoleNamespace).Get(context.TODO(), routeName, v1.GetOptions{})
+	if err == nil && route.Spec.TLS != nil {
+		adminCert = route.Spec.TLS.Certificate
+	}
+
+	err = wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
 		route, err := client.Routes.Routes(api.OpenShiftConsoleNamespace).Get(context.TODO(), routeName, v1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
+		if route.Spec.TLS == nil {
+			return true, nil
+		}
+		// For the console route, the operator sets a throwaway HTTP/2 cert
+		// when no admin cert is configured, so TLS fields will be non-empty.
+		// Verify the admin cert was removed by checking it changed.
+		if route.Spec.TLS.Certificate != adminCert {
+			return true, nil
+		}
+		// For routes without HTTP/2 cert (e.g. downloads), empty TLS is expected.
 		if len(route.Spec.TLS.Certificate) == 0 && len(route.Spec.TLS.Key) == 0 {
 			return true, nil
 		}
-
 		return false, nil
 	})
 	if err != nil {
