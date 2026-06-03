@@ -148,6 +148,8 @@ func deleteResource(client *ClientSet, resource TestingResource) error {
 	switch resource.kind {
 	case "ConfigMap":
 		err = client.Core.ConfigMaps(resource.namespace).Delete(context.TODO(), resource.name, metav1.DeleteOptions{})
+	case "Secret":
+		err = client.Core.Secrets(resource.namespace).Delete(context.TODO(), resource.name, metav1.DeleteOptions{})
 	case "Service":
 		err = client.Core.Services(resource.namespace).Delete(context.TODO(), resource.name, metav1.DeleteOptions{})
 	case "Route":
