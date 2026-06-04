@@ -184,13 +184,32 @@ func withAffinity(
 func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
 	rollingUpdateParams := &appsv1.RollingUpdateDeployment{}
 	if ShouldDeployHA(infrastructureConfig) {
-		rollingUpdateParams = &appsv1.RollingUpdateDeployment{
-			MaxSurge: &intstr.IntOrString{
-				IntVal: int32(3),
-			},
-			MaxUnavailable: &intstr.IntOrString{
-				IntVal: int32(1),
-			},
+		topology := infrastructureConfig.Status.ControlPlaneTopology
+		if topology == configv1.DualReplicaTopologyMode || topology == configv1.HighlyAvailableArbiterMode {
+			// On 2-node topologies the required pod anti-affinity prevents
+			// scheduling a surge pod when every eligible node already runs
+			// a console pod, so maxUnavailable must be >= 1 to allow the
+			// rollout to make progress.
+			rollingUpdateParams = &appsv1.RollingUpdateDeployment{
+				MaxSurge: &intstr.IntOrString{
+					IntVal: int32(1),
+				},
+				MaxUnavailable: &intstr.IntOrString{
+					IntVal: int32(1),
+				},
+			}
+		} else {
+			// On 3+ node topologies a free node is available for the surge
+			// pod, so maxUnavailable=0 guarantees zero-downtime rollouts:
+			// no old pod is terminated until its replacement is ready.
+			rollingUpdateParams = &appsv1.RollingUpdateDeployment{
+				MaxSurge: &intstr.IntOrString{
+					IntVal: int32(1),
+				},
+				MaxUnavailable: &intstr.IntOrString{
+					IntVal: int32(0),
+				},
+			}
 		}
 	}
 	deployment.Spec.Strategy.RollingUpdate = rollingUpdateParams
