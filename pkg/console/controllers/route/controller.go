@@ -11,6 +11,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	coreinformersv1 "k8s.io/client-go/informers/core/v1"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 
@@ -25,6 +26,7 @@ import (
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	"github.com/openshift/library-go/pkg/controller/factory"
+	libcrypto "github.com/openshift/library-go/pkg/crypto"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
 	"github.com/openshift/library-go/pkg/route/routeapihelpers"
@@ -40,15 +42,17 @@ type RouteSyncController struct {
 	routeName            string
 	isHealthCheckEnabled bool
 	// clients
-	operatorClient                v1helpers.OperatorClient
-	routeClient                   routeclientv1.RoutesGetter
-	operatorConfigLister          operatorv1listers.ConsoleLister
-	ingressConfigLister           configlistersv1.IngressLister
-	ingressControllerLister       operatorv1listers.IngressControllerLister
-	secretLister                  corev1listers.SecretLister
-	ingressControllerSecretLister corev1listers.SecretLister
-	infrastructureConfigLister    configlistersv1.InfrastructureLister
-	clusterVersionLister          configlistersv1.ClusterVersionLister
+	operatorClient             v1helpers.OperatorClient
+	routeClient                routeclientv1.RoutesGetter
+	secretClient               corev1client.SecretsGetter
+	operatorConfigLister       operatorv1listers.ConsoleLister
+	ingressConfigLister        configlistersv1.IngressLister
+	ingressControllerLister    operatorv1listers.IngressControllerLister
+	secretLister               corev1listers.SecretLister
+	consoleSecretLister        corev1listers.SecretLister
+	ingressCASecretLister      corev1listers.SecretLister
+	infrastructureConfigLister configlistersv1.InfrastructureLister
+	clusterVersionLister       configlistersv1.ClusterVersionLister
 }
 
 func NewRouteSyncController(
@@ -59,11 +63,14 @@ func NewRouteSyncController(
 	// clients
 	operatorClient v1helpers.OperatorClient,
 	routev1Client routeclientv1.RoutesGetter,
+	secretClient corev1client.SecretsGetter,
 	// informers
 	operatorConfigInformer v1.ConsoleInformer,
 	ingressControllerInformer v1.IngressControllerInformer,
 	secretInformer coreinformersv1.SecretInformer,
+	consoleSecretInformer coreinformersv1.SecretInformer,
 	routeInformer routesinformersv1.RouteInformer,
+	ingressCASecretInformer coreinformersv1.SecretInformer,
 	// events
 	recorder events.Recorder,
 ) factory.Controller {
@@ -75,14 +82,21 @@ func NewRouteSyncController(
 		ingressConfigLister:        configInformer.Config().V1().Ingresses().Lister(),
 		ingressControllerLister:    ingressControllerInformer.Lister(),
 		routeClient:                routev1Client,
+		secretClient:               secretClient,
 		secretLister:               secretInformer.Lister(),
 		infrastructureConfigLister: configInformer.Config().V1().Infrastructures().Lister(),
 		clusterVersionLister:       configInformer.Config().V1().ClusterVersions().Lister(),
 	}
+	if consoleSecretInformer != nil {
+		ctrl.consoleSecretLister = consoleSecretInformer.Lister()
+	}
+	if ingressCASecretInformer != nil {
+		ctrl.ingressCASecretLister = ingressCASecretInformer.Lister()
+	}
 
 	configV1Informers := configInformer.Config().V1()
 
-	return factory.New().
+	controllerBuilder := factory.New().
 		WithFilteredEventsInformers( // configs
 			util.IncludeNamesFilter(api.ConfigResourceName),
 			configV1Informers.Consoles().Informer(),
@@ -96,7 +110,22 @@ func NewRouteSyncController(
 	).WithFilteredEventsInformers( // route
 		util.IncludeNamesFilter(routeName, routesub.GetCustomRouteName(routeName)),
 		routeInformer.Informer(),
-	).ResyncEvery(time.Minute).WithSync(ctrl.Sync).
+	).ResyncEvery(time.Minute).WithSync(ctrl.Sync)
+
+	if consoleSecretInformer != nil {
+		controllerBuilder = controllerBuilder.WithFilteredEventsInformers(
+			util.IncludeNamesFilter(api.ConsoleHTTP2CertSecretName),
+			consoleSecretInformer.Informer(),
+		)
+	}
+	if ingressCASecretInformer != nil {
+		controllerBuilder = controllerBuilder.WithFilteredEventsInformers(
+			util.IncludeNamesFilter(api.IngressCASecretName),
+			ingressCASecretInformer.Informer(),
+		)
+	}
+
+	return controllerBuilder.
 		ToController(fmt.Sprintf("%sRouteController", strings.Title(routeName)), recorder.WithComponentSuffix(fmt.Sprintf("%s-route-controller", routeName)))
 }
 
@@ -117,6 +146,11 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 		klog.V(4).Infof("console-operator is in a removed state: deleting %q route", c.routeName)
 		if err = c.removeRoute(ctx, routesub.GetCustomRouteName(c.routeName)); err != nil {
 			return err
+		}
+		if c.routeName == api.OpenShiftConsoleRouteName {
+			if err := c.removeHTTP2CertSecret(ctx); err != nil {
+				return err
+			}
 		}
 		return c.removeRoute(ctx, c.routeName)
 	default:
@@ -197,6 +231,17 @@ func (c *RouteSyncController) removeRoute(ctx context.Context, routeName string)
 	return err
 }
 
+func (c *RouteSyncController) removeHTTP2CertSecret(ctx context.Context) error {
+	if c.secretClient == nil {
+		return nil
+	}
+	err := c.secretClient.Secrets(api.OpenShiftConsoleNamespace).Delete(ctx, api.ConsoleHTTP2CertSecretName, metav1.DeleteOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	return err
+}
+
 func (c *RouteSyncController) SyncDefaultRoute(ctx context.Context, routeConfig *routesub.RouteConfig, ingressConfig *configv1.Ingress, controllerContext factory.SyncContext) (*routev1.Route, string, error) {
 	customTLSSecret, configErr := c.GetDefaultRouteTLSSecret(ctx, routeConfig)
 	if configErr != nil {
@@ -205,6 +250,16 @@ func (c *RouteSyncController) SyncDefaultRoute(ctx context.Context, routeConfig 
 	customTLSCert, secretValidationErr := ValidateCustomCertSecret(customTLSSecret)
 	if secretValidationErr != nil {
 		return nil, "InvalidCustomTLSSecret", secretValidationErr
+	}
+
+	if customTLSCert == nil && c.routeName == api.OpenShiftConsoleRouteName && c.secretClient != nil && c.consoleSecretLister != nil {
+		hostname := routesub.GetDefaultRouteHost(c.routeName, ingressConfig)
+		ca := c.loadIngressCA()
+		http2Cert, err := routesub.EnsureHTTP2Cert(ctx, c.secretClient, c.consoleSecretLister, hostname, ca)
+		if err != nil {
+			return nil, "FailedHTTP2Cert", err
+		}
+		customTLSCert = http2Cert
 	}
 
 	requiredDefaultRoute := routeConfig.DefaultRoute(customTLSCert, ingressConfig)
@@ -316,11 +371,31 @@ func (c *RouteSyncController) ValidateCustomRouteConfig(ctx context.Context, rou
 	return nil
 }
 
-// Validate secret that holds custom TLS certificate and key.
-// Secret has to contain `tls.crt` and `tls.key` data keys
-// where the certificate and key are stored and both need
-// to be in valid format.
-// Return the custom TLS certificate and key
+// loadIngressCA attempts to load the ingress controller's CA for signing the
+// HTTP/2 cert. Returns nil if unavailable (falls back to self-signed).
+func (c *RouteSyncController) loadIngressCA() *libcrypto.CA {
+	if c.ingressCASecretLister == nil {
+		return nil
+	}
+	secret, err := c.ingressCASecretLister.Secrets(api.IngressControllerNamespace).Get(api.IngressCASecretName)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			klog.V(4).Infof("ingress CA secret %s/%s not found, falling back to self-signed HTTP/2 cert", api.IngressControllerNamespace, api.IngressCASecretName)
+		} else {
+			klog.Warningf("failed to get ingress CA secret %s/%s, falling back to self-signed HTTP/2 cert: %v", api.IngressControllerNamespace, api.IngressCASecretName, err)
+		}
+		return nil
+	}
+	ca, err := routesub.LoadCAFromSecret(secret)
+	if err != nil {
+		klog.Warningf("failed to parse ingress CA secret %s/%s, falling back to self-signed HTTP/2 cert: %v", api.IngressControllerNamespace, api.IngressCASecretName, err)
+		return nil
+	}
+	return ca
+}
+
+// ValidateCustomCertSecret validates the TLS certificate and key in a Secret.
+// Returns the parsed cert/key pair, or nil if the secret is nil.
 func ValidateCustomCertSecret(customCertSecret *corev1.Secret) (*routesub.CustomTLSCert, error) {
 	if customCertSecret == nil {
 		return nil, nil

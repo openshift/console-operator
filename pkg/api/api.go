@@ -9,6 +9,7 @@ const (
 	ConsoleContainerPort                = 443
 	ConsoleContainerPortName            = "https"
 	ConsoleContainerTargetPort          = 8443
+	ConsoleHTTP2CertSecretName          = "console-http2-cert"
 	ConsoleServingCertName              = "console-serving-cert"
 	DefaultIngressCertConfigMapName     = "default-ingress-cert"
 	DownloadsPort                       = 8080
@@ -54,6 +55,7 @@ const (
 	// ingress instance named "default" is the OOTB ingresscontroller
 	// this is an implicit stable API
 	DefaultIngressController   = "default"
+	IngressCASecretName        = "router-ca"
 	IngressControllerNamespace = "openshift-ingress-operator"
 
 	OAuthClientName                             = OpenShiftConsoleName
