@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -258,6 +259,9 @@ func (c *StorageVersionMigrationController) patchCRDStoredVersions(ctx context.C
 func (c *StorageVersionMigrationController) deleteStorageVersionMigration(ctx context.Context) error {
 	klog.Infof("Deleting StorageVersionMigration")
 	err := c.dynamicClient.Resource(storageVersionMigrationGVR).Delete(ctx, storageVersionMigrationName, metav1.DeleteOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
 	if err != nil {
 		klog.Errorf("Failed to delete StorageVersionMigration: %v", err)
 		return err

@@ -33,6 +33,7 @@ import (
 
 	// operator
 	"github.com/openshift/console-operator/pkg/api"
+	controllersutil "github.com/openshift/console-operator/pkg/console/controllers/util"
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
 	"github.com/openshift/console-operator/pkg/console/metrics"
 	"github.com/openshift/console-operator/pkg/console/status"
@@ -261,7 +262,7 @@ func (co *consoleOperator) SyncConsoleConfig(ctx context.Context, consoleConfig 
 	if oldURL != consoleURL {
 		klog.V(4).Infof("updating console.config.openshift.io with url: %v", consoleURL)
 		var result *configv1.Console
-		err := retryOnTransientError(func() error {
+		err := controllersutil.RetryOnTransientError(func() error {
 			latest, e := co.consoleConfigClient.Get(ctx, consoleConfig.Name, metav1.GetOptions{})
 			if e != nil {
 				return e
@@ -279,7 +280,7 @@ func (co *consoleOperator) SyncConsolePublicConfig(ctx context.Context, consoleU
 	requiredConfigMap := configmapsub.DefaultPublicConfig(consoleURL)
 	var cm *corev1.ConfigMap
 	var changed bool
-	err := retryOnTransientError(func() error {
+	err := controllersutil.RetryOnTransientError(func() error {
 		var e error
 		cm, changed, e = resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, requiredConfigMap)
 		return e
@@ -324,7 +325,7 @@ func (co *consoleOperator) SyncDeployment(
 	deploymentsub.LogDeploymentAnnotationChanges(co.deploymentClient, requiredDeployment, ctx)
 
 	var deployment *appsv1.Deployment
-	applyDepErr := retryOnTransientError(func() error {
+	applyDepErr := controllersutil.RetryOnTransientError(func() error {
 		var e error
 		deployment, _, e = resourceapply.ApplyDeployment(
 			ctx,
@@ -436,7 +437,7 @@ func (co *consoleOperator) SyncConfigMap(
 	}
 	var cm *corev1.ConfigMap
 	var cmChanged bool
-	cmErr := retryOnTransientError(func() error {
+	cmErr := controllersutil.RetryOnTransientError(func() error {
 		var e error
 		cm, cmChanged, e = resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, defaultConfigmap)
 		return e
@@ -517,7 +518,7 @@ func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorC
 	existing, err := co.targetNSConfigMapLister.ConfigMaps(required.Namespace).Get(required.Name)
 	if apierrors.IsNotFound(err) {
 		var actual *corev1.ConfigMap
-		createErr := retryOnTransientError(func() error {
+		createErr := controllersutil.RetryOnTransientError(func() error {
 			var e error
 			actual, e = co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
 			return e
@@ -540,7 +541,7 @@ func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorC
 	}
 
 	var actual *corev1.ConfigMap
-	updateErr := retryOnTransientError(func() error {
+	updateErr := controllersutil.RetryOnTransientError(func() error {
 		latest, e := co.configMapClient.ConfigMaps(required.Namespace).Get(ctx, required.Name, metav1.GetOptions{})
 		if e != nil {
 			return e
@@ -561,7 +562,7 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorC
 	existing, err := co.targetNSConfigMapLister.ConfigMaps(required.Namespace).Get(required.Name)
 	if apierrors.IsNotFound(err) {
 		var actual *corev1.ConfigMap
-		createErr := retryOnTransientError(func() error {
+		createErr := controllersutil.RetryOnTransientError(func() error {
 			var e error
 			actual, e = co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
 			return e
@@ -584,7 +585,7 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorC
 	}
 
 	var actual *corev1.ConfigMap
-	updateErr := retryOnTransientError(func() error {
+	updateErr := controllersutil.RetryOnTransientError(func() error {
 		latest, e := co.configMapClient.ConfigMaps(required.Namespace).Get(ctx, required.Name, metav1.GetOptions{})
 		if e != nil {
 			return e
@@ -856,7 +857,7 @@ func (co *consoleOperator) syncSessionSecret(
 	}
 
 	var secret *corev1.Secret
-	err = retryOnTransientError(func() error {
+	err = controllersutil.RetryOnTransientError(func() error {
 		var e error
 		secret, _, e = resourceapply.ApplySecret(ctx, co.secretsClient, recorder, required)
 		return e
