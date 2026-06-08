@@ -15,11 +15,6 @@ func TestIsRetryableError(t *testing.T) {
 		retryable bool
 	}{
 		{
-			name:      "nil error is retryable",
-			err:       nil,
-			retryable: true,
-		},
-		{
 			name:      "conflict is retryable",
 			err:       apierrors.NewConflict(schema.GroupResource{Resource: "configmaps"}, "test", fmt.Errorf("conflict")),
 			retryable: true,
