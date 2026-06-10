@@ -211,13 +211,8 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 
 	statusHandler.AddCondition(status.HandleProgressing("SyncLoopRefresh", "InProgress", func() error {
 		version := os.Getenv("OPERATOR_IMAGE_VERSION")
-		// Only report Progressing=True when the deployment is actually rolling out
-		// or the operator version is changing. Do NOT report Progressing just because
-		// resources were updated during reconciliation, as per the API guidelines:
-		// "Operators should not report Progressing when they are reconciling (without action)
-		// a previously known state."
-		if !deploymentsub.IsAvailableAndUpdated(actualDeployment) {
-			return fmt.Errorf("working toward version %s, %v replicas available", version, actualDeployment.Status.AvailableReplicas)
+		if err := checkDeploymentGenerationProgress(actualDeployment); err != nil {
+			return err
 		}
 
 		if co.versionGetter.GetVersions()["operator"] != version {
@@ -754,6 +749,19 @@ func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []string) []*
 		return availablePlugins[i].Name < availablePlugins[j].Name
 	})
 	return availablePlugins
+}
+
+// checkDeploymentGenerationProgress returns an error if the deployment controller
+// has not yet processed the latest spec change (ObservedGeneration < Generation).
+// This is used to determine Progressing status without relying on replica counts,
+// which fluctuate during external disruptions like node reboots.
+// See https://issues.redhat.com/browse/OCPBUGS-64688
+func checkDeploymentGenerationProgress(deployment *appsv1.Deployment) error {
+	if deployment.Status.ObservedGeneration < deployment.Generation {
+		return fmt.Errorf("deployment generation %d not yet observed (observed: %d)",
+			deployment.Generation, deployment.Status.ObservedGeneration)
+	}
+	return nil
 }
 
 func getNodeComputeEnvironments(nodes []*corev1.Node) ([]string, []string) {
