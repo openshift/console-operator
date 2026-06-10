@@ -118,12 +118,19 @@ func (c *DownloadsDeploymentSyncController) SyncDownloadsDeployment(ctx context.
 
 	requiredDownloadsDeployment := deploymentsub.DefaultDownloadsDeployment(operatorConfigCopy, infrastructureConfig)
 
-	return resourceapply.ApplyDeployment(ctx,
-		c.deploymentClient,
-		controllerContext.Recorder(),
-		requiredDownloadsDeployment,
-		resourcemerge.ExpectedDeploymentGeneration(requiredDownloadsDeployment, operatorConfigCopy.Status.Generations),
-	)
+	var actualDeployment *appsv1.Deployment
+	var deploymentChanged bool
+	deploymentErr := util.RetryOnTransientError(func() error {
+		var e error
+		actualDeployment, deploymentChanged, e = resourceapply.ApplyDeployment(ctx,
+			c.deploymentClient,
+			controllerContext.Recorder(),
+			requiredDownloadsDeployment,
+			resourcemerge.ExpectedDeploymentGeneration(requiredDownloadsDeployment, operatorConfigCopy.Status.Generations),
+		)
+		return e
+	})
+	return actualDeployment, deploymentChanged, deploymentErr
 }
 
 func (c *DownloadsDeploymentSyncController) removeDownloadsDeployment(ctx context.Context) error {
