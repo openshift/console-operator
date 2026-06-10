@@ -82,8 +82,8 @@ func GetAccessToken(secretsLister v1.SecretLister) (string, error) {
 	var config DockerConfig
 	err = json.Unmarshal(configBytes, &config)
 	if err != nil {
-		fmt.Println("Error decoding JSON:", err)
-		return "", err
+		klog.Errorf("error decoding pull-secret JSON: %v", err)
+		return "", fmt.Errorf("error decoding pull-secret JSON: %w", err)
 	}
 	authsBytes, ok := config.Auths["cloud.openshift.com"]
 	if !ok {

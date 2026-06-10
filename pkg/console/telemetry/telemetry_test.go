@@ -1,14 +1,17 @@
 package telemetry
 
 import (
+	// standard lib
 	"testing"
 	"time"
 
+	// kube
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 
+	// operator
 	"github.com/openshift/console-operator/pkg/api"
 )
 
