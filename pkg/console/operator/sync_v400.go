@@ -481,6 +481,9 @@ func (co *consoleOperator) GetTelemetryConfiguration(ctx context.Context, operat
 	if err != nil {
 		return nil, err
 	}
+	if accessToken == "" {
+		return telemetryConfig, nil
+	}
 	organizationID, accountMail, refreshCache := telemetry.GetOrganizationMeta(telemetryConfig, co.trackables.organizationID, co.trackables.accountMail, clusterID, accessToken)
 	// cache fetched ORGANIZATION_ID and ACCOUNT_MAIL
 	if refreshCache {

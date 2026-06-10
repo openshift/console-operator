@@ -87,7 +87,7 @@ func GetAccessToken(secretsLister v1.SecretLister) (string, error) {
 	}
 	authsBytes, ok := config.Auths["cloud.openshift.com"]
 	if !ok {
-		return "", fmt.Errorf("failed to parse 'cloud.openshift.com' field from pull-secret")
+		return "", nil
 	}
 	return authsBytes.Auth, nil
 }
