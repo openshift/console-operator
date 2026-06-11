@@ -4,9 +4,12 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/openshift/console-operator/pkg/api"
+
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/openshift/console-operator/pkg/api"
 )
 
 func TestGetNodeComputeEnvironments(t *testing.T) {
@@ -206,6 +209,79 @@ func TestGetNodeComputeEnvironments(t *testing.T) {
 
 			if diff := deep.Equal(tt.expectedOperatingSystems, actualOperatingSystems); diff != nil {
 				t.Errorf("OS mismatch: %v", diff)
+			}
+		})
+	}
+}
+
+// TestDeploymentProgressingByGeneration tests the ObservedGeneration-based
+// Progressing check introduced in OCPBUGS-64688. The operator should only
+// report Progressing=True when the deployment controller has not yet processed
+// a spec change (ObservedGeneration < Generation), NOT when replica counts
+// fluctuate due to external disruptions like node reboots.
+func TestDeploymentProgressingByGeneration(t *testing.T) {
+	tests := []struct {
+		name               string
+		generation         int64
+		observedGeneration int64
+		wantErr            bool
+		wantErrMsg         string
+	}{
+		{
+			name:               "ObservedGeneration equals Generation: not progressing",
+			generation:         5,
+			observedGeneration: 5,
+			wantErr:            false,
+		},
+		{
+			name:               "ObservedGeneration less than Generation: progressing",
+			generation:         4,
+			observedGeneration: 3,
+			wantErr:            true,
+			wantErrMsg:         "deployment generation 4 not yet observed (observed: 3)",
+		},
+		{
+			name:               "ObservedGeneration greater than Generation: not progressing",
+			generation:         2,
+			observedGeneration: 3,
+			wantErr:            false,
+		},
+		{
+			name:               "both zero: not progressing (fresh deployment)",
+			generation:         0,
+			observedGeneration: 0,
+			wantErr:            false,
+		},
+		{
+			name:               "Generation 1, ObservedGeneration 0: progressing (initial rollout)",
+			generation:         1,
+			observedGeneration: 0,
+			wantErr:            true,
+			wantErrMsg:         "deployment generation 1 not yet observed (observed: 0)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: tt.generation,
+				},
+				Status: appsv1.DeploymentStatus{
+					ObservedGeneration: tt.observedGeneration,
+				},
+			}
+
+			err := checkDeploymentGenerationProgress(deployment)
+
+			if tt.wantErr && err == nil {
+				t.Errorf("expected error but got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("expected no error but got: %v", err)
+			}
+			if tt.wantErr && err != nil && err.Error() != tt.wantErrMsg {
+				t.Errorf("error message mismatch:\n  got:  %q\n  want: %q", err.Error(), tt.wantErrMsg)
 			}
 		})
 	}
