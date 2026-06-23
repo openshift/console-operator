@@ -79,7 +79,7 @@ spec:
             - '-c'
             - |
               cat <<EOF >/tmp/serve.py
-              import errno, http.server, os, re, signal, socket, sys, tarfile, tempfile, threading, time, zipfile
+              import errno, http.server, os, re, shutil, signal, socket, sys, tarfile, tempfile, threading, time, zipfile
 
               def shutdown_handler(signum, frame):
                 print("Received signal {}, shutting down...".format(signum), flush=True)
@@ -124,7 +124,22 @@ spec:
                   httpd.serve_forever()
 
               print('Starting downloads server...', flush=True)
-              temp_dir = tempfile.mkdtemp()
+
+              # Clean up any existing download-* directories
+              TEMP_DIR_PREFIX = 'download-'
+              tmp_base = tempfile.gettempdir()
+              print('Cleaning up old temp directories in {}...'.format(tmp_base), flush=True)
+              for item in os.listdir(tmp_base):
+                if item.startswith(TEMP_DIR_PREFIX):
+                  old_dir = os.path.join(tmp_base, item)
+                  try:
+                    if os.path.isdir(old_dir):
+                      print('  Removing old directory: {}'.format(old_dir), flush=True)
+                      shutil.rmtree(old_dir)
+                  except Exception as e:
+                    print('  WARNING: Failed to remove {}: {}'.format(old_dir, str(e)), flush=True)
+
+              temp_dir = tempfile.mkdtemp(prefix=TEMP_DIR_PREFIX)
               print('Serving from: {}'.format(temp_dir), flush=True)
               os.chdir(temp_dir)
               
