@@ -49,6 +49,7 @@ func DefaultConfigMap(
 	telemeterConfig map[string]string,
 	consoleHost string,
 	techPreviewEnabled bool,
+	olmLifecycleMetadataEnabled bool,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	apiServerURL := infrastructuresub.GetAPIServerURL(infrastructureConfig)
@@ -66,6 +67,7 @@ func DefaultConfigMap(
 		NodeOperatingSystems(nodeOperatingSystems).
 		CopiedCSVsDisabled(copiedCSVsDisabled).
 		TechPreviewEnabled(techPreviewEnabled).
+		OLMLifecycleMetadataEnabled(olmLifecycleMetadataEnabled).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate default console-config config: %v", err)
@@ -106,6 +108,7 @@ func DefaultConfigMap(
 		AuthConfig(authConfig, apiServerURL).
 		Capabilities(operatorConfig.Spec.Customization.Capabilities).
 		TechPreviewEnabled(techPreviewEnabled).
+		OLMLifecycleMetadataEnabled(olmLifecycleMetadataEnabled).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate user defined console-config config: %v", err)
