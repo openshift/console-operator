@@ -130,6 +130,12 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(techPreviewErr)
 	}
 
+	olmLifecycleMetadataEnabled, olmLifecycleMetadataErrReason, olmLifecycleMetadataErr := co.SyncOLMLifecycleMetadata()
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OLMLifecycleMetadataSync", olmLifecycleMetadataErrReason, olmLifecycleMetadataErr))
+	if olmLifecycleMetadataErr != nil {
+		return statusHandler.FlushAndReturn(olmLifecycleMetadataErr)
+	}
+
 	cm, cmErrReason, cmErr := co.SyncConfigMap(
 		ctx,
 		set.Operator,
@@ -141,6 +147,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		controllerContext.Recorder(),
 		consoleURL.Hostname(),
 		techPreviewEnabled,
+		olmLifecycleMetadataEnabled,
 	)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
 	if cmErr != nil {
@@ -352,6 +359,7 @@ func (co *consoleOperator) SyncConfigMap(
 	recorder events.Recorder,
 	consoleHost string,
 	techPreviewEnabled bool,
+	olmLifecycleMetadataEnabled bool,
 ) (consoleConfigMap *corev1.ConfigMap, reason string, err error) {
 
 	managedConfig, mcErr := co.managedNSConfigMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName)
@@ -426,6 +434,7 @@ func (co *consoleOperator) SyncConfigMap(
 		telemetryConfig,
 		consoleHost,
 		techPreviewEnabled,
+		olmLifecycleMetadataEnabled,
 	)
 	if err != nil {
 		return nil, "FailedConsoleConfigBuilder", err
@@ -599,7 +608,7 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorC
 func (co *consoleOperator) SyncTechPreview() (techPreviewEnabled bool, reason string, err error) {
 	featureGate, err := co.featureGateLister.Get(api.ConfigResourceName)
 	if err != nil {
-		klog.V(4).Infof("failed to get FeatureGate resource: %v.", err)
+		klog.V(4).Infof("failed to get FeatureGate resource: %v", err)
 		return false, "FailedGet", err
 	}
 
@@ -609,6 +618,29 @@ func (co *consoleOperator) SyncTechPreview() (techPreviewEnabled bool, reason st
 		klog.V(4).Infoln("Console Technology Preview features enabled based on cluster FeatureSet TechPreviewNoUpgrade.")
 	}
 	return techPreviewEnabled, "", nil
+}
+
+// Replace with features.FeatureGateOLMLifecycleAndCompatibility once openshift/api is bumped.
+const olmLifecycleAndCompatibilityFeatureGate configv1.FeatureGateName = "OLMLifecycleAndCompatibility"
+
+// SyncOLMLifecycleMetadata determines if OLM lifecycle metadata features should be enabled
+// by checking if the OLMLifecycleAndCompatibility feature gate is enabled in the cluster.
+func (co *consoleOperator) SyncOLMLifecycleMetadata() (olmLifecycleMetadataEnabled bool, reason string, err error) {
+	featureGate, err := co.featureGateLister.Get(api.ConfigResourceName)
+	if err != nil {
+		klog.V(4).Infof("failed to get FeatureGate resource: %v", err)
+		return false, "FailedGet", err
+	}
+
+	for _, versionedGates := range featureGate.Status.FeatureGates {
+		for _, gate := range versionedGates.Enabled {
+			if gate.Name == olmLifecycleAndCompatibilityFeatureGate {
+				klog.V(4).Infoln("OLM lifecycle metadata features are enabled based on the OLMLifecycleAndCompatibility feature gate")
+				return true, "", nil
+			}
+		}
+	}
+	return false, "", nil
 }
 
 func (co *consoleOperator) SyncCustomLogos(operatorConfig *operatorv1.Console) (error, string) {

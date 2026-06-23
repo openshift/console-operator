@@ -46,43 +46,44 @@ var SupportedLightspeedArchitectures = []string{"amd64"}
 //
 //	b.Host().Brand("").Config()
 type ConsoleServerCLIConfigBuilder struct {
-	host                       string
-	logoutRedirectURL          string
-	brand                      operatorv1.Brand
-	docURL                     string
-	apiServerURL               string
-	controlPlaneToplogy        configv1.TopologyMode
-	statusPageID               string
-	customProductName          string
-	devCatalogCustomization    operatorv1.DeveloperConsoleCatalogCustomization
-	projectAccess              operatorv1.ProjectAccess
-	quickStarts                operatorv1.QuickStarts
-	addPage                    operatorv1.AddPage
-	perspectives               []operatorv1.Perspective
-	CAFile                     string
-	monitoring                 map[string]string
-	customHostnameRedirectPort int
-	inactivityTimeoutSeconds   int
-	pluginsList                map[string]string
-	pluginsOrder               []string
-	i18nNamespaceList          []string
-	proxyServices              []ProxyService
-	telemetry                  map[string]string
-	releaseVersion             string
-	nodeArchitectures          []string
-	nodeOperatingSystems       []string
-	copiedCSVsDisabled         bool
-	oauthClientID              string
-	oidcExtraScopes            []string
-	oidcIssuerURL              string
-	oidcOCLoginCommand         string
-	authType                   string
-	sessionEncryptionFile      string
-	sessionAuthenticationFile  string
-	capabilities               []operatorv1.Capability
-	contentSecurityPolicyList  map[v1.DirectiveType][]string
-	logos                      []operatorv1.Logo
-	techPreviewEnabled         bool
+	host                        string
+	logoutRedirectURL           string
+	brand                       operatorv1.Brand
+	docURL                      string
+	apiServerURL                string
+	controlPlaneToplogy         configv1.TopologyMode
+	statusPageID                string
+	customProductName           string
+	devCatalogCustomization     operatorv1.DeveloperConsoleCatalogCustomization
+	projectAccess               operatorv1.ProjectAccess
+	quickStarts                 operatorv1.QuickStarts
+	addPage                     operatorv1.AddPage
+	perspectives                []operatorv1.Perspective
+	CAFile                      string
+	monitoring                  map[string]string
+	customHostnameRedirectPort  int
+	inactivityTimeoutSeconds    int
+	pluginsList                 map[string]string
+	pluginsOrder                []string
+	i18nNamespaceList           []string
+	proxyServices               []ProxyService
+	telemetry                   map[string]string
+	releaseVersion              string
+	nodeArchitectures           []string
+	nodeOperatingSystems        []string
+	copiedCSVsDisabled          bool
+	oauthClientID               string
+	oidcExtraScopes             []string
+	oidcIssuerURL               string
+	oidcOCLoginCommand          string
+	authType                    string
+	sessionEncryptionFile       string
+	sessionAuthenticationFile   string
+	capabilities                []operatorv1.Capability
+	contentSecurityPolicyList   map[v1.DirectiveType][]string
+	logos                       []operatorv1.Logo
+	techPreviewEnabled          bool
+	olmLifecycleMetadataEnabled bool
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -311,6 +312,11 @@ func (b *ConsoleServerCLIConfigBuilder) TechPreviewEnabled(techPreviewEnabled bo
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) OLMLifecycleMetadataEnabled(olmLifecycleMetadataEnabled bool) *ConsoleServerCLIConfigBuilder {
+	b.olmLifecycleMetadataEnabled = olmLifecycleMetadataEnabled
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
 		Kind:                  "ConsoleConfig",
@@ -381,6 +387,7 @@ func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {
 	}
 	conf.CopiedCSVsDisabled = b.copiedCSVsDisabled
 	conf.TechPreviewEnabled = b.techPreviewEnabled
+	conf.OLMLifecycleMetadataEnabled = b.olmLifecycleMetadataEnabled
 	return conf
 }
 
