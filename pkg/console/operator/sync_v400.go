@@ -185,7 +185,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(servingCertErr)
 	}
 
-	actualDeployment, depErrReason, depErr := co.SyncDeployment(
+	actualDeployment, depChanged, depErrReason, depErr := co.SyncDeployment(
 		ctx,
 		set.Operator,
 		cm,
@@ -211,8 +211,17 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 
 	statusHandler.AddCondition(status.HandleProgressing("SyncLoopRefresh", "InProgress", func() error {
 		version := os.Getenv("OPERATOR_IMAGE_VERSION")
-		if err := checkDeploymentGenerationProgress(actualDeployment); err != nil {
-			return err
+		// Skip the generation check when SyncDeployment just applied changes.
+		// The generation gap is guaranteed immediately after an update (the API
+		// server bumps Generation but ObservedGeneration lags until the deployment
+		// controller processes it). Reporting Progressing=True for this sub-second
+		// gap provides no signal and causes OTA invariant test failures during
+		// upgrades. The next sync loop will check with depChanged=false and catch
+		// any persistent gap. See https://issues.redhat.com/browse/OCPBUGS-93982
+		if !depChanged {
+			if err := checkDeploymentGenerationProgress(actualDeployment); err != nil {
+				return err
+			}
 		}
 
 		if co.versionGetter.GetVersions()["operator"] != version {
@@ -297,7 +306,7 @@ func (co *consoleOperator) SyncDeployment(
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
 	recorder events.Recorder,
-) (consoleDeployment *appsv1.Deployment, reason string, err error) {
+) (consoleDeployment *appsv1.Deployment, changed bool, reason string, err error) {
 	updatedOperatorConfig := operatorConfig.DeepCopy()
 	requiredDeployment := deploymentsub.DefaultDeployment(
 		operatorConfig,
@@ -320,9 +329,10 @@ func (co *consoleOperator) SyncDeployment(
 	deploymentsub.LogDeploymentAnnotationChanges(co.deploymentClient, requiredDeployment, ctx)
 
 	var deployment *appsv1.Deployment
+	var deploymentChanged bool
 	applyDepErr := controllersutil.RetryOnTransientError(func() error {
 		var e error
-		deployment, _, e = resourceapply.ApplyDeployment(
+		deployment, deploymentChanged, e = resourceapply.ApplyDeployment(
 			ctx,
 			co.deploymentClient,
 			recorder,
@@ -333,9 +343,9 @@ func (co *consoleOperator) SyncDeployment(
 	})
 
 	if applyDepErr != nil {
-		return nil, "FailedApply", applyDepErr
+		return nil, false, "FailedApply", applyDepErr
 	}
-	return deployment, "", nil
+	return deployment, deploymentChanged, "", nil
 }
 
 // apply configmap (needs route)

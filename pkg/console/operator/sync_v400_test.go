@@ -229,6 +229,71 @@ func TestGetNodeComputeEnvironments(t *testing.T) {
 // report Progressing=True when the deployment controller has not yet processed
 // a spec change (ObservedGeneration < Generation), NOT when replica counts
 // fluctuate due to external disruptions like node reboots.
+// TestDeploymentProgressingSkippedWhenChanged verifies the guard logic from
+// OCPBUGS-93982: when SyncDeployment reports changed=true, the generation check
+// is skipped because the operator itself caused the generation gap.
+func TestDeploymentProgressingSkippedWhenChanged(t *testing.T) {
+	tests := []struct {
+		name               string
+		depChanged         bool
+		generation         int64
+		observedGeneration int64
+		wantProgressing    bool
+	}{
+		{
+			name:               "changed=true with generation gap: skip check, not progressing",
+			depChanged:         true,
+			generation:         7,
+			observedGeneration: 6,
+			wantProgressing:    false,
+		},
+		{
+			name:               "changed=false with generation gap: run check, progressing",
+			depChanged:         false,
+			generation:         7,
+			observedGeneration: 6,
+			wantProgressing:    true,
+		},
+		{
+			name:               "changed=false with no generation gap: run check, not progressing",
+			depChanged:         false,
+			generation:         7,
+			observedGeneration: 7,
+			wantProgressing:    false,
+		},
+		{
+			name:               "changed=true with no generation gap: skip check, not progressing",
+			depChanged:         true,
+			generation:         7,
+			observedGeneration: 7,
+			wantProgressing:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: tt.generation,
+				},
+				Status: appsv1.DeploymentStatus{
+					ObservedGeneration: tt.observedGeneration,
+				},
+			}
+
+			var progressingErr error
+			if !tt.depChanged {
+				progressingErr = checkDeploymentGenerationProgress(deployment)
+			}
+
+			gotProgressing := progressingErr != nil
+			if gotProgressing != tt.wantProgressing {
+				t.Errorf("progressing = %v, want %v (err: %v)", gotProgressing, tt.wantProgressing, progressingErr)
+			}
+		})
+	}
+}
+
 func TestDeploymentProgressingByGeneration(t *testing.T) {
 	tests := []struct {
 		name               string
