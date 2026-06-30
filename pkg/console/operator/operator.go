@@ -94,6 +94,8 @@ type consoleOperator struct {
 	trackables trackables
 
 	monitoringDeploymentLister appsv1listers.DeploymentLister
+
+	lastDeploymentAvailableTime time.Time
 }
 
 type trackables struct {
