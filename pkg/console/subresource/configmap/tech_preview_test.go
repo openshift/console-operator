@@ -59,6 +59,7 @@ func TestTechPreviewEnabled(t *testing.T) {
 				"console.test.cluster",       // consoleHost
 				tt.args.techPreviewEnabled,
 				false, // olmLifecycleMetadataEnabled
+				nil,   // additionalHosts
 			)
 
 			if err != nil {
@@ -124,6 +125,7 @@ func TestOLMLifecycleMetadataEnabled(t *testing.T) {
 				"console.test.cluster",       // consoleHost
 				false,                        // techPreviewEnabled
 				tt.args.olmLifecycleMetadataEnabled,
+				nil,   // additionalHosts
 			)
 
 			if err != nil {

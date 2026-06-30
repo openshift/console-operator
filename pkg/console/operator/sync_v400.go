@@ -435,6 +435,7 @@ func (co *consoleOperator) SyncConfigMap(
 		consoleHost,
 		techPreviewEnabled,
 		olmLifecycleMetadataEnabled,
+		nil, // additionalHosts - wired in subsequent commit
 	)
 	if err != nil {
 		return nil, "FailedConsoleConfigBuilder", err

@@ -1306,6 +1306,7 @@ providers: {}
 				tt.args.rt.Spec.Host,
 				false, // techPreviewEnabled - default to false for tests
 				false, // olmLifecycleMetadataEnabled - default to false for tests
+				nil,   // additionalHosts
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below

@@ -84,6 +84,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	logos                       []operatorv1.Logo
 	techPreviewEnabled          bool
 	olmLifecycleMetadataEnabled bool
+	additionalHosts             []string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -317,6 +318,11 @@ func (b *ConsoleServerCLIConfigBuilder) OLMLifecycleMetadataEnabled(olmLifecycle
 	return b
 }
 
+func (b *ConsoleServerCLIConfigBuilder) AdditionalHosts(hosts []string) *ConsoleServerCLIConfigBuilder {
+	b.additionalHosts = hosts
+	return b
+}
+
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
 		Kind:                  "ConsoleConfig",
@@ -371,6 +377,11 @@ func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {
 	}
 	if len(b.host) > 0 {
 		conf.ConsoleBaseAddress = util.HTTPS(b.host)
+	}
+	if len(b.additionalHosts) > 0 {
+		for _, h := range b.additionalHosts {
+			conf.AdditionalConsoleBaseAddresses = append(conf.AdditionalConsoleBaseAddresses, util.HTTPS(h))
+		}
 	}
 	if len(b.controlPlaneToplogy) > 0 {
 		conf.ControlPlaneToplogy = b.controlPlaneToplogy
