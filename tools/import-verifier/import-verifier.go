@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -303,7 +302,7 @@ func mergePackages(existingPackages, currPackages []Package) []Package {
 }
 
 func loadImportRestrictions(configFile string) ([]ImportRestriction, error) {
-	config, err := ioutil.ReadFile(configFile)
+	config, err := os.ReadFile(configFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration from %s: %v", configFile, err)
 	}
