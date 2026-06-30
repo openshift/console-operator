@@ -161,3 +161,123 @@ func TestNewRouteConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestGetAdditionalComponentRouteSpecs(t *testing.T) {
+	tests := []struct {
+		name          string
+		ingressConfig *configv1.Ingress
+		wantNames     []string
+	}{
+		{
+			name: "no component routes",
+			ingressConfig: &configv1.Ingress{
+				Spec: configv1.IngressSpec{},
+			},
+			wantNames: nil,
+		},
+		{
+			name: "only known routes excluded",
+			ingressConfig: &configv1.Ingress{
+				Spec: configv1.IngressSpec{
+					ComponentRoutes: []configv1.ComponentRouteSpec{
+						{Namespace: api.OpenShiftConsoleNamespace, Name: "console", Hostname: "console.example.com"},
+						{Namespace: api.OpenShiftConsoleNamespace, Name: "downloads", Hostname: "downloads.example.com"},
+					},
+				},
+			},
+			wantNames: nil,
+		},
+		{
+			name: "additional routes returned",
+			ingressConfig: &configv1.Ingress{
+				Spec: configv1.IngressSpec{
+					ComponentRoutes: []configv1.ComponentRouteSpec{
+						{Namespace: api.OpenShiftConsoleNamespace, Name: "console", Hostname: "console.example.com"},
+						{Namespace: api.OpenShiftConsoleNamespace, Name: "console-web", Hostname: "console-web.example.com"},
+						{Namespace: api.OpenShiftConsoleNamespace, Name: "console-internal", Hostname: "console.internal.example.com"},
+					},
+				},
+			},
+			wantNames: []string{"console-web", "console-internal"},
+		},
+		{
+			name: "different namespace excluded",
+			ingressConfig: &configv1.Ingress{
+				Spec: configv1.IngressSpec{
+					ComponentRoutes: []configv1.ComponentRouteSpec{
+						{Namespace: "openshift-authentication", Name: "oauth-openshift", Hostname: "oauth.example.com"},
+						{Namespace: api.OpenShiftConsoleNamespace, Name: "console-extra", Hostname: "extra.example.com"},
+					},
+				},
+			},
+			wantNames: []string{"console-extra"},
+		},
+		{
+			name: "custom route names excluded",
+			ingressConfig: &configv1.Ingress{
+				Spec: configv1.IngressSpec{
+					ComponentRoutes: []configv1.ComponentRouteSpec{
+						{Namespace: api.OpenShiftConsoleNamespace, Name: "console-custom", Hostname: "custom.example.com"},
+						{Namespace: api.OpenShiftConsoleNamespace, Name: "downloads-custom", Hostname: "dl-custom.example.com"},
+						{Namespace: api.OpenShiftConsoleNamespace, Name: "console-secondary", Hostname: "secondary.example.com"},
+					},
+				},
+			},
+			wantNames: []string{"console-secondary"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			specs := GetAdditionalComponentRouteSpecs(tt.ingressConfig)
+			var gotNames []string
+			for _, s := range specs {
+				gotNames = append(gotNames, string(s.Name))
+			}
+			if diff := deep.Equal(gotNames, tt.wantNames); diff != nil {
+				t.Errorf("GetAdditionalComponentRouteSpecs() names mismatch: %v", diff)
+			}
+		})
+	}
+}
+
+func TestGetAdditionalRouteHostnames(t *testing.T) {
+	ingressConfig := &configv1.Ingress{
+		Spec: configv1.IngressSpec{
+			ComponentRoutes: []configv1.ComponentRouteSpec{
+				{Namespace: api.OpenShiftConsoleNamespace, Name: "console", Hostname: "console.example.com"},
+				{Namespace: api.OpenShiftConsoleNamespace, Name: "console-web", Hostname: "console-web.example.com"},
+				{Namespace: api.OpenShiftConsoleNamespace, Name: "console-internal", Hostname: "console.internal.example.com"},
+			},
+		},
+	}
+	got := GetAdditionalRouteHostnames(ingressConfig)
+	want := []string{"console-web.example.com", "console.internal.example.com"}
+	if diff := deep.Equal(got, want); diff != nil {
+		t.Errorf("GetAdditionalRouteHostnames() mismatch: %v", diff)
+	}
+}
+
+func TestAdditionalRoute(t *testing.T) {
+	spec := configv1.ComponentRouteSpec{
+		Name:      "console-secondary",
+		Namespace: api.OpenShiftConsoleNamespace,
+		Hostname:  "console-secondary.example.com",
+	}
+	route := AdditionalRoute(spec)
+
+	if route.Name != "console-secondary" {
+		t.Errorf("expected route name %q, got %q", "console-secondary", route.Name)
+	}
+	if route.Spec.Host != "console-secondary.example.com" {
+		t.Errorf("expected route host %q, got %q", "console-secondary.example.com", route.Spec.Host)
+	}
+	if route.Labels[additionalRouteLabel] != "true" {
+		t.Errorf("expected label %q to be %q, got %q", additionalRouteLabel, "true", route.Labels[additionalRouteLabel])
+	}
+	if route.Spec.To.Name != api.OpenShiftConsoleServiceName {
+		t.Errorf("expected route to point to service %q, got %q", api.OpenShiftConsoleServiceName, route.Spec.To.Name)
+	}
+	if route.Spec.TLS.Termination != "reencrypt" {
+		t.Errorf("expected TLS termination reencrypt, got %q", route.Spec.TLS.Termination)
+	}
+}

@@ -298,3 +298,46 @@ func setTLS(tlsConfig *CustomTLSCert, route *routev1.Route) {
 func GetCustomRouteName(routeName string) string {
 	return fmt.Sprintf("%s-custom", routeName)
 }
+
+var knownConsoleRouteNames = map[string]bool{
+	api.OpenShiftConsoleRouteName:          true,
+	api.OpenShiftConsoleDownloadsRouteName: true,
+	api.OpenshiftConsoleCustomRouteName:    true,
+	api.OpenshiftDownloadsCustomRouteName:  true,
+}
+
+func GetAdditionalComponentRouteSpecs(ingressConfig *configv1.Ingress) []configv1.ComponentRouteSpec {
+	var additional []configv1.ComponentRouteSpec
+	for _, cr := range ingressConfig.Spec.ComponentRoutes {
+		if cr.Namespace != api.OpenShiftConsoleNamespace {
+			continue
+		}
+		if knownConsoleRouteNames[string(cr.Name)] {
+			continue
+		}
+		additional = append(additional, *cr.DeepCopy())
+	}
+	return additional
+}
+
+func GetAdditionalRouteHostnames(ingressConfig *configv1.Ingress) []string {
+	specs := GetAdditionalComponentRouteSpecs(ingressConfig)
+	hostnames := make([]string, 0, len(specs))
+	for _, spec := range specs {
+		hostnames = append(hostnames, string(spec.Hostname))
+	}
+	return hostnames
+}
+
+const additionalRouteLabel = "console.openshift.io/additional-route"
+
+func AdditionalRoute(spec configv1.ComponentRouteSpec) *routev1.Route {
+	route := resourceread.ReadRouteV1OrDie(bindata.MustAsset("assets/routes/console-route.yaml"))
+	route.Name = string(spec.Name)
+	route.Spec.Host = string(spec.Hostname)
+	if route.Labels == nil {
+		route.Labels = make(map[string]string)
+	}
+	route.Labels[additionalRouteLabel] = "true"
+	return route
+}
