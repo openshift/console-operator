@@ -47,11 +47,13 @@ import (
 
 type CLIDownloadsSyncController struct {
 	// clients
-	operatorClient            v1helpers.OperatorClient
-	consoleCliDownloadsClient consoleclientv1.ConsoleCLIDownloadInterface
-	routeLister               routev1listers.RouteLister
-	ingressConfigLister       configlistersv1.IngressLister
-	operatorConfigLister      operatorv1listers.ConsoleLister
+	operatorClient             v1helpers.OperatorClient
+	consoleCliDownloadsClient  consoleclientv1.ConsoleCLIDownloadInterface
+	routeLister                routev1listers.RouteLister
+	ingressConfigLister        configlistersv1.IngressLister
+	infrastructureConfigLister configlistersv1.InfrastructureLister
+	clusterVersionLister       configlistersv1.ClusterVersionLister
+	operatorConfigLister       operatorv1listers.ConsoleLister
 }
 
 func NewCLIDownloadsSyncController(
@@ -71,11 +73,13 @@ func NewCLIDownloadsSyncController(
 
 	ctrl := &CLIDownloadsSyncController{
 		// clients
-		operatorClient:            operatorClient,
-		consoleCliDownloadsClient: cliDownloadsInterface,
-		routeLister:               routeInformer.Lister(),
-		ingressConfigLister:       configInformer.Config().V1().Ingresses().Lister(),
-		operatorConfigLister:      operatorConfigInformer.Lister(),
+		operatorClient:             operatorClient,
+		consoleCliDownloadsClient:  cliDownloadsInterface,
+		routeLister:                routeInformer.Lister(),
+		ingressConfigLister:        configInformer.Config().V1().Ingresses().Lister(),
+		infrastructureConfigLister: configInformer.Config().V1().Infrastructures().Lister(),
+		clusterVersionLister:       configInformer.Config().V1().ClusterVersions().Lister(),
+		operatorConfigLister:       operatorConfigInformer.Lister(),
 	}
 
 	configV1Informers := configInformer.Config().V1()
@@ -121,6 +125,19 @@ func (c *CLIDownloadsSyncController) Sync(ctx context.Context, controllerContext
 		downloadsErr error
 	)
 	if len(operatorConfig.Spec.Ingress.ClientDownloadsURL) == 0 {
+		infrastructureConfig, err := c.infrastructureConfigLister.Get(api.ConfigResourceName)
+		if err != nil {
+			return statusHandler.FlushAndReturn(err)
+		}
+		clusterVersionConfig, err := c.clusterVersionLister.Get(api.VersionResourceName)
+		if err != nil {
+			return statusHandler.FlushAndReturn(err)
+		}
+		if controllersutil.IsExternalControlPlaneWithIngressDisabled(infrastructureConfig, clusterVersionConfig) {
+			statusHandler.AddCondition(status.HandleDegraded("OCDownloadsSync", "", nil))
+			return statusHandler.FlushAndReturn(nil)
+		}
+
 		ingressConfig, err := c.ingressConfigLister.Get(api.ConfigResourceName)
 		if err != nil {
 			return statusHandler.FlushAndReturn(err)
