@@ -61,6 +61,14 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	)
 
 	if len(set.Operator.Spec.Ingress.ConsoleURL) == 0 {
+		clusterVersionConfig, err := co.clusterVersionLister.Get(api.VersionResourceName)
+		if err != nil {
+			return statusHandler.FlushAndReturn(err)
+		}
+		if controllersutil.IsExternalControlPlaneWithIngressDisabled(set.Infrastructure, clusterVersionConfig) {
+			return statusHandler.FlushAndReturn(nil)
+		}
+
 		routeName := api.OpenShiftConsoleRouteName
 		routeConfig := routesub.NewRouteConfig(updatedOperatorConfig, set.Ingress, routeName)
 		if routeConfig.IsCustomHostnameSet() {
