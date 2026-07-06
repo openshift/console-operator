@@ -55,6 +55,8 @@ type oauthClientsController struct {
 	consoleOperatorLister       operatorv1listers.ConsoleLister
 	routesLister                routev1listers.RouteLister
 	ingressConfigLister         configv1lister.IngressLister
+	infrastructureConfigLister  configv1lister.InfrastructureLister
+	clusterVersionLister        configv1lister.ClusterVersionLister
 	targetNSSecretsLister       corev1listers.SecretLister
 }
 
@@ -65,6 +67,8 @@ func NewOAuthClientsController(
 	consoleOperatorInformer operatorv1informers.ConsoleInformer,
 	routeInformer routev1informers.RouteInformer,
 	ingressConfigInformer configv1informers.IngressInformer,
+	infrastructureConfigInformer configv1informers.InfrastructureInformer,
+	clusterVersionInformer configv1informers.ClusterVersionInformer,
 	targetNSsecretsInformer corev1informers.SecretInformer,
 	oauthClientSwitchedInformer *util.InformerWithSwitch,
 	recorder events.Recorder,
@@ -79,6 +83,8 @@ func NewOAuthClientsController(
 		consoleOperatorLister:       consoleOperatorInformer.Lister(),
 		routesLister:                routeInformer.Lister(),
 		ingressConfigLister:         ingressConfigInformer.Lister(),
+		infrastructureConfigLister:  infrastructureConfigInformer.Lister(),
+		clusterVersionLister:        clusterVersionInformer.Lister(),
 		targetNSSecretsLister:       targetNSsecretsInformer.Lister(),
 	}
 
@@ -136,6 +142,19 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 	var consoleURL *url.URL
 
 	if len(operatorConfig.Spec.Ingress.ConsoleURL) == 0 {
+		infrastructureConfig, err := c.infrastructureConfigLister.Get(api.ConfigResourceName)
+		if err != nil {
+			return err
+		}
+		clusterVersionConfig, err := c.clusterVersionLister.Get(api.VersionResourceName)
+		if err != nil {
+			return err
+		}
+		if util.IsExternalControlPlaneWithIngressDisabled(infrastructureConfig, clusterVersionConfig) {
+			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSync", "", nil))
+			return statusHandler.FlushAndReturn(nil)
+		}
+
 		routeName := api.OpenShiftConsoleRouteName
 		routeConfig := routesub.NewRouteConfig(operatorConfig, ingressConfig, routeName)
 		if routeConfig.IsCustomHostnameSet() {
