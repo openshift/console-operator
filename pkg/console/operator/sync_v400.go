@@ -33,6 +33,7 @@ import (
 
 	// operator
 	"github.com/openshift/console-operator/pkg/api"
+	routecontroller "github.com/openshift/console-operator/pkg/console/controllers/route"
 	controllersutil "github.com/openshift/console-operator/pkg/console/controllers/util"
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
 	"github.com/openshift/console-operator/pkg/console/metrics"
@@ -139,18 +140,30 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	additionalSpecs := routesub.GetAdditionalComponentRouteSpecs(set.Ingress)
 	additionalHosts := routesub.GetAdditionalRouteHostnames(set.Ingress)
 	var routeSyncErrors []string
+	desiredAdditionalRoutes := sets.NewString()
 	for _, spec := range additionalSpecs {
-		requiredRoute := routesub.AdditionalRoute(spec)
-		if _, _, err := routesub.ApplyRoute(co.routeClient, requiredRoute); err != nil {
+		desiredAdditionalRoutes.Insert(string(spec.Name))
+		customTLS := co.getAdditionalRouteTLS(spec)
+		requiredRoute := routesub.AdditionalRoute(spec, customTLS)
+		if err := controllersutil.RetryOnTransientError(func() error {
+			_, _, e := routesub.ApplyRoute(co.routeClient, requiredRoute)
+			return e
+		}); err != nil {
 			klog.Errorf("failed to sync additional route %s: %v", spec.Name, err)
 			routeSyncErrors = append(routeSyncErrors, fmt.Sprintf("%s: %v", spec.Name, err))
 		}
+	}
+	if cleanupErr := co.cleanupOrphanedAdditionalRoutes(ctx, desiredAdditionalRoutes); cleanupErr != nil {
+		routeSyncErrors = append(routeSyncErrors, fmt.Sprintf("cleanup: %v", cleanupErr))
 	}
 	var additionalRouteSyncErr error
 	if len(routeSyncErrors) > 0 {
 		additionalRouteSyncErr = fmt.Errorf("failed to sync additional routes: %s", strings.Join(routeSyncErrors, "; "))
 	}
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("AdditionalRouteSync", "FailedAdditionalRoutes", additionalRouteSyncErr))
+	if additionalRouteSyncErr != nil {
+		return statusHandler.FlushAndReturn(additionalRouteSyncErr)
+	}
 
 	cm, cmErrReason, cmErr := co.SyncConfigMap(
 		ctx,
@@ -660,6 +673,42 @@ func (co *consoleOperator) SyncOLMLifecycleMetadata() (olmLifecycleMetadataEnabl
 		}
 	}
 	return false, "", nil
+}
+
+func (co *consoleOperator) getAdditionalRouteTLS(spec configv1.ComponentRouteSpec) *routesub.CustomTLSCert {
+	if spec.ServingCertKeyPairSecret.Name == "" {
+		return nil
+	}
+	secret, err := co.configNSSecretLister.Secrets(api.OpenShiftConfigNamespace).Get(spec.ServingCertKeyPairSecret.Name)
+	if err != nil {
+		klog.Warningf("failed to get TLS secret %q for additional route %s: %v", spec.ServingCertKeyPairSecret.Name, spec.Name, err)
+		return nil
+	}
+	customTLS, err := routecontroller.ValidateCustomCertSecret(secret)
+	if err != nil {
+		klog.Warningf("invalid TLS secret %q for additional route %s: %v", spec.ServingCertKeyPairSecret.Name, spec.Name, err)
+		return nil
+	}
+	return customTLS
+}
+
+func (co *consoleOperator) cleanupOrphanedAdditionalRoutes(ctx context.Context, desired sets.String) error {
+	existing, err := co.routeLister.Routes(api.OpenShiftConsoleNamespace).List(labels.SelectorFromSet(labels.Set{
+		routesub.AdditionalRouteLabel: "true",
+	}))
+	if err != nil {
+		return fmt.Errorf("failed to list additional routes: %w", err)
+	}
+	for _, route := range existing {
+		if desired.Has(route.Name) {
+			continue
+		}
+		klog.V(2).Infof("deleting orphaned additional route %s", route.Name)
+		if err := co.routeClient.Routes(api.OpenShiftConsoleNamespace).Delete(ctx, route.Name, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to delete orphaned route %s: %w", route.Name, err)
+		}
+	}
+	return nil
 }
 
 func (co *consoleOperator) SyncCustomLogos(operatorConfig *operatorv1.Console) (error, string) {

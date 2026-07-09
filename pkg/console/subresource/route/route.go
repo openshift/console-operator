@@ -329,15 +329,16 @@ func GetAdditionalRouteHostnames(ingressConfig *configv1.Ingress) []string {
 	return hostnames
 }
 
-const additionalRouteLabel = "console.openshift.io/additional-route"
+const AdditionalRouteLabel = "console.openshift.io/additional-route"
 
-func AdditionalRoute(spec configv1.ComponentRouteSpec) *routev1.Route {
+func AdditionalRoute(spec configv1.ComponentRouteSpec, customTLSCert *CustomTLSCert) *routev1.Route {
 	route := resourceread.ReadRouteV1OrDie(bindata.MustAsset("assets/routes/console-route.yaml"))
 	route.Name = string(spec.Name)
 	route.Spec.Host = string(spec.Hostname)
 	if route.Labels == nil {
 		route.Labels = make(map[string]string)
 	}
-	route.Labels[additionalRouteLabel] = "true"
+	route.Labels[AdditionalRouteLabel] = "true"
+	setTLS(customTLSCert, route)
 	return route
 }

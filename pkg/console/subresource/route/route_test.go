@@ -263,7 +263,7 @@ func TestAdditionalRoute(t *testing.T) {
 		Namespace: api.OpenShiftConsoleNamespace,
 		Hostname:  "console-secondary.example.com",
 	}
-	route := AdditionalRoute(spec)
+	route := AdditionalRoute(spec, nil)
 
 	if route.Name != "console-secondary" {
 		t.Errorf("expected route name %q, got %q", "console-secondary", route.Name)
@@ -271,8 +271,8 @@ func TestAdditionalRoute(t *testing.T) {
 	if route.Spec.Host != "console-secondary.example.com" {
 		t.Errorf("expected route host %q, got %q", "console-secondary.example.com", route.Spec.Host)
 	}
-	if route.Labels[additionalRouteLabel] != "true" {
-		t.Errorf("expected label %q to be %q, got %q", additionalRouteLabel, "true", route.Labels[additionalRouteLabel])
+	if route.Labels[AdditionalRouteLabel] != "true" {
+		t.Errorf("expected label %q to be %q, got %q", AdditionalRouteLabel, "true", route.Labels[AdditionalRouteLabel])
 	}
 	if route.Spec.To.Name != api.OpenShiftConsoleServiceName {
 		t.Errorf("expected route to point to service %q, got %q", api.OpenShiftConsoleServiceName, route.Spec.To.Name)
