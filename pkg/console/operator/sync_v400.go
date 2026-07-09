@@ -137,24 +137,20 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	}
 
 	additionalSpecs := routesub.GetAdditionalComponentRouteSpecs(set.Ingress)
-	var additionalHosts []string
+	additionalHosts := routesub.GetAdditionalRouteHostnames(set.Ingress)
 	var routeSyncErrors []string
 	for _, spec := range additionalSpecs {
 		requiredRoute := routesub.AdditionalRoute(spec)
 		if _, _, err := routesub.ApplyRoute(co.routeClient, requiredRoute); err != nil {
 			klog.Errorf("failed to sync additional route %s: %v", spec.Name, err)
 			routeSyncErrors = append(routeSyncErrors, fmt.Sprintf("%s: %v", spec.Name, err))
-			continue
 		}
-		additionalHosts = append(additionalHosts, string(spec.Hostname))
 	}
+	var additionalRouteSyncErr error
 	if len(routeSyncErrors) > 0 {
-		statusHandler.AddConditions(status.HandleProgressingOrDegraded(
-			"AdditionalRouteSync",
-			"FailedAdditionalRoutes",
-			fmt.Errorf("failed to sync additional routes: %s", strings.Join(routeSyncErrors, "; ")),
-		))
+		additionalRouteSyncErr = fmt.Errorf("failed to sync additional routes: %s", strings.Join(routeSyncErrors, "; "))
 	}
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("AdditionalRouteSync", "FailedAdditionalRoutes", additionalRouteSyncErr))
 
 	cm, cmErrReason, cmErr := co.SyncConfigMap(
 		ctx,
