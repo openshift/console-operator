@@ -130,6 +130,10 @@ func TestAdditionalRouteLifecycle(t *testing.T) {
 func TestAdditionalRouteLabelPropagation(t *testing.T) {
 	client, _ := framework.StandardSetup(t)
 
+	if !framework.IsFeatureGateSet(t, client) {
+		t.Skip("IngressComponentRouteLabels requires TechPreview/DevPreview, skipping label propagation test")
+	}
+
 	name := "console-e2e-labels"
 	defer cleanupAdditionalRoutes(t, client, []string{name})
 
@@ -142,11 +146,6 @@ func TestAdditionalRouteLabelPropagation(t *testing.T) {
 	}
 
 	addComponentRoute(t, client, name, hostname, initialLabels)
-
-	// Check if labels survived the API server round-trip (feature gate check)
-	if !componentRouteLabelsSupported(t, client, name) {
-		t.Skip("IngressComponentRouteLabels feature gate not enabled, skipping label propagation test")
-	}
 
 	t.Run("LabelsApplied", func(t *testing.T) {
 		err := wait.Poll(1*time.Second, additionalRoutePollTimeout, func() (bool, error) {
@@ -371,20 +370,6 @@ func checkConfigMapAdditionalHost(t *testing.T, client *framework.ClientSet, hos
 			t.Errorf("ConfigMap %s still has additionalConsoleBaseAddresses entry for %s after %s", api.OpenShiftConsoleConfigMapName, hostname, additionalRoutePollTimeout)
 		}
 	}
-}
-
-func componentRouteLabelsSupported(t *testing.T, client *framework.ClientSet, name string) bool {
-	t.Helper()
-	ingressConfig, err := client.Ingress.Ingresses().Get(context.TODO(), api.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("failed to get ingress config: %v", err)
-	}
-	for _, cr := range ingressConfig.Spec.ComponentRoutes {
-		if string(cr.Name) == name {
-			return len(cr.Labels) > 0
-		}
-	}
-	return false
 }
 
 func cleanupAdditionalRoutes(t *testing.T, client *framework.ClientSet, names []string) {
