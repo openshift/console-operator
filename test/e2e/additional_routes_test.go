@@ -2,7 +2,10 @@ package e2e
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -67,7 +70,8 @@ func TestAdditionalRouteLifecycle(t *testing.T) {
 		checkConfigMapAdditionalHost(t, client, hostnameB, true)
 	})
 
-	t.Run("RouteAdmission", func(t *testing.T) {
+	t.Run("RouteAdmissionAndRedirect", func(t *testing.T) {
+		// Wait for route to be admitted
 		err := wait.Poll(2*time.Second, additionalRoutePollTimeout, func() (bool, error) {
 			route, err := client.Routes.Routes(api.OpenShiftConsoleNamespace).Get(context.TODO(), nameB, metav1.GetOptions{})
 			if err != nil {
@@ -83,7 +87,42 @@ func TestAdditionalRouteLifecycle(t *testing.T) {
 			return false, nil
 		})
 		if err != nil {
-			t.Errorf("route %s was not admitted within %s (non-fatal)", nameB, additionalRoutePollTimeout)
+			t.Errorf("route %s was not admitted within %s, skipping HTTP check", nameB, additionalRoutePollTimeout)
+			return
+		}
+
+		// Verify /auth/login redirects with redirect_uri matching this hostname
+		noRedirectClient := &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		}
+		loginURL := fmt.Sprintf("https://%s/auth/login", hostnameB)
+		err = wait.Poll(2*time.Second, additionalRoutePollTimeout, func() (bool, error) {
+			resp, err := noRedirectClient.Get(loginURL)
+			if err != nil {
+				return false, nil
+			}
+			defer resp.Body.Close()
+			location := resp.Header.Get("Location")
+			if location == "" {
+				return false, nil
+			}
+			parsed, err := url.Parse(location)
+			if err != nil {
+				return false, nil
+			}
+			redirectURI := parsed.Query().Get("redirect_uri")
+			if strings.Contains(redirectURI, hostnameB) {
+				return true, nil
+			}
+			return false, nil
+		})
+		if err != nil {
+			t.Logf("login redirect_uri does not contain hostname %s within %s (requires console PR #16686)", hostnameB, additionalRoutePollTimeout)
 		}
 	})
 }

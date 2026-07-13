@@ -10,6 +10,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 	coreinformersv1 "k8s.io/client-go/informers/core/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -25,6 +27,7 @@ import (
 	operatorv1listers "github.com/openshift/client-go/operator/listers/operator/v1"
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
+	routev1listers "github.com/openshift/client-go/route/listers/route/v1"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	libcrypto "github.com/openshift/library-go/pkg/crypto"
 	"github.com/openshift/library-go/pkg/operator/events"
@@ -44,6 +47,7 @@ type RouteSyncController struct {
 	// clients
 	operatorClient             v1helpers.OperatorClient
 	routeClient                routeclientv1.RoutesGetter
+	routeLister                routev1listers.RouteLister
 	secretClient               corev1client.SecretsGetter
 	operatorConfigLister       operatorv1listers.ConsoleLister
 	ingressConfigLister        configlistersv1.IngressLister
@@ -82,6 +86,7 @@ func NewRouteSyncController(
 		ingressConfigLister:        configInformer.Config().V1().Ingresses().Lister(),
 		ingressControllerLister:    ingressControllerInformer.Lister(),
 		routeClient:                routev1Client,
+		routeLister:                routeInformer.Lister(),
 		secretClient:               secretClient,
 		secretLister:               secretInformer.Lister(),
 		infrastructureConfigLister: configInformer.Config().V1().Infrastructures().Lister(),
@@ -107,8 +112,7 @@ func NewRouteSyncController(
 	).WithFilteredEventsInformers(
 		util.IncludeNamesFilter(api.DefaultIngressController),
 		ingressControllerInformer.Informer(),
-	).WithFilteredEventsInformers( // route
-		util.IncludeNamesFilter(routeName, routesub.GetCustomRouteName(routeName)),
+	).WithInformers( // routes — watch all routes in namespace for additional route discovery
 		routeInformer.Informer(),
 	).ResyncEvery(time.Minute).WithSync(ctrl.Sync)
 
@@ -220,7 +224,12 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 		klog.Warning(deprecationMessage(operatorConfig))
 	}
 
-	return statusHandler.FlushAndReturn(defaultRouteErr)
+	additionalRouteErr := c.syncAdditionalRoutes(ctx, ingressConfig, statusHandler)
+
+	if defaultRouteErr != nil {
+		return statusHandler.FlushAndReturn(defaultRouteErr)
+	}
+	return statusHandler.FlushAndReturn(additionalRouteErr)
 }
 
 func (c *RouteSyncController) removeRoute(ctx context.Context, routeName string) error {
@@ -405,6 +414,70 @@ func ValidateCustomCertSecret(customCertSecret *corev1.Secret) (*routesub.Custom
 	}
 
 	return routesub.GetCustomTLS(customCertSecret)
+}
+
+func (c *RouteSyncController) syncAdditionalRoutes(ctx context.Context, ingressConfig *configv1.Ingress, statusHandler status.StatusHandler) error {
+	additionalSpecs := routesub.GetComponentRouteSpecsByPrefix(ingressConfig, c.routeName)
+	var routeSyncErrors []string
+	desiredRoutes := sets.NewString()
+	for _, spec := range additionalSpecs {
+		desiredRoutes.Insert(string(spec.Name))
+		customTLS := c.getAdditionalRouteTLS(spec)
+		requiredRoute := routesub.AdditionalRoute(spec, customTLS)
+		_, _, err := routesub.ApplyAdditionalRoute(c.routeClient, requiredRoute)
+		if err != nil {
+			klog.Errorf("failed to sync additional route %s: %v", spec.Name, err)
+			routeSyncErrors = append(routeSyncErrors, fmt.Sprintf("%s: %v", spec.Name, err))
+		}
+	}
+	if err := c.cleanupOrphanedAdditionalRoutes(ctx, desiredRoutes); err != nil {
+		routeSyncErrors = append(routeSyncErrors, fmt.Sprintf("cleanup: %v", err))
+	}
+	var syncErr error
+	if len(routeSyncErrors) > 0 {
+		syncErr = fmt.Errorf("failed to sync additional routes: %s", strings.Join(routeSyncErrors, "; "))
+	}
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("AdditionalRouteSync", "FailedAdditionalRoutes", syncErr))
+	return syncErr
+}
+
+func (c *RouteSyncController) getAdditionalRouteTLS(spec configv1.ComponentRouteSpec) *routesub.CustomTLSCert {
+	if spec.ServingCertKeyPairSecret.Name == "" {
+		return nil
+	}
+	secret, err := c.secretLister.Secrets(api.OpenShiftConfigNamespace).Get(spec.ServingCertKeyPairSecret.Name)
+	if err != nil {
+		klog.Warningf("failed to get TLS secret %q for additional route %s: %v", spec.ServingCertKeyPairSecret.Name, spec.Name, err)
+		return nil
+	}
+	customTLS, err := ValidateCustomCertSecret(secret)
+	if err != nil {
+		klog.Warningf("invalid TLS secret %q for additional route %s: %v", spec.ServingCertKeyPairSecret.Name, spec.Name, err)
+		return nil
+	}
+	return customTLS
+}
+
+func (c *RouteSyncController) cleanupOrphanedAdditionalRoutes(ctx context.Context, desired sets.String) error {
+	existing, err := c.routeLister.Routes(api.OpenShiftConsoleNamespace).List(labels.SelectorFromSet(labels.Set{
+		routesub.AdditionalRouteLabel: "true",
+	}))
+	if err != nil {
+		return fmt.Errorf("failed to list additional routes: %w", err)
+	}
+	for _, route := range existing {
+		if desired.Has(route.Name) {
+			continue
+		}
+		if !strings.HasPrefix(route.Name, c.routeName) {
+			continue
+		}
+		klog.V(2).Infof("deleting orphaned additional route %s", route.Name)
+		if err := c.routeClient.Routes(api.OpenShiftConsoleNamespace).Delete(ctx, route.Name, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to delete orphaned route %s: %w", route.Name, err)
+		}
+	}
+	return nil
 }
 
 func deprecationMessage(operatorConfig *operatorsv1.Console) string {

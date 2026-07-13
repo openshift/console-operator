@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	// kube
@@ -162,12 +163,7 @@ func (rc *RouteConfig) GetDomain() string {
 // should point to the redirect `console-redirect` service and the
 // created custom route should be pointing to the `console` service.
 func (rc *RouteConfig) DefaultRoute(tlsConfig *CustomTLSCert, ingressConfig *configv1.Ingress) *routev1.Route {
-	route := &routev1.Route{}
-	if rc.IsCustomHostnameSet() && rc.routeName == api.OpenShiftConsoleRouteName {
-		route = resourceread.ReadRouteV1OrDie(bindata.MustAsset(fmt.Sprintf("assets/routes/%s-redirect-route.yaml", rc.routeName)))
-	} else {
-		route = resourceread.ReadRouteV1OrDie(bindata.MustAsset(fmt.Sprintf("assets/routes/%s-route.yaml", rc.routeName)))
-	}
+	route := resourceread.ReadRouteV1OrDie(bindata.MustAsset(fmt.Sprintf("assets/routes/%s-route.yaml", rc.routeName)))
 	route.Spec.Host = GetDefaultRouteHost(rc.routeName, ingressConfig)
 	setTLS(tlsConfig, route)
 	return route
@@ -370,6 +366,27 @@ func GetAdditionalComponentRouteSpecs(ingressConfig *configv1.Ingress) []configv
 		additional = append(additional, *cr.DeepCopy())
 	}
 	return additional
+}
+
+// GetComponentRouteSpecsByPrefix returns componentRoutes in the openshift-console
+// namespace whose name starts with the given prefix, excluding the primary route
+// and its *-custom variant (those are handled by SyncDefaultRoute/SyncCustomRoute).
+func GetComponentRouteSpecsByPrefix(ingressConfig *configv1.Ingress, routeName string) []configv1.ComponentRouteSpec {
+	customName := GetCustomRouteName(routeName)
+	var specs []configv1.ComponentRouteSpec
+	for _, cr := range ingressConfig.Spec.ComponentRoutes {
+		if cr.Namespace != api.OpenShiftConsoleNamespace {
+			continue
+		}
+		if !strings.HasPrefix(string(cr.Name), routeName) {
+			continue
+		}
+		if string(cr.Name) == routeName || string(cr.Name) == customName {
+			continue
+		}
+		specs = append(specs, *cr.DeepCopy())
+	}
+	return specs
 }
 
 func GetAdditionalRouteHostnames(ingressConfig *configv1.Ingress) []string {
