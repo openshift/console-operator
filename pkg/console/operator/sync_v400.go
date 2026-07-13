@@ -218,11 +218,12 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 
 	statusHandler.AddCondition(status.HandleProgressing("SyncLoopRefresh", "InProgress", func() error {
 		version := os.Getenv("OPERATOR_IMAGE_VERSION")
-		if err := checkDeploymentGenerationProgress(actualDeployment); err != nil {
-			return err
-		}
+		isUpgrading := co.versionGetter.GetVersions()["operator"] != version
 
-		if co.versionGetter.GetVersions()["operator"] != version {
+		if isUpgrading {
+			if err := checkDeploymentRolloutStatus(actualDeployment); err != nil {
+				return err
+			}
 			co.versionGetter.SetVersion("operator", version)
 		}
 		return nil
@@ -826,17 +827,30 @@ func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []string) []*
 	return availablePlugins
 }
 
-// checkDeploymentGenerationProgress returns an error if the deployment controller
-// has not yet processed the latest spec change (ObservedGeneration < Generation).
-// This is used to determine Progressing status without relying on replica counts,
-// which fluctuate during external disruptions like node reboots.
-// See https://issues.redhat.com/browse/OCPBUGS-64688
-func checkDeploymentGenerationProgress(deployment *appsv1.Deployment) error {
+// checkDeploymentRolloutStatus checks whether a deployment's rollout has completed
+// by examining the deployment controller's own status conditions. This follows
+// the 3CMO pattern (openshift/cluster-cloud-controller-manager-operator#488).
+//
+// See https://issues.redhat.com/browse/OCPBUGS-93982
+func checkDeploymentRolloutStatus(deployment *appsv1.Deployment) error {
 	if deployment.Status.ObservedGeneration < deployment.Generation {
 		return fmt.Errorf("deployment generation %d not yet observed (observed: %d)",
 			deployment.Generation, deployment.Status.ObservedGeneration)
 	}
-	return nil
+
+	for _, condition := range deployment.Status.Conditions {
+		if condition.Type == appsv1.DeploymentProgressing {
+			if condition.Status == corev1.ConditionTrue && condition.Reason == "NewReplicaSetAvailable" {
+				return nil
+			}
+			if condition.Status == corev1.ConditionFalse && condition.Reason == "ProgressDeadlineExceeded" {
+				return fmt.Errorf("deployment rollout stalled: ProgressDeadlineExceeded")
+			}
+			return fmt.Errorf("deployment rollout in progress: %s", condition.Reason)
+		}
+	}
+
+	return fmt.Errorf("deployment rollout status not yet available")
 }
 
 func getNodeComputeEnvironments(nodes []*corev1.Node) ([]string, []string) {
