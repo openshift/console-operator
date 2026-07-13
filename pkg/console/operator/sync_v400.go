@@ -146,7 +146,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		customTLS := co.getAdditionalRouteTLS(spec)
 		requiredRoute := routesub.AdditionalRoute(spec, customTLS)
 		if err := controllersutil.RetryOnTransientError(func() error {
-			_, _, e := routesub.ApplyRoute(co.routeClient, requiredRoute)
+			_, _, e := routesub.ApplyAdditionalRoute(co.routeClient, requiredRoute)
 			return e
 		}); err != nil {
 			klog.Errorf("failed to sync additional route %s: %v", spec.Name, err)

@@ -215,6 +215,58 @@ func ApplyRoute(client routeclient.RoutesGetter, required *routev1.Route) (*rout
 	return actual, true, err
 }
 
+// operatorManagedLabels are labels set by the operator itself (not by the
+// admin via ComponentRouteSpec.Labels). These are preserved during label
+// reconciliation and never removed.
+var operatorManagedLabels = map[string]bool{
+	"app":                true,
+	AdditionalRouteLabel: true,
+}
+
+// ApplyAdditionalRoute applies a route with full label reconciliation.
+// Unlike ApplyRoute which only merges labels additively, this function
+// removes stale user-specified labels from the existing route that are
+// no longer present in the required route.
+func ApplyAdditionalRoute(client routeclient.RoutesGetter, required *routev1.Route) (*routev1.Route, bool, error) {
+	existing, err := client.Routes(required.Namespace).Get(context.TODO(), required.Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		requiredCopy := required.DeepCopy()
+		actual, err := client.Routes(requiredCopy.Namespace).Create(context.TODO(), resourcemerge.WithCleanLabelsAndAnnotations(requiredCopy).(*routev1.Route), metav1.CreateOptions{})
+		return actual, true, err
+	}
+	if err != nil {
+		return nil, false, err
+	}
+
+	existingCopy := existing.DeepCopy()
+
+	// Remove user-specified labels that are no longer in the required spec.
+	// Operator-managed labels are never removed.
+	labelsRemoved := false
+	for k := range existingCopy.Labels {
+		if operatorManagedLabels[k] {
+			continue
+		}
+		if _, ok := required.Labels[k]; !ok {
+			delete(existingCopy.Labels, k)
+			labelsRemoved = true
+		}
+	}
+
+	modified := resourcemerge.BoolPtr(false)
+	resourcemerge.EnsureObjectMeta(modified, &existingCopy.ObjectMeta, required.ObjectMeta)
+	specSame := equality.Semantic.DeepEqual(existingCopy.Spec, required.Spec)
+
+	if specSame && !*modified && !labelsRemoved {
+		klog.V(4).Infof("%s route exists and is in the correct state", existingCopy.ObjectMeta.Name)
+		return existingCopy, false, nil
+	}
+
+	existingCopy.Spec = required.Spec
+	actual, err := client.Routes(required.Namespace).Update(context.TODO(), existingCopy, metav1.UpdateOptions{})
+	return actual, true, err
+}
+
 func GetActiveRouteInfo(routeClient routev1listers.RouteLister, activeRouteName string) (route *routev1.Route, routeURL *url.URL, reason string, err error) {
 	route, routeErr := routeClient.Routes(api.TargetNamespace).Get(activeRouteName)
 	if routeErr != nil {
@@ -338,6 +390,12 @@ func AdditionalRoute(spec configv1.ComponentRouteSpec, customTLSCert *CustomTLSC
 	if route.Labels == nil {
 		route.Labels = make(map[string]string)
 	}
+	for k, v := range spec.Labels {
+		route.Labels[k] = string(v)
+	}
+	// Set operator-managed labels after user labels so they can't be
+	// overridden. The API rejects openshift.io/ prefixed keys anyway,
+	// but this ordering makes the intent explicit.
 	route.Labels[AdditionalRouteLabel] = "true"
 	setTLS(customTLSCert, route)
 	return route

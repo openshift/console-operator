@@ -281,3 +281,52 @@ func TestAdditionalRoute(t *testing.T) {
 		t.Errorf("expected TLS termination reencrypt, got %q", route.Spec.TLS.Termination)
 	}
 }
+
+func TestAdditionalRouteWithLabels(t *testing.T) {
+	spec := configv1.ComponentRouteSpec{
+		Name:      "console-internal",
+		Namespace: api.OpenShiftConsoleNamespace,
+		Hostname:  "console.internal.example.com",
+		Labels: map[string]configv1.LabelValue{
+			"ingress": "shard-internal",
+			"env":     "production",
+		},
+	}
+	route := AdditionalRoute(spec, nil)
+
+	if route.Labels["ingress"] != "shard-internal" {
+		t.Errorf("expected label ingress=%q, got %q", "shard-internal", route.Labels["ingress"])
+	}
+	if route.Labels["env"] != "production" {
+		t.Errorf("expected label env=%q, got %q", "production", route.Labels["env"])
+	}
+	if route.Labels[AdditionalRouteLabel] != "true" {
+		t.Errorf("expected operator-managed label %q to be preserved", AdditionalRouteLabel)
+	}
+	if route.Labels["app"] != "console" {
+		t.Errorf("expected template label app=%q to be preserved, got %q", "console", route.Labels["app"])
+	}
+}
+
+func TestAdditionalRouteOperatorLabelsNotOverridden(t *testing.T) {
+	spec := configv1.ComponentRouteSpec{
+		Name:      "console-internal",
+		Namespace: api.OpenShiftConsoleNamespace,
+		Hostname:  "console.internal.example.com",
+		Labels: map[string]configv1.LabelValue{
+			// The API rejects openshift.io/ prefixed keys, but even if
+			// a label with the same key as AdditionalRouteLabel slipped
+			// through, the operator sets its labels last to win.
+			AdditionalRouteLabel: "overridden",
+			"ingress":            "shard-internal",
+		},
+	}
+	route := AdditionalRoute(spec, nil)
+
+	if route.Labels[AdditionalRouteLabel] != "true" {
+		t.Errorf("expected operator label to take precedence, got %q", route.Labels[AdditionalRouteLabel])
+	}
+	if route.Labels["ingress"] != "shard-internal" {
+		t.Errorf("expected label ingress=%q, got %q", "shard-internal", route.Labels["ingress"])
+	}
+}
