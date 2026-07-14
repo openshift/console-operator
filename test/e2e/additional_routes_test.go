@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
@@ -130,8 +131,13 @@ func TestAdditionalRouteLifecycle(t *testing.T) {
 func TestAdditionalRouteLabelPropagation(t *testing.T) {
 	client, _ := framework.StandardSetup(t)
 
-	if !framework.IsFeatureGateSet(t, client) {
-		t.Skip("IngressComponentRouteLabels requires TechPreview/DevPreview, skipping label propagation test")
+	// The labels field on ComponentRouteSpec is gated behind the
+	// IngressComponentRouteLabels feature gate. Check the cluster's
+	// resolved feature gates to see if it's actually enabled — the
+	// gate must be present in the FeatureGate status, not just
+	// TechPreview being on (the CRD may predate the field).
+	if !isFeatureGateEnabled(t, client, "IngressComponentRouteLabels") {
+		t.Skip("IngressComponentRouteLabels feature gate not enabled, skipping label propagation test")
 	}
 
 	name := "console-e2e-labels"
@@ -322,10 +328,23 @@ func waitForAdditionalRouteRemoved(t *testing.T, client *framework.ClientSet, na
 	}
 }
 
+// checkOAuthRedirectURI verifies the OAuthClient has (or doesn't have) a redirect
+// URI for the given hostname. On OIDC clusters, the OAuthClient doesn't exist
+// because the operator skips OAuthClient management entirely — redirect URIs are
+// registered externally on the OIDC provider (e.g. Keycloak). In that case, the
+// check is skipped.
 func checkOAuthRedirectURI(t *testing.T, client *framework.ClientSet, hostname string, shouldExist bool) {
 	t.Helper()
+	// On OIDC clusters the operator does not create or manage an OAuthClient.
+	// If the OAuthClient doesn't exist, skip the check silently.
+	_, err := client.OAuth.OAuthClients().Get(context.TODO(), api.OAuthClientName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		t.Logf("OAuthClient %s not found (OIDC mode), skipping redirect URI check for %s", api.OAuthClientName, hostname)
+		return
+	}
+
 	expectedURI := fmt.Sprintf("https://%s/auth/callback", hostname)
-	err := wait.Poll(2*time.Second, additionalRoutePollTimeout, func() (bool, error) {
+	err = wait.Poll(2*time.Second, additionalRoutePollTimeout, func() (bool, error) {
 		oauthClient, err := client.OAuth.OAuthClients().Get(context.TODO(), api.OAuthClientName, metav1.GetOptions{})
 		if err != nil {
 			return false, nil
@@ -370,6 +389,27 @@ func checkConfigMapAdditionalHost(t *testing.T, client *framework.ClientSet, hos
 			t.Errorf("ConfigMap %s still has additionalConsoleBaseAddresses entry for %s after %s", api.OpenShiftConsoleConfigMapName, hostname, additionalRoutePollTimeout)
 		}
 	}
+}
+
+// isFeatureGateEnabled checks whether a specific feature gate is enabled on the
+// cluster by inspecting the FeatureGate status. This is more precise than
+// framework.IsFeatureGateSet which only checks if TechPreview/DevPreview is active
+// — a cluster can have TechPreview enabled but still lack a specific gate if
+// the CRD or API predates the feature.
+func isFeatureGateEnabled(t *testing.T, client *framework.ClientSet, gateName string) bool {
+	t.Helper()
+	fg, err := client.FeatureGate.FeatureGates().Get(context.TODO(), "cluster", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("failed to get FeatureGate: %v", err)
+	}
+	for _, version := range fg.Status.FeatureGates {
+		for _, enabled := range version.Enabled {
+			if string(enabled.Name) == gateName {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func cleanupAdditionalRoutes(t *testing.T, client *framework.ClientSet, names []string) {
