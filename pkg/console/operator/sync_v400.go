@@ -8,6 +8,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	// kube
 	appsv1 "k8s.io/api/apps/v1"
@@ -45,6 +46,13 @@ import (
 	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
 	telemetry "github.com/openshift/console-operator/pkg/console/telemetry"
 )
+
+// deploymentAvailableGracePeriod is the duration the operator tolerates zero
+// available replicas before reporting DeploymentAvailable=False. This absorbs
+// brief disruptions (e.g. node reboots during conformance-serial tests) that
+// take all replicas offline for ~10 seconds. Kept short so genuine production
+// outages are still reported promptly.
+const deploymentAvailableGracePeriod = 15 * time.Second
 
 // The sync loop starts from zero and works its way through the requirements for a running console.
 // If at any point something is missing, it creates/updates that piece and immediately dies.
@@ -228,13 +236,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return nil
 	}()))
 
-	statusHandler.AddCondition(status.HandleAvailable(func() (prefix string, reason string, err error) {
-		prefix = "Deployment"
-		if !deploymentsub.IsAvailable(actualDeployment) {
-			return prefix, "InsufficientReplicas", fmt.Errorf("%v replicas available for console deployment", actualDeployment.Status.ReadyReplicas)
-		}
-		return prefix, "", nil
-	}()))
+	statusHandler.AddCondition(status.HandleAvailable(co.evaluateDeploymentAvailability(actualDeployment)))
 
 	// if we survive the gauntlet, we need to update the console config with the
 	// public hostname so that the world can know the console is ready to roll
@@ -343,6 +345,25 @@ func (co *consoleOperator) SyncDeployment(
 		return nil, "FailedApply", applyDepErr
 	}
 	return deployment, "", nil
+}
+
+// evaluateDeploymentAvailability checks whether the console deployment should
+// be reported as available. When replicas drop to zero during a transient
+// disruption (e.g. node reboot in conformance-serial tests), the operator
+// suppresses Available=False for up to deploymentAvailableGracePeriod to
+// avoid alarming ClusterOperator condition blips.
+func (co *consoleOperator) evaluateDeploymentAvailability(deployment *appsv1.Deployment) (prefix string, reason string, err error) {
+	prefix = "Deployment"
+	if deploymentsub.IsAvailable(deployment) {
+		co.lastDeploymentAvailableTime = time.Now()
+		return prefix, "", nil
+	}
+	if sinceLast := time.Since(co.lastDeploymentAvailableTime); !co.lastDeploymentAvailableTime.IsZero() && sinceLast <= deploymentAvailableGracePeriod {
+		klog.V(4).Infof("deployment has 0 available replicas but was available %v ago, within %v grace period",
+			sinceLast, deploymentAvailableGracePeriod)
+		return prefix, "", nil
+	}
+	return prefix, "InsufficientReplicas", fmt.Errorf("%v replicas available for console deployment", deployment.Status.ReadyReplicas)
 }
 
 // apply configmap (needs route)

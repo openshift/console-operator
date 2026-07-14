@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/go-test/deep"
 
@@ -538,4 +539,143 @@ func TestGetTelemetryConfiguration_DisconnectedClusterNoError(t *testing.T) {
 	if _, ok := config["ACCOUNT_MAIL"]; !ok {
 		t.Error("expected ACCOUNT_MAIL key to be present even on disconnected cluster")
 	}
+}
+
+// TestEvaluateDeploymentAvailability tests the grace period logic for
+// OCPBUGS-67134: the operator should suppress brief Available=False blips
+// when all replicas are temporarily offline during disruptive operations.
+func TestEvaluateDeploymentAvailability(t *testing.T) {
+	makeDeployment := func(availableReplicas int32) *appsv1.Deployment {
+		return &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "console",
+				Namespace: "openshift-console",
+			},
+			Status: appsv1.DeploymentStatus{
+				AvailableReplicas: availableReplicas,
+				ReadyReplicas:     availableReplicas,
+			},
+		}
+	}
+
+	t.Run("available deployment reports Available=True and updates timestamp", func(t *testing.T) {
+		co := &consoleOperator{}
+		deployment := makeDeployment(2)
+
+		prefix, reason, err := co.evaluateDeploymentAvailability(deployment)
+
+		if err != nil {
+			t.Errorf("expected no error, got: %v", err)
+		}
+		if reason != "" {
+			t.Errorf("expected empty reason, got: %q", reason)
+		}
+		if prefix != "Deployment" {
+			t.Errorf("expected prefix 'Deployment', got: %q", prefix)
+		}
+		if co.lastDeploymentAvailableTime.IsZero() {
+			t.Error("expected lastDeploymentAvailableTime to be set")
+		}
+	})
+
+	t.Run("unavailable with no prior availability reports Available=False immediately", func(t *testing.T) {
+		co := &consoleOperator{}
+		deployment := makeDeployment(0)
+
+		_, reason, err := co.evaluateDeploymentAvailability(deployment)
+
+		if err == nil {
+			t.Error("expected error, got nil")
+		}
+		if reason != "InsufficientReplicas" {
+			t.Errorf("expected reason 'InsufficientReplicas', got: %q", reason)
+		}
+	})
+
+	t.Run("unavailable within grace period reports Available=True (suppressed)", func(t *testing.T) {
+		co := &consoleOperator{
+			lastDeploymentAvailableTime: time.Now().Add(-10 * time.Second),
+		}
+		deployment := makeDeployment(0)
+
+		_, reason, err := co.evaluateDeploymentAvailability(deployment)
+
+		if err != nil {
+			t.Errorf("expected no error within grace period, got: %v", err)
+		}
+		if reason != "" {
+			t.Errorf("expected empty reason within grace period, got: %q", reason)
+		}
+	})
+
+	t.Run("unavailable beyond grace period reports Available=False", func(t *testing.T) {
+		co := &consoleOperator{
+			lastDeploymentAvailableTime: time.Now().Add(-3 * time.Minute),
+		}
+		deployment := makeDeployment(0)
+
+		_, reason, err := co.evaluateDeploymentAvailability(deployment)
+
+		if err == nil {
+			t.Error("expected error beyond grace period, got nil")
+		}
+		if reason != "InsufficientReplicas" {
+			t.Errorf("expected reason 'InsufficientReplicas', got: %q", reason)
+		}
+	})
+
+	t.Run("recovery after blip resets timestamp", func(t *testing.T) {
+		co := &consoleOperator{
+			lastDeploymentAvailableTime: time.Now().Add(-5 * time.Second),
+		}
+
+		// Simulate: was available, went to 0, then recovered
+		deployment := makeDeployment(0)
+		_, _, err := co.evaluateDeploymentAvailability(deployment)
+		if err != nil {
+			t.Error("expected suppression within grace period")
+		}
+
+		// Recovery
+		deployment = makeDeployment(2)
+		before := co.lastDeploymentAvailableTime
+		_, _, err = co.evaluateDeploymentAvailability(deployment)
+		if err != nil {
+			t.Errorf("expected no error on recovery, got: %v", err)
+		}
+		if !co.lastDeploymentAvailableTime.After(before) {
+			t.Error("expected lastDeploymentAvailableTime to be updated on recovery")
+		}
+	})
+
+	t.Run("unavailable just inside grace period boundary reports Available=True", func(t *testing.T) {
+		co := &consoleOperator{
+			lastDeploymentAvailableTime: time.Now().Add(-deploymentAvailableGracePeriod + time.Second),
+		}
+		deployment := makeDeployment(0)
+
+		_, reason, err := co.evaluateDeploymentAvailability(deployment)
+
+		if err != nil {
+			t.Errorf("expected no error just inside grace period, got: %v", err)
+		}
+		if reason != "" {
+			t.Errorf("expected empty reason just inside grace period, got: %q", reason)
+		}
+	})
+
+	t.Run("error message includes ready replica count", func(t *testing.T) {
+		co := &consoleOperator{}
+		deployment := makeDeployment(0)
+
+		_, _, err := co.evaluateDeploymentAvailability(deployment)
+
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		expected := "0 replicas available for console deployment"
+		if err.Error() != expected {
+			t.Errorf("expected error message %q, got %q", expected, err.Error())
+		}
+	})
 }
