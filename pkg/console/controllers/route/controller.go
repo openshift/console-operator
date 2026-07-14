@@ -224,11 +224,11 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 		klog.Warning(deprecationMessage(operatorConfig))
 	}
 
-	additionalRouteErr := c.syncAdditionalRoutes(ctx, ingressConfig, statusHandler)
-
 	if defaultRouteErr != nil {
 		return statusHandler.FlushAndReturn(defaultRouteErr)
 	}
+
+	additionalRouteErr := c.syncAdditionalRoutes(ctx, ingressConfig, statusHandler)
 	return statusHandler.FlushAndReturn(additionalRouteErr)
 }
 
@@ -422,9 +422,12 @@ func (c *RouteSyncController) syncAdditionalRoutes(ctx context.Context, ingressC
 	desiredRoutes := sets.NewString()
 	for _, spec := range additionalSpecs {
 		desiredRoutes.Insert(string(spec.Name))
-		customTLS := c.getAdditionalRouteTLS(spec)
-		requiredRoute := routesub.AdditionalRoute(spec, customTLS)
-		_, _, err := routesub.ApplyAdditionalRoute(c.routeClient, requiredRoute)
+		customTLS, tlsErr := c.getAdditionalRouteTLS(spec)
+		if tlsErr != nil {
+			routeSyncErrors = append(routeSyncErrors, fmt.Sprintf("%s: %v", spec.Name, tlsErr))
+		}
+		requiredRoute := routesub.MakeAdditionalRoute(spec, customTLS)
+		_, _, err := routesub.ApplyAdditionalRoute(ctx, c.routeClient, requiredRoute)
 		if err != nil {
 			klog.Errorf("failed to sync additional route %s: %v", spec.Name, err)
 			routeSyncErrors = append(routeSyncErrors, fmt.Sprintf("%s: %v", spec.Name, err))
@@ -441,21 +444,19 @@ func (c *RouteSyncController) syncAdditionalRoutes(ctx context.Context, ingressC
 	return syncErr
 }
 
-func (c *RouteSyncController) getAdditionalRouteTLS(spec configv1.ComponentRouteSpec) *routesub.CustomTLSCert {
+func (c *RouteSyncController) getAdditionalRouteTLS(spec configv1.ComponentRouteSpec) (*routesub.CustomTLSCert, error) {
 	if spec.ServingCertKeyPairSecret.Name == "" {
-		return nil
+		return nil, nil
 	}
 	secret, err := c.secretLister.Secrets(api.OpenShiftConfigNamespace).Get(spec.ServingCertKeyPairSecret.Name)
 	if err != nil {
-		klog.Warningf("failed to get TLS secret %q for additional route %s: %v", spec.ServingCertKeyPairSecret.Name, spec.Name, err)
-		return nil
+		return nil, fmt.Errorf("failed to get TLS secret %q for route %s: %w", spec.ServingCertKeyPairSecret.Name, spec.Name, err)
 	}
 	customTLS, err := ValidateCustomCertSecret(secret)
 	if err != nil {
-		klog.Warningf("invalid TLS secret %q for additional route %s: %v", spec.ServingCertKeyPairSecret.Name, spec.Name, err)
-		return nil
+		return nil, fmt.Errorf("invalid TLS secret %q for route %s: %w", spec.ServingCertKeyPairSecret.Name, spec.Name, err)
 	}
-	return customTLS
+	return customTLS, nil
 }
 
 func (c *RouteSyncController) cleanupOrphanedAdditionalRoutes(ctx context.Context, desired sets.String) error {

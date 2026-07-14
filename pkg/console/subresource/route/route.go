@@ -29,6 +29,16 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 )
 
+const AdditionalRouteLabel = "console.openshift.io/additional-route"
+
+// operatorManagedLabels are labels set by the operator itself (not by the
+// admin via ComponentRouteSpec.Labels). These are preserved during label
+// reconciliation and never removed.
+var operatorManagedLabels = map[string]struct{}{
+	"app":                {},
+	AdditionalRouteLabel: {},
+}
+
 // holds information about custom TLS certificate and its key
 type CustomTLSCert struct {
 	Certificate string
@@ -211,27 +221,22 @@ func ApplyRoute(client routeclient.RoutesGetter, required *routev1.Route) (*rout
 	return actual, true, err
 }
 
-// operatorManagedLabels are labels set by the operator itself (not by the
-// admin via ComponentRouteSpec.Labels). These are preserved during label
-// reconciliation and never removed.
-var operatorManagedLabels = map[string]bool{
-	"app":                true,
-	AdditionalRouteLabel: true,
-}
-
 // ApplyAdditionalRoute applies a route with full label reconciliation.
 // Unlike ApplyRoute which only merges labels additively, this function
 // removes stale user-specified labels from the existing route that are
 // no longer present in the required route.
-func ApplyAdditionalRoute(client routeclient.RoutesGetter, required *routev1.Route) (*routev1.Route, bool, error) {
-	existing, err := client.Routes(required.Namespace).Get(context.TODO(), required.Name, metav1.GetOptions{})
+func ApplyAdditionalRoute(ctx context.Context, client routeclient.RoutesGetter, required *routev1.Route) (*routev1.Route, bool, error) {
+	existing, err := client.Routes(required.Namespace).Get(ctx, required.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		requiredCopy := required.DeepCopy()
-		actual, err := client.Routes(requiredCopy.Namespace).Create(context.TODO(), resourcemerge.WithCleanLabelsAndAnnotations(requiredCopy).(*routev1.Route), metav1.CreateOptions{})
-		return actual, true, err
+		actual, err := client.Routes(requiredCopy.Namespace).Create(ctx, resourcemerge.WithCleanLabelsAndAnnotations(requiredCopy).(*routev1.Route), metav1.CreateOptions{})
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to create additional route %s: %w", requiredCopy.Name, err)
+		}
+		return actual, true, nil
 	}
 	if err != nil {
-		return nil, false, err
+		return nil, false, fmt.Errorf("failed to get additional route %s: %w", required.Name, err)
 	}
 
 	existingCopy := existing.DeepCopy()
@@ -240,7 +245,7 @@ func ApplyAdditionalRoute(client routeclient.RoutesGetter, required *routev1.Rou
 	// Operator-managed labels are never removed.
 	labelsRemoved := false
 	for k := range existingCopy.Labels {
-		if operatorManagedLabels[k] {
+		if _, managed := operatorManagedLabels[k]; managed {
 			continue
 		}
 		if _, ok := required.Labels[k]; !ok {
@@ -259,8 +264,11 @@ func ApplyAdditionalRoute(client routeclient.RoutesGetter, required *routev1.Rou
 	}
 
 	existingCopy.Spec = required.Spec
-	actual, err := client.Routes(required.Namespace).Update(context.TODO(), existingCopy, metav1.UpdateOptions{})
-	return actual, true, err
+	actual, err := client.Routes(required.Namespace).Update(ctx, existingCopy, metav1.UpdateOptions{})
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to update additional route %s: %w", required.Name, err)
+	}
+	return actual, true, nil
 }
 
 func GetActiveRouteInfo(routeClient routev1listers.RouteLister, activeRouteName string) (route *routev1.Route, routeURL *url.URL, reason string, err error) {
@@ -347,11 +355,11 @@ func GetCustomRouteName(routeName string) string {
 	return fmt.Sprintf("%s-custom", routeName)
 }
 
-var knownConsoleRouteNames = map[string]bool{
-	api.OpenShiftConsoleRouteName:          true,
-	api.OpenShiftConsoleDownloadsRouteName: true,
-	api.OpenshiftConsoleCustomRouteName:    true,
-	api.OpenshiftDownloadsCustomRouteName:  true,
+var knownConsoleRouteNames = map[string]struct{}{
+	api.OpenShiftConsoleRouteName:          {},
+	api.OpenShiftConsoleDownloadsRouteName: {},
+	api.OpenshiftConsoleCustomRouteName:    {},
+	api.OpenshiftDownloadsCustomRouteName:  {},
 }
 
 func GetAdditionalComponentRouteSpecs(ingressConfig *configv1.Ingress) []configv1.ComponentRouteSpec {
@@ -360,7 +368,7 @@ func GetAdditionalComponentRouteSpecs(ingressConfig *configv1.Ingress) []configv
 		if cr.Namespace != api.OpenShiftConsoleNamespace {
 			continue
 		}
-		if knownConsoleRouteNames[string(cr.Name)] {
+		if _, known := knownConsoleRouteNames[string(cr.Name)]; known {
 			continue
 		}
 		additional = append(additional, *cr.DeepCopy())
@@ -398,9 +406,7 @@ func GetAdditionalRouteHostnames(ingressConfig *configv1.Ingress) []string {
 	return hostnames
 }
 
-const AdditionalRouteLabel = "console.openshift.io/additional-route"
-
-func AdditionalRoute(spec configv1.ComponentRouteSpec, customTLSCert *CustomTLSCert) *routev1.Route {
+func MakeAdditionalRoute(spec configv1.ComponentRouteSpec, customTLSCert *CustomTLSCert) *routev1.Route {
 	route := resourceread.ReadRouteV1OrDie(bindata.MustAsset("assets/routes/console-route.yaml"))
 	route.Name = string(spec.Name)
 	route.Spec.Host = string(spec.Hostname)

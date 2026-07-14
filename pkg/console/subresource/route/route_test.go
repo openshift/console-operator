@@ -263,7 +263,7 @@ func TestAdditionalRoute(t *testing.T) {
 		Namespace: api.OpenShiftConsoleNamespace,
 		Hostname:  "console-secondary.example.com",
 	}
-	route := AdditionalRoute(spec, nil)
+	route := MakeAdditionalRoute(spec, nil)
 
 	if route.Name != "console-secondary" {
 		t.Errorf("expected route name %q, got %q", "console-secondary", route.Name)
@@ -292,7 +292,7 @@ func TestAdditionalRouteWithLabels(t *testing.T) {
 			"env":     "production",
 		},
 	}
-	route := AdditionalRoute(spec, nil)
+	route := MakeAdditionalRoute(spec, nil)
 
 	if route.Labels["ingress"] != "shard-internal" {
 		t.Errorf("expected label ingress=%q, got %q", "shard-internal", route.Labels["ingress"])
@@ -321,7 +321,7 @@ func TestAdditionalRouteOperatorLabelsNotOverridden(t *testing.T) {
 			"ingress":            "shard-internal",
 		},
 	}
-	route := AdditionalRoute(spec, nil)
+	route := MakeAdditionalRoute(spec, nil)
 
 	if route.Labels[AdditionalRouteLabel] != "true" {
 		t.Errorf("expected operator label to take precedence, got %q", route.Labels[AdditionalRouteLabel])
