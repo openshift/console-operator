@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	// kube
@@ -27,6 +28,16 @@ import (
 	"github.com/openshift/console-operator/bindata"
 	"github.com/openshift/console-operator/pkg/api"
 )
+
+const AdditionalRouteLabel = "console.openshift.io/additional-route"
+
+// operatorManagedLabels are labels set by the operator itself (not by the
+// admin via ComponentRouteSpec.Labels). These are preserved during label
+// reconciliation and never removed.
+var operatorManagedLabels = map[string]struct{}{
+	"app":                {},
+	AdditionalRouteLabel: {},
+}
 
 // holds information about custom TLS certificate and its key
 type CustomTLSCert struct {
@@ -162,12 +173,7 @@ func (rc *RouteConfig) GetDomain() string {
 // should point to the redirect `console-redirect` service and the
 // created custom route should be pointing to the `console` service.
 func (rc *RouteConfig) DefaultRoute(tlsConfig *CustomTLSCert, ingressConfig *configv1.Ingress) *routev1.Route {
-	route := &routev1.Route{}
-	if rc.IsCustomHostnameSet() && rc.routeName == api.OpenShiftConsoleRouteName {
-		route = resourceread.ReadRouteV1OrDie(bindata.MustAsset(fmt.Sprintf("assets/routes/%s-redirect-route.yaml", rc.routeName)))
-	} else {
-		route = resourceread.ReadRouteV1OrDie(bindata.MustAsset(fmt.Sprintf("assets/routes/%s-route.yaml", rc.routeName)))
-	}
+	route := resourceread.ReadRouteV1OrDie(bindata.MustAsset(fmt.Sprintf("assets/routes/%s-route.yaml", rc.routeName)))
 	route.Spec.Host = GetDefaultRouteHost(rc.routeName, ingressConfig)
 	setTLS(tlsConfig, route)
 	return route
@@ -213,6 +219,56 @@ func ApplyRoute(client routeclient.RoutesGetter, required *routev1.Route) (*rout
 	existingCopy.Spec = required.Spec
 	actual, err := client.Routes(required.Namespace).Update(context.TODO(), existingCopy, metav1.UpdateOptions{})
 	return actual, true, err
+}
+
+// ApplyAdditionalRoute applies a route with full label reconciliation.
+// Unlike ApplyRoute which only merges labels additively, this function
+// removes stale user-specified labels from the existing route that are
+// no longer present in the required route.
+func ApplyAdditionalRoute(ctx context.Context, client routeclient.RoutesGetter, required *routev1.Route) (*routev1.Route, bool, error) {
+	existing, err := client.Routes(required.Namespace).Get(ctx, required.Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		requiredCopy := required.DeepCopy()
+		actual, err := client.Routes(requiredCopy.Namespace).Create(ctx, resourcemerge.WithCleanLabelsAndAnnotations(requiredCopy).(*routev1.Route), metav1.CreateOptions{})
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to create additional route %s: %w", requiredCopy.Name, err)
+		}
+		return actual, true, nil
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to get additional route %s: %w", required.Name, err)
+	}
+
+	existingCopy := existing.DeepCopy()
+
+	// Remove user-specified labels that are no longer in the required spec.
+	// Operator-managed labels are never removed.
+	labelsRemoved := false
+	for k := range existingCopy.Labels {
+		if _, managed := operatorManagedLabels[k]; managed {
+			continue
+		}
+		if _, ok := required.Labels[k]; !ok {
+			delete(existingCopy.Labels, k)
+			labelsRemoved = true
+		}
+	}
+
+	modified := resourcemerge.BoolPtr(false)
+	resourcemerge.EnsureObjectMeta(modified, &existingCopy.ObjectMeta, required.ObjectMeta)
+	specSame := equality.Semantic.DeepEqual(existingCopy.Spec, required.Spec)
+
+	if specSame && !*modified && !labelsRemoved {
+		klog.V(4).Infof("%s route exists and is in the correct state", existingCopy.ObjectMeta.Name)
+		return existingCopy, false, nil
+	}
+
+	existingCopy.Spec = required.Spec
+	actual, err := client.Routes(required.Namespace).Update(ctx, existingCopy, metav1.UpdateOptions{})
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to update additional route %s: %w", required.Name, err)
+	}
+	return actual, true, nil
 }
 
 func GetActiveRouteInfo(routeClient routev1listers.RouteLister, activeRouteName string) (route *routev1.Route, routeURL *url.URL, reason string, err error) {
@@ -297,4 +353,73 @@ func setTLS(tlsConfig *CustomTLSCert, route *routev1.Route) {
 
 func GetCustomRouteName(routeName string) string {
 	return fmt.Sprintf("%s-custom", routeName)
+}
+
+var knownConsoleRouteNames = map[string]struct{}{
+	api.OpenShiftConsoleRouteName:          {},
+	api.OpenShiftConsoleDownloadsRouteName: {},
+	api.OpenshiftConsoleCustomRouteName:    {},
+	api.OpenshiftDownloadsCustomRouteName:  {},
+}
+
+func GetAdditionalComponentRouteSpecs(ingressConfig *configv1.Ingress) []configv1.ComponentRouteSpec {
+	var additional []configv1.ComponentRouteSpec
+	for _, cr := range ingressConfig.Spec.ComponentRoutes {
+		if cr.Namespace != api.OpenShiftConsoleNamespace {
+			continue
+		}
+		if _, known := knownConsoleRouteNames[string(cr.Name)]; known {
+			continue
+		}
+		additional = append(additional, *cr.DeepCopy())
+	}
+	return additional
+}
+
+// GetComponentRouteSpecsByPrefix returns componentRoutes in the openshift-console
+// namespace whose name starts with the given prefix, excluding the primary route
+// and its *-custom variant (those are handled by SyncDefaultRoute/SyncCustomRoute).
+func GetComponentRouteSpecsByPrefix(ingressConfig *configv1.Ingress, routeName string) []configv1.ComponentRouteSpec {
+	customName := GetCustomRouteName(routeName)
+	var specs []configv1.ComponentRouteSpec
+	for _, cr := range ingressConfig.Spec.ComponentRoutes {
+		if cr.Namespace != api.OpenShiftConsoleNamespace {
+			continue
+		}
+		if !strings.HasPrefix(string(cr.Name), routeName) {
+			continue
+		}
+		if string(cr.Name) == routeName || string(cr.Name) == customName {
+			continue
+		}
+		specs = append(specs, *cr.DeepCopy())
+	}
+	return specs
+}
+
+func GetAdditionalRouteHostnames(ingressConfig *configv1.Ingress) []string {
+	specs := GetAdditionalComponentRouteSpecs(ingressConfig)
+	hostnames := make([]string, 0, len(specs))
+	for _, spec := range specs {
+		hostnames = append(hostnames, string(spec.Hostname))
+	}
+	return hostnames
+}
+
+func MakeAdditionalRoute(spec configv1.ComponentRouteSpec, customTLSCert *CustomTLSCert) *routev1.Route {
+	route := resourceread.ReadRouteV1OrDie(bindata.MustAsset("assets/routes/console-route.yaml"))
+	route.Name = string(spec.Name)
+	route.Spec.Host = string(spec.Hostname)
+	if route.Labels == nil {
+		route.Labels = make(map[string]string)
+	}
+	for k, v := range spec.Labels {
+		route.Labels[k] = string(v)
+	}
+	// Set operator-managed labels after user labels so they can't be
+	// overridden. The API rejects openshift.io/ prefixed keys anyway,
+	// but this ordering makes the intent explicit.
+	route.Labels[AdditionalRouteLabel] = "true"
+	setTLS(customTLSCert, route)
+	return route
 }

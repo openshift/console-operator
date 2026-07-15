@@ -168,7 +168,8 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 		return err
 	}
 
-	oauthErrReason, err := c.syncOAuthClient(ctx, clientSecret, consoleURL.String())
+	additionalHosts := routesub.GetAdditionalRouteHostnames(ingressConfig)
+	oauthErrReason, err := c.syncOAuthClient(ctx, clientSecret, consoleURL.String(), additionalHosts...)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSync", oauthErrReason, err))
 	if err != nil {
 		return statusHandler.FlushAndReturn(err)
@@ -207,6 +208,7 @@ func (c *oauthClientsController) syncOAuthClient(
 	ctx context.Context,
 	sec *corev1.Secret,
 	consoleURL string,
+	additionalHosts ...string,
 ) (reason string, err error) {
 	oauthClient, err := c.oauthClientLister.Get(oauthsub.Stub().Name)
 	if err != nil && !errors.IsNotFound(err) {
@@ -225,7 +227,7 @@ func (c *oauthClientsController) syncOAuthClient(
 	}
 
 	clientCopy := oauthClient.DeepCopy()
-	oauthsub.RegisterConsoleToOAuthClient(clientCopy, consoleURL, secretsub.GetSecretString(sec))
+	oauthsub.RegisterConsoleToOAuthClient(clientCopy, consoleURL, secretsub.GetSecretString(sec), additionalHosts...)
 	oauthErr := util.RetryOnTransientError(func() error {
 		_, _, e := oauthsub.CustomApplyOAuth(c.oauthClient, clientCopy, ctx)
 		return e

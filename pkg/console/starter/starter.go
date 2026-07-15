@@ -268,6 +268,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// oauth
 		oauthClientsSwitchedInformer,
 		// routes
+		routesClient.RouteV1(),
 		routesInformersNamespaced.Route().V1().Routes(), // Route
 		// plugins
 		consoleInformers.Console().V1().ConsolePlugins(),

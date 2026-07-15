@@ -133,3 +133,65 @@ func TestSetRedirectURI(t *testing.T) {
 		})
 	}
 }
+
+func TestSetRedirectURIs(t *testing.T) {
+	tests := []struct {
+		name     string
+		hosts    []string
+		wantURIs []string
+	}{
+		{
+			name:     "single host",
+			hosts:    []string{"console.example.com"},
+			wantURIs: []string{"https://console.example.com/auth/callback"},
+		},
+		{
+			name:     "multiple hosts",
+			hosts:    []string{"console.example.com", "console-alt.example.com", "console.internal.example.com:8443"},
+			wantURIs: []string{"https://console.example.com/auth/callback", "https://console-alt.example.com/auth/callback", "https://console.internal.example.com:8443/auth/callback"},
+		},
+		{
+			name:     "empty hosts",
+			hosts:    []string{},
+			wantURIs: []string{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := &oauthv1.OAuthClient{}
+			SetRedirectURIs(client, tt.hosts)
+			if diff := deep.Equal(client.RedirectURIs, tt.wantURIs); diff != nil {
+				t.Errorf("SetRedirectURIs() mismatch: %v", diff)
+			}
+		})
+	}
+}
+
+func TestRegisterConsoleToOAuthClientWithAdditionalHosts(t *testing.T) {
+	client := &oauthv1.OAuthClient{
+		ObjectMeta: metav1.ObjectMeta{Name: api.OAuthClientName},
+	}
+	result := RegisterConsoleToOAuthClient(client, "console.example.com", "secret123", "console-alt.example.com", "console.internal.example.com")
+	wantURIs := []string{
+		"https://console.example.com/auth/callback",
+		"https://console-alt.example.com/auth/callback",
+		"https://console.internal.example.com/auth/callback",
+	}
+	if diff := deep.Equal(result.RedirectURIs, wantURIs); diff != nil {
+		t.Errorf("RegisterConsoleToOAuthClient() redirect URIs mismatch: %v", diff)
+	}
+	if result.Secret != "secret123" {
+		t.Errorf("expected secret %q, got %q", "secret123", result.Secret)
+	}
+}
+
+func TestRegisterConsoleToOAuthClientNoAdditionalHosts(t *testing.T) {
+	client := &oauthv1.OAuthClient{
+		ObjectMeta: metav1.ObjectMeta{Name: api.OAuthClientName},
+	}
+	result := RegisterConsoleToOAuthClient(client, "console.example.com", "secret123")
+	wantURIs := []string{"https://console.example.com/auth/callback"}
+	if diff := deep.Equal(result.RedirectURIs, wantURIs); diff != nil {
+		t.Errorf("RegisterConsoleToOAuthClient() redirect URIs mismatch: %v", diff)
+	}
+}

@@ -66,16 +66,17 @@ type ServingInfo struct {
 
 // ClusterInfo holds information the about the cluster such as master public URL and console public URL.
 type ClusterInfo struct {
-	ConsoleBaseAddress          string                `yaml:"consoleBaseAddress,omitempty"`
-	ConsoleBasePath             string                `yaml:"consoleBasePath,omitempty"`
-	MasterPublicURL             string                `yaml:"masterPublicURL,omitempty"`
-	ControlPlaneToplogy         configv1.TopologyMode `yaml:"controlPlaneTopology,omitempty"`
-	ReleaseVersion              string                `yaml:"releaseVersion,omitempty"`
-	NodeArchitectures           []string              `yaml:"nodeArchitectures,omitempty"`
-	NodeOperatingSystems        []string              `yaml:"nodeOperatingSystems,omitempty"`
-	CopiedCSVsDisabled          bool                  `yaml:"copiedCSVsDisabled,omitempty"`
-	TechPreviewEnabled          bool                  `yaml:"techPreviewEnabled,omitempty"`
-	OLMLifecycleMetadataEnabled bool                  `yaml:"olmLifecycleMetadataEnabled,omitempty"`
+	ConsoleBaseAddress             string                `yaml:"consoleBaseAddress,omitempty"`
+	AdditionalConsoleBaseAddresses []string              `yaml:"additionalConsoleBaseAddresses,omitempty"`
+	ConsoleBasePath                string                `yaml:"consoleBasePath,omitempty"`
+	MasterPublicURL                string                `yaml:"masterPublicURL,omitempty"`
+	ControlPlaneToplogy            configv1.TopologyMode `yaml:"controlPlaneTopology,omitempty"`
+	ReleaseVersion                 string                `yaml:"releaseVersion,omitempty"`
+	NodeArchitectures              []string              `yaml:"nodeArchitectures,omitempty"`
+	NodeOperatingSystems           []string              `yaml:"nodeOperatingSystems,omitempty"`
+	CopiedCSVsDisabled             bool                  `yaml:"copiedCSVsDisabled,omitempty"`
+	TechPreviewEnabled             bool                  `yaml:"techPreviewEnabled,omitempty"`
+	OLMLifecycleMetadataEnabled    bool                  `yaml:"olmLifecycleMetadataEnabled,omitempty"`
 }
 
 // MonitoringInfo holds configuration for monitoring related services

@@ -144,6 +144,8 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(olmLifecycleMetadataErr)
 	}
 
+	additionalHosts := routesub.GetAdditionalRouteHostnames(set.Ingress)
+
 	cm, cmErrReason, cmErr := co.SyncConfigMap(
 		ctx,
 		set.Operator,
@@ -156,6 +158,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		consoleURL.Hostname(),
 		techPreviewEnabled,
 		olmLifecycleMetadataEnabled,
+		additionalHosts,
 	)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
 	if cmErr != nil {
@@ -381,6 +384,7 @@ func (co *consoleOperator) SyncConfigMap(
 	consoleHost string,
 	techPreviewEnabled bool,
 	olmLifecycleMetadataEnabled bool,
+	additionalHosts []string,
 ) (consoleConfigMap *corev1.ConfigMap, reason string, err error) {
 
 	managedConfig, mcErr := co.managedNSConfigMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName)
@@ -456,6 +460,7 @@ func (co *consoleOperator) SyncConfigMap(
 		consoleHost,
 		techPreviewEnabled,
 		olmLifecycleMetadataEnabled,
+		additionalHosts,
 	)
 	if err != nil {
 		return nil, "FailedConsoleConfigBuilder", err

@@ -50,6 +50,7 @@ func DefaultConfigMap(
 	consoleHost string,
 	techPreviewEnabled bool,
 	olmLifecycleMetadataEnabled bool,
+	additionalHosts []string,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	apiServerURL := infrastructuresub.GetAPIServerURL(infrastructureConfig)
@@ -68,6 +69,7 @@ func DefaultConfigMap(
 		CopiedCSVsDisabled(copiedCSVsDisabled).
 		TechPreviewEnabled(techPreviewEnabled).
 		OLMLifecycleMetadataEnabled(olmLifecycleMetadataEnabled).
+		AdditionalHosts(additionalHosts).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate default console-config: %v", err)
@@ -109,6 +111,7 @@ func DefaultConfigMap(
 		Capabilities(operatorConfig.Spec.Customization.Capabilities).
 		TechPreviewEnabled(techPreviewEnabled).
 		OLMLifecycleMetadataEnabled(olmLifecycleMetadataEnabled).
+		AdditionalHosts(additionalHosts).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate user-defined console-config: %v", err)
