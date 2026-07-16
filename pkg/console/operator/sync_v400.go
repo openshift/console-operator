@@ -476,14 +476,13 @@ func (co *consoleOperator) GetTelemetryConfiguration(ctx context.Context, operat
 	if err != nil {
 		return telemetryConfig, err
 	}
-	if !telemeterClientIsAvailable {
-		telemetryConfig["TELEMETER_CLIENT_DISABLED"] = "true"
-		return telemetryConfig, nil
-	}
+	telemetryConfig["TELEMETER_CLIENT_DISABLED"] = fmt.Sprintf("%t", !telemeterClientIsAvailable)
 
-	accessToken, err := telemetry.GetAccessToken(co.configNSSecretLister)
+	var accessToken string
+	accessToken, err = telemetry.GetAccessToken(co.configNSSecretLister)
 	if err != nil {
-		return nil, err
+		klog.V(4).Infof("telemetry config: failed to get access token, proceeding without organization metadata: %v", err)
+		accessToken = ""
 	}
 	organizationID, accountMail, refreshCache := telemetry.GetOrganizationMeta(telemetryConfig, co.trackables.organizationID, co.trackables.accountMail, clusterID, accessToken)
 	// cache fetched ORGANIZATION_ID and ACCOUNT_MAIL
