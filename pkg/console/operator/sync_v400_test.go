@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -225,50 +226,98 @@ func TestGetNodeComputeEnvironments(t *testing.T) {
 	}
 }
 
-// TestDeploymentProgressingByGeneration tests the ObservedGeneration-based
-// Progressing check introduced in OCPBUGS-64688. The operator should only
-// report Progressing=True when the deployment controller has not yet processed
-// a spec change (ObservedGeneration < Generation), NOT when replica counts
-// fluctuate due to external disruptions like node reboots.
-func TestDeploymentProgressingByGeneration(t *testing.T) {
+// TestCheckDeploymentRolloutStatus tests the deployment rollout status check
+// introduced in OCPBUGS-93982 (v2). The function examines the deployment
+// controller's own Progressing condition rather than just the generation gap,
+// following the 3CMO pattern (openshift/cluster-cloud-controller-manager-operator#488).
+func TestCheckDeploymentRolloutStatus(t *testing.T) {
 	tests := []struct {
 		name               string
 		generation         int64
 		observedGeneration int64
+		conditions         []appsv1.DeploymentCondition
 		wantErr            bool
-		wantErrMsg         string
+		wantErrContains    string
 	}{
 		{
-			name:               "ObservedGeneration equals Generation: not progressing",
+			name:               "rollout complete: NewReplicaSetAvailable",
 			generation:         5,
 			observedGeneration: 5,
-			wantErr:            false,
+			conditions: []appsv1.DeploymentCondition{{
+				Type:   appsv1.DeploymentProgressing,
+				Status: v1.ConditionTrue,
+				Reason: "NewReplicaSetAvailable",
+			}},
+			wantErr: false,
 		},
 		{
-			name:               "ObservedGeneration less than Generation: progressing",
-			generation:         4,
-			observedGeneration: 3,
+			name:               "generation gap: not yet observed",
+			generation:         6,
+			observedGeneration: 5,
 			wantErr:            true,
-			wantErrMsg:         "deployment generation 4 not yet observed (observed: 3)",
+			wantErrContains:    "not yet observed",
 		},
 		{
-			name:               "ObservedGeneration greater than Generation: not progressing",
-			generation:         2,
-			observedGeneration: 3,
-			wantErr:            false,
+			name:               "rollout in progress: ReplicaSetUpdated",
+			generation:         5,
+			observedGeneration: 5,
+			conditions: []appsv1.DeploymentCondition{{
+				Type:   appsv1.DeploymentProgressing,
+				Status: v1.ConditionTrue,
+				Reason: "ReplicaSetUpdated",
+			}},
+			wantErr:         true,
+			wantErrContains: "rollout in progress: ReplicaSetUpdated",
 		},
 		{
-			name:               "both zero: not progressing (fresh deployment)",
-			generation:         0,
-			observedGeneration: 0,
-			wantErr:            false,
+			name:               "rollout in progress: NewReplicaSetCreated",
+			generation:         5,
+			observedGeneration: 5,
+			conditions: []appsv1.DeploymentCondition{{
+				Type:   appsv1.DeploymentProgressing,
+				Status: v1.ConditionTrue,
+				Reason: "NewReplicaSetCreated",
+			}},
+			wantErr:         true,
+			wantErrContains: "rollout in progress: NewReplicaSetCreated",
 		},
 		{
-			name:               "Generation 1, ObservedGeneration 0: progressing (initial rollout)",
+			name:               "rollout stalled: ProgressDeadlineExceeded",
+			generation:         5,
+			observedGeneration: 5,
+			conditions: []appsv1.DeploymentCondition{{
+				Type:   appsv1.DeploymentProgressing,
+				Status: v1.ConditionFalse,
+				Reason: "ProgressDeadlineExceeded",
+			}},
+			wantErr:         true,
+			wantErrContains: "ProgressDeadlineExceeded",
+		},
+		{
+			name:               "no progressing condition yet",
+			generation:         5,
+			observedGeneration: 5,
+			conditions:         []appsv1.DeploymentCondition{},
+			wantErr:            true,
+			wantErrContains:    "not yet available",
+		},
+		{
+			name:               "observed greater than generation: checks conditions",
+			generation:         3,
+			observedGeneration: 4,
+			conditions: []appsv1.DeploymentCondition{{
+				Type:   appsv1.DeploymentProgressing,
+				Status: v1.ConditionTrue,
+				Reason: "NewReplicaSetAvailable",
+			}},
+			wantErr: false,
+		},
+		{
+			name:               "initial rollout: Generation 1, ObservedGeneration 0",
 			generation:         1,
 			observedGeneration: 0,
 			wantErr:            true,
-			wantErrMsg:         "deployment generation 1 not yet observed (observed: 0)",
+			wantErrContains:    "not yet observed",
 		},
 	}
 
@@ -280,19 +329,20 @@ func TestDeploymentProgressingByGeneration(t *testing.T) {
 				},
 				Status: appsv1.DeploymentStatus{
 					ObservedGeneration: tt.observedGeneration,
+					Conditions:         tt.conditions,
 				},
 			}
 
-			err := checkDeploymentGenerationProgress(deployment)
+			err := checkDeploymentRolloutStatus(deployment)
 
 			if tt.wantErr && err == nil {
-				t.Errorf("expected error but got nil")
+				t.Error("expected error but got nil")
 			}
 			if !tt.wantErr && err != nil {
 				t.Errorf("expected no error but got: %v", err)
 			}
-			if tt.wantErr && err != nil && err.Error() != tt.wantErrMsg {
-				t.Errorf("error message mismatch:\n  got:  %q\n  want: %q", err.Error(), tt.wantErrMsg)
+			if tt.wantErr && err != nil && !strings.Contains(err.Error(), tt.wantErrContains) {
+				t.Errorf("error %q does not contain %q", err.Error(), tt.wantErrContains)
 			}
 		})
 	}
