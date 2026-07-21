@@ -180,11 +180,6 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 		return statusHandler.FlushAndReturn(err)
 	}
 
-	ingressControllerConfig, err := c.ingressControllerLister.IngressControllers(api.IngressControllerNamespace).Get(api.DefaultIngressController)
-	if err != nil {
-		return statusHandler.FlushAndReturn(err)
-	}
-
 	clusterVersionConfig, err := c.clusterVersionLister.Get("version")
 	if err != nil {
 		return statusHandler.FlushAndReturn(err)
@@ -195,6 +190,11 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 	// Link: https://github.com/openshift/enhancements/blob/f5290a98ea4f23f8e76621806b656a3849c74a17/enhancements/ingress/optional-ingress-hypershift.md#component-routes.
 	if util.IsExternalControlPlaneWithIngressDisabled(infrastructureConfig, clusterVersionConfig) {
 		return statusHandler.FlushAndReturn(nil)
+	}
+
+	ingressControllerConfig, err := c.ingressControllerLister.IngressControllers(api.IngressControllerNamespace).Get(api.DefaultIngressController)
+	if err != nil {
+		return statusHandler.FlushAndReturn(err)
 	}
 
 	ingressConfig, err := c.ingressConfigLister.Get(api.ConfigResourceName)
