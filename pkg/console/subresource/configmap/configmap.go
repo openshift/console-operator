@@ -51,6 +51,8 @@ func DefaultConfigMap(
 	techPreviewEnabled bool,
 	olmLifecycleMetadataEnabled bool,
 	additionalHosts []string,
+	tlsMinVersion configv1.TLSProtocolVersion,
+	tlsCiphers []string,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	apiServerURL := infrastructuresub.GetAPIServerURL(infrastructureConfig)
@@ -112,6 +114,7 @@ func DefaultConfigMap(
 		TechPreviewEnabled(techPreviewEnabled).
 		OLMLifecycleMetadataEnabled(olmLifecycleMetadataEnabled).
 		AdditionalHosts(additionalHosts).
+		TLSConfig(tlsMinVersion, tlsCiphers).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate user-defined console-config: %v", err)

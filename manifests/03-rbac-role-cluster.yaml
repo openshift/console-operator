@@ -37,6 +37,7 @@ rules:
   - apiGroups:
       - config.openshift.io
     resources:
+      - apiservers
       - authentications
       - oauths
       - infrastructures

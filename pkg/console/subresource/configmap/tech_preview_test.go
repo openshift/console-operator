@@ -58,8 +58,10 @@ func TestTechPreviewEnabled(t *testing.T) {
 				map[string]string{},          // telemetryConfig
 				"console.test.cluster",       // consoleHost
 				tt.args.techPreviewEnabled,
-				false, // olmLifecycleMetadataEnabled
-				nil,   // additionalHosts
+				false,      // olmLifecycleMetadataEnabled
+				nil,        // additionalHosts
+				"",         // tlsMinVersion - empty for legacy tests
+				[]string{}, // tlsCiphers
 			)
 
 			if err != nil {
@@ -125,7 +127,9 @@ func TestOLMLifecycleMetadataEnabled(t *testing.T) {
 				"console.test.cluster",       // consoleHost
 				false,                        // techPreviewEnabled
 				tt.args.olmLifecycleMetadataEnabled,
-				nil, // additionalHosts
+				nil,        // additionalHosts
+				"",         // tlsMinVersion - empty for legacy tests
+				[]string{}, // tlsCiphers
 			)
 
 			if err != nil {
