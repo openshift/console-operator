@@ -1304,9 +1304,11 @@ providers: {}
 				tt.args.copiedCSVsDisabled,
 				tt.args.telemetryConfig,
 				tt.args.rt.Spec.Host,
-				false, // techPreviewEnabled - default to false for tests
-				false, // olmLifecycleMetadataEnabled - default to false for tests
-				nil,   // additionalHosts
+				false,      // techPreviewEnabled - default to false for tests
+				false,      // olmLifecycleMetadataEnabled - default to false for tests
+				nil,        // additionalHosts
+				"",         // tlsMinVersion - empty for legacy tests
+				[]string{}, // tlsCiphers - empty for legacy tests
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below
