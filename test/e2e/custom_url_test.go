@@ -435,19 +435,10 @@ func checkCustomTLSWasUnset(t *testing.T, client *framework.ClientSet, routeName
 		if err != nil {
 			return true, err
 		}
-		if route.Spec.TLS == nil {
-			return true, nil
-		}
-		// For the console route, the operator sets a throwaway HTTP/2 cert
-		// when no admin cert is configured, so TLS fields will be non-empty.
-		// Verify the admin cert was removed by checking it changed.
-		if route.Spec.TLS.Certificate != adminCert {
-			return true, nil
-		}
-		// For routes without HTTP/2 cert (e.g. downloads), empty TLS is expected.
 		if len(route.Spec.TLS.Certificate) == 0 && len(route.Spec.TLS.Key) == 0 {
 			return true, nil
 		}
+
 		return false, nil
 	})
 	if err != nil {

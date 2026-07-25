@@ -50,7 +50,6 @@ func getTestingResources() []TestingResource {
 		{"Deployment", consoleapi.OpenShiftConsoleDeploymentName, consoleapi.OpenShiftConsoleNamespace},
 		{"Deployment", consoleapi.OpenShiftConsoleDownloadsDeploymentName, consoleapi.OpenShiftConsoleNamespace},
 		{"Route", consoleapi.OpenShiftConsoleRouteName, consoleapi.OpenShiftConsoleNamespace},
-		{"Secret", consoleapi.ConsoleHTTP2CertSecretName, consoleapi.OpenShiftConsoleNamespace},
 		{"Service", consoleapi.OpenShiftConsoleServiceName, consoleapi.OpenShiftConsoleNamespace},
 		{"PodDisruptionBudget", consoleapi.OpenShiftConsoleName, consoleapi.OpenShiftConsoleNamespace},
 		{"PodDisruptionBudget", consoleapi.DownloadsResourceName, consoleapi.OpenShiftConsoleNamespace},
@@ -92,8 +91,6 @@ func GetResource(client *ClientSet, resource TestingResource) (runtime.Object, e
 	switch resource.kind {
 	case "ConfigMap":
 		res, err = client.Core.ConfigMaps(resource.namespace).Get(context.TODO(), resource.name, metav1.GetOptions{})
-	case "Secret":
-		res, err = client.Core.Secrets(resource.namespace).Get(context.TODO(), resource.name, metav1.GetOptions{})
 	case "Service":
 		res, err = client.Core.Services(resource.namespace).Get(context.TODO(), resource.name, metav1.GetOptions{})
 	case "Route":
@@ -148,8 +145,6 @@ func deleteResource(client *ClientSet, resource TestingResource) error {
 	switch resource.kind {
 	case "ConfigMap":
 		err = client.Core.ConfigMaps(resource.namespace).Delete(context.TODO(), resource.name, metav1.DeleteOptions{})
-	case "Secret":
-		err = client.Core.Secrets(resource.namespace).Delete(context.TODO(), resource.name, metav1.DeleteOptions{})
 	case "Service":
 		err = client.Core.Services(resource.namespace).Delete(context.TODO(), resource.name, metav1.DeleteOptions{})
 	case "Route":
