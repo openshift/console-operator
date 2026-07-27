@@ -379,10 +379,6 @@ func TestGetTelemetryConfiguration_StableKeySet(t *testing.T) {
 			if _, ok := config["ORGANIZATION_ID"]; !ok {
 				t.Error("expected ORGANIZATION_ID key to always be present")
 			}
-			if _, ok := config["ACCOUNT_MAIL"]; !ok {
-				t.Error("expected ACCOUNT_MAIL key to always be present")
-			}
-
 			disabledVal, ok := config["TELEMETER_CLIENT_DISABLED"]
 			if !ok {
 				t.Error("expected TELEMETER_CLIENT_DISABLED key to always be present")
@@ -415,7 +411,7 @@ func TestGetTelemetryConfiguration_KeySetStableAcrossAvailabilityChange(t *testi
 	keysAvailable := sortedKeys(configAvailable)
 
 	// All keys must be present in both states — no key-set difference allowed.
-	sharedKeys := []string{"CLUSTER_ID", "ORGANIZATION_ID", "ACCOUNT_MAIL", "TELEMETER_CLIENT_DISABLED", "SEGMENT_API_HOST", "SEGMENT_JS_HOST", "SEGMENT_PUBLIC_API_KEY"}
+	sharedKeys := []string{"CLUSTER_ID", "ORGANIZATION_ID", "TELEMETER_CLIENT_DISABLED", "SEGMENT_API_HOST", "SEGMENT_JS_HOST", "SEGMENT_PUBLIC_API_KEY"}
 	for _, key := range sharedKeys {
 		if _, ok := configUnavailable[key]; !ok {
 			t.Errorf("key %q missing from unavailable config, keys present: %v", key, keysUnavailable)
@@ -461,8 +457,5 @@ func TestGetTelemetryConfiguration_DisconnectedClusterNoError(t *testing.T) {
 	}
 	if _, ok := config["ORGANIZATION_ID"]; !ok {
 		t.Error("expected ORGANIZATION_ID key to be present even on disconnected cluster")
-	}
-	if _, ok := config["ACCOUNT_MAIL"]; !ok {
-		t.Error("expected ACCOUNT_MAIL key to be present even on disconnected cluster")
 	}
 }
