@@ -27,7 +27,6 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 
-	"github.com/openshift/console-operator/pkg/console/configobservation/configobservercontroller"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/clioidcclientstatus"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
@@ -636,14 +635,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	logLevelController := loglevel.NewClusterOperatorLoggingController(operatorClient, controllerContext.EventRecorder)
 	managementStateController := managementstatecontroller.NewOperatorManagementStateController(api.ClusterOperatorName, operatorClient, controllerContext.EventRecorder)
 
-	// Config observer watches APIServer and writes TLS config to Console CR's observedConfig
-	configObserver := configobservercontroller.NewConfigObserver(
-		operatorClient,
-		configInformers,
-		resourceSyncer,
-		recorder,
-	)
-
 	for _, informer := range []interface {
 		Start(stopCh <-chan struct{})
 	}{
@@ -673,7 +664,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		logLevelController,
 		managementStateController,
 		configUpgradeableController,
-		configObserver,
 		consoleServiceAccountController,
 		downloadsServiceAccountController,
 		consoleServiceController,

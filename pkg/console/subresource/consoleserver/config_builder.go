@@ -85,8 +85,6 @@ type ConsoleServerCLIConfigBuilder struct {
 	techPreviewEnabled          bool
 	olmLifecycleMetadataEnabled bool
 	additionalHosts             []string
-	minTLSVersion               string
-	cipherSuites                []string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -325,12 +323,6 @@ func (b *ConsoleServerCLIConfigBuilder) AdditionalHosts(hosts []string) *Console
 	return b
 }
 
-func (b *ConsoleServerCLIConfigBuilder) TLSConfig(minVersion configv1.TLSProtocolVersion, ciphers []string) *ConsoleServerCLIConfigBuilder {
-	b.minTLSVersion = string(minVersion)
-	b.cipherSuites = ciphers
-	return b
-}
-
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
 		Kind:                  "ConsoleConfig",
@@ -370,14 +362,6 @@ func (b *ConsoleServerCLIConfigBuilder) servingInfo() ServingInfo {
 
 	if b.customHostnameRedirectPort != 0 {
 		conf.RedirectPort = b.customHostnameRedirectPort
-	}
-
-	if b.minTLSVersion != "" {
-		conf.MinTLSVersion = b.minTLSVersion
-	}
-
-	if len(b.cipherSuites) > 0 {
-		conf.CipherSuites = b.cipherSuites
 	}
 
 	return conf
