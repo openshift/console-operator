@@ -29,8 +29,10 @@ metadata:
     capability.openshift.io/name: Console
 spec:
   description: |
-    Helm 3 is a package manager for Kubernetes that simplifies deploying and managing
-    applications using Helm Charts. Helm 3 remains available for existing workflows.
+    Helm 3 is a package manager for Kubernetes applications which enables defining,
+    installing, and upgrading applications packaged as Helm Charts. Helm 3 continues
+    to be provided for operational continuity, but it will not be compatible with
+    future releases of OCP and so customers are encouraged to upgrade to Helm 4.
   displayName: helm - Helm 3 CLI
   links:
     - href: 'https://mirror.openshift.com/pub/openshift-v4/clients/helm/latest'
