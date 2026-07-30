@@ -182,7 +182,10 @@ func withAffinity(
 }
 
 func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
-	rollingUpdateParams := &appsv1.RollingUpdateDeployment{}
+	rollingUpdateParams := &appsv1.RollingUpdateDeployment{
+		MaxSurge:       &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
+		MaxUnavailable: &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
+	}
 	if ShouldDeployHA(infrastructureConfig) {
 		rollingUpdateParams = &appsv1.RollingUpdateDeployment{
 			MaxSurge: &intstr.IntOrString{
