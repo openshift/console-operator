@@ -177,6 +177,8 @@ func pluginsWithI18nNamespace(availablePlugins []*v1.ConsolePlugin) []string {
 			i18nNamespaces = append(i18nNamespaces, fmt.Sprintf("plugin__%s", plugin.Name))
 		}
 	}
+	// Sort to ensure deterministic YAML output
+	sort.Strings(i18nNamespaces)
 	return i18nNamespaces
 }
 
@@ -190,6 +192,9 @@ func getPluginsEndpointMap(availablePlugins []*v1.ConsolePlugin) map[string]stri
 			klog.Errorf("unknown backend type for %q plugin: %q. Currently only %q backend type is supported.", plugin.Name, plugin.Spec.Backend.Type, v1.Service)
 		}
 	}
+	// Note: Here the YAML output is deterministic because:
+	// - availablePlugins are sorted by name in GetAvailablePlugins()
+	// - sigs.k8s.io/yaml uses json.Marshal which sorts map keys
 	return pluginsEndpointMap
 }
 
@@ -212,6 +217,10 @@ func getPluginsProxyServices(availablePlugins []*v1.ConsolePlugin) []consoleserv
 			}
 		}
 	}
+	// Sort by ConsoleAPIPath to ensure deterministic YAML output
+	sort.Slice(proxyServices, func(i, j int) bool {
+		return proxyServices[i].ConsoleAPIPath < proxyServices[j].ConsoleAPIPath
+	})
 	return proxyServices
 }
 

@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"slices"
+	"sort"
 	"strings"
 
 	// kube
@@ -786,6 +787,10 @@ func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []string) []*
 		}
 		availablePlugins = append(availablePlugins, plugin)
 	}
+	// Sort plugins by name to ensure deterministic processing order
+	sort.Slice(availablePlugins, func(i, j int) bool {
+		return availablePlugins[i].Name < availablePlugins[j].Name
+	})
 	return availablePlugins
 }
 
