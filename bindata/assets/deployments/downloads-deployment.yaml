@@ -8,6 +8,8 @@ metadata:
     component: downloads
   annotations: {}
 spec:
+  progressDeadlineSeconds: 600
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       app: console
@@ -24,7 +26,9 @@ spec:
         target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
         openshift.io/required-scc: restricted-v2
     spec:
+      dnsPolicy: ClusterFirst
       serviceAccountName: downloads
+      serviceAccount: downloads
       nodeSelector:
         kubernetes.io/os: linux
         node-role.kubernetes.io/master: ""
