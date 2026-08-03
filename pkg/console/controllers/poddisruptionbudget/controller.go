@@ -97,11 +97,11 @@ func (c *PodDisruptionBudgetController) Sync(ctx context.Context, controllerCont
 	statusHandler := status.NewStatusHandler(c.operatorClient)
 
 	requiredPDB := c.getDefaultPodDisruptionBudget()
-	_, _, pdbErr := resourceapply.ApplyPodDisruptionBudget(ctx, c.pdbClient, controllerContext.Recorder(), requiredPDB)
+	pdbErr := util.RetryOnTransientError(func() error {
+		_, _, err := resourceapply.ApplyPodDisruptionBudget(ctx, c.pdbClient, controllerContext.Recorder(), requiredPDB)
+		return err
+	})
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("PDBSync", "FailedApply", pdbErr))
-	if pdbErr != nil {
-		return statusHandler.FlushAndReturn(pdbErr)
-	}
 	return statusHandler.FlushAndReturn(pdbErr)
 }
 

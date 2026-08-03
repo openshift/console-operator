@@ -34,6 +34,7 @@ import (
 
 	// operator
 	"github.com/openshift/console-operator/pkg/api"
+	controllersutil "github.com/openshift/console-operator/pkg/console/controllers/util"
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
 	"github.com/openshift/console-operator/pkg/console/metrics"
 	"github.com/openshift/console-operator/pkg/console/status"
@@ -211,13 +212,8 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 
 	statusHandler.AddCondition(status.HandleProgressing("SyncLoopRefresh", "InProgress", func() error {
 		version := os.Getenv("OPERATOR_IMAGE_VERSION")
-		// Only report Progressing=True when the deployment is actually rolling out
-		// or the operator version is changing. Do NOT report Progressing just because
-		// resources were updated during reconciliation, as per the API guidelines:
-		// "Operators should not report Progressing when they are reconciling (without action)
-		// a previously known state."
-		if !deploymentsub.IsAvailableAndUpdated(actualDeployment) {
-			return fmt.Errorf("working toward version %s, %v replicas available", version, actualDeployment.Status.AvailableReplicas)
+		if err := checkDeploymentGenerationProgress(actualDeployment); err != nil {
+			return err
 		}
 
 		if co.versionGetter.GetVersions()["operator"] != version {
@@ -261,16 +257,31 @@ func (co *consoleOperator) SyncConsoleConfig(ctx context.Context, consoleConfig 
 	metrics.HandleConsoleURL(oldURL, consoleURL)
 	if oldURL != consoleURL {
 		klog.V(4).Infof("updating console.config.openshift.io with url: %v", consoleURL)
-		updated := consoleConfig.DeepCopy()
-		updated.Status.ConsoleURL = consoleURL
-		return co.consoleConfigClient.UpdateStatus(ctx, updated, metav1.UpdateOptions{})
+		var result *configv1.Console
+		err := controllersutil.RetryOnTransientError(func() error {
+			latest, e := co.consoleConfigClient.Get(ctx, consoleConfig.Name, metav1.GetOptions{})
+			if e != nil {
+				return e
+			}
+			latest.Status.ConsoleURL = consoleURL
+			result, e = co.consoleConfigClient.UpdateStatus(ctx, latest, metav1.UpdateOptions{})
+			return e
+		})
+		return result, err
 	}
 	return consoleConfig, nil
 }
 
 func (co *consoleOperator) SyncConsolePublicConfig(ctx context.Context, consoleURL string, recorder events.Recorder) (*corev1.ConfigMap, bool, error) {
 	requiredConfigMap := configmapsub.DefaultPublicConfig(consoleURL)
-	return resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, requiredConfigMap)
+	var cm *corev1.ConfigMap
+	var changed bool
+	err := controllersutil.RetryOnTransientError(func() error {
+		var e error
+		cm, changed, e = resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, requiredConfigMap)
+		return e
+	})
+	return cm, changed, err
 }
 
 func (co *consoleOperator) SyncDeployment(
@@ -309,13 +320,18 @@ func (co *consoleOperator) SyncDeployment(
 	}
 	deploymentsub.LogDeploymentAnnotationChanges(co.deploymentClient, requiredDeployment, ctx)
 
-	deployment, _, applyDepErr := resourceapply.ApplyDeployment(
-		ctx,
-		co.deploymentClient,
-		recorder,
-		requiredDeployment,
-		resourcemerge.ExpectedDeploymentGeneration(requiredDeployment, updatedOperatorConfig.Status.Generations),
-	)
+	var deployment *appsv1.Deployment
+	applyDepErr := controllersutil.RetryOnTransientError(func() error {
+		var e error
+		deployment, _, e = resourceapply.ApplyDeployment(
+			ctx,
+			co.deploymentClient,
+			recorder,
+			requiredDeployment,
+			resourcemerge.ExpectedDeploymentGeneration(requiredDeployment, updatedOperatorConfig.Status.Generations),
+		)
+		return e
+	})
 
 	if applyDepErr != nil {
 		return nil, "FailedApply", applyDepErr
@@ -417,12 +433,10 @@ func (co *consoleOperator) SyncConfigMap(
 	}
 	var cm *corev1.ConfigMap
 	var cmChanged bool
-	var cmErr error
-
-	// Retry on conflicts to handle concurrent ConfigMap updates
-	cmErr = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		cm, cmChanged, cmErr = resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, defaultConfigmap)
-		return cmErr
+	cmErr := controllersutil.RetryOnTransientError(func() error {
+		var e error
+		cm, cmChanged, e = resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, defaultConfigmap)
+		return e
 	})
 	if cmErr != nil {
 		return nil, "FailedApply", cmErr
@@ -472,14 +486,13 @@ func (co *consoleOperator) GetTelemetryConfiguration(ctx context.Context, operat
 	if err != nil {
 		return telemetryConfig, err
 	}
-	if !telemeterClientIsAvailable {
-		telemetryConfig["TELEMETER_CLIENT_DISABLED"] = "true"
-		return telemetryConfig, nil
-	}
+	telemetryConfig["TELEMETER_CLIENT_DISABLED"] = fmt.Sprintf("%t", !telemeterClientIsAvailable)
 
-	accessToken, err := telemetry.GetAccessToken(co.configNSSecretLister)
+	var accessToken string
+	accessToken, err = telemetry.GetAccessToken(co.configNSSecretLister)
 	if err != nil {
-		return nil, err
+		klog.V(4).Infof("telemetry config: failed to get access token, proceeding without organization metadata: %v", err)
+		accessToken = ""
 	}
 	organizationID, accountMail, refreshCache := telemetry.GetOrganizationMeta(telemetryConfig, co.trackables.organizationID, co.trackables.accountMail, clusterID, accessToken)
 	// cache fetched ORGANIZATION_ID and ACCOUNT_MAIL
@@ -499,13 +512,17 @@ func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorC
 	// we can't use `resourceapply.ApplyConfigMap` since it compares data, and the service serving cert operator injects the data
 	existing, err := co.targetNSConfigMapLister.ConfigMaps(required.Namespace).Get(required.Name)
 	if apierrors.IsNotFound(err) {
-		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
-		if err == nil {
+		var actual *corev1.ConfigMap
+		createErr := controllersutil.RetryOnTransientError(func() error {
+			var e error
+			actual, e = co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
+			return e
+		})
+		if createErr == nil {
 			klog.V(4).Infoln("service-ca configmap created")
-			return actual, "", err
-		} else {
-			return actual, "FailedCreate", err
+			return actual, "", nil
 		}
+		return actual, "FailedCreate", createErr
 	}
 	if err != nil {
 		return nil, "FailedGet", err
@@ -518,25 +535,38 @@ func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorC
 		return existing, "", nil
 	}
 
-	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
-	if err == nil {
+	var actual *corev1.ConfigMap
+	updateErr := controllersutil.RetryOnTransientError(func() error {
+		latest, e := co.configMapClient.ConfigMaps(required.Namespace).Get(ctx, required.Name, metav1.GetOptions{})
+		if e != nil {
+			return e
+		}
+		resourcemerge.EnsureObjectMeta(resourcemerge.BoolPtr(false), &latest.ObjectMeta, required.ObjectMeta)
+		actual, e = co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, latest, metav1.UpdateOptions{})
+		return e
+	})
+	if updateErr == nil {
 		klog.V(4).Infoln("service-ca configmap updated")
-		return actual, "", err
-	} else {
-		return actual, "FailedUpdate", err
+		return actual, "", nil
 	}
+	return actual, "FailedUpdate", updateErr
 }
 
 func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorConfig *operatorv1.Console) (trustedCA *corev1.ConfigMap, reason string, err error) {
 	required := configmapsub.DefaultTrustedCAConfigMap(operatorConfig)
 	existing, err := co.targetNSConfigMapLister.ConfigMaps(required.Namespace).Get(required.Name)
 	if apierrors.IsNotFound(err) {
-		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
-		if err != nil {
-			return actual, "FailedCreate", err
+		var actual *corev1.ConfigMap
+		createErr := controllersutil.RetryOnTransientError(func() error {
+			var e error
+			actual, e = co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
+			return e
+		})
+		if createErr != nil {
+			return actual, "FailedCreate", createErr
 		}
 		klog.V(4).Infoln("trusted-ca-bundle configmap created")
-		return actual, "", err
+		return actual, "", nil
 	}
 	if err != nil {
 		return nil, "FailedGet", err
@@ -549,12 +579,21 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorC
 		return existing, "", nil
 	}
 
-	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
-	if err != nil {
-		return actual, "FailedUpdate", err
+	var actual *corev1.ConfigMap
+	updateErr := controllersutil.RetryOnTransientError(func() error {
+		latest, e := co.configMapClient.ConfigMaps(required.Namespace).Get(ctx, required.Name, metav1.GetOptions{})
+		if e != nil {
+			return e
+		}
+		resourcemerge.EnsureObjectMeta(resourcemerge.BoolPtr(false), &latest.ObjectMeta, required.ObjectMeta)
+		actual, e = co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, latest, metav1.UpdateOptions{})
+		return e
+	})
+	if updateErr != nil {
+		return actual, "FailedUpdate", updateErr
 	}
 	klog.V(4).Infoln("trusted-ca-bundle configmap updated")
-	return actual, "", err
+	return actual, "", nil
 }
 
 // SyncTechPreview determines if tech preview features should be enabled based on cluster FeatureSet
@@ -756,6 +795,19 @@ func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []string) []*
 	return availablePlugins
 }
 
+// checkDeploymentGenerationProgress returns an error if the deployment controller
+// has not yet processed the latest spec change (ObservedGeneration < Generation).
+// This is used to determine Progressing status without relying on replica counts,
+// which fluctuate during external disruptions like node reboots.
+// See https://issues.redhat.com/browse/OCPBUGS-64688
+func checkDeploymentGenerationProgress(deployment *appsv1.Deployment) error {
+	if deployment.Status.ObservedGeneration < deployment.Generation {
+		return fmt.Errorf("deployment generation %d not yet observed (observed: %d)",
+			deployment.Generation, deployment.Status.ObservedGeneration)
+	}
+	return nil
+}
+
 func getNodeComputeEnvironments(nodes []*corev1.Node) ([]string, []string) {
 	nodeArchitecturesSet := sets.NewString()
 	nodeOperatingSystemSet := sets.NewString()
@@ -812,6 +864,11 @@ func (co *consoleOperator) syncSessionSecret(
 		}
 	}
 
-	secret, _, err := resourceapply.ApplySecret(ctx, co.secretsClient, recorder, required)
+	var secret *corev1.Secret
+	err = controllersutil.RetryOnTransientError(func() error {
+		var e error
+		secret, _, e = resourceapply.ApplySecret(ctx, co.secretsClient, recorder, required)
+		return e
+	})
 	return secret, err
 }

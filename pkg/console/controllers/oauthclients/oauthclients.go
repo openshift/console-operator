@@ -226,7 +226,10 @@ func (c *oauthClientsController) syncOAuthClient(
 
 	clientCopy := oauthClient.DeepCopy()
 	oauthsub.RegisterConsoleToOAuthClient(clientCopy, consoleURL, secretsub.GetSecretString(sec))
-	_, _, oauthErr := oauthsub.CustomApplyOAuth(c.oauthClient, clientCopy, ctx)
+	oauthErr := util.RetryOnTransientError(func() error {
+		_, _, e := oauthsub.CustomApplyOAuth(c.oauthClient, clientCopy, ctx)
+		return e
+	})
 	if oauthErr != nil {
 		return "FailedRegister", oauthErr
 	}

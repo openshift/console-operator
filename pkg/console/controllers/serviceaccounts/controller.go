@@ -152,14 +152,17 @@ func (c *ServiceAccountSyncController) SyncServiceAccount(ctx context.Context, o
 		return fmt.Errorf("failed to get existing service account %s: %w", c.serviceAccountName, err)
 	}
 
-	_, _, err = resourceapply.ApplyServiceAccount(ctx,
-		c.serviceAccountClient,
-		controllerContext.Recorder(),
-		serviceAccount,
-	)
+	applyErr := util.RetryOnTransientError(func() error {
+		_, _, e := resourceapply.ApplyServiceAccount(ctx,
+			c.serviceAccountClient,
+			controllerContext.Recorder(),
+			serviceAccount,
+		)
+		return e
+	})
 
-	if err != nil {
-		return fmt.Errorf("failed to apply service account %s: %w", c.serviceAccountName, err)
+	if applyErr != nil {
+		return fmt.Errorf("failed to apply service account %s: %w", c.serviceAccountName, applyErr)
 	}
 
 	return nil
