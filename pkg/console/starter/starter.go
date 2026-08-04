@@ -310,6 +310,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configClient.ConfigV1().Authentications(),
 		operatorConfigInformers.Operator().V1().Consoles(),
 		kubeInformersConfigNamespaced.Core().V1().ConfigMaps(),
+		kubeInformersConfigNamespaced.Core().V1().Secrets(),
 		kubeInformersNamespaced.Core().V1().Secrets(),
 		kubeInformersNamespaced.Core().V1().ConfigMaps(),
 		kubeInformersNamespaced.Apps().V1().Deployments(),
