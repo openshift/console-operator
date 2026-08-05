@@ -119,11 +119,11 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 				}
 			}
 		}
+	}
 
-		sessionSecret, err = co.syncSessionSecret(ctx, updatedOperatorConfig, controllerContext.Recorder())
-		if err != nil {
-			return statusHandler.FlushAndReturn(err)
-		}
+	sessionSecret, err = co.syncSessionSecret(ctx, updatedOperatorConfig, controllerContext.Recorder())
+	if err != nil {
+		return statusHandler.FlushAndReturn(err)
 	}
 
 	customLogosErr, customLogosErrReason := co.SyncCustomLogos(updatedOperatorConfig)
