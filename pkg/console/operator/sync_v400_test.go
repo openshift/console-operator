@@ -3,6 +3,7 @@ package operator
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"testing"
 	"time"
@@ -12,12 +13,19 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	configlistersv1 "github.com/openshift/client-go/config/listers/config/v1"
+	"github.com/openshift/library-go/pkg/operator/events"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
+	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
+	clocktesting "k8s.io/utils/clock/testing"
 
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/telemetry"
@@ -676,6 +684,168 @@ func TestEvaluateDeploymentAvailability(t *testing.T) {
 		expected := "0 replicas available for console deployment"
 		if err.Error() != expected {
 			t.Errorf("expected error message %q, got %q", expected, err.Error())
+		}
+	})
+}
+
+// syncDeploymentInputs holds the minimal inputs needed to call SyncDeployment.
+type syncDeploymentInputs struct {
+	operatorConfig       *operatorv1.Console
+	cm                   *v1.ConfigMap
+	serviceCAConfigMap   *v1.ConfigMap
+	oauthServingCertCM   *v1.ConfigMap
+	authServerCACM       *v1.ConfigMap
+	trustedCACM          *v1.ConfigMap
+	oauthSecret          *v1.Secret
+	sessionSecret        *v1.Secret
+	servingCertSecret    *v1.Secret
+	proxyConfig          *configv1.Proxy
+	infrastructureConfig *configv1.Infrastructure
+}
+
+func newSyncDeploymentInputs() syncDeploymentInputs {
+	return syncDeploymentInputs{
+		operatorConfig: &operatorv1.Console{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster", UID: "test-uid"},
+			Spec:       operatorv1.ConsoleSpec{},
+		},
+		cm:                 &v1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "console-config", Namespace: "openshift-console", ResourceVersion: "100"}},
+		serviceCAConfigMap: &v1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "service-ca", Namespace: "openshift-console", ResourceVersion: "200"}},
+		oauthServingCertCM: &v1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "oauth-serving-cert", Namespace: "openshift-console", ResourceVersion: "300"}},
+		authServerCACM:     nil,
+		trustedCACM:        &v1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "trusted-ca", Namespace: "openshift-console", ResourceVersion: "400"}},
+		oauthSecret:        &v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "console-oauth-config", Namespace: "openshift-console", ResourceVersion: "500"}},
+		sessionSecret:      nil,
+		servingCertSecret:  &v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "console-serving-cert", Namespace: "openshift-console", ResourceVersion: "600"}},
+		proxyConfig:        &configv1.Proxy{ObjectMeta: metav1.ObjectMeta{Name: "cluster", ResourceVersion: "700"}},
+		infrastructureConfig: &configv1.Infrastructure{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster", ResourceVersion: "800"},
+			Status: configv1.InfrastructureStatus{
+				ControlPlaneTopology: configv1.HighlyAvailableTopologyMode,
+			},
+		},
+	}
+}
+
+func (in syncDeploymentInputs) callSyncDeployment(co *consoleOperator, recorder events.Recorder) (*appsv1.Deployment, string, error) {
+	return co.SyncDeployment(
+		context.Background(),
+		in.operatorConfig,
+		in.cm,
+		in.serviceCAConfigMap,
+		in.oauthServingCertCM,
+		in.authServerCACM,
+		in.trustedCACM,
+		in.oauthSecret,
+		in.sessionSecret,
+		in.servingCertSecret,
+		in.proxyConfig,
+		in.infrastructureConfig,
+		recorder,
+	)
+}
+
+func TestSyncDeploymentGenerationCache(t *testing.T) {
+	newRecorder := func() events.Recorder {
+		return events.NewInMemoryRecorder("test", clocktesting.NewFakePassiveClock(time.Now()))
+	}
+
+	t.Run("first apply caches generation", func(t *testing.T) {
+		fakeClient := kubefake.NewSimpleClientset()
+		co := &consoleOperator{
+			deploymentClient: fakeClient.AppsV1(),
+		}
+		inputs := newSyncDeploymentInputs()
+
+		dep, _, err := inputs.callSyncDeployment(co, newRecorder())
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if co.lastAppliedDeploymentGeneration != dep.Generation {
+			t.Errorf("expected cache=%d, got=%d", dep.Generation, co.lastAppliedDeploymentGeneration)
+		}
+	})
+
+	t.Run("cached generation prevents echo update", func(t *testing.T) {
+		fakeClient := kubefake.NewSimpleClientset()
+		co := &consoleOperator{
+			deploymentClient: fakeClient.AppsV1(),
+		}
+		inputs := newSyncDeploymentInputs()
+		recorder := newRecorder()
+
+		// First apply creates the deployment and populates all annotations
+		// including the specHash.
+		_, _, err := inputs.callSyncDeployment(co, recorder)
+		if err != nil {
+			t.Fatalf("first apply: %v", err)
+		}
+
+		// Simulate the API server incrementing generation after the update.
+		existing, _ := fakeClient.AppsV1().Deployments("openshift-console").Get(context.Background(), "console", metav1.GetOptions{})
+		existing.Generation = 10
+		_, err = fakeClient.AppsV1().Deployments("openshift-console").Update(context.Background(), existing, metav1.UpdateOptions{})
+		if err != nil {
+			t.Fatalf("simulating generation bump: %v", err)
+		}
+
+		// Set cache to match (as if previous SyncDeployment returned this).
+		co.lastAppliedDeploymentGeneration = 10
+
+		// Simulate stale informer: operator status still has gen 9.
+		inputs.operatorConfig = inputs.operatorConfig.DeepCopy()
+		inputs.operatorConfig.Status.Generations = []operatorv1.GenerationStatus{{
+			Group:          "apps",
+			Resource:       "deployments",
+			Namespace:      "openshift-console",
+			Name:           "console",
+			LastGeneration: 9,
+		}}
+
+		// Track whether ApplyDeployment calls Update.
+		updateCalls := 0
+		fakeClient.PrependReactor("update", "deployments", func(action clienttesting.Action) (bool, runtime.Object, error) {
+			updateCalls++
+			return false, nil, nil
+		})
+
+		// Second apply with identical inputs — cache should bridge the gap.
+		_, _, err = inputs.callSyncDeployment(co, recorder)
+		if err != nil {
+			t.Fatalf("second apply: %v", err)
+		}
+		if updateCalls != 0 {
+			t.Errorf("expected no deployment update (echo prevented), got %d update(s)", updateCalls)
+		}
+		if co.lastAppliedDeploymentGeneration != 10 {
+			t.Errorf("expected cache to remain 10, got %d", co.lastAppliedDeploymentGeneration)
+		}
+	})
+
+	t.Run("failed apply preserves cached generation", func(t *testing.T) {
+		fakeClient := kubefake.NewSimpleClientset()
+		co := &consoleOperator{
+			deploymentClient:                fakeClient.AppsV1(),
+			lastAppliedDeploymentGeneration: 5,
+		}
+		inputs := newSyncDeploymentInputs()
+
+		// Make Get return a non-retryable error so RetryOnTransientError
+		// gives up immediately.
+		fakeClient.PrependReactor("get", "deployments", func(action clienttesting.Action) (bool, runtime.Object, error) {
+			return true, nil, apierrors.NewForbidden(
+				schema.GroupResource{Group: "apps", Resource: "deployments"},
+				"console",
+				fmt.Errorf("synthetic test error"),
+			)
+		})
+
+		_, _, err := inputs.callSyncDeployment(co, newRecorder())
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		if co.lastAppliedDeploymentGeneration != 5 {
+			t.Errorf("expected cache to remain 5 after failure, got %d", co.lastAppliedDeploymentGeneration)
 		}
 	})
 }
