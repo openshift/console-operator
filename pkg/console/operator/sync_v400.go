@@ -332,6 +332,16 @@ func (co *consoleOperator) SyncDeployment(
 	}
 	deploymentsub.LogDeploymentAnnotationChanges(co.deploymentClient, requiredDeployment, ctx)
 
+	expectedGen := resourcemerge.ExpectedDeploymentGeneration(requiredDeployment, updatedOperatorConfig.Status.Generations)
+	// After the operator updates the deployment, the deployment informer
+	// triggers a re-sync before the operator config informer has processed
+	// the corresponding status write. The stale expected generation causes
+	// a no-op update and a spurious DeploymentUpdated event. Use the
+	// in-memory cached generation to bridge the informer cache gap.
+	if co.lastAppliedDeploymentGeneration > expectedGen {
+		expectedGen = co.lastAppliedDeploymentGeneration
+	}
+
 	var deployment *appsv1.Deployment
 	applyDepErr := controllersutil.RetryOnTransientError(func() error {
 		var e error
@@ -340,7 +350,7 @@ func (co *consoleOperator) SyncDeployment(
 			co.deploymentClient,
 			recorder,
 			requiredDeployment,
-			resourcemerge.ExpectedDeploymentGeneration(requiredDeployment, updatedOperatorConfig.Status.Generations),
+			expectedGen,
 		)
 		return e
 	})
@@ -348,6 +358,7 @@ func (co *consoleOperator) SyncDeployment(
 	if applyDepErr != nil {
 		return nil, "FailedApply", applyDepErr
 	}
+	co.lastAppliedDeploymentGeneration = deployment.Generation
 	return deployment, "", nil
 }
 
