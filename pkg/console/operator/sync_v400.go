@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"slices"
+	"sort"
 	"strings"
 
 	// kube
@@ -18,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 
 	// openshift
@@ -427,7 +429,15 @@ func (co *consoleOperator) SyncConfigMap(
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
 	}
-	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, defaultConfigmap)
+	var cm *corev1.ConfigMap
+	var cmChanged bool
+	var cmErr error
+
+	// Retry on conflicts to handle concurrent ConfigMap updates
+	cmErr = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		cm, cmChanged, cmErr = resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, defaultConfigmap)
+		return cmErr
+	})
 	if cmErr != nil {
 		return nil, false, "FailedApply", cmErr
 	}
@@ -736,6 +746,10 @@ func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []string) []*
 		}
 		availablePlugins = append(availablePlugins, plugin)
 	}
+	// Sort plugins by name to ensure deterministic processing order
+	sort.Slice(availablePlugins, func(i, j int) bool {
+		return availablePlugins[i].Name < availablePlugins[j].Name
+	})
 	return availablePlugins
 }
 
