@@ -21,8 +21,10 @@ const (
 	clientSecretFilePath     = "/var/oauth-config/clientSecret"
 	oauthServingCertFilePath = "/var/oauth-serving-cert/ca-bundle.crt"
 	// serving info
-	certFilePath = "/var/serving-cert/tls.crt"
-	keyFilePath  = "/var/serving-cert/tls.key"
+	certFilePath             = "/var/serving-cert/tls.crt"
+	keyFilePath              = "/var/serving-cert/tls.key"
+	sessionAuthKeyFilePath   = "/var/session-secret/sessionAuthenticationKey"
+	sessionEncKeyFilePath    = "/var/session-secret/sessionEncryptionKey"
 )
 
 // SupportedLightspeedArchitectures defines the list of architectures that support Lightspeed.
@@ -200,6 +202,8 @@ func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authent
 		b.authType = "openshift"
 		b.oauthClientID = api.OAuthClientName
 		b.CAFile = oauthServingCertFilePath
+		b.sessionAuthenticationFile = sessionAuthKeyFilePath
+		b.sessionEncryptionFile = sessionEncKeyFilePath
 		return b
 
 	case configv1.AuthenticationTypeOIDC:
@@ -219,8 +223,8 @@ func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authent
 		b.oauthClientID = oidcConfig.ClientID
 		b.oidcExtraScopes = oidcConfig.ExtraScopes
 		b.oidcOCLoginCommand = authconfigsub.GetOIDCOCLoginCommand(authnConfig, apiServerURL)
-		b.sessionAuthenticationFile = "/var/session-secret/sessionAuthenticationKey"
-		b.sessionEncryptionFile = "/var/session-secret/sessionEncryptionKey"
+		b.sessionAuthenticationFile = sessionAuthKeyFilePath
+		b.sessionEncryptionFile = sessionEncKeyFilePath
 
 		if len(oidcProvider.Issuer.CertificateAuthority.Name) > 0 {
 			b.CAFile = path.Join(api.AuthServerCAMountDir, api.AuthServerCAFileName)
@@ -468,11 +472,21 @@ func (b *ConsoleServerCLIConfigBuilder) auth() Auth {
 }
 
 func (b *ConsoleServerCLIConfigBuilder) session() Session {
-	conf := Session{
-		CookieAuthenticationKeyFile: b.sessionAuthenticationFile,
-		CookieEncryptionKeyFile:     b.sessionEncryptionFile,
+	if b.authType == "disabled" {
+		return Session{}
 	}
-	return conf
+	authFile := b.sessionAuthenticationFile
+	encFile := b.sessionEncryptionFile
+	if authFile == "" {
+		authFile = sessionAuthKeyFilePath
+	}
+	if encFile == "" {
+		encFile = sessionEncKeyFilePath
+	}
+	return Session{
+		CookieAuthenticationKeyFile: authFile,
+		CookieEncryptionKeyFile:     encFile,
+	}
 }
 
 func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
