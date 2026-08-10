@@ -7,6 +7,8 @@ metadata:
     app: console
     component: ui
 spec:
+  progressDeadlineSeconds: 600
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       app: console
@@ -23,10 +25,12 @@ spec:
         target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
         openshift.io/required-scc: restricted-v2
     spec:
+      dnsPolicy: ClusterFirst
       nodeSelector:
         node-role.kubernetes.io/master: ""
       restartPolicy: Always
       serviceAccountName: console
+      serviceAccount: console
       schedulerName: default-scheduler
       securityContext:
         runAsNonRoot: true

@@ -83,7 +83,8 @@ func (tc *testCaseConfig) checkRouteCustomTLSWasSet(t *testing.T, client *framew
 
 func (tc *testCaseConfig) checkRouteCustomTLSWasUnset(t *testing.T, client *framework.ClientSet) {
 	for _, routeTestConfig := range tc.RouteTestConfigs {
-		checkCustomTLSWasUnset(t, client, routeTestConfig.DefaultRouteName)
+		adminCert := getAdminCertFromSecret(t, client, routeTestConfig.CustomTLSSecretName)
+		checkCustomTLSWasUnset(t, client, routeTestConfig.DefaultRouteName, adminCert)
 	}
 }
 
@@ -415,32 +416,29 @@ func checkCustomTLSWasSet(t *testing.T, client *framework.ClientSet, routeName s
 	}
 }
 
-func checkCustomTLSWasUnset(t *testing.T, client *framework.ClientSet, routeName string) {
-	var adminCert string
-	// capture the current admin-provided cert so we can detect when it's been replaced
-	route, err := client.Routes.Routes(api.OpenShiftConsoleNamespace).Get(context.TODO(), routeName, v1.GetOptions{})
-	if err == nil && route.Spec.TLS != nil {
-		adminCert = route.Spec.TLS.Certificate
+func getAdminCertFromSecret(t *testing.T, client *framework.ClientSet, secretName string) string {
+	t.Helper()
+	secret, err := client.Core.Secrets(api.OpenShiftConfigNamespace).Get(context.TODO(), secretName, v1.GetOptions{})
+	if err != nil {
+		t.Fatalf("could not get custom TLS secret %q: %v", secretName, err)
 	}
+	customTLS, err := routesub.GetCustomTLS(secret)
+	if err != nil {
+		t.Fatalf("could not parse custom TLS from secret %q: %v", secretName, err)
+	}
+	return customTLS.Certificate
+}
 
-	err = wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
+func checkCustomTLSWasUnset(t *testing.T, client *framework.ClientSet, routeName string, adminCert string) {
+	err := wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
 		route, err := client.Routes.Routes(api.OpenShiftConsoleNamespace).Get(context.TODO(), routeName, v1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
-		if route.Spec.TLS == nil {
-			return true, nil
-		}
-		// For the console route, the operator sets a throwaway HTTP/2 cert
-		// when no admin cert is configured, so TLS fields will be non-empty.
-		// Verify the admin cert was removed by checking it changed.
-		if route.Spec.TLS.Certificate != adminCert {
-			return true, nil
-		}
-		// For routes without HTTP/2 cert (e.g. downloads), empty TLS is expected.
 		if len(route.Spec.TLS.Certificate) == 0 && len(route.Spec.TLS.Key) == 0 {
 			return true, nil
 		}
+
 		return false, nil
 	})
 	if err != nil {

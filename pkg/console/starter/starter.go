@@ -13,7 +13,6 @@ import (
 	apiexensionsinformers "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
@@ -28,6 +27,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 
+	"github.com/openshift/console-operator/pkg/console/configobservation/configobservercontroller"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/clioidcclientstatus"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
@@ -152,15 +152,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		informers.WithNamespace(api.OpenShiftConsoleOperatorNamespace),
 	)
 
-	kubeInformersIngressOperatorNamespaced := informers.NewSharedInformerFactoryWithOptions(
-		kubeClient,
-		resync,
-		informers.WithNamespace(api.IngressControllerNamespace),
-		informers.WithTweakListOptions(func(opts *metav1.ListOptions) {
-			opts.FieldSelector = fields.OneTermEqualSelector("metadata.name", api.IngressCASecretName).String()
-		}),
-	)
-
 	kubeInformersMonitoringNamespaced := informers.NewSharedInformerFactoryWithOptions(
 		kubeClient,
 		resync,
@@ -268,6 +259,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// oauth
 		oauthClientsSwitchedInformer,
 		// routes
+		routesClient.RouteV1(),
 		routesInformersNamespaced.Route().V1().Routes(), // Route
 		// plugins
 		consoleInformers.Console().V1().ConsolePlugins(),
@@ -433,14 +425,11 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// clients
 		operatorClient,
 		routesClient.RouteV1(),
-		kubeClient.CoreV1(),
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
 		operatorConfigInformers.Operator().V1().IngressControllers(),
 		kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
-		kubeInformersNamespaced.Core().V1().Secrets(),       // `openshift-console` namespace informers (for HTTP/2 cert)
 		routesInformersNamespaced.Route().V1().Routes(),
-		kubeInformersIngressOperatorNamespaced.Core().V1().Secrets(), // `openshift-ingress-operator` namespace informers (for router-ca)
 		// events
 		recorder,
 	)
@@ -454,14 +443,11 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// clients
 		operatorClient,
 		routesClient.RouteV1(),
-		nil, // no secret client needed for downloads route
 		// route
 		operatorConfigInformers.Operator().V1().Consoles(),
 		operatorConfigInformers.Operator().V1().IngressControllers(),
 		kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
-		nil, // no console secret lister needed for downloads route
 		routesInformersNamespaced.Route().V1().Routes(),
-		nil, // no ingress CA needed for downloads route
 		// events
 		recorder,
 	)
@@ -650,6 +636,14 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	logLevelController := loglevel.NewClusterOperatorLoggingController(operatorClient, controllerContext.EventRecorder)
 	managementStateController := managementstatecontroller.NewOperatorManagementStateController(api.ClusterOperatorName, operatorClient, controllerContext.EventRecorder)
 
+	// Config observer watches APIServer and writes TLS config to Console CR's observedConfig
+	configObserver := configobservercontroller.NewConfigObserver(
+		operatorClient,
+		configInformers,
+		resourceSyncer,
+		recorder,
+	)
+
 	for _, informer := range []interface {
 		Start(stopCh <-chan struct{})
 	}{
@@ -660,7 +654,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeInformersManagedNamespaced,
 		kubeInformersMonitoringNamespaced,
 		kubeInformersOperatorConfigNamespaced,
-		kubeInformersIngressOperatorNamespaced,
 		resourceSyncerInformers,
 		operatorConfigInformers,
 		consoleInformers,
@@ -680,6 +673,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		logLevelController,
 		managementStateController,
 		configUpgradeableController,
+		configObserver,
 		consoleServiceAccountController,
 		downloadsServiceAccountController,
 		consoleServiceController,
