@@ -2,12 +2,14 @@ package operator
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	// kube
 	appsv1 "k8s.io/api/apps/v1"
@@ -18,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 
 	// openshift
@@ -34,6 +35,7 @@ import (
 
 	// operator
 	"github.com/openshift/console-operator/pkg/api"
+	controllersutil "github.com/openshift/console-operator/pkg/console/controllers/util"
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
 	"github.com/openshift/console-operator/pkg/console/metrics"
 	"github.com/openshift/console-operator/pkg/console/status"
@@ -45,6 +47,13 @@ import (
 	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
 	telemetry "github.com/openshift/console-operator/pkg/console/telemetry"
 )
+
+// deploymentAvailableGracePeriod is the duration the operator tolerates zero
+// available replicas before reporting DeploymentAvailable=False. This absorbs
+// brief disruptions (e.g. node reboots during conformance-serial tests) that
+// take all replicas offline for ~10 seconds. Kept short so genuine production
+// outages are still reported promptly.
+const deploymentAvailableGracePeriod = 15 * time.Second
 
 // The sync loop starts from zero and works its way through the requirements for a running console.
 // If at any point something is missing, it creates/updates that piece and immediately dies.
@@ -130,6 +139,14 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(techPreviewErr)
 	}
 
+	olmLifecycleMetadataEnabled, olmLifecycleMetadataErrReason, olmLifecycleMetadataErr := co.SyncOLMLifecycleMetadata()
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OLMLifecycleMetadataSync", olmLifecycleMetadataErrReason, olmLifecycleMetadataErr))
+	if olmLifecycleMetadataErr != nil {
+		return statusHandler.FlushAndReturn(olmLifecycleMetadataErr)
+	}
+
+	additionalHosts := routesub.GetAdditionalRouteHostnames(set.Ingress)
+
 	cm, cmErrReason, cmErr := co.SyncConfigMap(
 		ctx,
 		set.Operator,
@@ -141,6 +158,8 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		controllerContext.Recorder(),
 		consoleURL.Hostname(),
 		techPreviewEnabled,
+		olmLifecycleMetadataEnabled,
+		additionalHosts,
 	)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
 	if cmErr != nil {
@@ -211,28 +230,18 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 
 	statusHandler.AddCondition(status.HandleProgressing("SyncLoopRefresh", "InProgress", func() error {
 		version := os.Getenv("OPERATOR_IMAGE_VERSION")
-		// Only report Progressing=True when the deployment is actually rolling out
-		// or the operator version is changing. Do NOT report Progressing just because
-		// resources were updated during reconciliation, as per the API guidelines:
-		// "Operators should not report Progressing when they are reconciling (without action)
-		// a previously known state."
-		if !deploymentsub.IsAvailableAndUpdated(actualDeployment) {
-			return fmt.Errorf("working toward version %s, %v replicas available", version, actualDeployment.Status.AvailableReplicas)
-		}
+		isUpgrading := co.versionGetter.GetVersions()["operator"] != version
 
-		if co.versionGetter.GetVersions()["operator"] != version {
+		if isUpgrading {
+			if err := checkDeploymentRolloutStatus(actualDeployment); err != nil {
+				return err
+			}
 			co.versionGetter.SetVersion("operator", version)
 		}
 		return nil
 	}()))
 
-	statusHandler.AddCondition(status.HandleAvailable(func() (prefix string, reason string, err error) {
-		prefix = "Deployment"
-		if !deploymentsub.IsAvailable(actualDeployment) {
-			return prefix, "InsufficientReplicas", fmt.Errorf("%v replicas available for console deployment", actualDeployment.Status.ReadyReplicas)
-		}
-		return prefix, "", nil
-	}()))
+	statusHandler.AddCondition(status.HandleAvailable(co.evaluateDeploymentAvailability(actualDeployment)))
 
 	// if we survive the gauntlet, we need to update the console config with the
 	// public hostname so that the world can know the console is ready to roll
@@ -261,16 +270,31 @@ func (co *consoleOperator) SyncConsoleConfig(ctx context.Context, consoleConfig 
 	metrics.HandleConsoleURL(oldURL, consoleURL)
 	if oldURL != consoleURL {
 		klog.V(4).Infof("updating console.config.openshift.io with url: %v", consoleURL)
-		updated := consoleConfig.DeepCopy()
-		updated.Status.ConsoleURL = consoleURL
-		return co.consoleConfigClient.UpdateStatus(ctx, updated, metav1.UpdateOptions{})
+		var result *configv1.Console
+		err := controllersutil.RetryOnTransientError(func() error {
+			latest, e := co.consoleConfigClient.Get(ctx, consoleConfig.Name, metav1.GetOptions{})
+			if e != nil {
+				return e
+			}
+			latest.Status.ConsoleURL = consoleURL
+			result, e = co.consoleConfigClient.UpdateStatus(ctx, latest, metav1.UpdateOptions{})
+			return e
+		})
+		return result, err
 	}
 	return consoleConfig, nil
 }
 
 func (co *consoleOperator) SyncConsolePublicConfig(ctx context.Context, consoleURL string, recorder events.Recorder) (*corev1.ConfigMap, bool, error) {
 	requiredConfigMap := configmapsub.DefaultPublicConfig(consoleURL)
-	return resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, requiredConfigMap)
+	var cm *corev1.ConfigMap
+	var changed bool
+	err := controllersutil.RetryOnTransientError(func() error {
+		var e error
+		cm, changed, e = resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, requiredConfigMap)
+		return e
+	})
+	return cm, changed, err
 }
 
 func (co *consoleOperator) SyncDeployment(
@@ -309,18 +333,42 @@ func (co *consoleOperator) SyncDeployment(
 	}
 	deploymentsub.LogDeploymentAnnotationChanges(co.deploymentClient, requiredDeployment, ctx)
 
-	deployment, _, applyDepErr := resourceapply.ApplyDeployment(
-		ctx,
-		co.deploymentClient,
-		recorder,
-		requiredDeployment,
-		resourcemerge.ExpectedDeploymentGeneration(requiredDeployment, updatedOperatorConfig.Status.Generations),
-	)
+	var deployment *appsv1.Deployment
+	applyDepErr := controllersutil.RetryOnTransientError(func() error {
+		var e error
+		deployment, _, e = resourceapply.ApplyDeployment(
+			ctx,
+			co.deploymentClient,
+			recorder,
+			requiredDeployment,
+			resourcemerge.ExpectedDeploymentGeneration(requiredDeployment, updatedOperatorConfig.Status.Generations),
+		)
+		return e
+	})
 
 	if applyDepErr != nil {
 		return nil, "FailedApply", applyDepErr
 	}
 	return deployment, "", nil
+}
+
+// evaluateDeploymentAvailability checks whether the console deployment should
+// be reported as available. When replicas drop to zero during a transient
+// disruption (e.g. node reboot in conformance-serial tests), the operator
+// suppresses Available=False for up to deploymentAvailableGracePeriod to
+// avoid alarming ClusterOperator condition blips.
+func (co *consoleOperator) evaluateDeploymentAvailability(deployment *appsv1.Deployment) (prefix string, reason string, err error) {
+	prefix = "Deployment"
+	if deploymentsub.IsAvailable(deployment) {
+		co.lastDeploymentAvailableTime = time.Now()
+		return prefix, "", nil
+	}
+	if sinceLast := time.Since(co.lastDeploymentAvailableTime); !co.lastDeploymentAvailableTime.IsZero() && sinceLast <= deploymentAvailableGracePeriod {
+		klog.V(4).Infof("deployment has 0 available replicas but was available %v ago, within %v grace period",
+			sinceLast, deploymentAvailableGracePeriod)
+		return prefix, "", nil
+	}
+	return prefix, "InsufficientReplicas", fmt.Errorf("%v replicas available for console deployment", deployment.Status.ReadyReplicas)
 }
 
 // apply configmap (needs route)
@@ -337,6 +385,8 @@ func (co *consoleOperator) SyncConfigMap(
 	recorder events.Recorder,
 	consoleHost string,
 	techPreviewEnabled bool,
+	olmLifecycleMetadataEnabled bool,
+	additionalHosts []string,
 ) (consoleConfigMap *corev1.ConfigMap, reason string, err error) {
 
 	managedConfig, mcErr := co.managedNSConfigMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName)
@@ -395,6 +445,11 @@ func (co *consoleOperator) SyncConfigMap(
 		}
 	}
 
+	tlsMinVersion, tlsCiphers, tlsErr := getTLSConfigFromObservedConfig(operatorConfig)
+	if tlsErr != nil {
+		return nil, "FailedGetTLSConfig", tlsErr
+	}
+
 	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(
 		operatorConfig,
 		consoleConfig,
@@ -411,18 +466,20 @@ func (co *consoleOperator) SyncConfigMap(
 		telemetryConfig,
 		consoleHost,
 		techPreviewEnabled,
+		olmLifecycleMetadataEnabled,
+		additionalHosts,
+		tlsMinVersion,
+		tlsCiphers,
 	)
 	if err != nil {
 		return nil, "FailedConsoleConfigBuilder", err
 	}
 	var cm *corev1.ConfigMap
 	var cmChanged bool
-	var cmErr error
-
-	// Retry on conflicts to handle concurrent ConfigMap updates
-	cmErr = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		cm, cmChanged, cmErr = resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, defaultConfigmap)
-		return cmErr
+	cmErr := controllersutil.RetryOnTransientError(func() error {
+		var e error
+		cm, cmChanged, e = resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, defaultConfigmap)
+		return e
 	})
 	if cmErr != nil {
 		return nil, "FailedApply", cmErr
@@ -472,14 +529,13 @@ func (co *consoleOperator) GetTelemetryConfiguration(ctx context.Context, operat
 	if err != nil {
 		return telemetryConfig, err
 	}
-	if !telemeterClientIsAvailable {
-		telemetryConfig["TELEMETER_CLIENT_DISABLED"] = "true"
-		return telemetryConfig, nil
-	}
+	telemetryConfig["TELEMETER_CLIENT_DISABLED"] = fmt.Sprintf("%t", !telemeterClientIsAvailable)
 
-	accessToken, err := telemetry.GetAccessToken(co.configNSSecretLister)
+	var accessToken string
+	accessToken, err = telemetry.GetAccessToken(co.configNSSecretLister)
 	if err != nil {
-		return nil, err
+		klog.V(4).Infof("telemetry config: failed to get access token, proceeding without organization metadata: %v", err)
+		accessToken = ""
 	}
 	organizationID, accountMail, refreshCache := telemetry.GetOrganizationMeta(telemetryConfig, co.trackables.organizationID, co.trackables.accountMail, clusterID, accessToken)
 	// cache fetched ORGANIZATION_ID and ACCOUNT_MAIL
@@ -499,13 +555,17 @@ func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorC
 	// we can't use `resourceapply.ApplyConfigMap` since it compares data, and the service serving cert operator injects the data
 	existing, err := co.targetNSConfigMapLister.ConfigMaps(required.Namespace).Get(required.Name)
 	if apierrors.IsNotFound(err) {
-		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
-		if err == nil {
+		var actual *corev1.ConfigMap
+		createErr := controllersutil.RetryOnTransientError(func() error {
+			var e error
+			actual, e = co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
+			return e
+		})
+		if createErr == nil {
 			klog.V(4).Infoln("service-ca configmap created")
-			return actual, "", err
-		} else {
-			return actual, "FailedCreate", err
+			return actual, "", nil
 		}
+		return actual, "FailedCreate", createErr
 	}
 	if err != nil {
 		return nil, "FailedGet", err
@@ -518,25 +578,38 @@ func (co *consoleOperator) SyncServiceCAConfigMap(ctx context.Context, operatorC
 		return existing, "", nil
 	}
 
-	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
-	if err == nil {
+	var actual *corev1.ConfigMap
+	updateErr := controllersutil.RetryOnTransientError(func() error {
+		latest, e := co.configMapClient.ConfigMaps(required.Namespace).Get(ctx, required.Name, metav1.GetOptions{})
+		if e != nil {
+			return e
+		}
+		resourcemerge.EnsureObjectMeta(resourcemerge.BoolPtr(false), &latest.ObjectMeta, required.ObjectMeta)
+		actual, e = co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, latest, metav1.UpdateOptions{})
+		return e
+	})
+	if updateErr == nil {
 		klog.V(4).Infoln("service-ca configmap updated")
-		return actual, "", err
-	} else {
-		return actual, "FailedUpdate", err
+		return actual, "", nil
 	}
+	return actual, "FailedUpdate", updateErr
 }
 
 func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorConfig *operatorv1.Console) (trustedCA *corev1.ConfigMap, reason string, err error) {
 	required := configmapsub.DefaultTrustedCAConfigMap(operatorConfig)
 	existing, err := co.targetNSConfigMapLister.ConfigMaps(required.Namespace).Get(required.Name)
 	if apierrors.IsNotFound(err) {
-		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
-		if err != nil {
-			return actual, "FailedCreate", err
+		var actual *corev1.ConfigMap
+		createErr := controllersutil.RetryOnTransientError(func() error {
+			var e error
+			actual, e = co.configMapClient.ConfigMaps(required.Namespace).Create(ctx, required, metav1.CreateOptions{})
+			return e
+		})
+		if createErr != nil {
+			return actual, "FailedCreate", createErr
 		}
 		klog.V(4).Infoln("trusted-ca-bundle configmap created")
-		return actual, "", err
+		return actual, "", nil
 	}
 	if err != nil {
 		return nil, "FailedGet", err
@@ -549,19 +622,28 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorC
 		return existing, "", nil
 	}
 
-	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
-	if err != nil {
-		return actual, "FailedUpdate", err
+	var actual *corev1.ConfigMap
+	updateErr := controllersutil.RetryOnTransientError(func() error {
+		latest, e := co.configMapClient.ConfigMaps(required.Namespace).Get(ctx, required.Name, metav1.GetOptions{})
+		if e != nil {
+			return e
+		}
+		resourcemerge.EnsureObjectMeta(resourcemerge.BoolPtr(false), &latest.ObjectMeta, required.ObjectMeta)
+		actual, e = co.configMapClient.ConfigMaps(required.Namespace).Update(ctx, latest, metav1.UpdateOptions{})
+		return e
+	})
+	if updateErr != nil {
+		return actual, "FailedUpdate", updateErr
 	}
 	klog.V(4).Infoln("trusted-ca-bundle configmap updated")
-	return actual, "", err
+	return actual, "", nil
 }
 
 // SyncTechPreview determines if tech preview features should be enabled based on cluster FeatureSet
 func (co *consoleOperator) SyncTechPreview() (techPreviewEnabled bool, reason string, err error) {
 	featureGate, err := co.featureGateLister.Get(api.ConfigResourceName)
 	if err != nil {
-		klog.V(4).Infof("failed to get FeatureGate resource: %v.", err)
+		klog.V(4).Infof("failed to get FeatureGate resource: %v", err)
 		return false, "FailedGet", err
 	}
 
@@ -571,6 +653,29 @@ func (co *consoleOperator) SyncTechPreview() (techPreviewEnabled bool, reason st
 		klog.V(4).Infoln("Console Technology Preview features enabled based on cluster FeatureSet TechPreviewNoUpgrade.")
 	}
 	return techPreviewEnabled, "", nil
+}
+
+// Replace with features.FeatureGateOLMLifecycleAndCompatibility once openshift/api is bumped.
+const olmLifecycleAndCompatibilityFeatureGate configv1.FeatureGateName = "OLMLifecycleAndCompatibility"
+
+// SyncOLMLifecycleMetadata determines if OLM lifecycle metadata features should be enabled
+// by checking if the OLMLifecycleAndCompatibility feature gate is enabled in the cluster.
+func (co *consoleOperator) SyncOLMLifecycleMetadata() (olmLifecycleMetadataEnabled bool, reason string, err error) {
+	featureGate, err := co.featureGateLister.Get(api.ConfigResourceName)
+	if err != nil {
+		klog.V(4).Infof("failed to get FeatureGate resource: %v", err)
+		return false, "FailedGet", err
+	}
+
+	for _, versionedGates := range featureGate.Status.FeatureGates {
+		for _, gate := range versionedGates.Enabled {
+			if gate.Name == olmLifecycleAndCompatibilityFeatureGate {
+				klog.V(4).Infoln("OLM lifecycle metadata features are enabled based on the OLMLifecycleAndCompatibility feature gate")
+				return true, "", nil
+			}
+		}
+	}
+	return false, "", nil
 }
 
 func (co *consoleOperator) SyncCustomLogos(operatorConfig *operatorv1.Console) (error, string) {
@@ -756,6 +861,32 @@ func (co *consoleOperator) GetAvailablePlugins(enabledPluginsNames []string) []*
 	return availablePlugins
 }
 
+// checkDeploymentRolloutStatus checks whether a deployment's rollout has completed
+// by examining the deployment controller's own status conditions. This follows
+// the 3CMO pattern (openshift/cluster-cloud-controller-manager-operator#488).
+//
+// See https://issues.redhat.com/browse/OCPBUGS-93982
+func checkDeploymentRolloutStatus(deployment *appsv1.Deployment) error {
+	if deployment.Status.ObservedGeneration < deployment.Generation {
+		return fmt.Errorf("deployment generation %d not yet observed (observed: %d)",
+			deployment.Generation, deployment.Status.ObservedGeneration)
+	}
+
+	for _, condition := range deployment.Status.Conditions {
+		if condition.Type == appsv1.DeploymentProgressing {
+			if condition.Status == corev1.ConditionTrue && condition.Reason == "NewReplicaSetAvailable" {
+				return nil
+			}
+			if condition.Status == corev1.ConditionFalse && condition.Reason == "ProgressDeadlineExceeded" {
+				return fmt.Errorf("deployment rollout stalled: ProgressDeadlineExceeded")
+			}
+			return fmt.Errorf("deployment rollout in progress: %s", condition.Reason)
+		}
+	}
+
+	return fmt.Errorf("deployment rollout status not yet available")
+}
+
 func getNodeComputeEnvironments(nodes []*corev1.Node) ([]string, []string) {
 	nodeArchitecturesSet := sets.NewString()
 	nodeOperatingSystemSet := sets.NewString()
@@ -812,6 +943,36 @@ func (co *consoleOperator) syncSessionSecret(
 		}
 	}
 
-	secret, _, err := resourceapply.ApplySecret(ctx, co.secretsClient, recorder, required)
+	var secret *corev1.Secret
+	err = controllersutil.RetryOnTransientError(func() error {
+		var e error
+		secret, _, e = resourceapply.ApplySecret(ctx, co.secretsClient, recorder, required)
+		return e
+	})
 	return secret, err
+}
+
+// getTLSConfigFromObservedConfig reads TLS configuration from the Console CR's observedConfig field.
+func getTLSConfigFromObservedConfig(operatorConfig *operatorv1.Console) (configv1.TLSProtocolVersion, []string, error) {
+	if operatorConfig == nil || operatorConfig.Spec.ObservedConfig.Raw == nil {
+		// Not an error - the config observer hasn't injected the config yet
+		return "", nil, nil
+	}
+
+	observedConfig := map[string]interface{}{}
+	if err := json.Unmarshal(operatorConfig.Spec.ObservedConfig.Raw, &observedConfig); err != nil {
+		return "", nil, fmt.Errorf("failed to unmarshal observedConfig: %w", err)
+	}
+
+	minTLSVersion, _, err := unstructured.NestedString(observedConfig, "servingInfo", "minTLSVersion")
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to read servingInfo.minTLSVersion: %w", err)
+	}
+
+	cipherSuites, _, err := unstructured.NestedStringSlice(observedConfig, "servingInfo", "cipherSuites")
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to read servingInfo.cipherSuites: %w", err)
+	}
+
+	return configv1.TLSProtocolVersion(minTLSVersion), cipherSuites, nil
 }

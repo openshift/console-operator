@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -14,6 +15,7 @@ import (
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/klog/v2"
 
+	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	"github.com/openshift/console-operator/pkg/console/status"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
@@ -103,7 +105,9 @@ func (c *StorageVersionMigrationController) syncStorageVersionMigration(ctx cont
 	if !succeeded {
 		klog.V(4).Infof("StorageVersionMigration has not succeeded yet")
 		// Delete the StorageVersionMigration if it has not succeeded yet
-		if err := c.deleteStorageVersionMigration(ctx); err != nil {
+		if err := util.RetryOnTransientError(func() error {
+			return c.deleteStorageVersionMigration(ctx)
+		}); err != nil {
 			return "FailedDeleteSVM", err
 		}
 		return "", nil
@@ -255,6 +259,9 @@ func (c *StorageVersionMigrationController) patchCRDStoredVersions(ctx context.C
 func (c *StorageVersionMigrationController) deleteStorageVersionMigration(ctx context.Context) error {
 	klog.Infof("Deleting StorageVersionMigration")
 	err := c.dynamicClient.Resource(storageVersionMigrationGVR).Delete(ctx, storageVersionMigrationName, metav1.DeleteOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
 	if err != nil {
 		klog.Errorf("Failed to delete StorageVersionMigration: %v", err)
 		return err

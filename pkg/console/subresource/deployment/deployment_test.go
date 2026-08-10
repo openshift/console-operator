@@ -238,7 +238,9 @@ func TestDefaultDeployment(t *testing.T) {
 						Annotations: consoleDeploymentTemplateAnnotations,
 					},
 						Spec: corev1.PodSpec{
-							ServiceAccountName: "console",
+							DNSPolicy:                corev1.DNSClusterFirst,
+							ServiceAccountName:       "console",
+							DeprecatedServiceAccount: "console",
 							// we want to deploy on master nodes
 							NodeSelector: map[string]string{"node-role.kubernetes.io/master": ""},
 							Affinity:     consoleDeploymentAffinity,
@@ -272,9 +274,9 @@ func TestDefaultDeployment(t *testing.T) {
 						},
 					},
 					MinReadySeconds:         0,
-					RevisionHistoryLimit:    nil,
+					RevisionHistoryLimit:    ptr.To(int32(10)),
 					Paused:                  false,
-					ProgressDeadlineSeconds: nil,
+					ProgressDeadlineSeconds: ptr.To(int32(600)),
 				},
 				Status: appsv1.DeploymentStatus{},
 			},
@@ -317,7 +319,9 @@ func TestDefaultDeployment(t *testing.T) {
 						Annotations: consoleDeploymentTemplateAnnotations,
 					},
 						Spec: corev1.PodSpec{
-							ServiceAccountName: "console",
+							DNSPolicy:                corev1.DNSClusterFirst,
+							ServiceAccountName:       "console",
+							DeprecatedServiceAccount: "console",
 							// we want to deploy on master nodes
 							NodeSelector: map[string]string{"node-role.kubernetes.io/master": ""},
 							Affinity:     consoleDeploymentAffinity,
@@ -351,9 +355,9 @@ func TestDefaultDeployment(t *testing.T) {
 						},
 					},
 					MinReadySeconds:         0,
-					RevisionHistoryLimit:    nil,
+					RevisionHistoryLimit:    ptr.To(int32(10)),
 					Paused:                  false,
-					ProgressDeadlineSeconds: nil,
+					ProgressDeadlineSeconds: ptr.To(int32(600)),
 				},
 				Status: appsv1.DeploymentStatus{},
 			},
@@ -396,7 +400,9 @@ func TestDefaultDeployment(t *testing.T) {
 						Annotations: consoleDeploymentTemplateAnnotations,
 					},
 						Spec: corev1.PodSpec{
-							ServiceAccountName: "console",
+							DNSPolicy:                corev1.DNSClusterFirst,
+							ServiceAccountName:       "console",
+							DeprecatedServiceAccount: "console",
 							// we want to deploy on master nodes
 							NodeSelector: map[string]string{"node-role.kubernetes.io/master": ""},
 							Affinity:     &corev1.Affinity{},
@@ -419,13 +425,16 @@ func TestDefaultDeployment(t *testing.T) {
 						},
 					},
 					Strategy: appsv1.DeploymentStrategy{
-						Type:          appsv1.RollingUpdateDeploymentStrategyType,
-						RollingUpdate: &appsv1.RollingUpdateDeployment{},
+						Type: appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: &appsv1.RollingUpdateDeployment{
+							MaxSurge:       &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
+							MaxUnavailable: &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
+						},
 					},
 					MinReadySeconds:         0,
-					RevisionHistoryLimit:    nil,
+					RevisionHistoryLimit:    ptr.To(int32(10)),
 					Paused:                  false,
-					ProgressDeadlineSeconds: nil,
+					ProgressDeadlineSeconds: ptr.To(int32(600)),
 				},
 				Status: appsv1.DeploymentStatus{},
 			},
@@ -468,7 +477,9 @@ func TestDefaultDeployment(t *testing.T) {
 						Annotations: consoleDeploymentTemplateAnnotations,
 					},
 						Spec: corev1.PodSpec{
-							ServiceAccountName: "console",
+							DNSPolicy:                corev1.DNSClusterFirst,
+							ServiceAccountName:       "console",
+							DeprecatedServiceAccount: "console",
 							// we do not want to deploy on master nodes
 							NodeSelector: map[string]string{},
 							Affinity:     consoleDeploymentAffinity,
@@ -502,9 +513,9 @@ func TestDefaultDeployment(t *testing.T) {
 						},
 					},
 					MinReadySeconds:         0,
-					RevisionHistoryLimit:    nil,
+					RevisionHistoryLimit:    ptr.To(int32(10)),
 					Paused:                  false,
-					ProgressDeadlineSeconds: nil,
+					ProgressDeadlineSeconds: ptr.To(int32(600)),
 				},
 				Status: appsv1.DeploymentStatus{},
 			},
@@ -1521,7 +1532,10 @@ func TestWithStrategy(t *testing.T) {
 	infrastructureConfigDualReplica := infrastructureConfigWithTopology(configv1.DualReplicaTopologyMode, configv1.HighlyAvailableTopologyMode)
 	infrastructureConfigArbiter := infrastructureConfigWithTopology(configv1.HighlyAvailableArbiterMode, configv1.HighlyAvailableTopologyMode)
 
-	singleReplicaStrategy := appsv1.RollingUpdateDeployment{}
+	singleReplicaStrategy := appsv1.RollingUpdateDeployment{
+		MaxSurge:       &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
+		MaxUnavailable: &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
+	}
 	zeroDowntimeStrategy := appsv1.RollingUpdateDeployment{
 		MaxSurge: &intstr.IntOrString{
 			IntVal: int32(1),
@@ -1757,7 +1771,9 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 		configv1.SingleReplicaTopologyMode)
 
 	downloadsDeploymentPodSpecSingleReplica := corev1.PodSpec{
-		ServiceAccountName: "downloads",
+		DNSPolicy:                corev1.DNSClusterFirst,
+		ServiceAccountName:       "downloads",
+		DeprecatedServiceAccount: "downloads",
 		NodeSelector: map[string]string{
 			"kubernetes.io/os":               "linux",
 			"node-role.kubernetes.io/master": "",
@@ -1888,10 +1904,15 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				},
 				ObjectMeta: downloadsDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
-					Replicas: &singleNodeReplicaCount,
+					Replicas:                &singleNodeReplicaCount,
+					RevisionHistoryLimit:    ptr.To(int32(10)),
+					ProgressDeadlineSeconds: ptr.To(int32(600)),
 					Strategy: appsv1.DeploymentStrategy{
-						Type:          appsv1.RollingUpdateDeploymentStrategyType,
-						RollingUpdate: &appsv1.RollingUpdateDeployment{},
+						Type: appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: &appsv1.RollingUpdateDeployment{
+							MaxSurge:       &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
+							MaxUnavailable: &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
+						},
 					},
 					Selector: &metav1.LabelSelector{
 						MatchLabels: labels,
@@ -1924,7 +1945,9 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				},
 				ObjectMeta: downloadsDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
-					Replicas: &defaultReplicaCount,
+					Replicas:                &defaultReplicaCount,
+					RevisionHistoryLimit:    ptr.To(int32(10)),
+					ProgressDeadlineSeconds: ptr.To(int32(600)),
 					Strategy: appsv1.DeploymentStrategy{
 						Type: appsv1.RollingUpdateDeploymentStrategyType,
 						RollingUpdate: &appsv1.RollingUpdateDeployment{

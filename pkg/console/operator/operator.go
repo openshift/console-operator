@@ -94,6 +94,8 @@ type consoleOperator struct {
 	trackables trackables
 
 	monitoringDeploymentLister appsv1listers.DeploymentLister
+
+	lastDeploymentAvailableTime time.Time
 }
 
 type trackables struct {
@@ -126,6 +128,7 @@ func NewConsoleOperator(
 	// oauth API
 	oauthClientSwitchedInformer *util.InformerWithSwitch,
 	// routes
+	routeClient routeclientv1.RoutesGetter,
 	routeInformer routesinformersv1.RouteInformer,
 	// plugins
 	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
@@ -182,6 +185,7 @@ func NewConsoleOperator(
 		dynamicClient:    dynamicClient,
 		// openshift
 		oauthClientLister: oauthClientSwitchedInformer.Lister(),
+		routeClient:       routeClient,
 		routeLister:       routeInformer.Lister(),
 		versionGetter:     versionGetter,
 		// plugins

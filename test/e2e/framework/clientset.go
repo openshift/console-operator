@@ -11,6 +11,7 @@ import (
 
 	configv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	consoleclientv1 "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
+	oauthclientv1 "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	clientroutev1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 )
@@ -35,6 +36,7 @@ type ClientSet struct {
 	Ingress                configv1.IngressesGetter
 	FeatureGate            configv1.FeatureGatesGetter
 	PodDisruptionBudget    policyv1client.PodDisruptionBudgetsGetter
+	OAuth                  oauthclientv1.OAuthClientsGetter
 }
 
 // NewClientset creates a set of Kubernetes clients. The default kubeconfig is
@@ -96,6 +98,12 @@ func NewClientset(kubeconfig *restclient.Config) (*ClientSet, error) {
 	}
 
 	clientset.PodDisruptionBudget = policyClient
+
+	oauthClient, err := oauthclientv1.NewForConfig(kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+	clientset.OAuth = oauthClient
 
 	return clientset, nil
 }
