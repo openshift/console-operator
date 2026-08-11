@@ -1026,9 +1026,9 @@ servingInfo:
   keyFile: /var/serving-cert/tls.key
 providers: {}
 plugins:
-  plugin1: https://service1.service-namespace1.svc.cluster.local:8443/
-  plugin2: https://service2.service-namespace2.svc.cluster.local:8443/
-  plugin3: https://service3.service-namespace3.svc.cluster.local:8443/
+  plugin1: https://service1.service-namespace1.svc.cluster.local.:8443/
+  plugin2: https://service2.service-namespace2.svc.cluster.local.:8443/
+  plugin3: https://service3.service-namespace3.svc.cluster.local.:8443/
 proxy:
   services:
   - authorize: true
@@ -1048,7 +1048,7 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 +tW+O/PoE7B3tuY=` + "\n" + `
 -----END CERTIFICATE-----'
     consoleAPIPath: /api/proxy/plugin/plugin1/plugin1-alias/
-    endpoint: https://proxy-service1.proxy-service-namespace1.svc.cluster.local:9991
+    endpoint: https://proxy-service1.proxy-service-namespace1.svc.cluster.local.:9991
   - authorize: true
     caCertificate: '-----BEGIN CERTIFICATE-----` + "\n" + `
 MIICRzCCAfGgAwIBAgIJAIydTIADd+yqMA0GCSqGSIb3DQEBCwUAMH4xCzAJBgNV` + "\n" + `
@@ -1066,7 +1066,7 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 +tW+O/PoE7B3tuY=` + "\n" + `
 -----END CERTIFICATE-----'
     consoleAPIPath: /api/proxy/plugin/plugin2/plugin2-alias/
-    endpoint: https://proxy-service2.proxy-service-namespace2.svc.cluster.local:9991
+    endpoint: https://proxy-service2.proxy-service-namespace2.svc.cluster.local.:9991
 `,
 				},
 			},
