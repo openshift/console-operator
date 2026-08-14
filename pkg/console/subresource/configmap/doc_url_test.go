@@ -38,6 +38,26 @@ func TestFormatOCPDocURL(t *testing.T) {
 			version: "5",
 			want:    "https://access.redhat.com/documentation/en-us/openshift_container_platform/latest/",
 		},
+		{
+			name:    "non-numeric dotted version falls back to latest",
+			version: "invalid.version",
+			want:    "https://access.redhat.com/documentation/en-us/openshift_container_platform/latest/",
+		},
+		{
+			name:    "trailing dot falls back to latest",
+			version: "5.",
+			want:    "https://access.redhat.com/documentation/en-us/openshift_container_platform/latest/",
+		},
+		{
+			name:    "non-numeric minor falls back to latest",
+			version: "5.x",
+			want:    "https://access.redhat.com/documentation/en-us/openshift_container_platform/latest/",
+		},
+		{
+			name:    "leading dot falls back to latest",
+			version: ".5",
+			want:    "https://access.redhat.com/documentation/en-us/openshift_container_platform/latest/",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -83,6 +103,26 @@ func TestExtractMajorMinor(t *testing.T) {
 		{
 			name:    "single number without dot",
 			version: "5",
+			want:    "latest",
+		},
+		{
+			name:    "non-numeric dotted version",
+			version: "invalid.version",
+			want:    "latest",
+		},
+		{
+			name:    "trailing dot with empty minor",
+			version: "5.",
+			want:    "latest",
+		},
+		{
+			name:    "non-numeric minor component",
+			version: "5.x",
+			want:    "latest",
+		},
+		{
+			name:    "leading dot with empty major",
+			version: ".5",
 			want:    "latest",
 		},
 	}
