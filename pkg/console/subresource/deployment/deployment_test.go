@@ -62,37 +62,6 @@ func TestDefaultDeployment(t *testing.T) {
 		Status: operatorsv1.ConsoleStatus{},
 	}
 
-	consoleDeploymentObjectMeta := metav1.ObjectMeta{
-		Name:                       api.OpenShiftConsoleName,
-		Namespace:                  api.OpenShiftConsoleNamespace,
-		GenerateName:               "",
-		SelfLink:                   "",
-		UID:                        "",
-		ResourceVersion:            "",
-		Generation:                 0,
-		CreationTimestamp:          metav1.Time{},
-		DeletionTimestamp:          nil,
-		DeletionGracePeriodSeconds: nil,
-		Labels:                     labels,
-		Annotations: map[string]string{
-			configMapResourceVersionAnnotation:             "",
-			secretResourceVersionAnnotation:                "",
-			authnCATrustConfigMapResourceVersionAnnotation: "",
-			serviceCAConfigMapResourceVersionAnnotation:    "",
-			trustedCAConfigMapResourceVersionAnnotation:    "",
-			proxyConfigResourceVersionAnnotation:           "",
-			infrastructureConfigResourceVersionAnnotation:  "",
-			consoleImageAnnotation:                         "",
-			servingCertSecretResourceVersionAnnotation:     "",
-		},
-		OwnerReferences: []metav1.OwnerReference{{
-			APIVersion: "operator.openshift.io/v1",
-			Kind:       "Console",
-			Controller: ptr.To(true),
-		}},
-		Finalizers: nil,
-	}
-
 	consoleConfig := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
@@ -115,6 +84,38 @@ func TestDefaultDeployment(t *testing.T) {
 		BinaryData: nil,
 	}
 
+	expectedConfigHash := configMapContentHash(consoleConfig)
+	consoleDeploymentObjectMeta := metav1.ObjectMeta{
+		Name:                       api.OpenShiftConsoleName,
+		Namespace:                  api.OpenShiftConsoleNamespace,
+		GenerateName:               "",
+		SelfLink:                   "",
+		UID:                        "",
+		ResourceVersion:            "",
+		Generation:                 0,
+		CreationTimestamp:          metav1.Time{},
+		DeletionTimestamp:          nil,
+		DeletionGracePeriodSeconds: nil,
+		Labels:                     labels,
+		Annotations: map[string]string{
+			configMapResourceVersionAnnotation:             expectedConfigHash,
+			secretResourceVersionAnnotation:                "",
+			authnCATrustConfigMapResourceVersionAnnotation: "",
+			serviceCAConfigMapResourceVersionAnnotation:    "",
+			trustedCAConfigMapResourceVersionAnnotation:    "",
+			proxyConfigResourceVersionAnnotation:           "",
+			infrastructureConfigResourceVersionAnnotation:  "",
+			consoleImageAnnotation:                         "",
+			servingCertSecretResourceVersionAnnotation:     "",
+		},
+		OwnerReferences: []metav1.OwnerReference{{
+			APIVersion: "operator.openshift.io/v1",
+			Kind:       "Console",
+			Controller: ptr.To(true),
+		}},
+		Finalizers: nil,
+	}
+
 	consoleDeploymentTolerations := []corev1.Toleration{
 		{
 			Key:      "node-role.kubernetes.io/master",
@@ -130,7 +131,7 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 
 	consoleDeploymentTemplateAnnotations := map[string]string{
-		configMapResourceVersionAnnotation:             "",
+		configMapResourceVersionAnnotation:             expectedConfigHash,
 		secretResourceVersionAnnotation:                "",
 		authnCATrustConfigMapResourceVersionAnnotation: "",
 		serviceCAConfigMapResourceVersionAnnotation:    "",
@@ -644,7 +645,7 @@ func TestWithConsoleAnnotations(t *testing.T) {
 			want: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						configMapResourceVersionAnnotation:             consoleConfigMap.GetResourceVersion(),
+						configMapResourceVersionAnnotation:             configMapContentHash(consoleConfigMap),
 						serviceCAConfigMapResourceVersionAnnotation:    serviceCAConfigMap.GetResourceVersion(),
 						authnCATrustConfigMapResourceVersionAnnotation: oauthServingCertConfigMap.GetResourceVersion(),
 						trustedCAConfigMapResourceVersionAnnotation:    trustedCAConfigMap.GetResourceVersion(),
@@ -660,7 +661,7 @@ func TestWithConsoleAnnotations(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Annotations: map[string]string{
 								workloadManagementAnnotation:                   workloadManagementAnnotationValue,
-								configMapResourceVersionAnnotation:             consoleConfigMap.GetResourceVersion(),
+								configMapResourceVersionAnnotation:             configMapContentHash(consoleConfigMap),
 								serviceCAConfigMapResourceVersionAnnotation:    serviceCAConfigMap.GetResourceVersion(),
 								authnCATrustConfigMapResourceVersionAnnotation: oauthServingCertConfigMap.GetResourceVersion(),
 								trustedCAConfigMapResourceVersionAnnotation:    trustedCAConfigMap.GetResourceVersion(),
