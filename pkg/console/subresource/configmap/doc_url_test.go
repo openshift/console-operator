@@ -137,11 +137,21 @@ func TestExtractMajorMinor(t *testing.T) {
 }
 
 func TestDefaultDocURL(t *testing.T) {
-	// Under OKD build (default test build), DefaultDocURL returns the
-	// static DEFAULT_DOC_URL constant. Under OCP build, it reads
-	// OPERATOR_IMAGE_VERSION and formats dynamically.
-	got := DefaultDocURL()
-	if got == "" {
-		t.Error("DefaultDocURL() returned empty string")
-	}
+	// Tests run without -tags ocp, so DefaultDocURL uses the OKD
+	// implementation which returns the static DEFAULT_DOC_URL constant.
+	// The OCP code path (OPERATOR_IMAGE_VERSION → formatOCPDocURL) is
+	// covered by TestFormatOCPDocURL and TestExtractMajorMinor above.
+	t.Run("returns expected OKD documentation URL", func(t *testing.T) {
+		got := DefaultDocURL()
+		if got != DEFAULT_DOC_URL {
+			t.Errorf("DefaultDocURL() = %q, want %q", got, DEFAULT_DOC_URL)
+		}
+	})
+	t.Run("OPERATOR_IMAGE_VERSION does not affect OKD build", func(t *testing.T) {
+		t.Setenv("OPERATOR_IMAGE_VERSION", "5.0.3")
+		got := DefaultDocURL()
+		if got != DEFAULT_DOC_URL {
+			t.Errorf("DefaultDocURL() = %q, want %q (env should not affect OKD)", got, DEFAULT_DOC_URL)
+		}
+	})
 }
