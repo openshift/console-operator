@@ -2211,3 +2211,150 @@ func infrastructureConfigWithTopology(controlPlaneTopologyMode, infrastructureTo
 		},
 	}
 }
+
+// TestConfigMapContentHash verifies that configMapContentHash produces
+// stable, content-only digests.  Expected hex strings were computed
+// independently (outside configMapContentHash) so these assertions are
+// not self-referential.
+func TestConfigMapContentHash(t *testing.T) {
+	tests := []struct {
+		name     string
+		cm       *corev1.ConfigMap
+		wantHash string // independently computed SHA-256 hex digest
+	}{
+		{
+			name: "empty ConfigMap",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1"},
+			},
+			wantHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		},
+		{
+			name: "ResourceVersion ignored — same content, different RV (rv=999)",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "999"},
+			},
+			wantHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		},
+		{
+			name: "Data only",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "42"},
+				Data:       map[string]string{"a": "1", "b": "2"},
+			},
+			wantHash: "37664b19301f46515688d5a22cb9ee1852e0b6443e28c7f36340a13962f0c4f7",
+		},
+		{
+			name: "same Data, different ResourceVersion — hash stays stable",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "99999"},
+				Data:       map[string]string{"a": "1", "b": "2"},
+			},
+			wantHash: "37664b19301f46515688d5a22cb9ee1852e0b6443e28c7f36340a13962f0c4f7",
+		},
+		{
+			name: "Data and BinaryData",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "7"},
+				Data:       map[string]string{"a": "1", "b": "2"},
+				BinaryData: map[string][]byte{"c": {0x03}},
+			},
+			wantHash: "796a3f10162c44333b6b91ba76bb9bd06b08370e0fc9994543b3c0f0e8ca50e8",
+		},
+		{
+			name: "same Data and BinaryData, different ResourceVersion — hash stays stable",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "777777"},
+				Data:       map[string]string{"a": "1", "b": "2"},
+				BinaryData: map[string][]byte{"c": {0x03}},
+			},
+			wantHash: "796a3f10162c44333b6b91ba76bb9bd06b08370e0fc9994543b3c0f0e8ca50e8",
+		},
+		{
+			name: "zero-byte binary value",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1"},
+				BinaryData: map[string][]byte{"x": {}},
+			},
+			wantHash: "758d56805faf3cd54dc7a7995808137ca3ade13246ac045c28e3988fbd95900c",
+		},
+		{
+			name: "changed Data value — hash differs",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "42"},
+				Data:       map[string]string{"a": "CHANGED", "b": "2"},
+			},
+			wantHash: "265714671361e206c4c4248d259e1d210ff2462393f0059339110dc4dfa588c9",
+		},
+		{
+			name: "changed BinaryData value — hash differs",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "7"},
+				Data:       map[string]string{"a": "1", "b": "2"},
+				BinaryData: map[string][]byte{"c": {0xFF}},
+			},
+			wantHash: "dbfd60a00427b4fa850fdf8310c1aa9ec0dca49c43eb7a98e1baf132cf587bd0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := configMapContentHash(tt.cm)
+			if got != tt.wantHash {
+				t.Errorf("configMapContentHash() = %q, want %q", got, tt.wantHash)
+			}
+		})
+	}
+
+	// Cross-case regression: verify stability and change properties
+	// by comparing results between cases above.
+	t.Run("ResourceVersion does not affect hash", func(t *testing.T) {
+		cmA := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1"},
+			Data:       map[string]string{"a": "1", "b": "2"},
+			BinaryData: map[string][]byte{"c": {0x03}},
+		}
+		cmB := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{ResourceVersion: "999999"},
+			Data:       map[string]string{"a": "1", "b": "2"},
+			BinaryData: map[string][]byte{"c": {0x03}},
+		}
+		if configMapContentHash(cmA) != configMapContentHash(cmB) {
+			t.Error("identical Data+BinaryData with different ResourceVersion produced different hashes")
+		}
+	})
+
+	t.Run("map iteration order does not affect hash", func(t *testing.T) {
+		// Go maps have non-deterministic iteration order; building
+		// two maps with keys inserted in different order exercises this.
+		cm1 := &corev1.ConfigMap{Data: map[string]string{"a": "1", "b": "2", "c": "3"}}
+		cm2 := &corev1.ConfigMap{Data: map[string]string{"c": "3", "a": "1", "b": "2"}}
+		h1 := configMapContentHash(cm1)
+		h2 := configMapContentHash(cm2)
+		if h1 != h2 {
+			t.Errorf("map-order variation produced different hashes: %q vs %q", h1, h2)
+		}
+	})
+
+	t.Run("content change produces different hash", func(t *testing.T) {
+		base := &corev1.ConfigMap{
+			Data:       map[string]string{"a": "1", "b": "2"},
+			BinaryData: map[string][]byte{"c": {0x03}},
+		}
+		mutatedData := &corev1.ConfigMap{
+			Data:       map[string]string{"a": "CHANGED", "b": "2"},
+			BinaryData: map[string][]byte{"c": {0x03}},
+		}
+		mutatedBinary := &corev1.ConfigMap{
+			Data:       map[string]string{"a": "1", "b": "2"},
+			BinaryData: map[string][]byte{"c": {0xFF}},
+		}
+		baseHash := configMapContentHash(base)
+		if configMapContentHash(mutatedData) == baseHash {
+			t.Error("changing Data value did not change hash")
+		}
+		if configMapContentHash(mutatedBinary) == baseHash {
+			t.Error("changing BinaryData value did not change hash")
+		}
+	})
+}
