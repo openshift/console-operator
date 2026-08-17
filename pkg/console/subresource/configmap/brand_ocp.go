@@ -3,7 +3,13 @@
 
 package configmap
 
-const (
-	DEFAULT_BRAND   = "ocp"
-	DEFAULT_DOC_URL = "https://access.redhat.com/documentation/en-us/openshift_container_platform/5.0/"
-)
+import "os"
+
+const DEFAULT_BRAND = "ocp"
+
+// DefaultDocURL returns the documentation base URL for OCP, dynamically
+// deriving the version from the OPERATOR_IMAGE_VERSION environment variable.
+// Falls back to "latest" if the version is unavailable or cannot be parsed.
+func DefaultDocURL() string {
+	return formatOCPDocURL(os.Getenv("OPERATOR_IMAGE_VERSION"))
+}

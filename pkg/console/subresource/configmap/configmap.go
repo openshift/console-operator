@@ -61,7 +61,7 @@ func DefaultConfigMap(
 	defaultConfig, err := defaultBuilder.Host(consoleHost).
 		LogoutURL(defaultLogoutURL).
 		Brand(DEFAULT_BRAND).
-		DocURL(DEFAULT_DOC_URL).
+		DocURL(DefaultDocURL()).
 		APIServerURL(apiServerURL).
 		Monitoring(monitoringSharedConfig).
 		InactivityTimeout(inactivityTimeoutSeconds).
