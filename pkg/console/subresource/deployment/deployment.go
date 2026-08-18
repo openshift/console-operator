@@ -2,6 +2,7 @@ package deployment
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"slices"
 
@@ -199,6 +200,39 @@ func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.
 	deployment.Spec.Strategy.RollingUpdate = rollingUpdateParams
 }
 
+// configMapContentHash returns a hex-encoded SHA-256 digest of the
+// ConfigMap's Data and BinaryData. Using a content hash instead of
+// the Kubernetes ResourceVersion means the annotation only changes
+// when the actual config content changes, preventing spurious
+// deployment rollouts when the ConfigMap is rewritten with identical
+// content (e.g. during componentRoute churn in techpreview tests).
+func configMapContentHash(cm *corev1.ConfigMap) string {
+	h := sha256.New()
+	keys := make([]string, 0, len(cm.Data))
+	for k := range cm.Data {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	for _, k := range keys {
+		h.Write([]byte(k))
+		h.Write([]byte{0})
+		h.Write([]byte(cm.Data[k]))
+		h.Write([]byte{0})
+	}
+	bkeys := make([]string, 0, len(cm.BinaryData))
+	for k := range cm.BinaryData {
+		bkeys = append(bkeys, k)
+	}
+	slices.Sort(bkeys)
+	for _, k := range bkeys {
+		h.Write([]byte(k))
+		h.Write([]byte{0})
+		h.Write(cm.BinaryData[k])
+		h.Write([]byte{0})
+	}
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
 // withConsoleAnnotations adds annotations in the console deployment which are used to track
 // resources that when updated, trigger a new deployment rollout; this happens when the resource
 // version changes.
@@ -215,7 +249,7 @@ func withConsoleAnnotations(
 	infrastructureConfig *configv1.Infrastructure,
 ) {
 	deployment.ObjectMeta.Annotations = map[string]string{
-		configMapResourceVersionAnnotation:            consoleConfigMap.GetResourceVersion(),
+		configMapResourceVersionAnnotation:            configMapContentHash(consoleConfigMap),
 		serviceCAConfigMapResourceVersionAnnotation:   serviceCAConfigMap.GetResourceVersion(),
 		trustedCAConfigMapResourceVersionAnnotation:   trustedCAConfigMap.GetResourceVersion(),
 		proxyConfigResourceVersionAnnotation:          proxyConfig.GetResourceVersion(),
