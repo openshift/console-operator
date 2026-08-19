@@ -125,6 +125,14 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		if err != nil {
 			return statusHandler.FlushAndReturn(err)
 		}
+	default:
+		// Clear any stale OIDC-related degraded/progressing conditions that
+		// may have been set during a previous reconciliation when the
+		// authentication type was OIDC. Without this, switching away from
+		// OIDC leaves the OIDCProviderTrustedAuthorityConfigGet condition
+		// permanently degraded because the OIDC code path is no longer
+		// executed and the condition is never updated.
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCProviderTrustedAuthorityConfigGet", "", nil))
 	}
 
 	customLogosErr, customLogosErrReason := co.SyncCustomLogos(updatedOperatorConfig)
