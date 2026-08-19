@@ -37,8 +37,23 @@ func TestHandleProgressingOrDegraded_NilError_ClearsConditions(t *testing.T) {
 func TestHandleProgressingOrDegraded_NilError_SetsFalse(t *testing.T) {
 	updates := HandleProgressingOrDegraded("TestPrefix", "", nil)
 
-	// Apply updates to a status and verify the conditions are set to False
-	status := &operatorsv1.OperatorStatus{}
+	// Seed status with stale True conditions to verify they are replaced
+	status := &operatorsv1.OperatorStatus{
+		Conditions: []operatorsv1.OperatorCondition{
+			{
+				Type:    "TestPrefixDegraded",
+				Status:  operatorsv1.ConditionTrue,
+				Reason:  "StaleReason",
+				Message: "stale error",
+			},
+			{
+				Type:    "TestPrefixProgressing",
+				Status:  operatorsv1.ConditionTrue,
+				Reason:  "StaleReason",
+				Message: "stale progressing",
+			},
+		},
+	}
 
 	for _, update := range updates {
 		if err := update.StatusUpdateFn(status); err != nil {
@@ -46,9 +61,21 @@ func TestHandleProgressingOrDegraded_NilError_SetsFalse(t *testing.T) {
 		}
 	}
 
+	expectedTypes := map[string]bool{
+		"TestPrefixDegraded":    false,
+		"TestPrefixProgressing": false,
+	}
 	for _, cond := range status.Conditions {
-		if cond.Status != operatorsv1.ConditionFalse {
-			t.Errorf("expected condition %q to be False, got %s", cond.Type, cond.Status)
+		if _, ok := expectedTypes[cond.Type]; ok {
+			expectedTypes[cond.Type] = true
+			if cond.Status != operatorsv1.ConditionFalse {
+				t.Errorf("expected condition %q to be False, got %s", cond.Type, cond.Status)
+			}
+		}
+	}
+	for condType, found := range expectedTypes {
+		if !found {
+			t.Errorf("expected condition %q to be present but was not found", condType)
 		}
 	}
 }
@@ -64,19 +91,33 @@ func TestHandleProgressingOrDegraded_WithError_SetsDegradedTrue(t *testing.T) {
 		}
 	}
 
+	expectedTypes := map[string]bool{
+		"TestPrefixDegraded":    false,
+		"TestPrefixProgressing": false,
+	}
 	for _, cond := range status.Conditions {
 		switch cond.Type {
 		case "TestPrefixDegraded":
+			expectedTypes[cond.Type] = true
 			if cond.Status != operatorsv1.ConditionTrue {
 				t.Errorf("expected TestPrefixDegraded to be True, got %s", cond.Status)
+			}
+			if cond.Reason != "TestReason" {
+				t.Errorf("expected reason 'TestReason', got %q", cond.Reason)
 			}
 			if cond.Message != "test error" {
 				t.Errorf("expected message 'test error', got %q", cond.Message)
 			}
 		case "TestPrefixProgressing":
+			expectedTypes[cond.Type] = true
 			if cond.Status != operatorsv1.ConditionFalse {
 				t.Errorf("expected TestPrefixProgressing to be False, got %s", cond.Status)
 			}
+		}
+	}
+	for condType, found := range expectedTypes {
+		if !found {
+			t.Errorf("expected condition %q to be present but was not found", condType)
 		}
 	}
 }
