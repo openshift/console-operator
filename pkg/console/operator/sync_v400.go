@@ -118,7 +118,16 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 				if err != nil {
 					return statusHandler.FlushAndReturn(err)
 				}
+			} else {
+				// Empty CA name — no lookup required, clear any stale
+				// condition from a prior reconciliation that had a CA.
+				statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCProviderTrustedAuthorityConfigGet", "", nil))
 			}
+		} else {
+			// No OIDC provider configured — clear any stale condition
+			// from a prior reconciliation that had an OIDC provider with
+			// a CA configured.
+			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCProviderTrustedAuthorityConfigGet", "", nil))
 		}
 
 		sessionSecret, err = co.syncSessionSecret(ctx, updatedOperatorConfig, controllerContext.Recorder())
