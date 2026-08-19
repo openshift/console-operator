@@ -8,6 +8,7 @@ import (
 
 	// kube
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apiexensionsinformers "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,17 +26,20 @@ import (
 	"github.com/openshift/api/oauth"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/clientwrapper"
+
+	"github.com/openshift/console-operator/pkg/console/configobservation/configobservercontroller"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/clioidcclientstatus"
 	"github.com/openshift/console-operator/pkg/console/controllers/downloadsdeployment"
 	"github.com/openshift/console-operator/pkg/console/controllers/healthcheck"
+	"github.com/openshift/console-operator/pkg/console/controllers/migration"
 	"github.com/openshift/console-operator/pkg/console/controllers/oauthclients"
 	"github.com/openshift/console-operator/pkg/console/controllers/oauthclientsecret"
 	"github.com/openshift/console-operator/pkg/console/controllers/oidcsetup"
 	pdb "github.com/openshift/console-operator/pkg/console/controllers/poddisruptionbudget"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
+	"github.com/openshift/console-operator/pkg/console/controllers/serviceaccounts"
 	"github.com/openshift/console-operator/pkg/console/controllers/storageversionmigration"
 	upgradenotification "github.com/openshift/console-operator/pkg/console/controllers/upgradenotification"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
@@ -71,6 +75,18 @@ import (
 	"github.com/go-test/deep"
 	consoleoperator "github.com/openshift/console-operator/pkg/console/operator"
 	"github.com/openshift/library-go/pkg/operator/loglevel"
+)
+
+const (
+	clusterRoleResource    = "clusterroles"
+	namespaceResource      = "namespaces"
+	configMapResource      = "configmaps"
+	consoleResource        = "consoles"
+	infrastructureResource = "infrastructures"
+	proxyResource          = "proxies"
+	oauthResource          = "oauths"
+	oauthClientResource    = "oauthclients"
+	consolePluginResource  = "consoleplugins"
 )
 
 func RunOperator(ctx context.Context, controllerContext *controllercmd.ControllerContext) error {
@@ -180,7 +196,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 	versionGetter := status.NewVersionGetter()
 
-	resourceSyncerInformers, resourceSyncer := getResourceSyncer(controllerContext, clientwrapper.WithoutSecret(kubeClient), operatorClient)
+	resourceSyncerInformers, resourceSyncer := getResourceSyncer(controllerContext, kubeClient, operatorClient)
 
 	oauthClientsSwitchedInformer := util.NewSwitchedInformer(ctx,
 		oauthClient,
@@ -221,11 +237,9 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		return err
 	}
 
-	contentSecurityPolicyEnabled := featureGates.Enabled("ConsolePluginContentSecurityPolicy")
 	// TODO: rearrange these into informer,client pairs, NOT separated.
 	consoleOperator := consoleoperator.NewConsoleOperator(
 		ctx,
-		contentSecurityPolicyEnabled,
 		// top level config
 		configClient.ConfigV1(),
 		configInformers,
@@ -245,6 +259,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// oauth
 		oauthClientsSwitchedInformer,
 		// routes
+		routesClient.RouteV1(),
 		routesInformersNamespaced.Route().V1().Routes(), // Route
 		// plugins
 		consoleInformers.Console().V1().ConsolePlugins(),
@@ -312,6 +327,37 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		recorder,
 	)
 
+	consoleServiceAccountController := serviceaccounts.NewServiceAccountSyncController(
+		// clients
+		operatorClient,
+		configInformers,
+		// operator
+		operatorConfigInformers.Operator().V1().Consoles(),
+
+		kubeClient.CoreV1(), // ServiceAccount
+		kubeInformersNamespaced.Core().V1().ServiceAccounts(), // ServiceAccount
+
+		recorder,
+		api.OpenShiftConsoleServiceAccountName,
+		api.OpenShiftConsoleName, // controller name
+	)
+
+	downloadsServiceAccountController := serviceaccounts.NewServiceAccountSyncController(
+		// clients
+		operatorClient,
+		configInformers,
+		// operator
+		operatorConfigInformers.Operator().V1().Consoles(),
+
+		kubeClient.CoreV1(), // ServiceAccount
+		kubeInformersNamespaced.Core().V1().ServiceAccounts(), // ServiceAccount
+
+		recorder,
+
+		api.OpenShiftConsoleDownloadsServiceAccountName,
+		api.DownloadsResourceName,
+	)
+
 	downloadsDeploymentController := downloadsdeployment.NewDownloadsDeploymentSyncController(
 		// clients
 		operatorClient,
@@ -321,6 +367,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 		kubeClient.AppsV1(), // Deployments
 		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
+
 		recorder,
 	)
 
@@ -436,15 +483,19 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	clusterOperatorStatus := status.NewClusterOperatorStatusController(
 		api.ClusterOperatorName,
 		[]configv1.ObjectReference{
-			{Group: operatorv1.GroupName, Resource: "consoles", Name: api.ConfigResourceName},
-			{Group: configv1.GroupName, Resource: "consoles", Name: api.ConfigResourceName},
-			{Group: configv1.GroupName, Resource: "infrastructures", Name: api.ConfigResourceName},
-			{Group: configv1.GroupName, Resource: "proxies", Name: api.ConfigResourceName},
-			{Group: configv1.GroupName, Resource: "oauths", Name: api.ConfigResourceName},
-			{Group: oauth.GroupName, Resource: "oauthclients", Name: api.OAuthClientName},
-			{Group: corev1.GroupName, Resource: "namespaces", Name: api.OpenShiftConsoleOperatorNamespace},
-			{Group: corev1.GroupName, Resource: "namespaces", Name: api.OpenShiftConsoleNamespace},
-			{Group: corev1.GroupName, Resource: "configmaps", Name: api.OpenShiftConsolePublicConfigMapName, Namespace: api.OpenShiftConfigManagedNamespace},
+			{Group: operatorv1.GroupName, Resource: consoleResource, Name: api.ConfigResourceName},
+			{Group: configv1.GroupName, Resource: consoleResource, Name: api.ConfigResourceName},
+			{Group: configv1.GroupName, Resource: infrastructureResource, Name: api.ConfigResourceName},
+			{Group: configv1.GroupName, Resource: proxyResource, Name: api.ConfigResourceName},
+			{Group: configv1.GroupName, Resource: oauthResource, Name: api.ConfigResourceName},
+			{Group: corev1.GroupName, Resource: namespaceResource, Name: api.OpenShiftConsoleOperatorNamespace},
+			{Group: corev1.GroupName, Resource: namespaceResource, Name: api.OpenShiftConsoleNamespace},
+			{Group: corev1.GroupName, Resource: configMapResource, Name: api.OpenShiftConsolePublicConfigMapName, Namespace: api.OpenShiftConfigManagedNamespace},
+			{Group: rbacv1.GroupName, Resource: clusterRoleResource, Name: api.OpenShiftConsoleOperator},
+			{Group: rbacv1.GroupName, Resource: clusterRoleResource, Name: api.OpenShiftConsoleName},
+			{Group: rbacv1.GroupName, Resource: clusterRoleResource, Name: api.HelmChartreposViewerRoleName},
+			{Group: rbacv1.GroupName, Resource: clusterRoleResource, Name: api.ProjectHelmChartrepositoryEditorRoleName},
+			{Group: rbacv1.GroupName, Resource: clusterRoleResource, Name: api.ConsoleExtensionsReaderRoleName},
 		},
 		// clusteroperator client
 		configClient.ConfigV1(),
@@ -470,14 +521,14 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		for _, plugin := range consolePlugins.Items {
 			relatedObjects = append(relatedObjects, configv1.ObjectReference{
 				Group:    "console.openshift.io",
-				Resource: "consoleplugins",
+				Resource: consolePluginResource,
 				Name:     plugin.GetName(),
 			})
 			if plugin.Spec.Backend.Service != nil {
 				ns := plugin.Spec.Backend.Service.Namespace
 				relatedObjects = append(relatedObjects, configv1.ObjectReference{
 					Group:    corev1.GroupName,
-					Resource: "namespaces",
+					Resource: namespaceResource,
 					Name:     ns,
 				})
 			}
@@ -485,11 +536,23 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 				if proxy.Endpoint.Service != nil && proxy.Endpoint.Service.Namespace != "" {
 					relatedObjects = append(relatedObjects, configv1.ObjectReference{
 						Group:    corev1.GroupName,
-						Resource: "namespaces",
+						Resource: namespaceResource,
 						Name:     proxy.Endpoint.Service.Namespace,
 					})
 				}
 			}
+		}
+
+		authn, err := configInformers.Config().V1().Authentications().Lister().Get("cluster")
+		if err != nil {
+			return false, nil
+		}
+		switch authn.Spec.Type {
+		case "", configv1.AuthenticationTypeIntegratedOAuth:
+			relatedObjects = append(relatedObjects, configv1.ObjectReference{
+				Group:    oauth.GroupName,
+				Resource: oauthClientResource,
+				Name:     api.OAuthClientName})
 		}
 
 		return true, deduplicateObjectReferences(relatedObjects)
@@ -524,6 +587,11 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		},
 		operatorClient,
 		controllerContext.EventRecorder,
+	)
+
+	migrationCleanupController := migration.NewMigrationCleanupController(
+		kubeClient,
+		recorder,
 	)
 
 	// instantiate pdb client
@@ -568,6 +636,14 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	logLevelController := loglevel.NewClusterOperatorLoggingController(operatorClient, controllerContext.EventRecorder)
 	managementStateController := managementstatecontroller.NewOperatorManagementStateController(api.ClusterOperatorName, operatorClient, controllerContext.EventRecorder)
 
+	// Config observer watches APIServer and writes TLS config to Console CR's observedConfig
+	configObserver := configobservercontroller.NewConfigObserver(
+		operatorClient,
+		configInformers,
+		resourceSyncer,
+		recorder,
+	)
+
 	for _, informer := range []interface {
 		Start(stopCh <-chan struct{})
 	}{
@@ -591,11 +667,15 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	for _, controller := range []interface {
 		Run(ctx context.Context, workers int)
 	}{
+		migrationCleanupController,
 		resourceSyncer,
 		clusterOperatorStatus,
 		logLevelController,
 		managementStateController,
 		configUpgradeableController,
+		configObserver,
+		consoleServiceAccountController,
+		downloadsServiceAccountController,
 		consoleServiceController,
 		consoleRouteController,
 		downloadsServiceController,

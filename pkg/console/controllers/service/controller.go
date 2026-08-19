@@ -130,7 +130,10 @@ func (c *ServiceSyncController) Sync(ctx context.Context, controllerContext fact
 	routeConfig := routesub.NewRouteConfig(updatedOperatorConfig, ingressConfig, c.serviceName)
 
 	requiredSvc := c.getDefaultService(ingressDisabled)
-	_, _, svcErr := resourceapply.ApplyService(ctx, c.serviceClient, controllerContext.Recorder(), requiredSvc)
+	svcErr := util.RetryOnTransientError(func() error {
+		_, _, err := resourceapply.ApplyService(ctx, c.serviceClient, controllerContext.Recorder(), requiredSvc)
+		return err
+	})
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ServiceSync", "FailedApply", svcErr))
 	if svcErr != nil {
 		return statusHandler.FlushAndReturn(svcErr)
@@ -147,17 +150,23 @@ func (c *ServiceSyncController) Sync(ctx context.Context, controllerContext fact
 
 func (c *ServiceSyncController) SyncRedirectService(ctx context.Context, routeConfig *routesub.RouteConfig, controllerContext factory.SyncContext) (string, error) {
 	if !routeConfig.IsCustomHostnameSet() {
-		if err := c.removeService(ctx, c.getRedirectServiceName()); err != nil {
+		err := util.RetryOnTransientError(func() error {
+			return c.removeService(ctx, c.getRedirectServiceName())
+		})
+		if err != nil {
 			return "FailedDelete", err
 		}
 		return "", nil
 	}
 	requiredRedirectService := c.getRedirectService()
-	_, _, redirectSvcErr := resourceapply.ApplyService(ctx, c.serviceClient, controllerContext.Recorder(), requiredRedirectService)
+	redirectSvcErr := util.RetryOnTransientError(func() error {
+		_, _, err := resourceapply.ApplyService(ctx, c.serviceClient, controllerContext.Recorder(), requiredRedirectService)
+		return err
+	})
 	if redirectSvcErr != nil {
 		return "FailedApply", redirectSvcErr
 	}
-	return "", redirectSvcErr
+	return "", nil
 }
 
 func (c *ServiceSyncController) removeService(ctx context.Context, serviceName string) error {

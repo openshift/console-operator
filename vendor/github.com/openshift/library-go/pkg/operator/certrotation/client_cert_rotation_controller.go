@@ -6,12 +6,12 @@ import (
 	"time"
 
 	operatorv1 "github.com/openshift/api/operator/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/condition"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 const (
@@ -79,10 +79,26 @@ func NewCertRotationController(
 		RotatedSelfSignedCertKeySecret: rotatedSelfSignedCertKeySecret,
 		StatusReporter:                 reporter,
 	}
+
 	return factory.New().
 		ResyncEvery(time.Minute).
 		WithSync(c.Sync).
-		WithInformers(
+		WithFilteredEventsInformers(
+			func(obj interface{}) bool {
+				if cm, ok := obj.(*corev1.ConfigMap); ok {
+					return cm.Namespace == caBundleConfigMap.Namespace && cm.Name == caBundleConfigMap.Name
+				}
+				if secret, ok := obj.(*corev1.Secret); ok {
+					if secret.Namespace == rotatedSigningCASecret.Namespace && secret.Name == rotatedSigningCASecret.Name {
+						return true
+					}
+					if secret.Namespace == rotatedSelfSignedCertKeySecret.Namespace && secret.Name == rotatedSelfSignedCertKeySecret.Name {
+						return true
+					}
+					return false
+				}
+				return true
+			},
 			rotatedSigningCASecret.Informer.Informer(),
 			caBundleConfigMap.Informer.Informer(),
 			rotatedSelfSignedCertKeySecret.Informer.Informer(),
@@ -122,13 +138,21 @@ func (c CertRotationController) getSigningCertKeyPairLocation() string {
 
 func (c CertRotationController) SyncWorker(ctx context.Context) error {
 	signingCertKeyPair, _, err := c.RotatedSigningCASecret.EnsureSigningCertKeyPair(ctx)
-	if err != nil || signingCertKeyPair == nil {
+	if err != nil {
 		return err
+	}
+	// If no signingCertKeyPair returned due to update conflict or otherwise, return an error
+	if signingCertKeyPair == nil {
+		return fmt.Errorf("signingCertKeyPair is nil")
 	}
 
 	cabundleCerts, err := c.CABundleConfigMap.EnsureConfigMapCABundle(ctx, signingCertKeyPair, c.getSigningCertKeyPairLocation())
 	if err != nil {
 		return err
+	}
+	// If no ca bundle returned due to update conflict or otherwise, return an error
+	if cabundleCerts == nil {
+		return fmt.Errorf("cabundleCerts is nil")
 	}
 
 	if _, err := c.RotatedSelfSignedCertKeySecret.EnsureTargetCertKeyPair(ctx, signingCertKeyPair, cabundleCerts); err != nil {

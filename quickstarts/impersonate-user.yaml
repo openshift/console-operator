@@ -26,7 +26,7 @@ spec:
       description: >
         You must explicitly have the `impersonate` privilege to impersonate other users:
 
-        1. From the **Administrator** perspective, go to the **RoleBindings** page in the [User Management]{{highlight qs-nav-usermanagement}} section of the navigation.
+        1. From the **Core platform** perspective, go to the **RoleBindings** page in the [User Management]{{highlight qs-nav-usermanagement}} section of the navigation.
 
         1. Sort by **Subject kind** `User` and locate the **Subject name** `system:admin` user you want to impersonate. Then click its associated kebab menu and select **Impersonate User "system:admin"**.
 

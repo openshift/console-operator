@@ -21,6 +21,14 @@ rules:
       - get
       - list
       - watch
+  - apiGroups:
+      - discovery.k8s.io
+    resources:
+      - endpointslices
+    verbs:
+      - get
+      - list
+      - watch
 ---
 # Grant cluster-monitoring access to console metrics
 apiVersion: rbac.authorization.k8s.io/v1

@@ -11,6 +11,15 @@ import (
 // with apply.
 type KubeAPIServerSpecApplyConfiguration struct {
 	StaticPodOperatorSpecApplyConfiguration `json:",inline"`
+	// eventTTLMinutes specifies the amount of time that the events are stored before being deleted.
+	// The TTL is allowed between 5 minutes minimum up to a maximum of 180 minutes (3 hours).
+	//
+	// Lowering this value will reduce the storage required in etcd. Note that this setting will only apply
+	// to new events being created and will not update existing events.
+	//
+	// When omitted this means no opinion, and the platform is left to choose a reasonable default, which is subject to change over time.
+	// The current default value is 3h (180 minutes).
+	EventTTLMinutes *int32 `json:"eventTTLMinutes,omitempty"`
 }
 
 // KubeAPIServerSpecApplyConfiguration constructs a declarative configuration of the KubeAPIServerSpec type for use with
@@ -80,5 +89,13 @@ func (b *KubeAPIServerSpecApplyConfiguration) WithFailedRevisionLimit(value int3
 // If called multiple times, the SucceededRevisionLimit field is set to the value of the last call.
 func (b *KubeAPIServerSpecApplyConfiguration) WithSucceededRevisionLimit(value int32) *KubeAPIServerSpecApplyConfiguration {
 	b.StaticPodOperatorSpecApplyConfiguration.SucceededRevisionLimit = &value
+	return b
+}
+
+// WithEventTTLMinutes sets the EventTTLMinutes field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the EventTTLMinutes field is set to the value of the last call.
+func (b *KubeAPIServerSpecApplyConfiguration) WithEventTTLMinutes(value int32) *KubeAPIServerSpecApplyConfiguration {
+	b.EventTTLMinutes = &value
 	return b
 }

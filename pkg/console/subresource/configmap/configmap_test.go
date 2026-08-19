@@ -51,21 +51,20 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ
 // To manually run these tests: go test -v ./pkg/console/subresource/configmap/...
 func TestDefaultConfigMap(t *testing.T) {
 	type args struct {
-		operatorConfig               *operatorv1.Console
-		authConfig                   *configv1.Authentication
-		consoleConfig                *configv1.Console
-		managedConfig                *corev1.ConfigMap
-		monitoringSharedConfig       *corev1.ConfigMap
-		authServerCAConfig           *corev1.ConfigMap
-		infrastructureConfig         *configv1.Infrastructure
-		rt                           *routev1.Route
-		inactivityTimeoutSeconds     int
-		availablePlugins             []*consolev1.ConsolePlugin
-		nodeArchitectures            []string
-		nodeOperatingSystems         []string
-		copiedCSVsDisabled           bool
-		contentSecurityPolicyEnabled bool
-		telemetryConfig              map[string]string
+		operatorConfig           *operatorv1.Console
+		authConfig               *configv1.Authentication
+		consoleConfig            *configv1.Console
+		managedConfig            *corev1.ConfigMap
+		monitoringSharedConfig   *corev1.ConfigMap
+		authServerCAConfig       *corev1.ConfigMap
+		infrastructureConfig     *configv1.Infrastructure
+		rt                       *routev1.Route
+		inactivityTimeoutSeconds int
+		availablePlugins         []*consolev1.ConsolePlugin
+		nodeArchitectures        []string
+		nodeOperatingSystems     []string
+		copiedCSVsDisabled       bool
+		telemetryConfig          map[string]string
 	}
 	t.Setenv("OPERATOR_IMAGE_VERSION", testReleaseVersion)
 	tests := []struct {
@@ -979,9 +978,9 @@ providers: {}
 				},
 				inactivityTimeoutSeconds: 0,
 				availablePlugins: []*consolev1.ConsolePlugin{
+					testPluginsWithI18nPreloadType("plugin3", "service3", "service-namespace3"),
 					testPluginsWithProxy("plugin1", "service1", "service-namespace1"),
 					testPluginsWithProxy("plugin2", "service2", "service-namespace2"),
-					testPluginsWithI18nPreloadType("plugin3", "service3", "service-namespace3"),
 				},
 			},
 			want: &corev1.ConfigMap{
@@ -1027,9 +1026,9 @@ servingInfo:
   keyFile: /var/serving-cert/tls.key
 providers: {}
 plugins:
-  plugin1: https://service1.service-namespace1.svc.cluster.local:8443/
-  plugin2: https://service2.service-namespace2.svc.cluster.local:8443/
-  plugin3: https://service3.service-namespace3.svc.cluster.local:8443/
+  plugin1: https://service1.service-namespace1.svc.cluster.local.:8443/
+  plugin2: https://service2.service-namespace2.svc.cluster.local.:8443/
+  plugin3: https://service3.service-namespace3.svc.cluster.local.:8443/
 proxy:
   services:
   - authorize: true
@@ -1049,7 +1048,7 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 +tW+O/PoE7B3tuY=` + "\n" + `
 -----END CERTIFICATE-----'
     consoleAPIPath: /api/proxy/plugin/plugin1/plugin1-alias/
-    endpoint: https://proxy-service1.proxy-service-namespace1.svc.cluster.local:9991
+    endpoint: https://proxy-service1.proxy-service-namespace1.svc.cluster.local.:9991
   - authorize: true
     caCertificate: '-----BEGIN CERTIFICATE-----` + "\n" + `
 MIICRzCCAfGgAwIBAgIJAIydTIADd+yqMA0GCSqGSIb3DQEBCwUAMH4xCzAJBgNV` + "\n" + `
@@ -1067,7 +1066,7 @@ nV5cXbp9W1bC12Tc8nnNXn4ypLE2JTQAvyp51zoZ8hQoSnRVx/VCY55Yu+br8gQZ` + "\n" + `
 +tW+O/PoE7B3tuY=` + "\n" + `
 -----END CERTIFICATE-----'
     consoleAPIPath: /api/proxy/plugin/plugin2/plugin2-alias/
-    endpoint: https://proxy-service2.proxy-service-namespace2.svc.cluster.local:9991
+    endpoint: https://proxy-service2.proxy-service-namespace2.svc.cluster.local.:9991
 `,
 				},
 			},
@@ -1303,10 +1302,13 @@ providers: {}
 				tt.args.nodeArchitectures,
 				tt.args.nodeOperatingSystems,
 				tt.args.copiedCSVsDisabled,
-				tt.args.contentSecurityPolicyEnabled,
 				tt.args.telemetryConfig,
 				tt.args.rt.Spec.Host,
-				false, // techPreviewEnabled - default to false for tests
+				false,      // techPreviewEnabled - default to false for tests
+				false,      // olmLifecycleMetadataEnabled - default to false for tests
+				nil,        // additionalHosts
+				"",         // tlsMinVersion - empty for legacy tests
+				[]string{}, // tlsCiphers - empty for legacy tests
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below
@@ -1626,6 +1628,106 @@ func TestAggregateCSPDirectives(t *testing.T) {
 				t.Error(diff)
 				t.Errorf("Got: %v \n", result)
 				t.Errorf("Want: %v \n", tt.output)
+			}
+		})
+	}
+}
+
+func TestPluginsWithI18nNamespaceSorting(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  []*consolev1.ConsolePlugin
+		output []string
+	}{
+		{
+			name: "Returns sorted i18n namespaces from unsorted plugins",
+			input: []*consolev1.ConsolePlugin{
+				testPluginsWithI18nPreloadType("zeta-plugin", "svc-z", "ns-z"),
+				testPluginsWithI18nPreloadType("alpha-plugin", "svc-a", "ns-a"),
+				testPluginsWithI18nPreloadType("mu-plugin", "svc-m", "ns-m"),
+			},
+			output: []string{
+				"plugin__alpha-plugin",
+				"plugin__mu-plugin",
+				"plugin__zeta-plugin",
+			},
+		},
+		{
+			name: "Skips plugins without Preload i18n type",
+			input: []*consolev1.ConsolePlugin{
+				testPluginsWithI18nPreloadType("zeta-plugin", "svc-z", "ns-z"),
+				testPlugins("beta-plugin", "svc-b", "ns-b"),
+				testPluginsWithI18nPreloadType("alpha-plugin", "svc-a", "ns-a"),
+			},
+			output: []string{
+				"plugin__alpha-plugin",
+				"plugin__zeta-plugin",
+			},
+		},
+		{
+			name:   "Returns empty slice for no plugins",
+			input:  []*consolev1.ConsolePlugin{},
+			output: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := pluginsWithI18nNamespace(tt.input)
+			if diff := deep.Equal(tt.output, result); diff != nil {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestGetPluginsProxyServicesSorting(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  []*consolev1.ConsolePlugin
+		output []string
+	}{
+		{
+			name: "Returns proxy services sorted by ConsoleAPIPath from unsorted plugins",
+			input: []*consolev1.ConsolePlugin{
+				testPluginsWithProxy("zeta-plugin", "svc-z", "ns-z"),
+				testPluginsWithProxy("alpha-plugin", "svc-a", "ns-a"),
+				testPluginsWithProxy("mu-plugin", "svc-m", "ns-m"),
+			},
+			output: []string{
+				"/api/proxy/plugin/alpha-plugin/alpha-plugin-alias/",
+				"/api/proxy/plugin/mu-plugin/mu-plugin-alias/",
+				"/api/proxy/plugin/zeta-plugin/zeta-plugin-alias/",
+			},
+		},
+		{
+			name: "Returns sorted proxy services when plugins have no proxies mixed in",
+			input: []*consolev1.ConsolePlugin{
+				testPluginsWithProxy("zeta-plugin", "svc-z", "ns-z"),
+				testPlugins("beta-plugin", "svc-b", "ns-b"),
+				testPluginsWithProxy("alpha-plugin", "svc-a", "ns-a"),
+			},
+			output: []string{
+				"/api/proxy/plugin/alpha-plugin/alpha-plugin-alias/",
+				"/api/proxy/plugin/zeta-plugin/zeta-plugin-alias/",
+			},
+		},
+		{
+			name:   "Returns empty slice for no plugins",
+			input:  []*consolev1.ConsolePlugin{},
+			output: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getPluginsProxyServices(tt.input)
+			actualPaths := make([]string, len(result))
+			for i, ps := range result {
+				actualPaths[i] = ps.ConsoleAPIPath
+			}
+			if diff := deep.Equal(tt.output, actualPaths); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}

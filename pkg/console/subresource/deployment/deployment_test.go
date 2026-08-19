@@ -46,6 +46,7 @@ func TestDefaultDeployment(t *testing.T) {
 		trustedCAConfigMap             *corev1.ConfigMap
 		oAuthClientSecret              *corev1.Secret
 		sessionSecret                  *corev1.Secret
+		consoleServingCertSecret       *corev1.Secret
 		proxyConfig                    *configv1.Proxy
 		infrastructureConfig           *configv1.Infrastructure
 	}
@@ -59,36 +60,6 @@ func TestDefaultDeployment(t *testing.T) {
 			},
 		},
 		Status: operatorsv1.ConsoleStatus{},
-	}
-
-	consoleDeploymentObjectMeta := metav1.ObjectMeta{
-		Name:                       api.OpenShiftConsoleName,
-		Namespace:                  api.OpenShiftConsoleNamespace,
-		GenerateName:               "",
-		SelfLink:                   "",
-		UID:                        "",
-		ResourceVersion:            "",
-		Generation:                 0,
-		CreationTimestamp:          metav1.Time{},
-		DeletionTimestamp:          nil,
-		DeletionGracePeriodSeconds: nil,
-		Labels:                     labels,
-		Annotations: map[string]string{
-			configMapResourceVersionAnnotation:             "",
-			secretResourceVersionAnnotation:                "",
-			authnCATrustConfigMapResourceVersionAnnotation: "",
-			serviceCAConfigMapResourceVersionAnnotation:    "",
-			trustedCAConfigMapResourceVersionAnnotation:    "",
-			proxyConfigResourceVersionAnnotation:           "",
-			infrastructureConfigResourceVersionAnnotation:  "",
-			consoleImageAnnotation:                         "",
-		},
-		OwnerReferences: []metav1.OwnerReference{{
-			APIVersion: "operator.openshift.io/v1",
-			Kind:       "Console",
-			Controller: ptr.To(true),
-		}},
-		Finalizers: nil,
 	}
 
 	consoleConfig := &corev1.ConfigMap{
@@ -113,6 +84,38 @@ func TestDefaultDeployment(t *testing.T) {
 		BinaryData: nil,
 	}
 
+	expectedConfigHash := configMapContentHash(consoleConfig)
+	consoleDeploymentObjectMeta := metav1.ObjectMeta{
+		Name:                       api.OpenShiftConsoleName,
+		Namespace:                  api.OpenShiftConsoleNamespace,
+		GenerateName:               "",
+		SelfLink:                   "",
+		UID:                        "",
+		ResourceVersion:            "",
+		Generation:                 0,
+		CreationTimestamp:          metav1.Time{},
+		DeletionTimestamp:          nil,
+		DeletionGracePeriodSeconds: nil,
+		Labels:                     labels,
+		Annotations: map[string]string{
+			configMapResourceVersionAnnotation:             expectedConfigHash,
+			secretResourceVersionAnnotation:                "",
+			authnCATrustConfigMapResourceVersionAnnotation: "",
+			serviceCAConfigMapResourceVersionAnnotation:    "",
+			trustedCAConfigMapResourceVersionAnnotation:    "",
+			proxyConfigResourceVersionAnnotation:           "",
+			infrastructureConfigResourceVersionAnnotation:  "",
+			consoleImageAnnotation:                         "",
+			servingCertSecretResourceVersionAnnotation:     "",
+		},
+		OwnerReferences: []metav1.OwnerReference{{
+			APIVersion: "operator.openshift.io/v1",
+			Kind:       "Console",
+			Controller: ptr.To(true),
+		}},
+		Finalizers: nil,
+	}
+
 	consoleDeploymentTolerations := []corev1.Toleration{
 		{
 			Key:      "node-role.kubernetes.io/master",
@@ -128,7 +131,7 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 
 	consoleDeploymentTemplateAnnotations := map[string]string{
-		configMapResourceVersionAnnotation:             "",
+		configMapResourceVersionAnnotation:             expectedConfigHash,
 		secretResourceVersionAnnotation:                "",
 		authnCATrustConfigMapResourceVersionAnnotation: "",
 		serviceCAConfigMapResourceVersionAnnotation:    "",
@@ -136,6 +139,7 @@ func TestDefaultDeployment(t *testing.T) {
 		proxyConfigResourceVersionAnnotation:           "",
 		infrastructureConfigResourceVersionAnnotation:  "",
 		consoleImageAnnotation:                         "",
+		servingCertSecretResourceVersionAnnotation:     "",
 		workloadManagementAnnotation:                   workloadManagementAnnotationValue,
 		requiredSCCAnnotation:                          "restricted-v3",
 	}
@@ -213,8 +217,9 @@ func TestDefaultDeployment(t *testing.T) {
 					StringData: nil,
 					Type:       "",
 				},
-				proxyConfig:          proxyConfig,
-				infrastructureConfig: infrastructureConfigHighlyAvailable,
+				consoleServingCertSecret: &corev1.Secret{},
+				proxyConfig:              proxyConfig,
+				infrastructureConfig:     infrastructureConfigHighlyAvailable,
 			},
 			want: &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -234,7 +239,9 @@ func TestDefaultDeployment(t *testing.T) {
 						Annotations: consoleDeploymentTemplateAnnotations,
 					},
 						Spec: corev1.PodSpec{
-							ServiceAccountName: "console",
+							DNSPolicy:                corev1.DNSClusterFirst,
+							ServiceAccountName:       "console",
+							DeprecatedServiceAccount: "console",
 							// we want to deploy on master nodes
 							NodeSelector: map[string]string{"node-role.kubernetes.io/master": ""},
 							Affinity:     consoleDeploymentAffinity,
@@ -269,9 +276,9 @@ func TestDefaultDeployment(t *testing.T) {
 						},
 					},
 					MinReadySeconds:         0,
-					RevisionHistoryLimit:    nil,
+					RevisionHistoryLimit:    ptr.To(int32(10)),
 					Paused:                  false,
-					ProgressDeadlineSeconds: nil,
+					ProgressDeadlineSeconds: ptr.To(int32(600)),
 				},
 				Status: appsv1.DeploymentStatus{},
 			},
@@ -293,8 +300,9 @@ func TestDefaultDeployment(t *testing.T) {
 					StringData: nil,
 					Type:       "",
 				},
-				proxyConfig:          proxyConfig,
-				infrastructureConfig: infrastructureConfigHighlyAvailable,
+				consoleServingCertSecret: &corev1.Secret{},
+				proxyConfig:              proxyConfig,
+				infrastructureConfig:     infrastructureConfigHighlyAvailable,
 			},
 			want: &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -313,7 +321,9 @@ func TestDefaultDeployment(t *testing.T) {
 						Annotations: consoleDeploymentTemplateAnnotations,
 					},
 						Spec: corev1.PodSpec{
-							ServiceAccountName: "console",
+							DNSPolicy:                corev1.DNSClusterFirst,
+							ServiceAccountName:       "console",
+							DeprecatedServiceAccount: "console",
 							// we want to deploy on master nodes
 							NodeSelector: map[string]string{"node-role.kubernetes.io/master": ""},
 							Affinity:     consoleDeploymentAffinity,
@@ -348,9 +358,9 @@ func TestDefaultDeployment(t *testing.T) {
 						},
 					},
 					MinReadySeconds:         0,
-					RevisionHistoryLimit:    nil,
+					RevisionHistoryLimit:    ptr.To(int32(10)),
 					Paused:                  false,
-					ProgressDeadlineSeconds: nil,
+					ProgressDeadlineSeconds: ptr.To(int32(600)),
 				},
 				Status: appsv1.DeploymentStatus{},
 			},
@@ -372,8 +382,9 @@ func TestDefaultDeployment(t *testing.T) {
 					StringData: nil,
 					Type:       "",
 				},
-				proxyConfig:          proxyConfig,
-				infrastructureConfig: infrastructureConfigSingleReplica,
+				consoleServingCertSecret: &corev1.Secret{},
+				proxyConfig:              proxyConfig,
+				infrastructureConfig:     infrastructureConfigSingleReplica,
 			},
 			want: &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -392,7 +403,9 @@ func TestDefaultDeployment(t *testing.T) {
 						Annotations: consoleDeploymentTemplateAnnotations,
 					},
 						Spec: corev1.PodSpec{
-							ServiceAccountName: "console",
+							DNSPolicy:                corev1.DNSClusterFirst,
+							ServiceAccountName:       "console",
+							DeprecatedServiceAccount: "console",
 							// we want to deploy on master nodes
 							NodeSelector: map[string]string{"node-role.kubernetes.io/master": ""},
 							Affinity:     &corev1.Affinity{},
@@ -416,13 +429,16 @@ func TestDefaultDeployment(t *testing.T) {
 						},
 					},
 					Strategy: appsv1.DeploymentStrategy{
-						Type:          appsv1.RollingUpdateDeploymentStrategyType,
-						RollingUpdate: &appsv1.RollingUpdateDeployment{},
+						Type: appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: &appsv1.RollingUpdateDeployment{
+							MaxSurge:       &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
+							MaxUnavailable: &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
+						},
 					},
 					MinReadySeconds:         0,
-					RevisionHistoryLimit:    nil,
+					RevisionHistoryLimit:    ptr.To(int32(10)),
 					Paused:                  false,
-					ProgressDeadlineSeconds: nil,
+					ProgressDeadlineSeconds: ptr.To(int32(600)),
 				},
 				Status: appsv1.DeploymentStatus{},
 			},
@@ -444,8 +460,9 @@ func TestDefaultDeployment(t *testing.T) {
 					StringData: nil,
 					Type:       "",
 				},
-				proxyConfig:          proxyConfig,
-				infrastructureConfig: infrastructureConfigExternalTopologyMode,
+				consoleServingCertSecret: &corev1.Secret{},
+				proxyConfig:              proxyConfig,
+				infrastructureConfig:     infrastructureConfigExternalTopologyMode,
 			},
 			want: &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -464,7 +481,9 @@ func TestDefaultDeployment(t *testing.T) {
 						Annotations: consoleDeploymentTemplateAnnotations,
 					},
 						Spec: corev1.PodSpec{
-							ServiceAccountName: "console",
+							DNSPolicy:                corev1.DNSClusterFirst,
+							ServiceAccountName:       "console",
+							DeprecatedServiceAccount: "console",
 							// we do not want to deploy on master nodes
 							NodeSelector: map[string]string{},
 							Affinity:     consoleDeploymentAffinity,
@@ -499,9 +518,9 @@ func TestDefaultDeployment(t *testing.T) {
 						},
 					},
 					MinReadySeconds:         0,
-					RevisionHistoryLimit:    nil,
+					RevisionHistoryLimit:    ptr.To(int32(10)),
 					Paused:                  false,
-					ProgressDeadlineSeconds: nil,
+					ProgressDeadlineSeconds: ptr.To(int32(600)),
 				},
 				Status: appsv1.DeploymentStatus{},
 			},
@@ -518,6 +537,7 @@ func TestDefaultDeployment(t *testing.T) {
 				tt.args.trustedCAConfigMap,
 				tt.args.oAuthClientSecret,
 				tt.args.sessionSecret,
+				tt.args.consoleServingCertSecret,
 				tt.args.proxyConfig,
 				tt.args.infrastructureConfig,
 			), tt.want); diff != nil {
@@ -529,16 +549,17 @@ func TestDefaultDeployment(t *testing.T) {
 
 func TestWithConsoleAnnotations(t *testing.T) {
 	type args struct {
-		deployment            *appsv1.Deployment
-		consoleConfigMap      *corev1.ConfigMap
-		serviceCAConfigMap    *corev1.ConfigMap
-		authServerCAConfigMap *corev1.ConfigMap
-		trustedCAConfigMap    *corev1.ConfigMap
-		oAuthClientSecret     *corev1.Secret
-		sessionSecret         *corev1.Secret
-		proxyConfig           *configv1.Proxy
-		infrastructureConfig  *configv1.Infrastructure
-		authnConfig           *configv1.Authentication
+		deployment               *appsv1.Deployment
+		consoleConfigMap         *corev1.ConfigMap
+		serviceCAConfigMap       *corev1.ConfigMap
+		authServerCAConfigMap    *corev1.ConfigMap
+		trustedCAConfigMap       *corev1.ConfigMap
+		oAuthClientSecret        *corev1.Secret
+		sessionSecret            *corev1.Secret
+		consoleServingCertSecret *corev1.Secret
+		proxyConfig              *configv1.Proxy
+		infrastructureConfig     *configv1.Infrastructure
+		authnConfig              *configv1.Authentication
 	}
 
 	consoleConfigMap := &corev1.ConfigMap{
@@ -588,6 +609,12 @@ func TestWithConsoleAnnotations(t *testing.T) {
 		},
 	}
 
+	consoleServingCertSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			ResourceVersion: "202020",
+		},
+	}
+
 	tests := []struct {
 		name string
 		args args
@@ -610,18 +637,19 @@ func TestWithConsoleAnnotations(t *testing.T) {
 						},
 					},
 				},
-				consoleConfigMap:      consoleConfigMap,
-				serviceCAConfigMap:    serviceCAConfigMap,
-				authServerCAConfigMap: oauthServingCertConfigMap,
-				trustedCAConfigMap:    trustedCAConfigMap,
-				oAuthClientSecret:     oAuthClientSecret,
-				proxyConfig:           proxyConfig,
-				infrastructureConfig:  infrastructureConfig,
+				consoleConfigMap:         consoleConfigMap,
+				serviceCAConfigMap:       serviceCAConfigMap,
+				authServerCAConfigMap:    oauthServingCertConfigMap,
+				trustedCAConfigMap:       trustedCAConfigMap,
+				oAuthClientSecret:        oAuthClientSecret,
+				consoleServingCertSecret: consoleServingCertSecret,
+				proxyConfig:              proxyConfig,
+				infrastructureConfig:     infrastructureConfig,
 			},
 			want: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						configMapResourceVersionAnnotation:             consoleConfigMap.GetResourceVersion(),
+						configMapResourceVersionAnnotation:             configMapContentHash(consoleConfigMap),
 						serviceCAConfigMapResourceVersionAnnotation:    serviceCAConfigMap.GetResourceVersion(),
 						authnCATrustConfigMapResourceVersionAnnotation: oauthServingCertConfigMap.GetResourceVersion(),
 						trustedCAConfigMapResourceVersionAnnotation:    trustedCAConfigMap.GetResourceVersion(),
@@ -629,6 +657,7 @@ func TestWithConsoleAnnotations(t *testing.T) {
 						infrastructureConfigResourceVersionAnnotation:  infrastructureConfig.GetResourceVersion(),
 						secretResourceVersionAnnotation:                oAuthClientSecret.GetResourceVersion(),
 						consoleImageAnnotation:                         util.GetImageEnv("CONSOLE_IMAGE"),
+						servingCertSecretResourceVersionAnnotation:     consoleServingCertSecret.GetResourceVersion(),
 					},
 				},
 				Spec: appsv1.DeploymentSpec{
@@ -636,7 +665,7 @@ func TestWithConsoleAnnotations(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Annotations: map[string]string{
 								workloadManagementAnnotation:                   workloadManagementAnnotationValue,
-								configMapResourceVersionAnnotation:             consoleConfigMap.GetResourceVersion(),
+								configMapResourceVersionAnnotation:             configMapContentHash(consoleConfigMap),
 								serviceCAConfigMapResourceVersionAnnotation:    serviceCAConfigMap.GetResourceVersion(),
 								authnCATrustConfigMapResourceVersionAnnotation: oauthServingCertConfigMap.GetResourceVersion(),
 								trustedCAConfigMapResourceVersionAnnotation:    trustedCAConfigMap.GetResourceVersion(),
@@ -644,6 +673,7 @@ func TestWithConsoleAnnotations(t *testing.T) {
 								infrastructureConfigResourceVersionAnnotation:  infrastructureConfig.GetResourceVersion(),
 								secretResourceVersionAnnotation:                oAuthClientSecret.GetResourceVersion(),
 								consoleImageAnnotation:                         util.GetImageEnv("CONSOLE_IMAGE"),
+								servingCertSecretResourceVersionAnnotation:     consoleServingCertSecret.GetResourceVersion(),
 							},
 						},
 					},
@@ -653,11 +683,88 @@ func TestWithConsoleAnnotations(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withConsoleAnnotations(tt.args.deployment, tt.args.consoleConfigMap, tt.args.serviceCAConfigMap, tt.args.authServerCAConfigMap, tt.args.trustedCAConfigMap, tt.args.oAuthClientSecret, tt.args.sessionSecret, tt.args.proxyConfig, tt.args.infrastructureConfig)
+			withConsoleAnnotations(tt.args.deployment, tt.args.consoleConfigMap, tt.args.serviceCAConfigMap, tt.args.authServerCAConfigMap, tt.args.trustedCAConfigMap, tt.args.oAuthClientSecret, tt.args.sessionSecret, tt.args.consoleServingCertSecret, tt.args.proxyConfig, tt.args.infrastructureConfig)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
+	}
+}
+
+func TestServingCertAnnotationChangesOnRotation(t *testing.T) {
+	consoleConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1"},
+	}
+	serviceCAConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{ResourceVersion: "2"},
+	}
+	trustedCAConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{ResourceVersion: "3"},
+	}
+	oAuthClientSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{ResourceVersion: "4"},
+	}
+	proxyConfig := &configv1.Proxy{
+		ObjectMeta: metav1.ObjectMeta{ResourceVersion: "5"},
+	}
+	infrastructureConfig := &configv1.Infrastructure{
+		ObjectMeta: metav1.ObjectMeta{ResourceVersion: "6"},
+	}
+
+	makeDeployment := func() *appsv1.Deployment {
+		return &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{}},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{}},
+				},
+			},
+		}
+	}
+
+	oldCert := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{ResourceVersion: "111111"},
+	}
+	newCert := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{ResourceVersion: "222222"},
+	}
+
+	depBefore := makeDeployment()
+	withConsoleAnnotations(depBefore, consoleConfigMap, serviceCAConfigMap, nil, trustedCAConfigMap, oAuthClientSecret, nil, oldCert, proxyConfig, infrastructureConfig)
+
+	depAfter := makeDeployment()
+	withConsoleAnnotations(depAfter, consoleConfigMap, serviceCAConfigMap, nil, trustedCAConfigMap, oAuthClientSecret, nil, newCert, proxyConfig, infrastructureConfig)
+
+	oldVal := depBefore.ObjectMeta.Annotations[servingCertSecretResourceVersionAnnotation]
+	newVal := depAfter.ObjectMeta.Annotations[servingCertSecretResourceVersionAnnotation]
+
+	if oldVal != "111111" {
+		t.Errorf("expected annotation value '111111' for old cert, got %q", oldVal)
+	}
+	if newVal != "222222" {
+		t.Errorf("expected annotation value '222222' for new cert, got %q", newVal)
+	}
+	if oldVal == newVal {
+		t.Error("annotation value did not change after cert rotation")
+	}
+
+	oldPodVal := depBefore.Spec.Template.ObjectMeta.Annotations[servingCertSecretResourceVersionAnnotation]
+	newPodVal := depAfter.Spec.Template.ObjectMeta.Annotations[servingCertSecretResourceVersionAnnotation]
+	if oldPodVal == newPodVal {
+		t.Error("pod template annotation value did not change after cert rotation — rollout would not be triggered")
+	}
+}
+
+func TestServingCertAnnotationInResourceAnnotations(t *testing.T) {
+	found := false
+	for _, a := range resourceAnnotations {
+		if a == servingCertSecretResourceVersionAnnotation {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("servingCertSecretResourceVersionAnnotation (%q) is not in resourceAnnotations — LogDeploymentAnnotationChanges will not detect cert rotation", servingCertSecretResourceVersionAnnotation)
 	}
 }
 
@@ -969,6 +1076,13 @@ func TestWithConsoleVolumes(t *testing.T) {
 		},
 	}
 
+	tmpVolume := corev1.Volume{
+		Name: "tmp",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+
 	customLogoVolume := corev1.Volume{
 		Name: api.OpenShiftCustomLogoConfigMapName,
 		VolumeSource: corev1.VolumeSource{
@@ -1037,6 +1151,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 		consoleOauthConfigVolume,
 		consoleConfigVolume,
 		serviceCAVolume,
+		tmpVolume,
 	}
 	trustedVolumes := append(defaultVolumes, trustedCAVolume)
 	customLogoVolumes := append(defaultVolumes, customLogoVolume)
@@ -1064,6 +1179,12 @@ func TestWithConsoleVolumes(t *testing.T) {
 		Name:      api.ServiceCAConfigMapName,
 		ReadOnly:  true,
 		MountPath: "/var/service-ca",
+	}
+
+	tmpVolumeMount := corev1.VolumeMount{
+		Name:      "tmp",
+		ReadOnly:  false,
+		MountPath: "/tmp",
 	}
 
 	trustedCAVolumeMount := corev1.VolumeMount{
@@ -1096,6 +1217,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 		consoleOauthConfigVolumeMount,
 		consoleConfigVolumeMount,
 		serviceCAVolumeMount,
+		tmpVolumeMount,
 	}
 	trustedVolumeMounts := append(defaultVolumeMounts, trustedCAVolumeMount)
 	customLogoVolumeMounts := append(defaultVolumeMounts, customLogoVolumeMount)
@@ -1413,7 +1535,10 @@ func TestWithStrategy(t *testing.T) {
 	infrastructureConfigExternalTopologyHighlyAvailable := infrastructureConfigWithTopology(configv1.ExternalTopologyMode, configv1.HighlyAvailableTopologyMode)
 	infrastructureConfigExternalTopologySingleReplica := infrastructureConfigWithTopology(configv1.ExternalTopologyMode, configv1.SingleReplicaTopologyMode)
 
-	singleReplicaStrategy := appsv1.RollingUpdateDeployment{}
+	singleReplicaStrategy := appsv1.RollingUpdateDeployment{
+		MaxSurge:       &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
+		MaxUnavailable: &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
+	}
 	highAvailStrategy := appsv1.RollingUpdateDeployment{
 		MaxSurge: &intstr.IntOrString{
 			IntVal: int32(3),
@@ -1565,7 +1690,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 		defaultReplicaCount         int32 = DefaultConsoleReplicas
 		singleNodeReplicaCount      int32 = SingleNodeConsoleReplicas
 		labels                            = util.LabelsForDownloads()
-		gracePeriod                 int64 = 0
+		gracePeriod                 int64 = 5
 		tolerationSeconds           int64 = 120
 		downloadsDeploymentTemplate       = resourceread.ReadDeploymentV1OrDie(bindata.MustAsset("assets/deployments/downloads-deployment.yaml"))
 	)
@@ -1613,6 +1738,9 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 		configv1.SingleReplicaTopologyMode)
 
 	downloadsDeploymentPodSpecSingleReplica := corev1.PodSpec{
+		DNSPolicy:                corev1.DNSClusterFirst,
+		ServiceAccountName:       "downloads",
+		DeprecatedServiceAccount: "downloads",
 		NodeSelector: map[string]string{
 			"kubernetes.io/os":               "linux",
 			"node-role.kubernetes.io/master": "",
@@ -1651,6 +1779,11 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 					Protocol:      corev1.ProtocolTCP,
 					ContainerPort: api.DownloadsPort,
 				}},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "tmp",
+					ReadOnly:  false,
+					MountPath: "/tmp",
+				}},
 				ReadinessProbe: &corev1.Probe{
 					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
@@ -1686,7 +1819,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				},
 				Args: downloadsDeploymentTemplate.Spec.Template.Spec.Containers[0].Args,
 				SecurityContext: &corev1.SecurityContext{
-					ReadOnlyRootFilesystem: utilpointer.Bool(false),
+					ReadOnlyRootFilesystem: utilpointer.Bool(true),
 					Capabilities: &corev1.Capabilities{
 						Drop: []corev1.Capability{
 							"ALL",
@@ -1696,6 +1829,12 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				},
 			},
 		},
+		Volumes: []corev1.Volume{{
+			Name: "tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		}},
 	}
 	downloadsDeploymentPodSpecHighAvail := downloadsDeploymentPodSpecSingleReplica.DeepCopy()
 	downloadsDeploymentPodSpecHighAvail.Affinity = &corev1.Affinity{
@@ -1733,10 +1872,15 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				},
 				ObjectMeta: downloadsDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
-					Replicas: &singleNodeReplicaCount,
+					Replicas:                &singleNodeReplicaCount,
+					RevisionHistoryLimit:    ptr.To(int32(10)),
+					ProgressDeadlineSeconds: ptr.To(int32(600)),
 					Strategy: appsv1.DeploymentStrategy{
-						Type:          appsv1.RollingUpdateDeploymentStrategyType,
-						RollingUpdate: &appsv1.RollingUpdateDeployment{},
+						Type: appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: &appsv1.RollingUpdateDeployment{
+							MaxSurge:       &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
+							MaxUnavailable: &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
+						},
 					},
 					Selector: &metav1.LabelSelector{
 						MatchLabels: labels,
@@ -1769,7 +1913,9 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				},
 				ObjectMeta: downloadsDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
-					Replicas: &defaultReplicaCount,
+					Replicas:                &defaultReplicaCount,
+					RevisionHistoryLimit:    ptr.To(int32(10)),
+					ProgressDeadlineSeconds: ptr.To(int32(600)),
 					Strategy: appsv1.DeploymentStrategy{
 						Type: appsv1.RollingUpdateDeploymentStrategyType,
 						RollingUpdate: &appsv1.RollingUpdateDeployment{
@@ -2069,4 +2215,151 @@ func infrastructureConfigWithTopology(controlPlaneTopologyMode, infrastructureTo
 			ControlPlaneTopology:   controlPlaneTopologyMode,
 		},
 	}
+}
+
+// TestConfigMapContentHash verifies that configMapContentHash produces
+// stable, content-only digests.  Expected hex strings were computed
+// independently (outside configMapContentHash) so these assertions are
+// not self-referential.
+func TestConfigMapContentHash(t *testing.T) {
+	tests := []struct {
+		name     string
+		cm       *corev1.ConfigMap
+		wantHash string // independently computed SHA-256 hex digest
+	}{
+		{
+			name: "empty ConfigMap",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1"},
+			},
+			wantHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		},
+		{
+			name: "ResourceVersion ignored — same content, different RV (rv=999)",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "999"},
+			},
+			wantHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		},
+		{
+			name: "Data only",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "42"},
+				Data:       map[string]string{"a": "1", "b": "2"},
+			},
+			wantHash: "37664b19301f46515688d5a22cb9ee1852e0b6443e28c7f36340a13962f0c4f7",
+		},
+		{
+			name: "same Data, different ResourceVersion — hash stays stable",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "99999"},
+				Data:       map[string]string{"a": "1", "b": "2"},
+			},
+			wantHash: "37664b19301f46515688d5a22cb9ee1852e0b6443e28c7f36340a13962f0c4f7",
+		},
+		{
+			name: "Data and BinaryData",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "7"},
+				Data:       map[string]string{"a": "1", "b": "2"},
+				BinaryData: map[string][]byte{"c": {0x03}},
+			},
+			wantHash: "796a3f10162c44333b6b91ba76bb9bd06b08370e0fc9994543b3c0f0e8ca50e8",
+		},
+		{
+			name: "same Data and BinaryData, different ResourceVersion — hash stays stable",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "777777"},
+				Data:       map[string]string{"a": "1", "b": "2"},
+				BinaryData: map[string][]byte{"c": {0x03}},
+			},
+			wantHash: "796a3f10162c44333b6b91ba76bb9bd06b08370e0fc9994543b3c0f0e8ca50e8",
+		},
+		{
+			name: "zero-byte binary value",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1"},
+				BinaryData: map[string][]byte{"x": {}},
+			},
+			wantHash: "758d56805faf3cd54dc7a7995808137ca3ade13246ac045c28e3988fbd95900c",
+		},
+		{
+			name: "changed Data value — hash differs",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "42"},
+				Data:       map[string]string{"a": "CHANGED", "b": "2"},
+			},
+			wantHash: "265714671361e206c4c4248d259e1d210ff2462393f0059339110dc4dfa588c9",
+		},
+		{
+			name: "changed BinaryData value — hash differs",
+			cm: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{ResourceVersion: "7"},
+				Data:       map[string]string{"a": "1", "b": "2"},
+				BinaryData: map[string][]byte{"c": {0xFF}},
+			},
+			wantHash: "dbfd60a00427b4fa850fdf8310c1aa9ec0dca49c43eb7a98e1baf132cf587bd0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := configMapContentHash(tt.cm)
+			if got != tt.wantHash {
+				t.Errorf("configMapContentHash() = %q, want %q", got, tt.wantHash)
+			}
+		})
+	}
+
+	// Cross-case regression: verify stability and change properties
+	// by comparing results between cases above.
+	t.Run("ResourceVersion does not affect hash", func(t *testing.T) {
+		cmA := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1"},
+			Data:       map[string]string{"a": "1", "b": "2"},
+			BinaryData: map[string][]byte{"c": {0x03}},
+		}
+		cmB := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{ResourceVersion: "999999"},
+			Data:       map[string]string{"a": "1", "b": "2"},
+			BinaryData: map[string][]byte{"c": {0x03}},
+		}
+		if configMapContentHash(cmA) != configMapContentHash(cmB) {
+			t.Error("identical Data+BinaryData with different ResourceVersion produced different hashes")
+		}
+	})
+
+	t.Run("map iteration order does not affect hash", func(t *testing.T) {
+		// Go maps have non-deterministic iteration order; building
+		// two maps with keys inserted in different order exercises this.
+		cm1 := &corev1.ConfigMap{Data: map[string]string{"a": "1", "b": "2", "c": "3"}}
+		cm2 := &corev1.ConfigMap{Data: map[string]string{"c": "3", "a": "1", "b": "2"}}
+		h1 := configMapContentHash(cm1)
+		h2 := configMapContentHash(cm2)
+		if h1 != h2 {
+			t.Errorf("map-order variation produced different hashes: %q vs %q", h1, h2)
+		}
+	})
+
+	t.Run("content change produces different hash", func(t *testing.T) {
+		base := &corev1.ConfigMap{
+			Data:       map[string]string{"a": "1", "b": "2"},
+			BinaryData: map[string][]byte{"c": {0x03}},
+		}
+		mutatedData := &corev1.ConfigMap{
+			Data:       map[string]string{"a": "CHANGED", "b": "2"},
+			BinaryData: map[string][]byte{"c": {0x03}},
+		}
+		mutatedBinary := &corev1.ConfigMap{
+			Data:       map[string]string{"a": "1", "b": "2"},
+			BinaryData: map[string][]byte{"c": {0xFF}},
+		}
+		baseHash := configMapContentHash(base)
+		if configMapContentHash(mutatedData) == baseHash {
+			t.Error("changing Data value did not change hash")
+		}
+		if configMapContentHash(mutatedBinary) == baseHash {
+			t.Error("changing BinaryData value did not change hash")
+		}
+	})
 }

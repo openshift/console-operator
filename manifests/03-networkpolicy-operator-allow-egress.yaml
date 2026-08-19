@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress
+  namespace: openshift-console-operator
+  annotations:
+    include.release.openshift.io/hypershift: "true"
+    include.release.openshift.io/ibm-cloud-managed: "true"
+    include.release.openshift.io/self-managed-high-availability: "true"
+    include.release.openshift.io/single-node-developer: "true"
+    capability.openshift.io/name: Console
+    kubernetes.io/description: >-
+      Allow all egress from the console operator pod in the
+      openshift-console-operator namespace. The operator controller
+      needs Kubernetes API server access to watch and reconcile
+      console-related resources. Because the API server address and
+      port vary per cluster and the server runs on the host network,
+      they cannot be statically restricted in a NetworkPolicy managed
+      by the cluster-version operator. Opening all egress also covers
+      DNS resolution needs.
+spec:
+  podSelector:
+    matchLabels:
+      name: console-operator
+  egress:
+  - {}
+  policyTypes:
+  - Egress

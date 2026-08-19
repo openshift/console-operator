@@ -19,6 +19,9 @@ spec:
       - name: GettingStartedBanner
         visibility:
           state: Enabled
+      - name: GuidedTour
+        visibility:
+          state: Enabled
     # The admin and the dev perspectives are merged into a single perspective and the dev perspective is disabled.
     # Jira Epic: https://issues.redhat.com/browse/ODC-7716
     perspectives:

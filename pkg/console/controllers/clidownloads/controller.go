@@ -177,12 +177,20 @@ func PlatformBasedOCConsoleCLIDownloads(host, cliDownloadsName string) *v1.Conso
 		archType string
 	}{
 		{"Linux for x86_64", "amd64/linux", "oc.tar"},
+		{"Linux for x86_64 - RHEL 8", "amd64/linux", "oc.rhel8.tar"},
+		{"Linux for x86_64 - RHEL 9", "amd64/linux", "oc.rhel9.tar"},
 		{"Mac for x86_64", "amd64/mac", "oc.zip"},
 		{"Windows for x86_64", "amd64/windows", "oc.zip"},
 		{"Linux for ARM 64", "arm64/linux", "oc.tar"},
+		{"Linux for ARM 64 - RHEL 8", "arm64/linux", "oc.rhel8.tar"},
+		{"Linux for ARM 64 - RHEL 9", "arm64/linux", "oc.rhel9.tar"},
 		{"Mac for ARM 64", "arm64/mac", "oc.zip"},
 		{"Linux for IBM Power, little endian", "ppc64le/linux", "oc.tar"},
+		{"Linux for IBM Power, little endian - RHEL 8", "ppc64le/linux", "oc.rhel8.tar"},
+		{"Linux for IBM Power, little endian - RHEL 9", "ppc64le/linux", "oc.rhel9.tar"},
 		{"Linux for IBM Z", "s390x/linux", "oc.tar"},
+		{"Linux for IBM Z - RHEL 8", "s390x/linux", "oc.rhel8.tar"},
+		{"Linux for IBM Z - RHEL 9", "s390x/linux", "oc.rhel9.tar"},
 	}
 
 	links := []v1.CLIDownloadLink{}
@@ -205,7 +213,7 @@ func PlatformBasedOCConsoleCLIDownloads(host, cliDownloadsName string) *v1.Conso
 		Spec: v1.ConsoleCLIDownloadSpec{
 			Description: `With the OpenShift command line interface, you can create applications and manage OpenShift projects from a terminal.
 
-The oc binary offers the same capabilities as the kubectl binary, but it is further extended to natively support OpenShift Container Platform features.
+The oc binary offers the same capabilities as the kubectl binary, but it is further extended to natively support OpenShift Container Platform features. You can download oc using the following links.
 `,
 			DisplayName: "oc - OpenShift Command Line Interface (CLI)",
 			Links:       links,
@@ -220,10 +228,15 @@ func ApplyCLIDownloads(ctx context.Context, consoleClient consoleclientv1.Consol
 	existingCLIDownloads, err := consoleClient.Get(ctx, cliDownloadsName, metav1.GetOptions{})
 	existingCLIDownloadsCopy := existingCLIDownloads.DeepCopy()
 	if apierrors.IsNotFound(err) {
-		actualCLIDownloads, err := consoleClient.Create(ctx, requiredCLIDownloads, metav1.CreateOptions{})
-		if err != nil {
-			klog.V(4).Infof("error creating %s consoleclidownloads custom resource: %s", cliDownloadsName, err)
-			return nil, "FailedCreate", err
+		var actualCLIDownloads *v1.ConsoleCLIDownload
+		createErr := controllersutil.RetryOnTransientError(func() error {
+			var e error
+			actualCLIDownloads, e = consoleClient.Create(ctx, requiredCLIDownloads, metav1.CreateOptions{})
+			return e
+		})
+		if createErr != nil {
+			klog.V(4).Infof("error creating %s consoleclidownloads custom resource: %s", cliDownloadsName, createErr)
+			return nil, "FailedCreate", createErr
 		}
 		klog.V(4).Infof("%s consoleclidownloads custom resource created", cliDownloadsName)
 		return actualCLIDownloads, "", nil
@@ -240,11 +253,20 @@ func ApplyCLIDownloads(ctx context.Context, consoleClient consoleclientv1.Consol
 		return existingCLIDownloadsCopy, "", nil
 	}
 
-	existingCLIDownloadsCopy.Spec = requiredCLIDownloads.Spec
-	actualCLIDownloads, err := consoleClient.Update(ctx, existingCLIDownloadsCopy, metav1.UpdateOptions{})
-	if err != nil {
-		klog.V(4).Infof("error updating %s consoleclidownloads custom resource: %v", cliDownloadsName, err)
-		return nil, "FailedUpdate", err
+	var actualCLIDownloads *v1.ConsoleCLIDownload
+	updateErr := controllersutil.RetryOnTransientError(func() error {
+		latest, e := consoleClient.Get(ctx, cliDownloadsName, metav1.GetOptions{})
+		if e != nil {
+			return e
+		}
+		latest.Spec = requiredCLIDownloads.Spec
+		resourcemerge.EnsureObjectMeta(resourcemerge.BoolPtr(false), &latest.ObjectMeta, requiredCLIDownloads.ObjectMeta)
+		actualCLIDownloads, e = consoleClient.Update(ctx, latest, metav1.UpdateOptions{})
+		return e
+	})
+	if updateErr != nil {
+		klog.V(4).Infof("error updating %s consoleclidownloads custom resource: %v", cliDownloadsName, updateErr)
+		return nil, "FailedUpdate", updateErr
 	}
 	return actualCLIDownloads, "", nil
 }

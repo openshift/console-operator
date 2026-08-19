@@ -89,14 +89,14 @@ type consoleOperator struct {
 	// lister
 	consolePluginLister listerv1.ConsolePluginLister
 
-	// CSP feature gate enabled
-	contentSecurityPolicyEnabled bool
-
 	resourceSyncer resourcesynccontroller.ResourceSyncer
 
 	trackables trackables
 
 	monitoringDeploymentLister appsv1listers.DeploymentLister
+
+	lastDeploymentAvailableTime     time.Time
+	lastAppliedDeploymentGeneration int64
 }
 
 type trackables struct {
@@ -110,7 +110,6 @@ type trackables struct {
 
 func NewConsoleOperator(
 	ctx context.Context,
-	contentSecurityPolicyEnabled bool,
 	// top level config
 	configClient configclientv1.ConfigV1Interface,
 	configInformer configinformer.SharedInformerFactory,
@@ -130,6 +129,7 @@ func NewConsoleOperator(
 	// oauth API
 	oauthClientSwitchedInformer *util.InformerWithSwitch,
 	// routes
+	routeClient routeclientv1.RoutesGetter,
 	routeInformer routesinformersv1.RouteInformer,
 	// plugins
 	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
@@ -186,14 +186,14 @@ func NewConsoleOperator(
 		dynamicClient:    dynamicClient,
 		// openshift
 		oauthClientLister: oauthClientSwitchedInformer.Lister(),
+		routeClient:       routeClient,
 		routeLister:       routeInformer.Lister(),
 		versionGetter:     versionGetter,
 		// plugins
 		consolePluginLister: consolePluginInformer.Lister(),
 		resourceSyncer:      resourceSyncer,
 
-		monitoringDeploymentLister:   monitoringDeploymentInformer.Lister(),
-		contentSecurityPolicyEnabled: contentSecurityPolicyEnabled,
+		monitoringDeploymentLister: monitoringDeploymentInformer.Lister(),
 	}
 
 	informers := []factory.Informer{
@@ -250,7 +250,7 @@ func NewConsoleOperator(
 		factory.NamesFilter(api.OAuthClientName),
 		oauthClientSwitchedInformer.Informer(),
 	).WithFilteredEventsInformers(
-		util.IncludeNamesFilter(deployment.ConsoleOauthConfigName),
+		util.IncludeNamesFilter(deployment.ConsoleOauthConfigName, api.ConsoleServingCertName),
 		secretsInformer.Informer(),
 	).WithFilteredEventsInformers(
 		util.IncludeNamesFilter(telemetry.TelemetryConfigMapName),

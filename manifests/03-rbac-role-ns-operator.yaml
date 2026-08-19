@@ -31,6 +31,34 @@ rules:
       - get
       - list
       - watch
+  # Migration cleanup: delete orphaned console-conversion-webhook resources from 4.16 → 4.xx upgrade:
+  # deployment/console-conversion-webhook
+  # service/webhook
+  # secret/webhook-serving-cert
+  - apiGroups:
+      - ""
+    resources:
+      - services
+    resourceNames:
+      - webhook
+    verbs:
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    resourceNames:
+      - webhook-serving-cert
+    verbs:
+      - delete
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    resourceNames:
+      - console-conversion-webhook
+    verbs:
+      - delete
   - apiGroups:
       - apps
     resources:

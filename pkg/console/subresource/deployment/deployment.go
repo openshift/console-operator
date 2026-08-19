@@ -2,6 +2,7 @@ package deployment
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"slices"
 
@@ -39,6 +40,7 @@ const (
 	authnConfigVersionAnnotation                   = "console.openshift.io/authentication-config-version"
 	authnCATrustConfigMapResourceVersionAnnotation = "console.openshift.io/authn-ca-trust-config-version"
 	sessionSecretRVAnnotation                      = "console.openshift.io/session-secret-version"
+	servingCertSecretResourceVersionAnnotation     = "console.openshift.io/serving-cert-secret-version"
 )
 
 var (
@@ -51,6 +53,7 @@ var (
 		trustedCAConfigMapResourceVersionAnnotation,
 		secretResourceVersionAnnotation,
 		consoleImageAnnotation,
+		servingCertSecretResourceVersionAnnotation,
 	}
 )
 
@@ -58,9 +61,10 @@ type volumeConfig struct {
 	name     string
 	readOnly bool
 	path     string
-	// isSecret or isConfigMap are mutually exclusive
+	// isSecret or isConfigMap and isEmptyDir are mutually exclusive
 	isSecret    bool
 	isConfigMap bool
+	isEmptyDir  bool
 	mappedKeys  map[string]string
 }
 
@@ -73,6 +77,7 @@ func DefaultDeployment(
 	trustedCAConfigMap *corev1.ConfigMap,
 	oAuthClientSecret *corev1.Secret,
 	sessionSecret *corev1.Secret,
+	consoleServingCertSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
 ) *appsv1.Deployment {
@@ -93,6 +98,7 @@ func DefaultDeployment(
 		trustedCAConfigMap,
 		oAuthClientSecret,
 		sessionSecret,
+		consoleServingCertSecret,
 		proxyConfig,
 		infrastructureConfig,
 	)
@@ -132,9 +138,11 @@ func DefaultDownloadsDeployment(
 //
 // On HighlyAvailableArbiter control plane topologies, with a minimum of two full sized master nodes, we also deploy HA
 // since the default for HA is 2 pods.
+// On DualReplica control plane topologies, we are deploying on two nodes and should be deployed in HA mode.
 func ShouldDeployHA(infrastructureConfig *configv1.Infrastructure) bool {
 	return infrastructureConfig.Status.ControlPlaneTopology == configv1.HighlyAvailableTopologyMode ||
 		infrastructureConfig.Status.ControlPlaneTopology == configv1.HighlyAvailableArbiterMode ||
+		infrastructureConfig.Status.ControlPlaneTopology == configv1.DualReplicaTopologyMode ||
 		(infrastructureConfig.Status.ControlPlaneTopology == configv1.ExternalTopologyMode &&
 			infrastructureConfig.Status.InfrastructureTopology == configv1.HighlyAvailableTopologyMode)
 }
@@ -175,7 +183,10 @@ func withAffinity(
 }
 
 func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.Infrastructure) {
-	rollingUpdateParams := &appsv1.RollingUpdateDeployment{}
+	rollingUpdateParams := &appsv1.RollingUpdateDeployment{
+		MaxSurge:       &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
+		MaxUnavailable: &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
+	}
 	if ShouldDeployHA(infrastructureConfig) {
 		rollingUpdateParams = &appsv1.RollingUpdateDeployment{
 			MaxSurge: &intstr.IntOrString{
@@ -189,6 +200,39 @@ func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.
 	deployment.Spec.Strategy.RollingUpdate = rollingUpdateParams
 }
 
+// configMapContentHash returns a hex-encoded SHA-256 digest of the
+// ConfigMap's Data and BinaryData. Using a content hash instead of
+// the Kubernetes ResourceVersion means the annotation only changes
+// when the actual config content changes, preventing spurious
+// deployment rollouts when the ConfigMap is rewritten with identical
+// content (e.g. during componentRoute churn in techpreview tests).
+func configMapContentHash(cm *corev1.ConfigMap) string {
+	h := sha256.New()
+	keys := make([]string, 0, len(cm.Data))
+	for k := range cm.Data {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	for _, k := range keys {
+		h.Write([]byte(k))
+		h.Write([]byte{0})
+		h.Write([]byte(cm.Data[k]))
+		h.Write([]byte{0})
+	}
+	bkeys := make([]string, 0, len(cm.BinaryData))
+	for k := range cm.BinaryData {
+		bkeys = append(bkeys, k)
+	}
+	slices.Sort(bkeys)
+	for _, k := range bkeys {
+		h.Write([]byte(k))
+		h.Write([]byte{0})
+		h.Write(cm.BinaryData[k])
+		h.Write([]byte{0})
+	}
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
 // withConsoleAnnotations adds annotations in the console deployment which are used to track
 // resources that when updated, trigger a new deployment rollout; this happens when the resource
 // version changes.
@@ -200,17 +244,19 @@ func withConsoleAnnotations(
 	trustedCAConfigMap *corev1.ConfigMap,
 	oAuthClientSecret *corev1.Secret,
 	sessionSecret *corev1.Secret,
+	consoleServingCertSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
 ) {
 	deployment.ObjectMeta.Annotations = map[string]string{
-		configMapResourceVersionAnnotation:            consoleConfigMap.GetResourceVersion(),
+		configMapResourceVersionAnnotation:            configMapContentHash(consoleConfigMap),
 		serviceCAConfigMapResourceVersionAnnotation:   serviceCAConfigMap.GetResourceVersion(),
 		trustedCAConfigMapResourceVersionAnnotation:   trustedCAConfigMap.GetResourceVersion(),
 		proxyConfigResourceVersionAnnotation:          proxyConfig.GetResourceVersion(),
 		infrastructureConfigResourceVersionAnnotation: infrastructureConfig.GetResourceVersion(),
 		secretResourceVersionAnnotation:               oAuthClientSecret.GetResourceVersion(),
 		consoleImageAnnotation:                        util.GetImageEnv("CONSOLE_IMAGE"),
+		servingCertSecretResourceVersionAnnotation:    consoleServingCertSecret.GetResourceVersion(),
 	}
 
 	if authServerCAConfigMap != nil {
@@ -301,6 +347,14 @@ func withConsoleVolumes(
 						},
 						Items: items,
 					},
+				},
+			}
+		}
+		if item.isEmptyDir {
+			vols[i] = corev1.Volume{
+				Name: item.name,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
 			}
 		}
@@ -518,6 +572,12 @@ func defaultVolumeConfig() []volumeConfig {
 			readOnly:    true,
 			path:        "/var/service-ca",
 			isConfigMap: true,
+		},
+		{
+			name:       "tmp",
+			readOnly:   false,
+			path:       "/tmp",
+			isEmptyDir: true,
 		},
 	}
 }

@@ -21,7 +21,7 @@ import (
 const (
 	availablePluginName           = "test-plugin"
 	unavailablePluginName         = "missing-test-plugin"
-	expectedPluginServiceEndpoint = "https://test-plugin-service-name.test-plugin-service-namespace.svc.cluster.local:8443/manifest"
+	expectedPluginServiceEndpoint = "https://test-plugin-service-name.test-plugin-service-namespace.svc.cluster.local.:8443/manifest"
 	expectedPluginNamespace       = "plugin__test-plugin"
 )
 

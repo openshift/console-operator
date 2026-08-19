@@ -13,8 +13,14 @@ import (
 
 // CloudCredentialApplyConfiguration represents a declarative configuration of the CloudCredential type for use
 // with apply.
+//
+// CloudCredential provides a means to configure an operator to manage CredentialsRequests.
+//
+// Compatibility level 1: Stable within a major release for a minimum of 12 months or 3 minor releases (whichever is longer).
 type CloudCredentialApplyConfiguration struct {
-	metav1.TypeMetaApplyConfiguration    `json:",inline"`
+	metav1.TypeMetaApplyConfiguration `json:",inline"`
+	// metadata is the standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	*metav1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	Spec                                 *CloudCredentialSpecApplyConfiguration   `json:"spec,omitempty"`
 	Status                               *CloudCredentialStatusApplyConfiguration `json:"status,omitempty"`
@@ -30,29 +36,14 @@ func CloudCredential(name string) *CloudCredentialApplyConfiguration {
 	return b
 }
 
-// ExtractCloudCredential extracts the applied configuration owned by fieldManager from
-// cloudCredential. If no managedFields are found in cloudCredential for fieldManager, a
-// CloudCredentialApplyConfiguration is returned with only the Name, Namespace (if applicable),
-// APIVersion and Kind populated. It is possible that no managed fields were found for because other
-// field managers have taken ownership of all the fields previously owned by fieldManager, or because
-// the fieldManager never owned fields any fields.
+// ExtractCloudCredentialFrom extracts the applied configuration owned by fieldManager from
+// cloudCredential for the specified subresource. Pass an empty string for subresource to extract
+// the main resource. Common subresources include "status", "scale", etc.
 // cloudCredential must be a unmodified CloudCredential API object that was retrieved from the Kubernetes API.
-// ExtractCloudCredential provides a way to perform a extract/modify-in-place/apply workflow.
+// ExtractCloudCredentialFrom provides a way to perform a extract/modify-in-place/apply workflow.
 // Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
 // applied if another fieldManager has updated or force applied any of the previously applied fields.
-// Experimental!
-func ExtractCloudCredential(cloudCredential *operatorv1.CloudCredential, fieldManager string) (*CloudCredentialApplyConfiguration, error) {
-	return extractCloudCredential(cloudCredential, fieldManager, "")
-}
-
-// ExtractCloudCredentialStatus is the same as ExtractCloudCredential except
-// that it extracts the status subresource applied configuration.
-// Experimental!
-func ExtractCloudCredentialStatus(cloudCredential *operatorv1.CloudCredential, fieldManager string) (*CloudCredentialApplyConfiguration, error) {
-	return extractCloudCredential(cloudCredential, fieldManager, "status")
-}
-
-func extractCloudCredential(cloudCredential *operatorv1.CloudCredential, fieldManager string, subresource string) (*CloudCredentialApplyConfiguration, error) {
+func ExtractCloudCredentialFrom(cloudCredential *operatorv1.CloudCredential, fieldManager string, subresource string) (*CloudCredentialApplyConfiguration, error) {
 	b := &CloudCredentialApplyConfiguration{}
 	err := managedfields.ExtractInto(cloudCredential, internal.Parser().Type("com.github.openshift.api.operator.v1.CloudCredential"), fieldManager, b, subresource)
 	if err != nil {
@@ -64,6 +55,28 @@ func extractCloudCredential(cloudCredential *operatorv1.CloudCredential, fieldMa
 	b.WithAPIVersion("operator.openshift.io/v1")
 	return b, nil
 }
+
+// ExtractCloudCredential extracts the applied configuration owned by fieldManager from
+// cloudCredential. If no managedFields are found in cloudCredential for fieldManager, a
+// CloudCredentialApplyConfiguration is returned with only the Name, Namespace (if applicable),
+// APIVersion and Kind populated. It is possible that no managed fields were found for because other
+// field managers have taken ownership of all the fields previously owned by fieldManager, or because
+// the fieldManager never owned fields any fields.
+// cloudCredential must be a unmodified CloudCredential API object that was retrieved from the Kubernetes API.
+// ExtractCloudCredential provides a way to perform a extract/modify-in-place/apply workflow.
+// Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
+// applied if another fieldManager has updated or force applied any of the previously applied fields.
+func ExtractCloudCredential(cloudCredential *operatorv1.CloudCredential, fieldManager string) (*CloudCredentialApplyConfiguration, error) {
+	return ExtractCloudCredentialFrom(cloudCredential, fieldManager, "")
+}
+
+// ExtractCloudCredentialStatus extracts the applied configuration owned by fieldManager from
+// cloudCredential for the status subresource.
+func ExtractCloudCredentialStatus(cloudCredential *operatorv1.CloudCredential, fieldManager string) (*CloudCredentialApplyConfiguration, error) {
+	return ExtractCloudCredentialFrom(cloudCredential, fieldManager, "status")
+}
+
+func (b CloudCredentialApplyConfiguration) IsApplyConfiguration() {}
 
 // WithKind sets the Kind field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
@@ -239,8 +252,24 @@ func (b *CloudCredentialApplyConfiguration) WithStatus(value *CloudCredentialSta
 	return b
 }
 
+// GetKind retrieves the value of the Kind field in the declarative configuration.
+func (b *CloudCredentialApplyConfiguration) GetKind() *string {
+	return b.TypeMetaApplyConfiguration.Kind
+}
+
+// GetAPIVersion retrieves the value of the APIVersion field in the declarative configuration.
+func (b *CloudCredentialApplyConfiguration) GetAPIVersion() *string {
+	return b.TypeMetaApplyConfiguration.APIVersion
+}
+
 // GetName retrieves the value of the Name field in the declarative configuration.
 func (b *CloudCredentialApplyConfiguration) GetName() *string {
 	b.ensureObjectMetaApplyConfigurationExists()
 	return b.ObjectMetaApplyConfiguration.Name
+}
+
+// GetNamespace retrieves the value of the Namespace field in the declarative configuration.
+func (b *CloudCredentialApplyConfiguration) GetNamespace() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Namespace
 }

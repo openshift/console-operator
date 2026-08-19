@@ -1,0 +1,100 @@
+apiVersion: console.openshift.io/v1
+kind: ConsoleQuickStart
+metadata:
+  name: install-cert-manager
+  annotations:
+    include.release.openshift.io/ibm-cloud-managed: "true"
+    include.release.openshift.io/self-managed-high-availability: "true"
+    include.release.openshift.io/single-node-developer: "true"
+    capability.openshift.io/name: Console
+spec:
+  accessReviewResources:
+    - group: operators.coreos.com
+      resource: operatorgroups
+      verb: list
+    - group: packages.operators.coreos.com
+      resource: packagemanifests
+      verb: list
+  displayName: Install the cert-manager Operator for Red Hat OpenShift
+  durationMinutes: 5
+  description: >-
+    Install the cert-manager Operator for Red Hat OpenShift to manage TLS
+    certificates from an external PKI.
+  tags:
+    - security
+    - certificates
+    - tls
+  introduction: |-
+    ### In this quick start, you'll install the cert-manager Operator for Red Hat OpenShift to manage TLS certificates in your cluster.
+
+    The cert-manager Operator enables you to create and sign TLS certificates from an external PKI for your workloads
+    running on an OpenShift cluster. It provides Kubernetes-native certificate management capabilities that
+    integrate seamlessly with your cluster's security infrastructure.
+
+    ### What is cert-manager?
+
+    cert-manager adds certificates and certificate issuers as resource types in OpenShift clusters and simplifies
+    the process of obtaining, renewing and using those certificates.
+
+    ### Usage
+
+    You can use an **Issuer** or **ClusterIssuer** to define what will be issuing the certificates, and a **Certificate**
+    resource to define what the contents of the certificate should contain. cert-manager supports various certificate
+    authorities including Let's Encrypt, HashiCorp Vault, Venafi, self-signed certificates etc.
+  tasks:
+    - title: Install the cert-manager Operator for Red Hat OpenShift
+      description: |-
+        ### To install the cert-manager Operator:
+
+        1. Go to the **Software Catalog** from the [Ecosystem]{{highlight qs-nav-ecosystem}} section of the navigation.
+
+        2. In the **Filter by keyword** field, type `cert-manager`.
+
+        3. Look for **cert-manager Operator for Red Hat OpenShift**. If the tile has an **Installed** label on it, the Operator is already installed. You can close this quick start.
+
+        4. Click the tile to open the side panel.
+
+        5. At the top of the side panel, click **Install**.
+
+        6. On the Install Operator page, ensure the **Update Channel** is set to the latest stable version.
+
+        7. Click **Install** to begin the installation process.
+
+        8. Wait for the cert-manager Operator's status to change from **Installing operator** to **Operator installed - Ready for use**.
+      review:
+        instructions: |-
+          #### Verify the cert-manager Operator was successfully installed:
+
+          1. Navigate to **Ecosystem** → **Installed Operators** from the [Ecosystem]{{highlight qs-nav-ecosystem}} section.
+
+          2. Look for **cert-manager Operator for Red Hat OpenShift** in the list.
+
+          3. In the Status column, is the cert-manager Operator's status **Succeeded**?
+
+          To verify the pods are running:
+
+          1. Navigate to **Workloads** → **Pods** from the [Workloads]{{highlight qs-nav-workloads}} section.
+
+          2. In the **Project** dropdown menu at the top, select **cert-manager**.
+
+          3. Verify that the following pods are in **Running** status:
+             - cert-manager
+             - cert-manager-cainjector
+             - cert-manager-webhook
+        failedTaskHelp: >-
+          This task isn't verified yet. Try the task again, or [read
+          more](https://docs.redhat.com/en/documentation/openshift_container_platform/latest/html/security_and_compliance/cert-manager-operator-for-red-hat-openshift)
+          about installing the cert-manager Operator.
+      summary:
+        success: >-
+          You just installed the cert-manager Operator for Red Hat OpenShift!
+          You can now create Issuers and Certificates to manage TLS certificates
+          for your workloads.
+        failed: >-
+          This task is incomplete. Try the task again, or read more about this
+          topic.
+  conclusion: >-
+    Your cert-manager Operator is ready! You can now create certificate issuers
+    and certificates to secure your applications. To learn more about using
+    cert-manager, refer to the [OpenShift documentation](https://docs.redhat.com/en/documentation/openshift_container_platform/latest/html/security_and_compliance/cert-manager-operator-for-red-hat-openshift).
+  nextQuickStart: []

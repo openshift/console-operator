@@ -24,6 +24,10 @@ func (c *FakeConfigV1) Builds() v1.BuildInterface {
 	return newFakeBuilds(c)
 }
 
+func (c *FakeConfigV1) CRIOCredentialProviderConfigs() v1.CRIOCredentialProviderConfigInterface {
+	return newFakeCRIOCredentialProviderConfigs(c)
+}
+
 func (c *FakeConfigV1) ClusterImagePolicies() v1.ClusterImagePolicyInterface {
 	return newFakeClusterImagePolicies(c)
 }
@@ -74,6 +78,10 @@ func (c *FakeConfigV1) Infrastructures() v1.InfrastructureInterface {
 
 func (c *FakeConfigV1) Ingresses() v1.IngressInterface {
 	return newFakeIngresses(c)
+}
+
+func (c *FakeConfigV1) InsightsDataGathers() v1.InsightsDataGatherInterface {
+	return newFakeInsightsDataGathers(c)
 }
 
 func (c *FakeConfigV1) Networks() v1.NetworkInterface {

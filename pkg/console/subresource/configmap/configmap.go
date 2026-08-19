@@ -46,10 +46,13 @@ func DefaultConfigMap(
 	nodeArchitectures []string,
 	nodeOperatingSystems []string,
 	copiedCSVsDisabled bool,
-	contentSecurityPolicyEnabled bool,
 	telemeterConfig map[string]string,
 	consoleHost string,
 	techPreviewEnabled bool,
+	olmLifecycleMetadataEnabled bool,
+	additionalHosts []string,
+	tlsMinVersion configv1.TLSProtocolVersion,
+	tlsCiphers []string,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	apiServerURL := infrastructuresub.GetAPIServerURL(infrastructureConfig)
@@ -58,7 +61,7 @@ func DefaultConfigMap(
 	defaultConfig, err := defaultBuilder.Host(consoleHost).
 		LogoutURL(defaultLogoutURL).
 		Brand(DEFAULT_BRAND).
-		DocURL(DEFAULT_DOC_URL).
+		DocURL(DefaultDocURL()).
 		APIServerURL(apiServerURL).
 		Monitoring(monitoringSharedConfig).
 		InactivityTimeout(inactivityTimeoutSeconds).
@@ -67,9 +70,11 @@ func DefaultConfigMap(
 		NodeOperatingSystems(nodeOperatingSystems).
 		CopiedCSVsDisabled(copiedCSVsDisabled).
 		TechPreviewEnabled(techPreviewEnabled).
+		OLMLifecycleMetadataEnabled(olmLifecycleMetadataEnabled).
+		AdditionalHosts(additionalHosts).
 		ConfigYAML()
 	if err != nil {
-		klog.Errorf("failed to generate default console-config config: %v", err)
+		klog.Errorf("failed to generate default console-config: %v", err)
 		return nil, false, err
 	}
 
@@ -89,7 +94,6 @@ func DefaultConfigMap(
 		PluginsOrder(availablePlugins, operatorConfig).
 		I18nNamespaces(pluginsWithI18nNamespace(availablePlugins)).
 		ContentSecurityPolicies(aggregateCSPDirectives(availablePlugins)).
-		ContentSecurityPolicyEnabled(contentSecurityPolicyEnabled).
 		Proxy(getPluginsProxyServices(availablePlugins)).
 		CustomLogoFile(operatorConfig.Spec.Customization.CustomLogoFile). // TODO Remove deprecated CustomLogoFile API.
 		CustomLogos(operatorConfig.Spec.Customization.Logos).
@@ -108,9 +112,12 @@ func DefaultConfigMap(
 		AuthConfig(authConfig, apiServerURL).
 		Capabilities(operatorConfig.Spec.Customization.Capabilities).
 		TechPreviewEnabled(techPreviewEnabled).
+		OLMLifecycleMetadataEnabled(olmLifecycleMetadataEnabled).
+		AdditionalHosts(additionalHosts).
+		TLSConfig(tlsMinVersion, tlsCiphers).
 		ConfigYAML()
 	if err != nil {
-		klog.Errorf("failed to generate user defined console-config config: %v", err)
+		klog.Errorf("failed to generate user-defined console-config: %v", err)
 		return nil, false, err
 	}
 
@@ -179,6 +186,8 @@ func pluginsWithI18nNamespace(availablePlugins []*v1.ConsolePlugin) []string {
 			i18nNamespaces = append(i18nNamespaces, fmt.Sprintf("plugin__%s", plugin.Name))
 		}
 	}
+	// Sort to ensure deterministic YAML output
+	sort.Strings(i18nNamespaces)
 	return i18nNamespaces
 }
 
@@ -192,6 +201,9 @@ func getPluginsEndpointMap(availablePlugins []*v1.ConsolePlugin) map[string]stri
 			klog.Errorf("unknown backend type for %q plugin: %q. Currently only %q backend type is supported.", plugin.Name, plugin.Spec.Backend.Type, v1.Service)
 		}
 	}
+	// Note: Here the YAML output is deterministic because:
+	// - availablePlugins are sorted by name in GetAvailablePlugins()
+	// - sigs.k8s.io/yaml uses json.Marshal which sorts map keys
 	return pluginsEndpointMap
 }
 
@@ -214,6 +226,10 @@ func getPluginsProxyServices(availablePlugins []*v1.ConsolePlugin) []consoleserv
 			}
 		}
 	}
+	// Sort by ConsoleAPIPath to ensure deterministic YAML output
+	sort.Slice(proxyServices, func(i, j int) bool {
+		return proxyServices[i].ConsoleAPIPath < proxyServices[j].ConsoleAPIPath
+	})
 	return proxyServices
 }
 
@@ -231,7 +247,7 @@ func getProxyAuthorization(authorizationType v1.AuthorizationType) bool {
 func getProxyServiceURL(service *v1.ConsolePluginProxyServiceConfig) string {
 	pluginURL := &url.URL{
 		Scheme: "https",
-		Host:   fmt.Sprintf("%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, service.Port),
+		Host:   fmt.Sprintf("%s.%s.svc.cluster.local.:%d", service.Name, service.Namespace, service.Port),
 	}
 	return pluginURL.String()
 }
@@ -239,7 +255,7 @@ func getProxyServiceURL(service *v1.ConsolePluginProxyServiceConfig) string {
 func getServiceURL(pluginBackend *v1.ConsolePluginBackend) string {
 	pluginURL := &url.URL{
 		Scheme: "https",
-		Host:   fmt.Sprintf("%s.%s.svc.cluster.local:%d", pluginBackend.Service.Name, pluginBackend.Service.Namespace, pluginBackend.Service.Port),
+		Host:   fmt.Sprintf("%s.%s.svc.cluster.local.:%d", pluginBackend.Service.Name, pluginBackend.Service.Namespace, pluginBackend.Service.Port),
 		Path:   pluginBackend.Service.BasePath,
 	}
 	return pluginURL.String()

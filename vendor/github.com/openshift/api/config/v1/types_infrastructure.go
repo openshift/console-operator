@@ -19,6 +19,7 @@ import (
 // +kubebuilder:resource:path=infrastructures,scope=Cluster
 // +kubebuilder:subresource:status
 // +kubebuilder:metadata:annotations=release.openshift.io/bootstrap-required=true
+// +openshift:validation:FeatureGateAwareXValidation:featureGate=MutableTopology,rule="!has(self.spec.controlPlaneTopology) || (has(oldSelf.spec.controlPlaneTopology) && self.spec.controlPlaneTopology == oldSelf.spec.controlPlaneTopology) || (has(self.status.controlPlaneTopology) && self.spec.controlPlaneTopology == self.status.controlPlaneTopology) || (has(self.status.controlPlaneTopology) && self.status.controlPlaneTopology == 'SingleReplica' && self.spec.controlPlaneTopology == 'HighlyAvailable')",message="spec.controlPlaneTopology must match status.controlPlaneTopology or be set to HighlyAvailable when status.controlPlaneTopology is SingleReplica"
 type Infrastructure struct {
 	metav1.TypeMeta `json:",inline"`
 
@@ -55,6 +56,21 @@ type InfrastructureSpec struct {
 	// platformSpec holds desired information specific to the underlying
 	// infrastructure provider.
 	PlatformSpec PlatformSpec `json:"platformSpec,omitempty"`
+
+	// controlPlaneTopology expresses the desired topology configuration for control nodes.
+	//
+	// When status.controlPlaneTopology is 'SingleReplica' and spec.controlPlaneTopology is set to 'HighlyAvailable',
+	// a transition will be triggered to reconfigure the cluster from SingleReplica to HighlyAvailable.
+	//
+	// When left blank or status.controlPlaneTopology and spec.controlPlaneTopology are the same value,
+	// no changes are required and no transitions will be triggered.
+	//
+	// This value may be set to match status.controlPlaneTopology regardless of the current value.
+	//
+	// +openshift:enable:FeatureGate=MutableTopology
+	// +kubebuilder:validation:Enum=HighlyAvailable;SingleReplica
+	// +optional
+	ControlPlaneTopology TopologyMode `json:"controlPlaneTopology,omitempty"`
 }
 
 // InfrastructureStatus describes the infrastructure the cluster is leveraging.
@@ -102,11 +118,11 @@ type InfrastructureStatus struct {
 	// and the operators should not configure the operand for highly-available operation
 	// The 'External' mode indicates that the control plane is hosted externally to the cluster and that
 	// its components are not visible within the cluster.
+	// The 'HighlyAvailableArbiter' mode indicates that the control plane will consist of 2 control-plane nodes
+	// that run conventional services and 1 smaller sized arbiter node that runs a bare minimum of services to maintain quorum.
 	// +kubebuilder:default=HighlyAvailable
-	// +openshift:validation:FeatureGateAwareEnum:featureGate="",enum=HighlyAvailable;SingleReplica;External
-	// +openshift:validation:FeatureGateAwareEnum:featureGate=HighlyAvailableArbiter,enum=HighlyAvailable;HighlyAvailableArbiter;SingleReplica;External
-	// +openshift:validation:FeatureGateAwareEnum:featureGate=DualReplica,enum=HighlyAvailable;SingleReplica;DualReplica;External
-	// +openshift:validation:FeatureGateAwareEnum:requiredFeatureGate=HighlyAvailableArbiter;DualReplica,enum=HighlyAvailable;HighlyAvailableArbiter;SingleReplica;DualReplica;External
+	// +openshift:validation:FeatureGateAwareEnum:featureGate="",enum=HighlyAvailable;HighlyAvailableArbiter;SingleReplica;External
+	// +openshift:validation:FeatureGateAwareEnum:featureGate=DualReplica,enum=HighlyAvailable;HighlyAvailableArbiter;SingleReplica;DualReplica;External
 	// +optional
 	ControlPlaneTopology TopologyMode `json:"controlPlaneTopology"`
 
@@ -181,6 +197,17 @@ const (
 
 	// LoadBalancerTypeOpenShiftManagedDefault is the default load balancer with control-plane VIPs managed by the OpenShift cluster.
 	LoadBalancerTypeOpenShiftManagedDefault PlatformLoadBalancerType = "OpenShiftManagedDefault"
+)
+
+// DNSRecordsType defines whether api, api-int, and ingress records are provided by
+// the internal DNS infrastructure or must be configured external to the cluster.
+// +kubebuilder:validation:Enum=Internal;External
+// +enum
+type DNSRecordsType string
+
+const (
+	DNSRecordsTypeExternal DNSRecordsType = "External"
+	DNSRecordsTypeInternal DNSRecordsType = "Internal"
 )
 
 // PlatformType is a specific supported infrastructure provider.
@@ -284,16 +311,18 @@ type ExternalPlatformSpec struct {
 // PlatformSpec holds the desired state specific to the underlying infrastructure provider
 // of the current cluster. Since these are used at spec-level for the underlying cluster, it
 // is supposed that only one of the spec structs is set.
-// +kubebuilder:validation:XValidation:rule="!has(oldSelf.vsphere) && has(self.vsphere) ? size(self.vsphere.vcenters) < 2 : true",message="vcenters can have at most 1 item when configured post-install"
+// +openshift:validation:FeatureGateAwareXValidation:featureGate="",rule="!has(oldSelf.vsphere) && has(self.vsphere) ? (has(self.vsphere.vcenters) && size(self.vsphere.vcenters) < 2) : true",message="vcenters can have at most 1 item when configured post-install"
+// +openshift:validation:FeatureGateAwareXValidation:featureGate=VSphereMultiVCenterDay2,rule="oldSelf.?vsphere.vcenters.hasValue() ? self.?vsphere.vcenters.hasValue() : true",message="vcenters is required once set and cannot be removed"
 type PlatformSpec struct {
 	// type is the underlying infrastructure provider for the cluster. This
 	// value controls whether infrastructure automation such as service load
 	// balancers, dynamic volume provisioning, machine creation and deletion, and
 	// other integrations are enabled. If None, no infrastructure automation is
 	// enabled. Allowed values are "AWS", "Azure", "BareMetal", "GCP", "Libvirt",
-	// "OpenStack", "VSphere", "oVirt", "KubeVirt", "EquinixMetal", "PowerVS",
-	// "AlibabaCloud", "Nutanix" and "None". Individual components may not support all platforms,
-	// and must handle unrecognized platforms as None if they do not support that platform.
+	// "OpenStack", "VSphere", "oVirt", "IBMCloud", "KubeVirt", "EquinixMetal",
+	// "PowerVS", "AlibabaCloud", "Nutanix", "External", and "None". Individual
+	// components may not support all platforms, and must handle unrecognized
+	// platforms as None if they do not support that platform.
 	//
 	// +unionDiscriminator
 	Type PlatformType `json:"type"`
@@ -491,6 +520,21 @@ type AWSServiceEndpoint struct {
 	URL string `json:"url"`
 }
 
+// IPFamilyType represents the IP protocol family that cloud platform resources should use.
+// +kubebuilder:validation:Enum=IPv4;DualStackIPv6Primary;DualStackIPv4Primary
+type IPFamilyType string
+
+const (
+	// IPv4 indicates that cloud platform resources should use IPv4 addressing only.
+	IPv4 IPFamilyType = "IPv4"
+
+	// DualStackIPv6Primary indicates that cloud platform resources should use dual-stack networking with IPv6 as primary.
+	DualStackIPv6Primary IPFamilyType = "DualStackIPv6Primary"
+
+	// DualStackIPv4Primary indicates that cloud platform resources should use dual-stack networking with IPv4 as primary.
+	DualStackIPv4Primary IPFamilyType = "DualStackIPv4Primary"
+)
+
 // AWSPlatformSpec holds the desired state of the Amazon Web Services infrastructure provider.
 // This only includes fields that can be modified in the cluster.
 type AWSPlatformSpec struct {
@@ -536,6 +580,18 @@ type AWSPlatformStatus struct {
 	// +optional
 	// +nullable
 	CloudLoadBalancerConfig *CloudLoadBalancerConfig `json:"cloudLoadBalancerConfig,omitempty"`
+
+	// ipFamily specifies the IP protocol family that should be used for AWS
+	// network resources. This controls whether AWS resources are created with
+	// IPv4-only, or dual-stack networking with IPv4 or IPv6 as the primary
+	// protocol family.
+	//
+	// +default="IPv4"
+	// +kubebuilder:default="IPv4"
+	// +kubebuilder:validation:XValidation:rule="oldSelf == '' || self == oldSelf",message="ipFamily is immutable once set"
+	// +openshift:enable:FeatureGate=AWSDualStackInstall
+	// +optional
+	IPFamily IPFamilyType `json:"ipFamily,omitempty"`
 }
 
 // AWSResourceTag is a tag to apply to AWS resources created for the cluster.
@@ -607,6 +663,18 @@ type AzurePlatformStatus struct {
 	// +openshift:enable:FeatureGate=AzureClusterHostedDNSInstall
 	// +optional
 	CloudLoadBalancerConfig *CloudLoadBalancerConfig `json:"cloudLoadBalancerConfig,omitempty"`
+
+	// ipFamily specifies the IP protocol family that should be used for Azure
+	// network resources. This controls whether Azure resources are created with
+	// IPv4-only, or dual-stack networking with IPv4 or IPv6 as the primary
+	// protocol family.
+	//
+	// +default="IPv4"
+	// +kubebuilder:default="IPv4"
+	// +kubebuilder:validation:XValidation:rule="oldSelf == '' || self == oldSelf",message="ipFamily is immutable once set"
+	// +openshift:enable:FeatureGate=AzureDualStackInstall
+	// +optional
+	IPFamily IPFamilyType `json:"ipFamily,omitempty"`
 }
 
 // AzureResourceTag is a tag to apply to Azure resources created for the cluster.
@@ -649,74 +717,43 @@ const (
 	AzureStackCloud AzureCloudEnvironment = "AzureStackCloud"
 )
 
+// Start: TOMBSTONE
+
 // GCPServiceEndpointName is the name of the GCP Service Endpoint.
 // +kubebuilder:validation:Enum=Compute;Container;CloudResourceManager;DNS;File;IAM;IAMCredentials;OAuth;ServiceUsage;Storage;STS
-type GCPServiceEndpointName string
-
-const (
-	// GCPServiceEndpointNameCompute is the name used for the GCP Compute Service endpoint.
-	GCPServiceEndpointNameCompute GCPServiceEndpointName = "Compute"
-
-	// GCPServiceEndpointNameContainer is the name used for the GCP Container Service endpoint.
-	GCPServiceEndpointNameContainer GCPServiceEndpointName = "Container"
-
-	// GCPServiceEndpointNameCloudResource is the name used for the GCP Resource Manager Service endpoint.
-	GCPServiceEndpointNameCloudResource GCPServiceEndpointName = "CloudResourceManager"
-
-	// GCPServiceEndpointNameDNS is the name used for the GCP DNS Service endpoint.
-	GCPServiceEndpointNameDNS GCPServiceEndpointName = "DNS"
-
-	// GCPServiceEndpointNameFile is the name used for the GCP File Service endpoint.
-	GCPServiceEndpointNameFile GCPServiceEndpointName = "File"
-
-	// GCPServiceEndpointNameIAM is the name used for the GCP IAM Service endpoint.
-	GCPServiceEndpointNameIAM GCPServiceEndpointName = "IAM"
-
-	// GCPServiceEndpointNameIAMCredentials is the name used for the GCP IAM Credentials Service endpoint.
-	GCPServiceEndpointNameIAMCredentials GCPServiceEndpointName = "IAMCredentials"
-
-	// GCPServiceEndpointNameOAuth is the name used for the GCP OAuth2 Service endpoint.
-	GCPServiceEndpointNameOAuth GCPServiceEndpointName = "OAuth"
-
-	// GCPServiceEndpointNameServiceUsage is the name used for the GCP Service Usage Service endpoint.
-	GCPServiceEndpointNameServiceUsage GCPServiceEndpointName = "ServiceUsage"
-
-	// GCPServiceEndpointNameStorage is the name used for the GCP Storage Service endpoint.
-	GCPServiceEndpointNameStorage GCPServiceEndpointName = "Storage"
-
-	// GCPServiceEndpointNameSTS is the name used for the GCP STS Service endpoint.
-	GCPServiceEndpointNameSTS GCPServiceEndpointName = "STS"
-)
+//type GCPServiceEndpointName string
 
 // GCPServiceEndpoint store the configuration of a custom url to
 // override existing defaults of GCP Services.
-type GCPServiceEndpoint struct {
-	// name is the name of the GCP service whose endpoint is being overridden.
-	// This must be provided and cannot be empty.
-	//
-	// Allowed values are Compute, Container, CloudResourceManager, DNS, File, IAM, ServiceUsage,
-	// Storage, and TagManager.
-	//
-	// As an example, when setting the name to Compute all requests made by the caller to the GCP Compute
-	// Service will be directed to the endpoint specified in the url field.
-	//
-	// +required
-	Name GCPServiceEndpointName `json:"name"`
+// type GCPServiceEndpoint struct {
+// name is the name of the GCP service whose endpoint is being overridden.
+// This must be provided and cannot be empty.
+//
+// Allowed values are Compute, Container, CloudResourceManager, DNS, File, IAM, ServiceUsage,
+// Storage, and TagManager.
+//
+// As an example, when setting the name to Compute all requests made by the caller to the GCP Compute
+// Service will be directed to the endpoint specified in the url field.
+//
+// +required
+// Name GCPServiceEndpointName `json:"name"`
 
-	// url is a fully qualified URI that overrides the default endpoint for a client using the GCP service specified
-	// in the name field.
-	// url is required, must use the scheme https, must not be more than 253 characters in length,
-	// and must be a valid URL according to Go's net/url package (https://pkg.go.dev/net/url#URL)
-	//
-	// An example of a valid endpoint that overrides the Compute Service: "https://compute-myendpoint1.p.googleapis.com"
-	//
-	// +required
-	// +kubebuilder:validation:MaxLength=253
-	// +kubebuilder:validation:XValidation:rule="isURL(self)",message="must be a valid URL"
-	// +kubebuilder:validation:XValidation:rule="isURL(self) ? (url(self).getScheme() == \"https\") : true",message="scheme must be https"
-	// +kubebuilder:validation:XValidation:rule="url(self).getEscapedPath() == \"\" || url(self).getEscapedPath() == \"/\"",message="url must consist only of a scheme and domain. The url path must be empty."
-	URL string `json:"url"`
-}
+// url is a fully qualified URI that overrides the default endpoint for a client using the GCP service specified
+// in the name field.
+// url is required, must use the scheme https, must not be more than 253 characters in length,
+// and must be a valid URL according to Go's net/url package (https://pkg.go.dev/net/url#URL)
+//
+// An example of a valid endpoint that overrides the Compute Service: "https://compute-myendpoint1.p.googleapis.com"
+//
+// +required
+// +kubebuilder:validation:MaxLength=253
+// +kubebuilder:validation:XValidation:rule="isURL(self)",message="must be a valid URL"
+// +kubebuilder:validation:XValidation:rule="isURL(self) ? (url(self).getScheme() == \"https\") : true",message="scheme must be https"
+// +kubebuilder:validation:XValidation:rule="url(self).getEscapedPath() == \"\" || url(self).getEscapedPath() == \"/\"",message="url must consist only of a scheme and domain. The url path must be empty."
+// URL string `json:"url"`
+//}
+
+// End: TOMBSTONE
 
 // GCPPlatformSpec holds the desired state of the Google Cloud Platform infrastructure provider.
 // This only includes fields that can be modified in the cluster.
@@ -767,23 +804,25 @@ type GCPPlatformStatus struct {
 	//
 	// +default={"dnsType": "PlatformDefault"}
 	// +kubebuilder:default={"dnsType": "PlatformDefault"}
-	// +openshift:enable:FeatureGate=GCPClusterHostedDNSInstall
 	// +optional
 	// +nullable
 	CloudLoadBalancerConfig *CloudLoadBalancerConfig `json:"cloudLoadBalancerConfig,omitempty"`
 
+	// This field was introduced and removed under tech preview.
 	// serviceEndpoints specifies endpoints that override the default endpoints
 	// used when creating clients to interact with GCP services.
 	// When not specified, the default endpoint for the GCP region will be used.
 	// Only 1 endpoint override is permitted for each GCP service.
 	// The maximum number of endpoint overrides allowed is 11.
+	// To avoid conflicts with serialisation, this field name may never be used again.
+	// Tombstone the field as a reminder.
 	// +listType=map
 	// +listMapKey=name
 	// +kubebuilder:validation:MaxItems=11
 	// +kubebuilder:validation:XValidation:rule="self.all(x, self.exists_one(y, x.name == y.name))",message="only 1 endpoint override is permitted per GCP service name"
 	// +optional
 	// +openshift:enable:FeatureGate=GCPCustomAPIEndpointsInstall
-	ServiceEndpoints []GCPServiceEndpoint `json:"serviceEndpoints,omitempty"`
+	// ServiceEndpoints []GCPServiceEndpoint `json:"serviceEndpoints,omitempty"`
 }
 
 // GCPResourceLabel is a label to apply to GCP resources created for the cluster.
@@ -983,6 +1022,7 @@ type BareMetalPlatformSpec struct {
 // BareMetalPlatformStatus holds the current status of the BareMetal infrastructure provider.
 // For more information about the network architecture used with the BareMetal platform type, see:
 // https://github.com/openshift/installer/blob/master/docs/design/baremetal/networking-infrastructure.md
+// +openshift:validation:FeatureGateAwareXValidation:featureGate=OnPremDNSRecords,rule="!has(self.dnsRecordsType) || self.dnsRecordsType == 'Internal' || (has(self.loadBalancer) && self.loadBalancer.type == 'UserManaged')",message="dnsRecordsType may only be set to External when loadBalancer.type is UserManaged"
 type BareMetalPlatformStatus struct {
 	// apiServerInternalIP is an IP address to contact the Kubernetes API server that can be used
 	// by components inside the cluster, like kubelets using the infrastructure rather
@@ -1034,6 +1074,22 @@ type BareMetalPlatformStatus struct {
 	// +kubebuilder:default={"type": "OpenShiftManagedDefault"}
 	// +optional
 	LoadBalancer *BareMetalPlatformLoadBalancer `json:"loadBalancer,omitempty"`
+
+	// dnsRecordsType determines whether records for api, api-int, and ingress
+	// are provided by the internal DNS service or externally.
+	// Allowed values are `Internal`, `External`, and omitted.
+	// When set to `Internal`, records are provided by the internal infrastructure and
+	// no additional user configuration is required for the cluster to function.
+	// When set to `External`, records are not provided by the internal infrastructure
+	// and must be configured by the user on a DNS server outside the cluster.
+	// Cluster nodes must use this external server for their upstream DNS requests.
+	// This value may only be set when loadBalancer.type is set to UserManaged.
+	// When omitted, this means the user has no opinion and the platform is left
+	// to choose reasonable defaults. These defaults are subject to change over time.
+	// The current default is `Internal`.
+	// +openshift:enable:FeatureGate=OnPremDNSRecords
+	// +optional
+	DNSRecordsType DNSRecordsType `json:"dnsRecordsType,omitempty"`
 
 	// machineNetworks are IP networks used to connect all the OpenShift cluster nodes.
 	// +listType=atomic
@@ -1111,6 +1167,7 @@ type OpenStackPlatformSpec struct {
 }
 
 // OpenStackPlatformStatus holds the current status of the OpenStack infrastructure provider.
+// +openshift:validation:FeatureGateAwareXValidation:featureGate=OnPremDNSRecords,rule="!has(self.dnsRecordsType) || self.dnsRecordsType == 'Internal' || (has(self.loadBalancer) && self.loadBalancer.type == 'UserManaged')",message="dnsRecordsType may only be set to External when loadBalancer.type is UserManaged"
 type OpenStackPlatformStatus struct {
 	// apiServerInternalIP is an IP address to contact the Kubernetes API server that can be used
 	// by components inside the cluster, like kubelets using the infrastructure rather
@@ -1167,6 +1224,22 @@ type OpenStackPlatformStatus struct {
 	// +optional
 	LoadBalancer *OpenStackPlatformLoadBalancer `json:"loadBalancer,omitempty"`
 
+	// dnsRecordsType determines whether records for api, api-int, and ingress
+	// are provided by the internal DNS service or externally.
+	// Allowed values are `Internal`, `External`, and omitted.
+	// When set to `Internal`, records are provided by the internal infrastructure and
+	// no additional user configuration is required for the cluster to function.
+	// When set to `External`, records are not provided by the internal infrastructure
+	// and must be configured by the user on a DNS server outside the cluster.
+	// Cluster nodes must use this external server for their upstream DNS requests.
+	// This value may only be set when loadBalancer.type is set to UserManaged.
+	// When omitted, this means the user has no opinion and the platform is left
+	// to choose reasonable defaults. These defaults are subject to change over time.
+	// The current default is `Internal`.
+	// +openshift:enable:FeatureGate=OnPremDNSRecords
+	// +optional
+	DNSRecordsType DNSRecordsType `json:"dnsRecordsType,omitempty"`
+
 	// machineNetworks are IP networks used to connect all the OpenShift cluster nodes.
 	// +listType=atomic
 	// +kubebuilder:validation:MaxItems=32
@@ -1201,6 +1274,7 @@ type OvirtPlatformLoadBalancer struct {
 type OvirtPlatformSpec struct{}
 
 // OvirtPlatformStatus holds the current status of the  oVirt infrastructure provider.
+// +openshift:validation:FeatureGateAwareXValidation:featureGate=OnPremDNSRecords,rule="!has(self.dnsRecordsType) || self.dnsRecordsType == 'Internal' || (has(self.loadBalancer) && self.loadBalancer.type == 'UserManaged')",message="dnsRecordsType may only be set to External when loadBalancer.type is UserManaged"
 type OvirtPlatformStatus struct {
 	// apiServerInternalIP is an IP address to contact the Kubernetes API server that can be used
 	// by components inside the cluster, like kubelets using the infrastructure rather
@@ -1247,6 +1321,22 @@ type OvirtPlatformStatus struct {
 	// +kubebuilder:default={"type": "OpenShiftManagedDefault"}
 	// +optional
 	LoadBalancer *OvirtPlatformLoadBalancer `json:"loadBalancer,omitempty"`
+
+	// dnsRecordsType determines whether records for api, api-int, and ingress
+	// are provided by the internal DNS service or externally.
+	// Allowed values are `Internal`, `External`, and omitted.
+	// When set to `Internal`, records are provided by the internal infrastructure and
+	// no additional user configuration is required for the cluster to function.
+	// When set to `External`, records are not provided by the internal infrastructure
+	// and must be configured by the user on a DNS server outside the cluster.
+	// Cluster nodes must use this external server for their upstream DNS requests.
+	// This value may only be set when loadBalancer.type is set to UserManaged.
+	// When omitted, this means the user has no opinion and the platform is left
+	// to choose reasonable defaults. These defaults are subject to change over time.
+	// The current default is `Internal`.
+	// +openshift:enable:FeatureGate=OnPremDNSRecords
+	// +optional
+	DNSRecordsType DNSRecordsType `json:"dnsRecordsType,omitempty"`
 }
 
 // VSpherePlatformLoadBalancer defines the load balancer used by the cluster on VSphere platform.
@@ -1568,21 +1658,24 @@ type VSpherePlatformNodeNetworking struct {
 // use these fields for configuration.
 // +kubebuilder:validation:XValidation:rule="!has(oldSelf.apiServerInternalIPs) || has(self.apiServerInternalIPs)",message="apiServerInternalIPs list is required once set"
 // +kubebuilder:validation:XValidation:rule="!has(oldSelf.ingressIPs) || has(self.ingressIPs)",message="ingressIPs list is required once set"
-// +kubebuilder:validation:XValidation:rule="!has(oldSelf.vcenters) && has(self.vcenters) ? size(self.vcenters) < 2 : true",message="vcenters can have at most 1 item when configured post-install"
 type VSpherePlatformSpec struct {
 	// vcenters holds the connection details for services to communicate with vCenter.
-	// Currently, only a single vCenter is supported, but in tech preview 3 vCenters are supported.
+	// Up to 3 vCenters are supported.
 	// Once the cluster has been installed, you are unable to change the current number of defined
-	// vCenters except in the case where the cluster has been upgraded from a version of OpenShift
-	// where the vsphere platform spec was not present.  You may make modifications to the existing
+	// vCenters except when 1.) the cluster has been upgraded from a version of OpenShift
+	// where the vsphere platform spec was not present or 2.) in TechPreview you are able to add and
+	// remove vCenters but may not remove all vCenters.  You may make modifications to the existing
 	// vCenters that are defined in the vcenters list in order to match with any added or modified
 	// failure domains.
 	// ---
 	// + If VCenters is not defined use the existing cloud-config configmap defined
 	// + in openshift-config.
-	// +kubebuilder:validation:MinItems=0
+	// +kubebuilder:validation:MinItems=1
 	// +kubebuilder:validation:MaxItems=3
-	// +kubebuilder:validation:XValidation:rule="size(self) != size(oldSelf) ? size(oldSelf) == 0 && size(self) < 2 : true",message="vcenters cannot be added or removed once set"
+	// +openshift:validation:FeatureGateAwareXValidation:featureGate="",rule="size(self) != size(oldSelf) ? size(oldSelf) == 0 && size(self) < 2 : true",message="vcenters cannot be added or removed once set"
+	// +openshift:validation:FeatureGateAwareXValidation:featureGate=VSphereMultiVCenterDay2,rule="size(self) >= size(oldSelf) ? oldSelf.all(x, self.exists(y, y.server == x.server)) : true",message="Cannot add and remove vCenters at the same time"
+	// +openshift:validation:FeatureGateAwareXValidation:featureGate=VSphereMultiVCenterDay2,rule="size(self) < size(oldSelf) ? self.all(x, oldSelf.exists(y, y.server == x.server)) : true",message="Cannot add and remove vCenters at the same time"
+	// +kubebuilder:validation:XValidation:rule="self.all(x, self.exists_one(y, y.server == x.server))",message="vcenters must have unique server values"
 	// +listType=atomic
 	// +optional
 	VCenters []VSpherePlatformVCenterSpec `json:"vcenters,omitempty"`
@@ -1644,6 +1737,7 @@ type VSpherePlatformSpec struct {
 }
 
 // VSpherePlatformStatus holds the current status of the vSphere infrastructure provider.
+// +openshift:validation:FeatureGateAwareXValidation:featureGate=OnPremDNSRecords,rule="!has(self.dnsRecordsType) || self.dnsRecordsType == 'Internal' || (has(self.loadBalancer) && self.loadBalancer.type == 'UserManaged')",message="dnsRecordsType may only be set to External when loadBalancer.type is UserManaged"
 type VSpherePlatformStatus struct {
 	// apiServerInternalIP is an IP address to contact the Kubernetes API server that can be used
 	// by components inside the cluster, like kubelets using the infrastructure rather
@@ -1695,6 +1789,22 @@ type VSpherePlatformStatus struct {
 	// +kubebuilder:default={"type": "OpenShiftManagedDefault"}
 	// +optional
 	LoadBalancer *VSpherePlatformLoadBalancer `json:"loadBalancer,omitempty"`
+
+	// dnsRecordsType determines whether records for api, api-int, and ingress
+	// are provided by the internal DNS service or externally.
+	// Allowed values are `Internal`, `External`, and omitted.
+	// When set to `Internal`, records are provided by the internal infrastructure and
+	// no additional user configuration is required for the cluster to function.
+	// When set to `External`, records are not provided by the internal infrastructure
+	// and must be configured by the user on a DNS server outside the cluster.
+	// Cluster nodes must use this external server for their upstream DNS requests.
+	// This value may only be set when loadBalancer.type is set to UserManaged.
+	// When omitted, this means the user has no opinion and the platform is left
+	// to choose reasonable defaults. These defaults are subject to change over time.
+	// The current default is `Internal`.
+	// +openshift:enable:FeatureGate=OnPremDNSRecords
+	// +optional
+	DNSRecordsType DNSRecordsType `json:"dnsRecordsType,omitempty"`
 
 	// machineNetworks are IP networks used to connect all the OpenShift cluster nodes.
 	// +listType=atomic
@@ -2069,6 +2179,7 @@ type NutanixPrismElementEndpoint struct {
 }
 
 // NutanixPlatformStatus holds the current status of the Nutanix infrastructure provider.
+// +openshift:validation:FeatureGateAwareXValidation:featureGate=OnPremDNSRecords,rule="!has(self.dnsRecordsType) || self.dnsRecordsType == 'Internal' || (has(self.loadBalancer) && self.loadBalancer.type == 'UserManaged')",message="dnsRecordsType may only be set to External when loadBalancer.type is UserManaged"
 type NutanixPlatformStatus struct {
 	// apiServerInternalIP is an IP address to contact the Kubernetes API server that can be used
 	// by components inside the cluster, like kubelets using the infrastructure rather
@@ -2112,6 +2223,22 @@ type NutanixPlatformStatus struct {
 	// +kubebuilder:default={"type": "OpenShiftManagedDefault"}
 	// +optional
 	LoadBalancer *NutanixPlatformLoadBalancer `json:"loadBalancer,omitempty"`
+
+	// dnsRecordsType determines whether records for api, api-int, and ingress
+	// are provided by the internal DNS service or externally.
+	// Allowed values are `Internal`, `External`, and omitted.
+	// When set to `Internal`, records are provided by the internal infrastructure and
+	// no additional user configuration is required for the cluster to function.
+	// When set to `External`, records are not provided by the internal infrastructure
+	// and must be configured by the user on a DNS server outside the cluster.
+	// Cluster nodes must use this external server for their upstream DNS requests.
+	// This value may only be set when loadBalancer.type is set to UserManaged.
+	// When omitted, this means the user has no opinion and the platform is left
+	// to choose reasonable defaults. These defaults are subject to change over time.
+	// The current default is `Internal`.
+	// +openshift:enable:FeatureGate=OnPremDNSRecords
+	// +optional
+	DNSRecordsType DNSRecordsType `json:"dnsRecordsType,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -29,8 +29,8 @@ spec:
         
         To install the Red Hat OpenShift Pipelines:
         
-          1. From the **Administrator** perspective, go to the **OperatorHub**
-          from the [Operators]{{highlight qs-nav-operators}} section of the navigation.
+          1. From the **Core platform** perspective, go to the **Software Catalog**
+          from the [Ecosystem]{{highlight qs-nav-ecosystem}} section of the navigation.
 
           
           1. In the **Filter by keyword** field, type `Red Hat OpenShift Pipelines`.
@@ -53,7 +53,7 @@ spec:
       review:
         instructions: |-
           #### To verify that the Red Hat OpenShift Pipelines is installed:
-          1. From the **Operators** section of the navigation, go to the **Installed Operators** page.
+          1. From the [Ecosystem]{{highlight qs-nav-ecosystem}} section of the navigation, go to the **Installed Operators** page.
           2. Verify that the **Red Hat OpenShift Pipelines** appears in the list of Operators.
 
           In the status column, is the status of the Red Hat OpenShift Pipelines **Succeeded**?
