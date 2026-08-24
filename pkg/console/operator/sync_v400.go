@@ -66,7 +66,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 			return statusHandler.FlushAndReturn(err)
 		}
 		if controllersutil.IsExternalControlPlaneWithIngressDisabled(set.Infrastructure, clusterVersionConfig) {
-			statusHandler.AddConditions(status.HandleProgressingOrDegraded("SyncLoopRefresh", "", nil))
+			statusHandler.AddConditions(status.HandleProgressingOrDegraded("WaitingForConsoleURL", "", nil))
 			return statusHandler.FlushAndReturn(nil)
 		}
 
