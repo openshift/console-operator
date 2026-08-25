@@ -483,27 +483,11 @@ func (b *ConsoleServerCLIConfigBuilder) session() Session {
 	if b.authType == "disabled" {
 		return Session{}
 	}
-	authFile := b.sessionAuthenticationFile
-	encFile := b.sessionEncryptionFile
-	if authFile == "" {
-		authFile = sessionAuthKeyFilePath
-	}
-	if encFile == "" {
-		encFile = sessionEncKeyFilePath
-	}
-	prevAuthFile := b.previousSessionAuthenticationFile
-	prevEncFile := b.previousSessionEncryptionFile
-	if prevAuthFile == "" {
-		prevAuthFile = previousSessionAuthKeyFilePath
-	}
-	if prevEncFile == "" {
-		prevEncFile = previousSessionEncKeyFilePath
-	}
 	return Session{
-		CookieAuthenticationKeyFile:         authFile,
-		CookieEncryptionKeyFile:             encFile,
-		PreviousCookieAuthenticationKeyFile: prevAuthFile,
-		PreviousCookieEncryptionKeyFile:     prevEncFile,
+		CookieAuthenticationKeyFile:         b.sessionAuthenticationFile,
+		CookieEncryptionKeyFile:             b.sessionEncryptionFile,
+		PreviousCookieAuthenticationKeyFile: b.previousSessionAuthenticationFile,
+		PreviousCookieEncryptionKeyFile:     b.previousSessionEncryptionFile,
 	}
 }
 
