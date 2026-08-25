@@ -38,11 +38,20 @@ func ResetSessionSecretKeysIfNeeded(secret *corev1.Secret) bool {
 	}
 
 	if len(secret.Data["sessionEncryptionKey"]) != aes256KeyLenBytes {
+		// Preserve the current key as the previous key for graceful rotation,
+		// so that existing sessions can still be decrypted during the transition.
+		if len(secret.Data["previousSessionEncryptionKey"]) == 0 && len(secret.Data["sessionEncryptionKey"]) > 0 {
+			secret.Data["previousSessionEncryptionKey"] = secret.Data["sessionEncryptionKey"]
+		}
 		secret.Data["sessionEncryptionKey"] = []byte(randomString(aes256KeyLenBytes))
 		changed = true
 	}
 
 	if len(secret.Data["sessionAuthenticationKey"]) != sha256KeyLenBytes {
+		// Preserve the current key as the previous key for graceful rotation.
+		if len(secret.Data["previousSessionAuthenticationKey"]) == 0 && len(secret.Data["sessionAuthenticationKey"]) > 0 {
+			secret.Data["previousSessionAuthenticationKey"] = secret.Data["sessionAuthenticationKey"]
+		}
 		secret.Data["sessionAuthenticationKey"] = []byte(randomString(sha256KeyLenBytes))
 		changed = true
 	}

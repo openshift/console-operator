@@ -130,10 +130,6 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCProviderTrustedAuthorityConfigGet", "", nil))
 		}
 
-		sessionSecret, err = co.syncSessionSecret(ctx, updatedOperatorConfig, controllerContext.Recorder())
-		if err != nil {
-			return statusHandler.FlushAndReturn(err)
-		}
 	default:
 		// Clear any stale OIDC-related degraded/progressing conditions that
 		// may have been set during a previous reconciliation when the
@@ -142,6 +138,12 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		// permanently degraded because the OIDC code path is no longer
 		// executed and the condition is never updated.
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCProviderTrustedAuthorityConfigGet", "", nil))
+	}
+
+	// Generate session secret for all auth types
+	sessionSecret, err = co.syncSessionSecret(ctx, updatedOperatorConfig, controllerContext.Recorder())
+	if err != nil {
+		return statusHandler.FlushAndReturn(fmt.Errorf("sync session Secret: %w", err))
 	}
 
 	customLogosErr, customLogosErrReason := co.SyncCustomLogos(updatedOperatorConfig)
