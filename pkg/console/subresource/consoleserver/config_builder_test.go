@@ -71,6 +71,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
+				},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{
@@ -102,6 +108,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
+				},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -145,6 +157,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
+				},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Capabilities: []v1.Capability{
@@ -195,6 +213,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile:    clientSecretFilePath,
 					OAuthEndpointCAFile: "/var/oauth-serving-cert/ca-bundle.crt",
 					LogoutRedirect:      "https://foobar.com/logout",
+				},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 
@@ -257,8 +281,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					LogoutRedirect:      "https://foobar.com/logout",
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -346,6 +372,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
+				},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{
@@ -380,6 +412,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
+				},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -416,7 +454,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
-				Session: Session{},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
+				},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
 						Categories: &[]DeveloperConsoleCatalogCategory{},
@@ -476,7 +519,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
-				Session: Session{},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
+				},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{
@@ -536,7 +584,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
-				Session: Session{},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
+				},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
 						Categories: nil,
@@ -576,7 +629,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
-				Session: Session{},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
+				},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
 						Categories: nil,
@@ -616,7 +674,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
-				Session: Session{},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
+				},
 				Customization: Customization{
 					ProjectAccess: ProjectAccess{
 						AvailableClusterRoles: []string{"View", "Edit", "Admin"},
@@ -655,7 +718,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
-				Session: Session{},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
+				},
 				Customization: Customization{
 					QuickStarts: QuickStarts{
 						Disabled: []string{"quick-start0", "quick-start1", "quick-start2"},
@@ -708,7 +776,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
-				Session: Session{},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
+				},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{
@@ -773,7 +846,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
-				Session: Session{},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
+				},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{ID: "perspective1",
@@ -837,7 +915,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
-				Session: Session{},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
+				},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{ID: "perspective1",
@@ -894,7 +977,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 					LogoutRedirect:   "https://foobar.com/logout",
 				},
-				Session: Session{},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
+				},
 				Customization: Customization{
 					Branding:             "okd",
 					DocumentationBaseURL: "https://foobar.com/docs",
@@ -948,7 +1036,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
-				Session: Session{},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
+				},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{
@@ -988,6 +1081,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
+				},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -1029,6 +1128,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 				Auth: Auth{
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
+				},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -1083,7 +1188,11 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: dev
@@ -1132,6 +1241,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: dev
@@ -1166,7 +1277,11 @@ auth:
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
   logoutRedirect: https://foobar.com/logout
-session: {}
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: dev
@@ -1191,7 +1306,11 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: dev
@@ -1218,7 +1337,11 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: dev
@@ -1246,7 +1369,11 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   developerCatalog:
     categories: []
@@ -1298,7 +1425,11 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   developerCatalog:
     categories:
@@ -1342,7 +1473,11 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   developerCatalog:
     categories: null
@@ -1377,7 +1512,11 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   developerCatalog:
     categories: null
@@ -1413,7 +1552,11 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   addPage:
     disabledActions:
@@ -1498,7 +1641,11 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   quickStarts:
     disabled:
@@ -1544,7 +1691,11 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: perspective1
@@ -1614,7 +1765,11 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: perspective1
@@ -1688,7 +1843,11 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: perspective1
@@ -1742,7 +1901,11 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: dev
@@ -1778,7 +1941,11 @@ clusterInfo: {}
 auth:
   clientID: console
   clientSecretFile: /var/oauth-config/clientSecret
-session: {}
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: dev

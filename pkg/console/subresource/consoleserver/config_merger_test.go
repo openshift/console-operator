@@ -61,7 +61,11 @@ servingInfo:
   bindAddress: https://[::]:8443
   certFile: /var/serving-cert/tls.crt
   keyFile: /var/serving-cert/tls.key
-session: {}
+session:
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
 `,
 		},
 	}

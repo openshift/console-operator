@@ -21,8 +21,12 @@ const (
 	clientSecretFilePath     = "/var/oauth-config/clientSecret"
 	oauthServingCertFilePath = "/var/oauth-serving-cert/ca-bundle.crt"
 	// serving info
-	certFilePath = "/var/serving-cert/tls.crt"
-	keyFilePath  = "/var/serving-cert/tls.key"
+	certFilePath                   = "/var/serving-cert/tls.crt"
+	keyFilePath                    = "/var/serving-cert/tls.key"
+	sessionAuthKeyFilePath         = "/var/session-secret/sessionAuthenticationKey"
+	sessionEncKeyFilePath          = "/var/session-secret/sessionEncryptionKey"
+	previousSessionAuthKeyFilePath = "/var/session-secret/previousSessionAuthenticationKey"
+	previousSessionEncKeyFilePath  = "/var/session-secret/previousSessionEncryptionKey"
 )
 
 // SupportedLightspeedArchitectures defines the list of architectures that support Lightspeed.
@@ -46,47 +50,49 @@ var SupportedLightspeedArchitectures = []string{"amd64"}
 //
 //	b.Host().Brand("").Config()
 type ConsoleServerCLIConfigBuilder struct {
-	host                        string
-	logoutRedirectURL           string
-	brand                       operatorv1.Brand
-	docURL                      string
-	apiServerURL                string
-	controlPlaneToplogy         configv1.TopologyMode
-	statusPageID                string
-	customProductName           string
-	devCatalogCustomization     operatorv1.DeveloperConsoleCatalogCustomization
-	projectAccess               operatorv1.ProjectAccess
-	quickStarts                 operatorv1.QuickStarts
-	addPage                     operatorv1.AddPage
-	perspectives                []operatorv1.Perspective
-	CAFile                      string
-	monitoring                  map[string]string
-	customHostnameRedirectPort  int
-	inactivityTimeoutSeconds    int
-	pluginsList                 map[string]string
-	pluginsOrder                []string
-	i18nNamespaceList           []string
-	proxyServices               []ProxyService
-	telemetry                   map[string]string
-	releaseVersion              string
-	nodeArchitectures           []string
-	nodeOperatingSystems        []string
-	copiedCSVsDisabled          bool
-	oauthClientID               string
-	oidcExtraScopes             []string
-	oidcIssuerURL               string
-	oidcOCLoginCommand          string
-	authType                    string
-	sessionEncryptionFile       string
-	sessionAuthenticationFile   string
-	capabilities                []operatorv1.Capability
-	contentSecurityPolicyList   map[v1.DirectiveType][]string
-	logos                       []operatorv1.Logo
-	techPreviewEnabled          bool
-	olmLifecycleMetadataEnabled bool
-	additionalHosts             []string
-	minTLSVersion               string
-	cipherSuites                []string
+	host                              string
+	logoutRedirectURL                 string
+	brand                             operatorv1.Brand
+	docURL                            string
+	apiServerURL                      string
+	controlPlaneToplogy               configv1.TopologyMode
+	statusPageID                      string
+	customProductName                 string
+	devCatalogCustomization           operatorv1.DeveloperConsoleCatalogCustomization
+	projectAccess                     operatorv1.ProjectAccess
+	quickStarts                       operatorv1.QuickStarts
+	addPage                           operatorv1.AddPage
+	perspectives                      []operatorv1.Perspective
+	CAFile                            string
+	monitoring                        map[string]string
+	customHostnameRedirectPort        int
+	inactivityTimeoutSeconds          int
+	pluginsList                       map[string]string
+	pluginsOrder                      []string
+	i18nNamespaceList                 []string
+	proxyServices                     []ProxyService
+	telemetry                         map[string]string
+	releaseVersion                    string
+	nodeArchitectures                 []string
+	nodeOperatingSystems              []string
+	copiedCSVsDisabled                bool
+	oauthClientID                     string
+	oidcExtraScopes                   []string
+	oidcIssuerURL                     string
+	oidcOCLoginCommand                string
+	authType                          string
+	sessionEncryptionFile             string
+	sessionAuthenticationFile         string
+	previousSessionEncryptionFile     string
+	previousSessionAuthenticationFile string
+	capabilities                      []operatorv1.Capability
+	contentSecurityPolicyList         map[v1.DirectiveType][]string
+	logos                             []operatorv1.Logo
+	techPreviewEnabled                bool
+	olmLifecycleMetadataEnabled       bool
+	additionalHosts                   []string
+	minTLSVersion                     string
+	cipherSuites                      []string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -200,6 +206,10 @@ func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authent
 		b.authType = "openshift"
 		b.oauthClientID = api.OAuthClientName
 		b.CAFile = oauthServingCertFilePath
+		b.sessionAuthenticationFile = sessionAuthKeyFilePath
+		b.sessionEncryptionFile = sessionEncKeyFilePath
+		b.previousSessionAuthenticationFile = previousSessionAuthKeyFilePath
+		b.previousSessionEncryptionFile = previousSessionEncKeyFilePath
 		return b
 
 	case configv1.AuthenticationTypeOIDC:
@@ -219,8 +229,10 @@ func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authent
 		b.oauthClientID = oidcConfig.ClientID
 		b.oidcExtraScopes = oidcConfig.ExtraScopes
 		b.oidcOCLoginCommand = authconfigsub.GetOIDCOCLoginCommand(authnConfig, apiServerURL)
-		b.sessionAuthenticationFile = "/var/session-secret/sessionAuthenticationKey"
-		b.sessionEncryptionFile = "/var/session-secret/sessionEncryptionKey"
+		b.sessionAuthenticationFile = sessionAuthKeyFilePath
+		b.sessionEncryptionFile = sessionEncKeyFilePath
+		b.previousSessionAuthenticationFile = previousSessionAuthKeyFilePath
+		b.previousSessionEncryptionFile = previousSessionEncKeyFilePath
 
 		if len(oidcProvider.Issuer.CertificateAuthority.Name) > 0 {
 			b.CAFile = path.Join(api.AuthServerCAMountDir, api.AuthServerCAFileName)
@@ -468,11 +480,31 @@ func (b *ConsoleServerCLIConfigBuilder) auth() Auth {
 }
 
 func (b *ConsoleServerCLIConfigBuilder) session() Session {
-	conf := Session{
-		CookieAuthenticationKeyFile: b.sessionAuthenticationFile,
-		CookieEncryptionKeyFile:     b.sessionEncryptionFile,
+	if b.authType == "disabled" {
+		return Session{}
 	}
-	return conf
+	authFile := b.sessionAuthenticationFile
+	encFile := b.sessionEncryptionFile
+	if authFile == "" {
+		authFile = sessionAuthKeyFilePath
+	}
+	if encFile == "" {
+		encFile = sessionEncKeyFilePath
+	}
+	prevAuthFile := b.previousSessionAuthenticationFile
+	prevEncFile := b.previousSessionEncryptionFile
+	if prevAuthFile == "" {
+		prevAuthFile = previousSessionAuthKeyFilePath
+	}
+	if prevEncFile == "" {
+		prevEncFile = previousSessionEncKeyFilePath
+	}
+	return Session{
+		CookieAuthenticationKeyFile:         authFile,
+		CookieEncryptionKeyFile:             encFile,
+		PreviousCookieAuthenticationKeyFile: prevAuthFile,
+		PreviousCookieEncryptionKeyFile:     prevEncFile,
+	}
 }
 
 func (b *ConsoleServerCLIConfigBuilder) customization() Customization {
