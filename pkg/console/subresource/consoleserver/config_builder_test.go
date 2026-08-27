@@ -71,6 +71,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{
@@ -103,6 +104,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{
@@ -146,6 +148,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					Capabilities: []v1.Capability{
 						{
@@ -195,6 +198,12 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile:    clientSecretFilePath,
 					OAuthEndpointCAFile: "/var/oauth-serving-cert/ca-bundle.crt",
 					LogoutRedirect:      "https://foobar.com/logout",
+				},
+				Session: Session{
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 
@@ -257,8 +266,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					LogoutRedirect:      "https://foobar.com/logout",
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -346,6 +357,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{
@@ -381,6 +393,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{
@@ -989,6 +1002,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{
@@ -1030,6 +1044,7 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientID:         api.OpenShiftConsoleName,
 					ClientSecretFile: clientSecretFilePath,
 				},
+				Session: Session{},
 				Customization: Customization{
 					Perspectives: []Perspective{
 						{
@@ -1132,6 +1147,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: dev
@@ -1166,7 +1183,11 @@ auth:
   clientSecretFile: /var/oauth-config/clientSecret
   oauthEndpointCAFile: /var/oauth-serving-cert/ca-bundle.crt
   logoutRedirect: https://foobar.com/logout
-session: {}
+session:
+  cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
+  cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: dev
