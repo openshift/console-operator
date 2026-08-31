@@ -4,7 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
+	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"strings"
@@ -324,7 +327,7 @@ func validateOIDCIssuer(ctx context.Context, issuerURL string, caBundle []byte) 
 
 	parsed, err := url.Parse(issuerURL)
 	if err != nil {
-		return fmt.Errorf("issuer URL is malformed: %v", err)
+		return fmt.Errorf("issuer URL is malformed: %w", err)
 	}
 
 	if !strings.EqualFold(parsed.Scheme, "https") {
@@ -335,10 +338,20 @@ func validateOIDCIssuer(ctx context.Context, issuerURL string, caBundle []byte) 
 		return fmt.Errorf("issuer URL has no host")
 	}
 
+	if parsed.RawQuery != "" {
+		return fmt.Errorf("issuer URL must not contain a query component")
+	}
+
+	if parsed.Fragment != "" {
+		return fmt.Errorf("issuer URL must not contain a fragment component")
+	}
+
 	// Probe the OIDC discovery endpoint
 	discoveryURL := strings.TrimRight(issuerURL, "/") + "/.well-known/openid-configuration"
 
-	tlsConfig := &tls.Config{}
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
 	if len(caBundle) > 0 {
 		pool := x509.NewCertPool()
 		if !pool.AppendCertsFromPEM(caBundle) {
@@ -358,17 +371,51 @@ func validateOIDCIssuer(ctx context.Context, issuerURL string, caBundle []byte) 
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discoveryURL, nil)
 	if err != nil {
-		return fmt.Errorf("failed to create OIDC discovery request: %v", err)
+		return fmt.Errorf("failed to create OIDC discovery request: %w", err)
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("OIDC issuer URL %q is not reachable: %v", issuerURL, err)
+		return fmt.Errorf("OIDC issuer URL %q is not reachable: %w", issuerURL, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			klog.V(4).Infof("failed to close OIDC discovery response body: %v", closeErr)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("OIDC discovery endpoint returned HTTP %d for issuer %q", resp.StatusCode, issuerURL)
+	}
+
+	// Validate content type is application/json
+	contentType := resp.Header.Get("Content-Type")
+	if contentType != "" {
+		mediaType, _, err := mime.ParseMediaType(contentType)
+		if err != nil || mediaType != "application/json" {
+			return fmt.Errorf("OIDC discovery endpoint returned non-JSON content type %q for issuer %q", contentType, issuerURL)
+		}
+	}
+
+	// Decode and validate the discovery document
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1 MiB limit
+	if err != nil {
+		return fmt.Errorf("failed to read OIDC discovery response: %w", err)
+	}
+
+	var discovery struct {
+		Issuer string `json:"issuer"`
+	}
+	if err := json.Unmarshal(body, &discovery); err != nil {
+		return fmt.Errorf("OIDC discovery response is not valid JSON: %w", err)
+	}
+
+	// Per OpenID Connect Discovery 1.0, the issuer value in the discovery
+	// document MUST exactly match the issuer URL used to retrieve it.
+	normalizedIssuer := strings.TrimRight(issuerURL, "/")
+	normalizedDiscovery := strings.TrimRight(discovery.Issuer, "/")
+	if normalizedDiscovery != normalizedIssuer {
+		return fmt.Errorf("OIDC discovery issuer %q does not match configured issuer %q", discovery.Issuer, issuerURL)
 	}
 
 	return nil

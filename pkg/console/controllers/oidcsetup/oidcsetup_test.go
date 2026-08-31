@@ -12,6 +12,15 @@ import (
 	"testing"
 )
 
+// writeJSON writes a JSON response and reports errors through t.
+func writeJSON(t *testing.T, w http.ResponseWriter, format string, args ...interface{}) {
+	t.Helper()
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := fmt.Fprintf(w, format, args...); err != nil {
+		t.Errorf("failed to write response: %v", err)
+	}
+}
+
 // certPEM returns the PEM-encoded certificate of a TLS test server.
 func certPEM(s *httptest.Server) []byte {
 	cert := s.TLS.Certificates[0]
@@ -22,11 +31,11 @@ func certPEM(s *httptest.Server) []byte {
 }
 
 func TestValidateOIDCIssuer(t *testing.T) {
-	// Create a TLS test server that serves a valid OIDC discovery response
-	validServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// Create a TLS test server that echoes back its own URL as the issuer
+	var validServer *httptest.Server
+	validServer = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/.well-known/openid-configuration" {
-			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprintf(w, `{"issuer": "%s"}`, "https://valid-issuer")
+			writeJSON(t, w, `{"issuer": %q}`, validServer.URL)
 			return
 		}
 		http.NotFound(w, r)
@@ -48,6 +57,30 @@ func TestValidateOIDCIssuer(t *testing.T) {
 	}))
 	defer errorServer.Close()
 	errorServerCAPEM := certPEM(errorServer)
+
+	// Server that returns HTML instead of JSON
+	htmlServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		if _, err := fmt.Fprint(w, "<html>not json</html>"); err != nil {
+			t.Errorf("failed to write response: %v", err)
+		}
+	}))
+	defer htmlServer.Close()
+	htmlServerCAPEM := certPEM(htmlServer)
+
+	// Server that returns JSON with a mismatched issuer
+	mismatchServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(t, w, `{"issuer": "https://wrong-issuer.example.com"}`)
+	}))
+	defer mismatchServer.Close()
+	mismatchServerCAPEM := certPEM(mismatchServer)
+
+	// Server that returns invalid JSON
+	invalidJSONServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(t, w, `{invalid json}`)
+	}))
+	defer invalidJSONServer.Close()
+	invalidJSONServerCAPEM := certPEM(invalidJSONServer)
 
 	tests := []struct {
 		name      string
@@ -132,6 +165,39 @@ func TestValidateOIDCIssuer(t *testing.T) {
 			wantErr:   true,
 			errSubstr: "failed to parse CA bundle",
 		},
+		{
+			name:      "URL with query component",
+			issuerURL: "https://example.com?foo=bar",
+			wantErr:   true,
+			errSubstr: "must not contain a query",
+		},
+		{
+			name:      "URL with fragment component",
+			issuerURL: "https://example.com#frag",
+			wantErr:   true,
+			errSubstr: "must not contain a fragment",
+		},
+		{
+			name:      "discovery returns non-JSON content type",
+			issuerURL: htmlServer.URL,
+			caBundle:  htmlServerCAPEM,
+			wantErr:   true,
+			errSubstr: "non-JSON content type",
+		},
+		{
+			name:      "discovery issuer mismatch",
+			issuerURL: mismatchServer.URL,
+			caBundle:  mismatchServerCAPEM,
+			wantErr:   true,
+			errSubstr: "does not match configured issuer",
+		},
+		{
+			name:      "discovery returns invalid JSON",
+			issuerURL: invalidJSONServer.URL,
+			caBundle:  invalidJSONServerCAPEM,
+			wantErr:   true,
+			errSubstr: "not valid JSON",
+		},
 	}
 
 	for _, tt := range tests {
@@ -158,9 +224,9 @@ func TestValidateOIDCIssuer(t *testing.T) {
 // TestValidateOIDCIssuerTLSConfig verifies that TLS configuration
 // with a custom CA bundle works correctly end-to-end.
 func TestValidateOIDCIssuerTLSConfig(t *testing.T) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"issuer": "https://test"}`)
+	var server *httptest.Server
+	server = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(t, w, `{"issuer": %q}`, server.URL)
 	}))
 	defer server.Close()
 
@@ -175,16 +241,26 @@ func TestValidateOIDCIssuerTLSConfig(t *testing.T) {
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
-				RootCAs: pool,
+				MinVersion: tls.VersionTLS12,
+				RootCAs:    pool,
 			},
 		},
 	}
 
-	resp, err := client.Get(server.URL + "/.well-known/openid-configuration")
+	req, err := http.NewRequest(http.MethodGet, server.URL+"/.well-known/openid-configuration", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to reach test server: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			t.Errorf("failed to close response body: %v", closeErr)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
