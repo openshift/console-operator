@@ -85,6 +85,18 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 
 	expectedConfigHash := configMapContentHash(consoleConfig)
+
+	trustedCAConfigMapEmpty := configmap.TrustedCAStub()
+	trustedCAConfigMapSet := configmap.TrustedCAStub()
+	trustedCAConfigMapSet.Data[api.TrustedCABundleKey] = "testCAValue"
+
+	commonServiceCA := &corev1.ConfigMap{}
+	commonOAuthServingCert := &corev1.ConfigMap{Data: map[string]string{"ca-bundle.crt": "test"}}
+	expectedServiceCAHash := configMapContentHash(commonServiceCA)
+	expectedOAuthCertHash := configMapContentHash(commonOAuthServingCert)
+	expectedTrustedCAEmptyHash := configMapContentHash(trustedCAConfigMapEmpty)
+	expectedTrustedCASetHash := configMapContentHash(trustedCAConfigMapSet)
+
 	consoleDeploymentObjectMeta := metav1.ObjectMeta{
 		Name:                       api.OpenShiftConsoleName,
 		Namespace:                  api.OpenShiftConsoleNamespace,
@@ -100,9 +112,9 @@ func TestDefaultDeployment(t *testing.T) {
 		Annotations: map[string]string{
 			configMapResourceVersionAnnotation:             expectedConfigHash,
 			secretResourceVersionAnnotation:                "",
-			authnCATrustConfigMapResourceVersionAnnotation: "",
-			serviceCAConfigMapResourceVersionAnnotation:    "",
-			trustedCAConfigMapResourceVersionAnnotation:    "",
+			authnCATrustConfigMapResourceVersionAnnotation: expectedOAuthCertHash,
+			serviceCAConfigMapResourceVersionAnnotation:    expectedServiceCAHash,
+			trustedCAConfigMapResourceVersionAnnotation:    expectedTrustedCAEmptyHash,
 			proxyConfigResourceVersionAnnotation:           "",
 			infrastructureConfigResourceVersionAnnotation:  "",
 			consoleImageAnnotation:                         "",
@@ -133,9 +145,9 @@ func TestDefaultDeployment(t *testing.T) {
 	consoleDeploymentTemplateAnnotations := map[string]string{
 		configMapResourceVersionAnnotation:             expectedConfigHash,
 		secretResourceVersionAnnotation:                "",
-		authnCATrustConfigMapResourceVersionAnnotation: "",
-		serviceCAConfigMapResourceVersionAnnotation:    "",
-		trustedCAConfigMapResourceVersionAnnotation:    "",
+		authnCATrustConfigMapResourceVersionAnnotation: expectedOAuthCertHash,
+		serviceCAConfigMapResourceVersionAnnotation:    expectedServiceCAHash,
+		trustedCAConfigMapResourceVersionAnnotation:    expectedTrustedCAEmptyHash,
 		proxyConfigResourceVersionAnnotation:           "",
 		infrastructureConfigResourceVersionAnnotation:  "",
 		consoleImageAnnotation:                         "",
@@ -160,10 +172,6 @@ func TestDefaultDeployment(t *testing.T) {
 			}},
 		},
 	}
-
-	trustedCAConfigMapEmpty := configmap.TrustedCAStub()
-	trustedCAConfigMapSet := configmap.TrustedCAStub()
-	trustedCAConfigMapSet.Data[api.TrustedCABundleKey] = "testCAValue"
 
 	proxyConfig := &configv1.Proxy{
 		TypeMeta:   metav1.TypeMeta{},
@@ -308,16 +316,27 @@ func TestDefaultDeployment(t *testing.T) {
 					Kind:       "Deployment",
 					APIVersion: "apps/v1",
 				},
-				ObjectMeta: consoleDeploymentObjectMeta,
+				ObjectMeta: func() metav1.ObjectMeta {
+					om := consoleDeploymentObjectMeta.DeepCopy()
+					om.Annotations[trustedCAConfigMapResourceVersionAnnotation] = expectedTrustedCASetHash
+					return *om
+				}(),
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &defaultReplicaCount,
 					Selector: &metav1.LabelSelector{
 						MatchLabels: labels,
 					},
 					Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{
-						Name:        api.OpenShiftConsoleName,
-						Labels:      labels,
-						Annotations: consoleDeploymentTemplateAnnotations,
+						Name:   api.OpenShiftConsoleName,
+						Labels: labels,
+						Annotations: func() map[string]string {
+							a := make(map[string]string, len(consoleDeploymentTemplateAnnotations))
+							for k, v := range consoleDeploymentTemplateAnnotations {
+								a[k] = v
+							}
+							a[trustedCAConfigMapResourceVersionAnnotation] = expectedTrustedCASetHash
+							return a
+						}(),
 					},
 						Spec: corev1.PodSpec{
 							DNSPolicy:                corev1.DNSClusterFirst,
@@ -646,9 +665,9 @@ func TestWithConsoleAnnotations(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
 						configMapResourceVersionAnnotation:             configMapContentHash(consoleConfigMap),
-						serviceCAConfigMapResourceVersionAnnotation:    serviceCAConfigMap.GetResourceVersion(),
-						authnCATrustConfigMapResourceVersionAnnotation: oauthServingCertConfigMap.GetResourceVersion(),
-						trustedCAConfigMapResourceVersionAnnotation:    trustedCAConfigMap.GetResourceVersion(),
+						serviceCAConfigMapResourceVersionAnnotation:    configMapContentHash(serviceCAConfigMap),
+						authnCATrustConfigMapResourceVersionAnnotation: configMapContentHash(oauthServingCertConfigMap),
+						trustedCAConfigMapResourceVersionAnnotation:    configMapContentHash(trustedCAConfigMap),
 						proxyConfigResourceVersionAnnotation:           proxyConfig.GetResourceVersion(),
 						infrastructureConfigResourceVersionAnnotation:  infrastructureConfig.GetResourceVersion(),
 						secretResourceVersionAnnotation:                oAuthClientSecret.GetResourceVersion(),
@@ -662,9 +681,9 @@ func TestWithConsoleAnnotations(t *testing.T) {
 							Annotations: map[string]string{
 								workloadManagementAnnotation:                   workloadManagementAnnotationValue,
 								configMapResourceVersionAnnotation:             configMapContentHash(consoleConfigMap),
-								serviceCAConfigMapResourceVersionAnnotation:    serviceCAConfigMap.GetResourceVersion(),
-								authnCATrustConfigMapResourceVersionAnnotation: oauthServingCertConfigMap.GetResourceVersion(),
-								trustedCAConfigMapResourceVersionAnnotation:    trustedCAConfigMap.GetResourceVersion(),
+								serviceCAConfigMapResourceVersionAnnotation:    configMapContentHash(serviceCAConfigMap),
+								authnCATrustConfigMapResourceVersionAnnotation: configMapContentHash(oauthServingCertConfigMap),
+								trustedCAConfigMapResourceVersionAnnotation:    configMapContentHash(trustedCAConfigMap),
 								proxyConfigResourceVersionAnnotation:           proxyConfig.GetResourceVersion(),
 								infrastructureConfigResourceVersionAnnotation:  infrastructureConfig.GetResourceVersion(),
 								secretResourceVersionAnnotation:                oAuthClientSecret.GetResourceVersion(),
@@ -749,6 +768,66 @@ func TestServingCertAnnotationChangesOnRotation(t *testing.T) {
 	if oldPodVal == newPodVal {
 		t.Error("pod template annotation value did not change after cert rotation — rollout would not be triggered")
 	}
+}
+
+func TestConfigMapAnnotationsUseContentHash(t *testing.T) {
+	consoleConfigMap := &corev1.ConfigMap{
+		Data: map[string]string{"console-config.yaml": "kind: ConsoleConfig"},
+	}
+	proxyConfig := &configv1.Proxy{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1"}}
+	infrastructureConfig := &configv1.Infrastructure{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1"}}
+	oAuthClientSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1"}}
+	servingCert := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1"}}
+
+	caData := map[string]string{"ca-bundle.crt": "SOME-CA-BUNDLE"}
+
+	makeDeployment := func() *appsv1.Deployment {
+		return &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{}},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{}},
+				},
+			},
+		}
+	}
+
+	annotationsFor := func(serviceCA, authCA, trustedCA *corev1.ConfigMap) map[string]string {
+		dep := makeDeployment()
+		withConsoleAnnotations(dep, consoleConfigMap, serviceCA, authCA, trustedCA, oAuthClientSecret, nil, servingCert, proxyConfig, infrastructureConfig)
+		return dep.ObjectMeta.Annotations
+	}
+
+	t.Run("same data different ResourceVersion produces identical annotation", func(t *testing.T) {
+		cm1 := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "100"}, Data: caData}
+		cm2 := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "999"}, Data: caData}
+		trustedCA := &corev1.ConfigMap{}
+
+		a1 := annotationsFor(&corev1.ConfigMap{}, cm1, trustedCA)
+		a2 := annotationsFor(&corev1.ConfigMap{}, cm2, trustedCA)
+
+		if a1[authnCATrustConfigMapResourceVersionAnnotation] != a2[authnCATrustConfigMapResourceVersionAnnotation] {
+			t.Errorf("authn CA annotation changed despite identical data: %q vs %q",
+				a1[authnCATrustConfigMapResourceVersionAnnotation], a2[authnCATrustConfigMapResourceVersionAnnotation])
+		}
+		if a1[serviceCAConfigMapResourceVersionAnnotation] != a2[serviceCAConfigMapResourceVersionAnnotation] {
+			t.Errorf("service CA annotation changed despite identical data: %q vs %q",
+				a1[serviceCAConfigMapResourceVersionAnnotation], a2[serviceCAConfigMapResourceVersionAnnotation])
+		}
+	})
+
+	t.Run("different data produces different annotation", func(t *testing.T) {
+		cm1 := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1"}, Data: map[string]string{"ca-bundle.crt": "OLD-CA"}}
+		cm2 := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1"}, Data: map[string]string{"ca-bundle.crt": "NEW-CA"}}
+		trustedCA := &corev1.ConfigMap{}
+
+		a1 := annotationsFor(&corev1.ConfigMap{}, cm1, trustedCA)
+		a2 := annotationsFor(&corev1.ConfigMap{}, cm2, trustedCA)
+
+		if a1[authnCATrustConfigMapResourceVersionAnnotation] == a2[authnCATrustConfigMapResourceVersionAnnotation] {
+			t.Error("authn CA annotation did not change when data changed")
+		}
+	})
 }
 
 func TestServingCertAnnotationInResourceAnnotations(t *testing.T) {

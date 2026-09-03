@@ -250,8 +250,8 @@ func withConsoleAnnotations(
 ) {
 	deployment.ObjectMeta.Annotations = map[string]string{
 		configMapResourceVersionAnnotation:            configMapContentHash(consoleConfigMap),
-		serviceCAConfigMapResourceVersionAnnotation:   serviceCAConfigMap.GetResourceVersion(),
-		trustedCAConfigMapResourceVersionAnnotation:   trustedCAConfigMap.GetResourceVersion(),
+		serviceCAConfigMapResourceVersionAnnotation:   configMapContentHash(serviceCAConfigMap),
+		trustedCAConfigMapResourceVersionAnnotation:   configMapContentHash(trustedCAConfigMap),
 		proxyConfigResourceVersionAnnotation:          proxyConfig.GetResourceVersion(),
 		infrastructureConfigResourceVersionAnnotation: infrastructureConfig.GetResourceVersion(),
 		secretResourceVersionAnnotation:               oAuthClientSecret.GetResourceVersion(),
@@ -260,7 +260,7 @@ func withConsoleAnnotations(
 	}
 
 	if authServerCAConfigMap != nil {
-		deployment.ObjectMeta.Annotations[authnCATrustConfigMapResourceVersionAnnotation] = authServerCAConfigMap.GetResourceVersion()
+		deployment.ObjectMeta.Annotations[authnCATrustConfigMapResourceVersionAnnotation] = configMapContentHash(authServerCAConfigMap)
 	}
 
 	if sessionSecret != nil {
