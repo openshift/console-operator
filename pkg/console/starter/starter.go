@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"syscall"
 	"time"
 
 	// kube
@@ -14,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -237,6 +239,23 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		return err
 	}
 
+	infrastructureConfig, err := configClient.ConfigV1().Infrastructures().Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	clusterVersionConfig, err := configClient.ConfigV1().ClusterVersions().Get(ctx, api.VersionResourceName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	ingressDisabled := util.IsExternalControlPlaneWithIngressDisabled(infrastructureConfig, clusterVersionConfig)
+	if ingressDisabled {
+		klog.Info("Ingress capability is disabled in external control plane topology, skipping route and health check controllers")
+		pollAndCallOnIngressEnabled(ctx, configClient, time.Minute*5, func() {
+			klog.Info("Ingress capability has been enabled, restarting to start route and health check controllers")
+			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+		})
+	}
+
 	// TODO: rearrange these into informer,client pairs, NOT separated.
 	consoleOperator := consoleoperator.NewConsoleOperator(
 		ctx,
@@ -288,6 +307,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		operatorConfigInformers.Operator().V1().Consoles(),
 		routesInformersNamespaced.Route().V1().Routes(),
 		configInformers.Config().V1().Ingresses(),
+		configInformers.Config().V1().Infrastructures(),
+		configInformers.Config().V1().ClusterVersions(),
 		kubeInformersNamespaced.Core().V1().Secrets(),
 		oauthClientsSwitchedInformer,
 		recorder,
@@ -416,55 +437,63 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		recorder,
 	)
 
-	consoleRouteController := route.NewRouteSyncController(
-		api.OpenShiftConsoleRouteName,
-		// enable health check for console route
-		true,
-		// top level config
-		configInformers,
-		// clients
-		operatorClient,
-		routesClient.RouteV1(),
-		// route
-		operatorConfigInformers.Operator().V1().Consoles(),
-		operatorConfigInformers.Operator().V1().IngressControllers(),
-		kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
-		routesInformersNamespaced.Route().V1().Routes(),
-		// events
-		recorder,
-	)
+	var consoleRouteController, downloadsRouteController interface {
+		Run(ctx context.Context, workers int)
+	}
+	var consoleRouteHealthCheckController interface {
+		Run(ctx context.Context, workers int)
+	}
+	if !ingressDisabled {
+		consoleRouteController = route.NewRouteSyncController(
+			api.OpenShiftConsoleRouteName,
+			// enable health check for console route
+			true,
+			// top level config
+			configInformers,
+			// clients
+			operatorClient,
+			routesClient.RouteV1(),
+			// route
+			operatorConfigInformers.Operator().V1().Consoles(),
+			operatorConfigInformers.Operator().V1().IngressControllers(),
+			kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
+			routesInformersNamespaced.Route().V1().Routes(),
+			// events
+			recorder,
+		)
 
-	downloadsRouteController := route.NewRouteSyncController(
-		api.OpenShiftConsoleDownloadsRouteName,
-		// disable health check for console route
-		false,
-		// top level config
-		configInformers,
-		// clients
-		operatorClient,
-		routesClient.RouteV1(),
-		// route
-		operatorConfigInformers.Operator().V1().Consoles(),
-		operatorConfigInformers.Operator().V1().IngressControllers(),
-		kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
-		routesInformersNamespaced.Route().V1().Routes(),
-		// events
-		recorder,
-	)
+		downloadsRouteController = route.NewRouteSyncController(
+			api.OpenShiftConsoleDownloadsRouteName,
+			// disable health check for console route
+			false,
+			// top level config
+			configInformers,
+			// clients
+			operatorClient,
+			routesClient.RouteV1(),
+			// route
+			operatorConfigInformers.Operator().V1().Consoles(),
+			operatorConfigInformers.Operator().V1().IngressControllers(),
+			kubeInformersConfigNamespaced.Core().V1().Secrets(), // `openshift-config` namespace informers
+			routesInformersNamespaced.Route().V1().Routes(),
+			// events
+			recorder,
+		)
 
-	consoleRouteHealthCheckController := healthcheck.NewHealthCheckController(
-		// top level config
-		configClient.ConfigV1(),
-		// clients
-		operatorClient,
-		// route
-		operatorConfigInformers.Operator().V1().Consoles(),
-		configInformers,                     // Config
-		kubeInformersNamespaced.Core().V1(), // `openshift-console` namespace informers
-		routesInformersNamespaced.Route().V1().Routes(),
-		// events
-		recorder,
-	)
+		consoleRouteHealthCheckController = healthcheck.NewHealthCheckController(
+			// top level config
+			configClient.ConfigV1(),
+			// clients
+			operatorClient,
+			// route
+			operatorConfigInformers.Operator().V1().Consoles(),
+			configInformers,                     // Config
+			kubeInformersNamespaced.Core().V1(), // `openshift-console` namespace informers
+			routesInformersNamespaced.Route().V1().Routes(),
+			// events
+			recorder,
+		)
+	}
 
 	upgradeNotificationController := upgradenotification.NewUpgradeNotificationController(
 		// top level config
@@ -664,7 +693,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		informer.Start(ctx.Done())
 	}
 
-	for _, controller := range []interface {
+	controllers := []interface {
 		Run(ctx context.Context, workers int)
 	}{
 		migrationCleanupController,
@@ -677,13 +706,10 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleServiceAccountController,
 		downloadsServiceAccountController,
 		consoleServiceController,
-		consoleRouteController,
 		downloadsServiceController,
-		downloadsRouteController,
 		consoleOperator,
 		cliDownloadsController,
 		downloadsDeploymentController,
-		consoleRouteHealthCheckController,
 		consolePDBController,
 		downloadsPDBController,
 		oauthClientController,
@@ -693,7 +719,15 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		upgradeNotificationController,
 		staleConditionsController,
 		storageversionmigrationController,
-	} {
+	}
+	if !ingressDisabled {
+		controllers = append(controllers,
+			consoleRouteController,
+			downloadsRouteController,
+			consoleRouteHealthCheckController,
+		)
+	}
+	for _, controller := range controllers {
 		go controller.Run(ctx, 1)
 	}
 
@@ -739,6 +773,31 @@ func getResourceSyncer(controllerContext *controllercmd.ControllerContext, kubeC
 		controllerContext.EventRecorder,
 	)
 	return resourceSyncerInformers, resourceSyncer
+}
+
+func pollAndCallOnIngressEnabled(ctx context.Context, configClient configclient.Interface, interval time.Duration, onIngressEnabled func()) {
+	go func() {
+		err := wait.PollUntilContextCancel(ctx, interval, false, func(ctx context.Context) (done bool, err error) {
+			infrastructureConfig, err := configClient.ConfigV1().Infrastructures().Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("failed to check infrastructure config for ingress capability, retrying: %v", err)
+				return false, nil
+			}
+			clusterVersionConfig, err := configClient.ConfigV1().ClusterVersions().Get(ctx, api.VersionResourceName, metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("failed to check cluster version for ingress capability, retrying: %v", err)
+				return false, nil
+			}
+			ingressEnabled := !util.IsExternalControlPlaneWithIngressDisabled(infrastructureConfig, clusterVersionConfig)
+			return ingressEnabled, nil
+		})
+
+		if err != nil {
+			return
+		}
+
+		onIngressEnabled()
+	}()
 }
 
 func extractStaticPodOperatorSpec(obj *unstructured.Unstructured, fieldManager string) (*applyoperatorv1.OperatorSpecApplyConfiguration, error) {
