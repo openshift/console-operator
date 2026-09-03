@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-console-ui
+  namespace: openshift-console
+  annotations:
+    include.release.openshift.io/hypershift: "true"
+    include.release.openshift.io/ibm-cloud-managed: "true"
+    include.release.openshift.io/self-managed-high-availability: "true"
+    include.release.openshift.io/single-node-developer: "true"
+    capability.openshift.io/name: Console
+    kubernetes.io/description: >-
+      Allow all egress from the console UI pods. The console backend
+      requires broad network egress that cannot be statically
+      restricted in a CVO-managed NetworkPolicy because it
+      communicates with: (1) the Kubernetes API server, whose address
+      and port vary per cluster and which runs on the host network;
+      (2) ConsolePlugin backend services registered dynamically in
+      arbitrary namespaces and ports; (3) external Helm chart
+      repositories, Git endpoints, and ArtifactHub catalogs
+      configured via HelmChartRepository custom resources;
+      (4) OAuth and OIDC authentication endpoints; and (5) DNS.
+      The downloads server pods are intentionally excluded and have
+      no egress allowance.
+spec:
+  podSelector:
+    matchLabels:
+      app: console
+      component: ui
+  egress:
+  - {}
+  policyTypes:
+  - Egress
