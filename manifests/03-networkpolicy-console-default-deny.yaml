@@ -13,9 +13,7 @@ metadata:
       Default deny all ingress and egress traffic in the
       openshift-console namespace. The policy improves network
       isolation by ensuring that pods only communicate through
-      explicitly allowed policies. Companion policies grant ingress
-      from the OpenShift router and monitoring stack, and egress for
-      the console UI pods.
+      explicitly allowed policies.
 spec:
   podSelector: {}
   policyTypes:
