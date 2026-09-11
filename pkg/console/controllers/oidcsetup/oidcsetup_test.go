@@ -34,7 +34,7 @@ func TestValidateOIDCIssuer(t *testing.T) {
 	// Create a TLS test server that echoes back its own URL as the issuer
 	var validServer *httptest.Server
 	validServer = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/.well-known/openid-configuration" {
+		if r.URL.Path == "/.well-known/openid-configuration" || r.URL.Path == "/custom-discovery" {
 			writeJSON(t, w, `{"issuer": %q}`, validServer.URL)
 			return
 		}
@@ -82,12 +82,26 @@ func TestValidateOIDCIssuer(t *testing.T) {
 	defer invalidJSONServer.Close()
 	invalidJSONServerCAPEM := certPEM(invalidJSONServer)
 
+	// Server that only serves discovery at a custom path (not .well-known),
+	// simulating a provider that requires discoveryURL override.
+	var customDiscoveryServer *httptest.Server
+	customDiscoveryServer = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/oidc/.well-known/openid-configuration" {
+			writeJSON(t, w, `{"issuer": %q}`, customDiscoveryServer.URL)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer customDiscoveryServer.Close()
+	customDiscoveryServerCAPEM := certPEM(customDiscoveryServer)
+
 	tests := []struct {
-		name      string
-		issuerURL string
-		caBundle  []byte
-		wantErr   bool
-		errSubstr string
+		name         string
+		issuerURL    string
+		discoveryURL string
+		caBundle     []byte
+		wantErr      bool
+		errSubstr    string
 	}{
 		{
 			name:      "empty URL",
@@ -198,12 +212,33 @@ func TestValidateOIDCIssuer(t *testing.T) {
 			wantErr:   true,
 			errSubstr: "not valid JSON",
 		},
+		{
+			name:         "valid with custom discoveryURL",
+			issuerURL:    validServer.URL,
+			discoveryURL: validServer.URL + "/custom-discovery",
+			caBundle:     validServerCAPEM,
+			wantErr:      false,
+		},
+		{
+			name:         "custom discoveryURL overrides default path",
+			issuerURL:    customDiscoveryServer.URL,
+			discoveryURL: customDiscoveryServer.URL + "/oidc/.well-known/openid-configuration",
+			caBundle:     customDiscoveryServerCAPEM,
+			wantErr:      false,
+		},
+		{
+			name:      "discoveryURL not set falls back to default path which 404s",
+			issuerURL: customDiscoveryServer.URL,
+			caBundle:  customDiscoveryServerCAPEM,
+			wantErr:   true,
+			errSubstr: "HTTP 404",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			err := validateOIDCIssuer(ctx, tt.issuerURL, tt.caBundle)
+			err := validateOIDCIssuer(ctx, tt.issuerURL, tt.discoveryURL, tt.caBundle)
 
 			if tt.wantErr {
 				if err == nil {

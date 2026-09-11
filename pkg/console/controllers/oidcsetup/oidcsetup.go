@@ -237,9 +237,9 @@ func (c *oidcSetupController) syncAuthTypeOIDC(ctx context.Context, authnConfig 
 		}
 	}
 
-	if err := validateOIDCIssuer(ctx, oidcProvider.Issuer.URL, caBundle); err != nil {
+	if err := validateOIDCIssuer(ctx, oidcProvider.Issuer.URL, oidcProvider.Issuer.DiscoveryURL, caBundle); err != nil {
 		c.authStatusHandler.DegradedNotAvailable("OIDCIssuerURLInvalid", err.Error())
-		return nil
+		return err
 	}
 
 	if valid, msg, err := c.checkClientConfigStatus(authnConfig, clientSecret); err != nil {
@@ -320,7 +320,7 @@ func (c *oidcSetupController) handleManaged() (bool, error) {
 // validateOIDCIssuer checks that the OIDC issuer URL is well-formed and that
 // the OIDC discovery endpoint is reachable. It returns an error describing the
 // problem when the URL is invalid or the discovery probe fails.
-func validateOIDCIssuer(ctx context.Context, issuerURL string, caBundle []byte) error {
+func validateOIDCIssuer(ctx context.Context, issuerURL string, discoveryURLOverride string, caBundle []byte) error {
 	if len(issuerURL) == 0 {
 		return fmt.Errorf("issuer URL is empty")
 	}
@@ -346,8 +346,13 @@ func validateOIDCIssuer(ctx context.Context, issuerURL string, caBundle []byte) 
 		return fmt.Errorf("issuer URL must not contain a fragment component")
 	}
 
-	// Probe the OIDC discovery endpoint
-	discoveryURL := strings.TrimRight(issuerURL, "/") + "/.well-known/openid-configuration"
+	// Probe the OIDC discovery endpoint. When the API specifies an explicit
+	// discoveryURL (ExternalOIDCWithUpstreamParity feature gate), use it
+	// instead of deriving the standard path from the issuer URL.
+	discoveryURL := discoveryURLOverride
+	if len(discoveryURL) == 0 {
+		discoveryURL = strings.TrimRight(issuerURL, "/") + "/.well-known/openid-configuration"
+	}
 
 	tlsConfig := &tls.Config{
 		MinVersion: tls.VersionTLS12,
