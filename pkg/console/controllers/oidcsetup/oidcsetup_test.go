@@ -2,8 +2,6 @@ package oidcsetup
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"net/http"
@@ -81,6 +79,21 @@ func TestValidateOIDCIssuer(t *testing.T) {
 	}))
 	defer invalidJSONServer.Close()
 	invalidJSONServerCAPEM := certPEM(invalidJSONServer)
+
+	// Server that returns valid JSON but without a Content-Type header
+	var noContentTypeServer *httptest.Server
+	noContentTypeServer = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Remove auto-detected Content-Type before writing the response.
+		// Setting the map entry to nil prevents Go from sniffing the type
+		// while ensuring no Content-Type header is sent on the wire.
+		w.Header()["Content-Type"] = nil
+		w.WriteHeader(http.StatusOK)
+		if _, err := fmt.Fprintf(w, `{"issuer": %q}`, noContentTypeServer.URL); err != nil {
+			t.Errorf("failed to write response: %v", err)
+		}
+	}))
+	defer noContentTypeServer.Close()
+	noContentTypeServerCAPEM := certPEM(noContentTypeServer)
 
 	// Server that only serves discovery at a custom path (not .well-known),
 	// simulating a provider that requires discoveryURL override.
@@ -213,6 +226,13 @@ func TestValidateOIDCIssuer(t *testing.T) {
 			errSubstr: "not valid JSON",
 		},
 		{
+			name:      "discovery returns no Content-Type header",
+			issuerURL: noContentTypeServer.URL,
+			caBundle:  noContentTypeServerCAPEM,
+			wantErr:   true,
+			errSubstr: "no Content-Type header",
+		},
+		{
 			name:         "valid with custom discoveryURL",
 			issuerURL:    validServer.URL,
 			discoveryURL: validServer.URL + "/custom-discovery",
@@ -256,8 +276,9 @@ func TestValidateOIDCIssuer(t *testing.T) {
 	}
 }
 
-// TestValidateOIDCIssuerTLSConfig verifies that TLS configuration
-// with a custom CA bundle works correctly end-to-end.
+// TestValidateOIDCIssuerTLSConfig exercises validateOIDCIssuer with TLS
+// servers to verify that the production TLS configuration (MinVersion 1.2,
+// custom CA bundle) works end-to-end.
 func TestValidateOIDCIssuerTLSConfig(t *testing.T) {
 	var server *httptest.Server
 	server = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -266,38 +287,15 @@ func TestValidateOIDCIssuerTLSConfig(t *testing.T) {
 	defer server.Close()
 
 	caBundle := certPEM(server)
+	ctx := context.Background()
 
-	// Verify we can reach the server with the correct CA
-	pool := x509.NewCertPool()
-	if !pool.AppendCertsFromPEM(caBundle) {
-		t.Fatal("failed to add server cert to pool")
+	// TLS 1.2+ server with correct CA should succeed
+	if err := validateOIDCIssuer(ctx, server.URL, "", caBundle); err != nil {
+		t.Fatalf("expected success with correct CA bundle, got: %v", err)
 	}
 
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				MinVersion: tls.VersionTLS12,
-				RootCAs:    pool,
-			},
-		},
-	}
-
-	req, err := http.NewRequest(http.MethodGet, server.URL+"/.well-known/openid-configuration", nil)
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("failed to reach test server: %v", err)
-	}
-	defer func() {
-		if closeErr := resp.Body.Close(); closeErr != nil {
-			t.Errorf("failed to close response body: %v", closeErr)
-		}
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	// Without CA bundle, TLS verification should fail
+	if err := validateOIDCIssuer(ctx, server.URL, "", nil); err == nil {
+		t.Fatal("expected TLS verification error without CA bundle, got nil")
 	}
 }

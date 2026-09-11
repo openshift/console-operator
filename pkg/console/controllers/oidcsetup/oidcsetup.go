@@ -393,13 +393,16 @@ func validateOIDCIssuer(ctx context.Context, issuerURL string, discoveryURLOverr
 		return fmt.Errorf("OIDC discovery endpoint returned HTTP %d for issuer %q", resp.StatusCode, issuerURL)
 	}
 
-	// Validate content type is application/json
+	// Per OpenID Connect Discovery 1.0 §4.2, the response MUST use
+	// application/json. Require the header so we fail fast on
+	// misconfigured providers instead of falling through to JSON parsing.
 	contentType := resp.Header.Get("Content-Type")
-	if contentType != "" {
-		mediaType, _, err := mime.ParseMediaType(contentType)
-		if err != nil || mediaType != "application/json" {
-			return fmt.Errorf("OIDC discovery endpoint returned non-JSON content type %q for issuer %q", contentType, issuerURL)
-		}
+	if contentType == "" {
+		return fmt.Errorf("OIDC discovery endpoint returned no Content-Type header for issuer %q", issuerURL)
+	}
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil || mediaType != "application/json" {
+		return fmt.Errorf("OIDC discovery endpoint returned non-JSON content type %q for issuer %q", contentType, issuerURL)
 	}
 
 	// Decode and validate the discovery document
