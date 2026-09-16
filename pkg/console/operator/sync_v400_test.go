@@ -371,7 +371,7 @@ func newTestConsoleOperator(t *testing.T, telemeterAvailable bool, pullSecretHas
 		},
 		Data: map[string]string{
 			"SEGMENT_API_HOST":       "https://segment.example.com",
-			"SEGMENT_JS_HOST":        "https://segment-js.example.com",
+			"SEGMENT_CDN_URL":        "https://segment.example.com/cdn",
 			"SEGMENT_PUBLIC_API_KEY": "test-key",
 		},
 	}
@@ -547,7 +547,7 @@ func TestGetTelemetryConfiguration_KeySetStableAcrossAvailabilityChange(t *testi
 	keysAvailable := sortedKeys(configAvailable)
 
 	// All keys must be present in both states — no key-set difference allowed.
-	sharedKeys := []string{"CLUSTER_ID", "ORGANIZATION_ID", "ACCOUNT_MAIL", "TELEMETER_CLIENT_DISABLED", "SEGMENT_API_HOST", "SEGMENT_JS_HOST", "SEGMENT_PUBLIC_API_KEY"}
+	sharedKeys := []string{"CLUSTER_ID", "ORGANIZATION_ID", "ACCOUNT_MAIL", "TELEMETER_CLIENT_DISABLED", "SEGMENT_API_HOST", "SEGMENT_CDN_URL", "SEGMENT_PUBLIC_API_KEY"}
 	for _, key := range sharedKeys {
 		if _, ok := configUnavailable[key]; !ok {
 			t.Errorf("key %q missing from unavailable config, keys present: %v", key, keysUnavailable)
