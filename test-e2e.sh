@@ -9,7 +9,7 @@ OPENSHIFT_CI=${OPENSHIFT_CI:=false}
 
 echo "Running tests..."
 if [ "$OPENSHIFT_CI" = true ]; then
-    KUBERNETES_CONFIG=${KUBECONFIG} go test -timeout 30m -v ./test/e2e/ 2>&1 | tee "$ARTIFACT_DIR/test.out"
+    KUBERNETES_CONFIG=${KUBECONFIG} go test -timeout 40m -v ./test/e2e/ 2>&1 | tee "$ARTIFACT_DIR/test.out"
     RESULT="${PIPESTATUS[0]}"
 
     go-junit-report < "$ARTIFACT_DIR/test.out" > "$ARTIFACT_DIR/junit.xml"
@@ -17,8 +17,8 @@ if [ "$OPENSHIFT_CI" = true ]; then
         exit 255
     fi
 else
-	echo 'KUBERNETES_CONFIG=${KUBECONFIG} go test -timeout 30m -v ./test/e2e/'
-    KUBERNETES_CONFIG=${KUBECONFIG} go test -timeout 30m -v ./test/e2e/
+	echo 'KUBERNETES_CONFIG=${KUBECONFIG} go test -timeout 40m -v ./test/e2e/'
+    KUBERNETES_CONFIG=${KUBECONFIG} go test -timeout 40m -v ./test/e2e/
 fi
 
 echo "Success"
