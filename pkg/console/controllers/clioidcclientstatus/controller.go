@@ -92,7 +92,7 @@ func (c *cliOIDCClientStatusController) HandleManaged(ctx context.Context) error
 	if !c.externalOIDCFeatureEnabled {
 		c.statusHandler.AddConditions(status.HandleProgressingOrDegraded("CLIOIDCClientStatus", "", nil))
 		c.statusHandler.AddConditions(status.HandleProgressingOrDegraded("CLIAuthStatusHandler", "", nil))
-		return c.statusHandler.FlushAndReturn(nil)
+		return c.statusHandler.FlushAndReturn(ctx, nil)
 	}
 
 	authnConfig, err := c.authnLister.Get(api.ConfigResourceName)
@@ -116,7 +116,7 @@ func (c *cliOIDCClientStatusController) HandleManaged(ctx context.Context) error
 
 		// reset the other condition set by this controller
 		c.statusHandler.AddConditions(status.HandleProgressingOrDegraded("CLIOIDCClientStatus", "", nil))
-		return c.statusHandler.FlushAndReturn(applyErr)
+		return c.statusHandler.FlushAndReturn(ctx, applyErr)
 	}
 
 	// we need to keep track of errors during the sync so that we can requeue
@@ -140,9 +140,9 @@ func (c *cliOIDCClientStatusController) HandleManaged(ctx context.Context) error
 	}
 
 	if len(errs) > 0 {
-		return c.statusHandler.FlushAndReturn(factory.SyntheticRequeueError)
+		return c.statusHandler.FlushAndReturn(ctx, factory.SyntheticRequeueError)
 	}
-	return c.statusHandler.FlushAndReturn(nil)
+	return c.statusHandler.FlushAndReturn(ctx, nil)
 }
 
 func (c *cliOIDCClientStatusController) syncOIDCCLient(authnConfig *configv1.Authentication) error {

@@ -128,7 +128,7 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 	default:
 		// if we're not using integrated oauth, reset all degraded conditions
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSync", "", nil))
-		return statusHandler.FlushAndReturn(nil)
+		return statusHandler.FlushAndReturn(ctx, nil)
 	}
 
 	operatorConfig, err := c.consoleOperatorLister.Get(api.ConfigResourceName)
@@ -154,7 +154,7 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 		}
 		if util.IsExternalControlPlaneWithIngressDisabled(infrastructureConfig, clusterVersionConfig) {
 			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSync", "", nil))
-			return statusHandler.FlushAndReturn(nil)
+			return statusHandler.FlushAndReturn(ctx, nil)
 		}
 
 		routeName := api.OpenShiftConsoleRouteName
@@ -179,7 +179,7 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 	waitCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	if !cache.WaitForCacheSync(waitCtx.Done(), c.oauthClientSwitchedInformer.Informer().HasSynced) {
-		return statusHandler.FlushAndReturn(fmt.Errorf("timed out waiting for OAuthClients cache sync"))
+		return statusHandler.FlushAndReturn(ctx, fmt.Errorf("timed out waiting for OAuthClients cache sync"))
 	}
 
 	clientSecret, err := c.targetNSSecretsLister.Secrets(api.TargetNamespace).Get("console-oauth-config")
@@ -191,10 +191,10 @@ func (c *oauthClientsController) sync(ctx context.Context, controllerContext fac
 	oauthErrReason, err := c.syncOAuthClient(ctx, clientSecret, consoleURL.String(), additionalHosts...)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSync", oauthErrReason, err))
 	if err != nil {
-		return statusHandler.FlushAndReturn(err)
+		return statusHandler.FlushAndReturn(ctx, err)
 	}
 
-	return statusHandler.FlushAndReturn(nil)
+	return statusHandler.FlushAndReturn(ctx, nil)
 }
 
 // handleStatus returns whether sync should happen and any error encountering

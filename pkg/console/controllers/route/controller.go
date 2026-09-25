@@ -132,39 +132,39 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 	switch c.routeName {
 	case api.OpenShiftConsoleRouteName:
 		if len(operatorConfig.Spec.Ingress.ConsoleURL) != 0 {
-			return statusHandler.FlushAndReturn(nil)
+			return statusHandler.FlushAndReturn(ctx, nil)
 		}
 	case api.OpenShiftConsoleDownloadsRouteName:
 		if len(operatorConfig.Spec.Ingress.ClientDownloadsURL) != 0 {
-			return statusHandler.FlushAndReturn(nil)
+			return statusHandler.FlushAndReturn(ctx, nil)
 		}
 	}
 
 	infrastructureConfig, err := c.infrastructureConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
-		return statusHandler.FlushAndReturn(err)
+		return statusHandler.FlushAndReturn(ctx, err)
 	}
 
 	clusterVersionConfig, err := c.clusterVersionLister.Get("version")
 	if err != nil {
-		return statusHandler.FlushAndReturn(err)
+		return statusHandler.FlushAndReturn(ctx, err)
 	}
 
 	// Disable the route check for external control plane topology (hypershift) if the ingress capability is disabled.
 	// The components will miss the required RBAC to implement the custom hostname or TLS.
 	// Link: https://github.com/openshift/enhancements/blob/f5290a98ea4f23f8e76621806b656a3849c74a17/enhancements/ingress/optional-ingress-hypershift.md#component-routes.
 	if util.IsExternalControlPlaneWithIngressDisabled(infrastructureConfig, clusterVersionConfig) {
-		return statusHandler.FlushAndReturn(nil)
+		return statusHandler.FlushAndReturn(ctx, nil)
 	}
 
 	ingressControllerConfig, err := c.ingressControllerLister.IngressControllers(api.IngressControllerNamespace).Get(api.DefaultIngressController)
 	if err != nil {
-		return statusHandler.FlushAndReturn(err)
+		return statusHandler.FlushAndReturn(ctx, err)
 	}
 
 	ingressConfig, err := c.ingressConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
-		return statusHandler.FlushAndReturn(err)
+		return statusHandler.FlushAndReturn(ctx, err)
 	}
 	routeConfig := routesub.NewRouteConfig(updatedOperatorConfig, ingressConfig, c.routeName)
 
@@ -176,7 +176,7 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded(typePrefix, customRouteErrReason, customRouteErr))
 	statusHandler.AddCondition(status.HandleUpgradable(typePrefix, customRouteErrReason, customRouteErr))
 	if customRouteErr != nil {
-		return statusHandler.FlushAndReturn(customRouteErr)
+		return statusHandler.FlushAndReturn(ctx, customRouteErr)
 	}
 
 	typePrefix = fmt.Sprintf("%sDefaultRouteSync", strings.Title(c.routeName))
@@ -190,11 +190,11 @@ func (c *RouteSyncController) Sync(ctx context.Context, controllerContext factor
 	}
 
 	if defaultRouteErr != nil {
-		return statusHandler.FlushAndReturn(defaultRouteErr)
+		return statusHandler.FlushAndReturn(ctx, defaultRouteErr)
 	}
 
 	additionalRouteErr := c.syncAdditionalRoutes(ctx, ingressConfig, statusHandler)
-	return statusHandler.FlushAndReturn(additionalRouteErr)
+	return statusHandler.FlushAndReturn(ctx, additionalRouteErr)
 }
 
 func (c *RouteSyncController) removeRoute(ctx context.Context, routeName string) error {

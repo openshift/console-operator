@@ -72,11 +72,11 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	if len(set.Operator.Spec.Ingress.ConsoleURL) == 0 {
 		clusterVersionConfig, err := co.clusterVersionLister.Get(api.VersionResourceName)
 		if err != nil {
-			return statusHandler.FlushAndReturn(err)
+			return statusHandler.FlushAndReturn(ctx, err)
 		}
 		if controllersutil.IsExternalControlPlaneWithIngressDisabled(set.Infrastructure, clusterVersionConfig) {
 			statusHandler.AddConditions(status.HandleProgressingOrDegraded("WaitingForConsoleURL", "", nil))
-			return statusHandler.FlushAndReturn(nil)
+			return statusHandler.FlushAndReturn(ctx, nil)
 		}
 
 		routeName := api.OpenShiftConsoleRouteName
@@ -95,21 +95,21 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		//     - ConsoleOperatorController (future ConsoleDeploymentController) is responsible for reads only.
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("SyncLoopRefresh", routeReasonErr, routeErr))
 		if routeErr != nil {
-			return statusHandler.FlushAndReturn(routeErr)
+			return statusHandler.FlushAndReturn(ctx, routeErr)
 		}
 		consoleRoute = route
 		consoleURL = url
 	} else {
 		url, err := url.Parse(set.Operator.Spec.Ingress.ConsoleURL)
 		if err != nil {
-			return statusHandler.FlushAndReturn(fmt.Errorf("failed to get console url: %w", err))
+			return statusHandler.FlushAndReturn(ctx, fmt.Errorf("failed to get console url: %w", err))
 		}
 		consoleURL = url
 	}
 
 	authnConfig, err := co.authnConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
-		return statusHandler.FlushAndReturn(err)
+		return statusHandler.FlushAndReturn(ctx, err)
 	}
 
 	var (
@@ -125,7 +125,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 				targetNamespaceAuthServerCA, err = co.targetNSConfigMapLister.ConfigMaps(api.OpenShiftConsoleNamespace).Get(certAuthorityName)
 				statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCProviderTrustedAuthorityConfigGet", "FailedGet", err))
 				if err != nil {
-					return statusHandler.FlushAndReturn(err)
+					return statusHandler.FlushAndReturn(ctx, err)
 				}
 			} else {
 				// Empty CA name — no lookup required, clear any stale
@@ -152,25 +152,25 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	// Generate session secret for all auth types
 	sessionSecret, err = co.syncSessionSecret(ctx, updatedOperatorConfig, controllerContext.Recorder())
 	if err != nil {
-		return statusHandler.FlushAndReturn(fmt.Errorf("sync session Secret: %w", err))
+		return statusHandler.FlushAndReturn(ctx, fmt.Errorf("sync session Secret: %w", err))
 	}
 
 	customLogosErr, customLogosErrReason := co.SyncCustomLogos(updatedOperatorConfig)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("CustomLogoSync", customLogosErrReason, customLogosErr))
 	if customLogosErr != nil {
-		return statusHandler.FlushAndReturn(customLogosErr)
+		return statusHandler.FlushAndReturn(ctx, customLogosErr)
 	}
 
 	techPreviewEnabled, techPreviewErrReason, techPreviewErr := co.SyncTechPreview()
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("TechPreviewSync", techPreviewErrReason, techPreviewErr))
 	if techPreviewErr != nil {
-		return statusHandler.FlushAndReturn(techPreviewErr)
+		return statusHandler.FlushAndReturn(ctx, techPreviewErr)
 	}
 
 	olmLifecycleMetadataEnabled, olmLifecycleMetadataErrReason, olmLifecycleMetadataErr := co.SyncOLMLifecycleMetadata()
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OLMLifecycleMetadataSync", olmLifecycleMetadataErrReason, olmLifecycleMetadataErr))
 	if olmLifecycleMetadataErr != nil {
-		return statusHandler.FlushAndReturn(olmLifecycleMetadataErr)
+		return statusHandler.FlushAndReturn(ctx, olmLifecycleMetadataErr)
 	}
 
 	additionalHosts := routesub.GetAdditionalRouteHostnames(set.Ingress)
@@ -191,19 +191,19 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
 	if cmErr != nil {
-		return statusHandler.FlushAndReturn(cmErr)
+		return statusHandler.FlushAndReturn(ctx, cmErr)
 	}
 
 	serviceCAConfigMap, serviceCAErrReason, serviceCAErr := co.SyncServiceCAConfigMap(ctx, set.Operator)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ServiceCASync", serviceCAErrReason, serviceCAErr))
 	if serviceCAErr != nil {
-		return statusHandler.FlushAndReturn(serviceCAErr)
+		return statusHandler.FlushAndReturn(ctx, serviceCAErr)
 	}
 
 	trustedCAConfigMap, trustedCAErrReason, trustedCAErr := co.SyncTrustedCAConfigMap(ctx, set.Operator)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("TrustedCASync", trustedCAErrReason, trustedCAErr))
 	if trustedCAErr != nil {
-		return statusHandler.FlushAndReturn(trustedCAErr)
+		return statusHandler.FlushAndReturn(ctx, trustedCAErr)
 	}
 
 	var oauthServingCertConfigMap *corev1.ConfigMap
@@ -216,20 +216,20 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		oauthServingCertConfigMap, oauthServingCertErrReason, oauthServingCertErr = co.ValidateOAuthServingCertConfigMap(ctx)
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthServingCertValidation", oauthServingCertErrReason, oauthServingCertErr))
 		if oauthServingCertErr != nil {
-			return statusHandler.FlushAndReturn(oauthServingCertErr)
+			return statusHandler.FlushAndReturn(ctx, oauthServingCertErr)
 		}
 	}
 
 	clientSecret, secErr := co.secretsLister.Secrets(api.TargetNamespace).Get(secretsub.Stub().Name)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretGet", "FailedGet", secErr))
 	if secErr != nil {
-		return statusHandler.FlushAndReturn(secErr)
+		return statusHandler.FlushAndReturn(ctx, secErr)
 	}
 
 	consoleServingCertSecret, servingCertErr := co.secretsLister.Secrets(api.TargetNamespace).Get(api.ConsoleServingCertName)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConsoleServingCertSecretGet", "FailedGet", servingCertErr))
 	if servingCertErr != nil {
-		return statusHandler.FlushAndReturn(servingCertErr)
+		return statusHandler.FlushAndReturn(ctx, servingCertErr)
 	}
 
 	actualDeployment, depErrReason, depErr := co.SyncDeployment(
@@ -249,7 +249,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DeploymentSync", depErrReason, depErr))
 	if depErr != nil {
-		return statusHandler.FlushAndReturn(depErr)
+		return statusHandler.FlushAndReturn(ctx, depErr)
 	}
 
 	statusHandler.UpdateDeploymentGeneration(actualDeployment)
@@ -279,18 +279,18 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	statusHandler.AddCondition(status.HandleDegraded("ConsoleConfig", "FailedUpdate", consoleConfigErr))
 	if consoleConfigErr != nil {
 		klog.Errorf("could not update console config status: %v", consoleConfigErr)
-		return statusHandler.FlushAndReturn(consoleConfigErr)
+		return statusHandler.FlushAndReturn(ctx, consoleConfigErr)
 	}
 
 	_, _, consolePublicConfigErr := co.SyncConsolePublicConfig(ctx, consoleURL.String(), controllerContext.Recorder())
 	statusHandler.AddCondition(status.HandleDegraded("ConsolePublicConfigMap", "FailedApply", consolePublicConfigErr))
 	if consolePublicConfigErr != nil {
 		klog.Errorf("could not update public console config status: %v", consolePublicConfigErr)
-		return statusHandler.FlushAndReturn(consolePublicConfigErr)
+		return statusHandler.FlushAndReturn(ctx, consolePublicConfigErr)
 	}
 
 	klog.V(4).Infof("sync loop 4.0.0 complete")
-	return statusHandler.FlushAndReturn(nil)
+	return statusHandler.FlushAndReturn(ctx, nil)
 }
 
 func (co *consoleOperator) SyncConsoleConfig(ctx context.Context, consoleConfig *configv1.Console, consoleURL string) (*configv1.Console, error) {

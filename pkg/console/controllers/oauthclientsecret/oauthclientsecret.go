@@ -122,35 +122,35 @@ func (c *oauthClientSecretController) sync(ctx context.Context, syncCtx factory.
 		if clientConfig == nil {
 			// no config, flush the condition and return
 			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "", nil))
-			return statusHandler.FlushAndReturn(nil)
+			return statusHandler.FlushAndReturn(ctx, nil)
 		}
 
 		if len(clientConfig.ClientSecret.Name) == 0 {
 			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "MissingClientSecretConfig", fmt.Errorf("missing client secret name reference in config")))
-			return statusHandler.FlushAndReturn(nil)
+			return statusHandler.FlushAndReturn(ctx, nil)
 		}
 
 		conficClientSecret, err := c.configSecretsLister.Secrets(api.OpenShiftConfigNamespace).Get(clientConfig.ClientSecret.Name)
 		if err != nil {
 			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "FailedClientSecretGet", err))
-			return statusHandler.FlushAndReturn(err)
+			return statusHandler.FlushAndReturn(ctx, err)
 		}
 
 		secretString = secretsub.GetSecretString(conficClientSecret)
 		if len(secretString) == 0 {
 			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "ClientSecretKeyMissing", fmt.Errorf("missing the 'clientSecret' key in the client secret secret %q", clientConfig.ClientSecret.Name)))
-			return statusHandler.FlushAndReturn(nil)
+			return statusHandler.FlushAndReturn(ctx, nil)
 		}
 
 	default:
 		klog.V(2).Infof("unknown authentication type: %s", authConfig.Spec.Type)
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "", nil))
-		return statusHandler.FlushAndReturn(nil)
+		return statusHandler.FlushAndReturn(ctx, nil)
 	}
 
 	err = c.syncSecret(ctx, secretString, syncCtx.Recorder())
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("OAuthClientSecretSync", "FailedApply", err))
-	return statusHandler.FlushAndReturn(err)
+	return statusHandler.FlushAndReturn(ctx, err)
 }
 
 func (c *oauthClientSecretController) syncSecret(ctx context.Context, clientSecret string, recorder events.Recorder) error {
