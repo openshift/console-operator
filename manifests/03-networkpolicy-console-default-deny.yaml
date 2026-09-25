@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-all
+  name: default-deny
   namespace: openshift-console
   annotations:
     include.release.openshift.io/hypershift: "true"
@@ -10,16 +10,12 @@ metadata:
     include.release.openshift.io/single-node-developer: "true"
     capability.openshift.io/name: Console
     kubernetes.io/description: >-
-      Allow all ingress and egress traffic in the openshift-console
-      namespace. The console requires network access to serve the UI
-      and communicate with the Kubernetes API and other cluster
-      services.
+      Default deny all ingress and egress traffic in the
+      openshift-console namespace. The policy improves network
+      isolation by ensuring that pods only communicate through
+      explicitly allowed policies.
 spec:
   podSelector: {}
   policyTypes:
   - Ingress
   - Egress
-  ingress:
-  - {}
-  egress:
-  - {}
