@@ -275,10 +275,10 @@ func TestDefaultDeployment(t *testing.T) {
 						Type: appsv1.RollingUpdateDeploymentStrategyType,
 						RollingUpdate: &appsv1.RollingUpdateDeployment{
 							MaxSurge: &intstr.IntOrString{
-								IntVal: int32(3),
+								IntVal: int32(1),
 							},
 							MaxUnavailable: &intstr.IntOrString{
-								IntVal: int32(1),
+								IntVal: int32(0),
 							},
 						},
 					},
@@ -367,10 +367,10 @@ func TestDefaultDeployment(t *testing.T) {
 						Type: appsv1.RollingUpdateDeploymentStrategyType,
 						RollingUpdate: &appsv1.RollingUpdateDeployment{
 							MaxSurge: &intstr.IntOrString{
-								IntVal: int32(3),
+								IntVal: int32(1),
 							},
 							MaxUnavailable: &intstr.IntOrString{
-								IntVal: int32(1),
+								IntVal: int32(0),
 							},
 						},
 					},
@@ -525,10 +525,10 @@ func TestDefaultDeployment(t *testing.T) {
 						Type: appsv1.RollingUpdateDeploymentStrategyType,
 						RollingUpdate: &appsv1.RollingUpdateDeployment{
 							MaxSurge: &intstr.IntOrString{
-								IntVal: int32(3),
+								IntVal: int32(1),
 							},
 							MaxUnavailable: &intstr.IntOrString{
-								IntVal: int32(1),
+								IntVal: int32(0),
 							},
 						},
 					},
@@ -1609,14 +1609,24 @@ func TestWithStrategy(t *testing.T) {
 	infrastructureConfigSingleReplica := infrastructureConfigWithTopology(configv1.SingleReplicaTopologyMode, configv1.SingleReplicaTopologyMode)
 	infrastructureConfigExternalTopologyHighlyAvailable := infrastructureConfigWithTopology(configv1.ExternalTopologyMode, configv1.HighlyAvailableTopologyMode)
 	infrastructureConfigExternalTopologySingleReplica := infrastructureConfigWithTopology(configv1.ExternalTopologyMode, configv1.SingleReplicaTopologyMode)
+	infrastructureConfigDualReplica := infrastructureConfigWithTopology(configv1.DualReplicaTopologyMode, configv1.HighlyAvailableTopologyMode)
+	infrastructureConfigArbiter := infrastructureConfigWithTopology(configv1.HighlyAvailableArbiterMode, configv1.HighlyAvailableTopologyMode)
 
 	singleReplicaStrategy := appsv1.RollingUpdateDeployment{
 		MaxSurge:       &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
 		MaxUnavailable: &intstr.IntOrString{Type: intstr.String, StrVal: "25%"},
 	}
-	highAvailStrategy := appsv1.RollingUpdateDeployment{
+	zeroDowntimeStrategy := appsv1.RollingUpdateDeployment{
 		MaxSurge: &intstr.IntOrString{
-			IntVal: int32(3),
+			IntVal: int32(1),
+		},
+		MaxUnavailable: &intstr.IntOrString{
+			IntVal: int32(0),
+		},
+	}
+	constrainedHAStrategy := appsv1.RollingUpdateDeployment{
+		MaxSurge: &intstr.IntOrString{
+			IntVal: int32(1),
 		},
 		MaxUnavailable: &intstr.IntOrString{
 			IntVal: int32(1),
@@ -1651,7 +1661,7 @@ func TestWithStrategy(t *testing.T) {
 			want: &appsv1.Deployment{
 				Spec: appsv1.DeploymentSpec{
 					Strategy: appsv1.DeploymentStrategy{
-						RollingUpdate: &highAvailStrategy,
+						RollingUpdate: &zeroDowntimeStrategy,
 					},
 				},
 			},
@@ -1679,7 +1689,35 @@ func TestWithStrategy(t *testing.T) {
 			want: &appsv1.Deployment{
 				Spec: appsv1.DeploymentSpec{
 					Strategy: appsv1.DeploymentStrategy{
-						RollingUpdate: &highAvailStrategy,
+						RollingUpdate: &zeroDowntimeStrategy,
+					},
+				},
+			},
+		},
+		{
+			name: "Test DualReplica Strategy uses maxUnavailable=1",
+			args: args{
+				deployment:           &appsv1.Deployment{},
+				infrastructureConfig: infrastructureConfigDualReplica,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Strategy: appsv1.DeploymentStrategy{
+						RollingUpdate: &constrainedHAStrategy,
+					},
+				},
+			},
+		},
+		{
+			name: "Test Arbiter Strategy uses maxUnavailable=1",
+			args: args{
+				deployment:           &appsv1.Deployment{},
+				infrastructureConfig: infrastructureConfigArbiter,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Strategy: appsv1.DeploymentStrategy{
+						RollingUpdate: &constrainedHAStrategy,
 					},
 				},
 			},
@@ -1994,10 +2032,10 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 						Type: appsv1.RollingUpdateDeploymentStrategyType,
 						RollingUpdate: &appsv1.RollingUpdateDeployment{
 							MaxSurge: &intstr.IntOrString{
-								IntVal: int32(3),
+								IntVal: int32(1),
 							},
 							MaxUnavailable: &intstr.IntOrString{
-								IntVal: int32(1),
+								IntVal: int32(0),
 							},
 						},
 					},
