@@ -69,15 +69,15 @@ spec:
       review:
         failedTaskHelp: This task isn’t verified yet. Try the task again.
         instructions: |-
-          The Helm release is represented by a dashed box that contains the JBoss EAP icon and **eap81** text. This content is placed outside the dashed box.
+          The Helm release is represented by a dashed box that contains the JBoss EAP icon and **redhat-eap81** text. This content is placed outside the dashed box.
 
-          The deployment is indicated by a circle inside the dashed box with text **D eap81**.
+          The deployment is indicated by a circle inside the dashed box with text **D redhat-eap81**.
 
           Verify the application was successfully created:
           
-          - Do you see an **eap81** Helm Release?
+          - Do you see an **redhat-eap81** Helm Release?
           
-          - Do you see an **eap81** deployment?
+          - Do you see an **redhat-eap81** deployment?
 
       summary:
         failed: Try the steps again.
@@ -88,7 +88,7 @@ spec:
 
         1. In the main navigation menu, select [Ecosystem]{{highlight qs-nav-ecosystem}} and select [Helm]{{highlight qs-nav-helm}}.
 
-        1. Click **eap81** Helm release.
+        1. Click **redhat-eap81** Helm release.
            The **Helm Release details** page opens. It shows all the information related to the Helm release that you installed.
 
            -  Click the **Resources** tab. It lists all the resources created by this Helm release.
@@ -97,7 +97,7 @@ spec:
         instructions: >-
           Verify you see the Helm release:
 
-          - Do you see a **Deployed** label next to the Helm Release **eap81**?
+          - Do you see a **Deployed** label next to the Helm Release **redhat-eap81**?
       summary:
         failed: Try the steps again.
         success: Your Helm release for JBoss EAP 8.1 is deployed.
@@ -106,7 +106,7 @@ spec:
         To view the associated code:
 
         1. In the main navigation menu, select [Workloads]{{highlight qs-nav-workloads}} and select **Topology**.
-           In the Topology view, the **eap81** deployment displays a code icon in the bottom right-hand corner. This icon either represents the Git repository
+           In the Topology view, the **redhat-eap81** deployment displays a code icon in the bottom right-hand corner. This icon either represents the Git repository
            of the associated code, or if the appropriate operators are installed, it will bring up the associated code in your IDE.
 
         1. If the icon shown is CodeReady Workspaces or Eclipse Che, clicking the icon opens the associated code in your IDE.
@@ -121,14 +121,14 @@ spec:
           - Did the Git repository or your IDE open in a separate browser window?
       summary:
         failed: Try the steps again.
-        success: You viewed the code associated with the **eap81** deployment.
+        success: You viewed the code associated with the **redhat-eap81** deployment.
       title: View the associated code
     - description: >-
         To view the build status of the JBoss EAP 8.1 application:
 
         1. In the main navigation menu, select [Workloads]{{highlight qs-nav-workloads}} and select **Topology**.
 
-        1. In the Topology view, click **D eap81**.
+        1. In the Topology view, click **D redhat-eap81**.
            A side panel opens with detailed information about the application.
 
         1. In the side panel, click the **Resources** tab.  
@@ -136,7 +136,7 @@ spec:
 
         The JBoss EAP 8 application is built in two steps:
 
-          - The first build configuration **eap81-build-artifacts** compiles and packages the Jakarta EE application, and creates a JBoss EAP server.
+          - The first build configuration **redhat-eap81-build-artifacts** compiles and packages the Jakarta EE application, and creates a JBoss EAP server.
             The application is run on this JBoss EAP server.
 
             The build may take a few minutes to complete. The build state is indicated by a relevant message such as **Pending**, **Running**, and **Complete**.
@@ -145,19 +145,19 @@ spec:
 
             When the first build is complete, the second build starts.
 
-          - The second build configuration **eap81** puts the Jakarta EE deployment and the JBoss EAP server in a runtime image that contains only what is required to run the  application.
+          - The second build configuration **redhat-eap81** puts the Jakarta EE deployment and the JBoss EAP server in a runtime image that contains only what is required to run the  application.
 
             When the second build is complete, a checkmark and the following message are displayed: **Build #2 was complete**.
       review:
         failedTaskHelp: This task isn't verified yet. Try the task again.
         instructions: >-
-          The two builds for **eap81-build-artifacts** and **eap81** may take a few minutes to complete.
+          The two builds for **redhat-eap81-build-artifacts** and **redhat-eap81** may take a few minutes to complete.
 
           Verify the builds are complete:
 
-          - The message **Build #1 was complete** is displayed for the **eap81-build-artifacts** build configuration. Did this message appear?
+          - The message **Build #1 was complete** is displayed for the **redhat-eap81-build-artifacts** build configuration. Did this message appear?
 
-          - The message **Build #2 was complete** is displayed for the **eap81** build configuration. Did this message appear?
+          - The message **Build #2 was complete** is displayed for the **redhat-eap81** build configuration. Did this message appear?
       summary:
         failed: Try the steps again.
         success: Your build is complete.
@@ -167,7 +167,7 @@ spec:
 
         1. In the main navigation menu, select [Workloads]{{highlight qs-nav-workloads}} and select **Topology**.
 
-        1. In the **Topology** view, click **D eap81**.
+        1. In the **Topology** view, click **D redhat-eap81**.
            A side panel opens with detailed information about the application.
 
         1. In the **Details** tab, the pod status is available in a tooltip by hovering over the pod.
