@@ -163,8 +163,6 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/openshift/build-machinery-go v0.0.0-20250530140348-dc5b2804eeee h1:+Sp5GGnjHDhT/a/nQ1xdp43UscBMr7G5wxsYotyhzJ4=
 github.com/openshift/build-machinery-go v0.0.0-20250530140348-dc5b2804eeee/go.mod h1:8jcm8UPtg2mCAsxfqKil1xrmRMI3a+XU2TZ9fF8A7TE=
-github.com/openshift/client-go v0.0.0-20260810202730-ddca5e0b7146 h1:fX/gaOPiS2vrYGSAFSeqqoWjj32H+NbMmB5RDjwhCnU=
-github.com/openshift/client-go v0.0.0-20260810202730-ddca5e0b7146/go.mod h1:bhbP5y308NNbImrgArOc9611HIDAMcNWdCCO4tq5ob4=
 github.com/openshift/library-go v0.0.0-20260814203017-a0584a625d6d h1:LQ9jGH1GkmNFnFDBHeNLN5fmm/lyTgtzGNqHN1NG/dw=
 github.com/openshift/library-go v0.0.0-20260814203017-a0584a625d6d/go.mod h1:IrZbEK+wVUMEd+aXzYR2DCCh0p5IaQ7DvycYGP7qIYM=
 github.com/orisano/pixelmatch v0.0.0-20220722002657-fb0b55479cde/go.mod h1:nZgzbfBr3hhjoZnS66nKrHmduYNpc34ny7RK4z5/HM0=
@@ -185,6 +183,8 @@ github.com/prometheus/procfs v0.19.2 h1:zUMhqEW66Ex7OXIiDkll3tl9a1ZdilUOd/F6ZXw4
 github.com/prometheus/procfs v0.19.2/go.mod h1:M0aotyiemPhBCM0z5w87kL22CxfcH05ZpYlu+b4J7mw=
 github.com/redhat-chai-bot/api v0.0.0-20260930200331-505a3f0e77f6 h1:UL8OsiLM4CRSdVUfA4eyIFDJ1N1ts5nbj4Ts0CFglLE=
 github.com/redhat-chai-bot/api v0.0.0-20260930200331-505a3f0e77f6/go.mod h1:k6qH5QOVa5GDln2VVm8Jz4NV3Z7R2SATHFLwGS6Wh3M=
+github.com/redhat-chai-bot/openshift_client-go v0.0.0-20260930220533-fd5afb2d282c h1:9M6jNdPK+RQcSXMMSepgeAgBqXs20SW+wQCQE4+RG9k=
+github.com/redhat-chai-bot/openshift_client-go v0.0.0-20260930220533-fd5afb2d282c/go.mod h1:T3w5B+LsyoEqsOS9RuBTJH9GCQ8LcwhbSJclKjSNvwI=
 github.com/robfig/cron v1.2.0 h1:ZjScXvvxeQ63Dbyxy76Fj3AT3Ut0aKsyd2/tl3DTMuQ=
 github.com/robfig/cron v1.2.0/go.mod h1:JGuDeoQd7Z6yL4zQhZ3OPEVHB7fL6Ka6skscFHfmt2k=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=

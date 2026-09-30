@@ -9,7 +9,7 @@ require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-test/deep v1.0.5
 	github.com/google/go-cmp v0.7.0
-	github.com/openshift/api v0.0.0-20260817181206-aa91c5e2b221
+	github.com/openshift/api v0.0.0-20260923043708-9abfa327cff2
 	github.com/openshift/build-machinery-go v0.0.0-20250530140348-dc5b2804eeee
 	github.com/openshift/client-go v0.0.0-20260810202730-ddca5e0b7146
 	github.com/openshift/library-go v0.0.0-20260814203017-a0584a625d6d
@@ -130,3 +130,6 @@ require (
 
 // TODO: Remove this temporary replace after https://github.com/openshift/api/pull/3070 merges.
 replace github.com/openshift/api => github.com/redhat-chai-bot/api v0.0.0-20260930200331-505a3f0e77f6
+
+// TODO: Remove this temporary replace after https://github.com/openshift/client-go/pull/398 merges.
+replace github.com/openshift/client-go => github.com/redhat-chai-bot/openshift_client-go v0.0.0-20260930220533-fd5afb2d282c
