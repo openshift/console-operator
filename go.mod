@@ -127,3 +127,6 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
+
+// TODO: Remove this temporary replace after https://github.com/openshift/api/pull/3070 merges.
+replace github.com/openshift/api => github.com/redhat-chai-bot/api v0.0.0-20260930200331-505a3f0e77f6
