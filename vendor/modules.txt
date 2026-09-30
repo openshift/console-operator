@@ -198,7 +198,7 @@ github.com/modern-go/reflect2
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
-# github.com/openshift/api v0.0.0-20260817181206-aa91c5e2b221
+# github.com/openshift/api v0.0.0-20260923043708-9abfa327cff2 => github.com/redhat-chai-bot/api v0.0.0-20260930200331-505a3f0e77f6
 ## explicit; go 1.26.0
 github.com/openshift/api
 github.com/openshift/api/annotations
@@ -289,7 +289,7 @@ github.com/openshift/build-machinery-go/make/targets/golang
 github.com/openshift/build-machinery-go/make/targets/openshift
 github.com/openshift/build-machinery-go/make/targets/openshift/operator
 github.com/openshift/build-machinery-go/scripts
-# github.com/openshift/client-go v0.0.0-20260810202730-ddca5e0b7146
+# github.com/openshift/client-go v0.0.0-20260810202730-ddca5e0b7146 => github.com/redhat-chai-bot/openshift_client-go v0.0.0-20260930220533-fd5afb2d282c
 ## explicit; go 1.26.0
 github.com/openshift/client-go/config/applyconfigurations
 github.com/openshift/client-go/config/applyconfigurations/config/v1
@@ -1556,3 +1556,5 @@ sigs.k8s.io/structured-merge-diff/v6/value
 # sigs.k8s.io/yaml v1.6.0
 ## explicit; go 1.22
 sigs.k8s.io/yaml
+# github.com/openshift/api => github.com/redhat-chai-bot/api v0.0.0-20260930200331-505a3f0e77f6
+# github.com/openshift/client-go => github.com/redhat-chai-bot/openshift_client-go v0.0.0-20260930220533-fd5afb2d282c
