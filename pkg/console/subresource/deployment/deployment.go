@@ -200,13 +200,13 @@ func withStrategy(deployment *appsv1.Deployment, infrastructureConfig *configv1.
 	deployment.Spec.Strategy.RollingUpdate = rollingUpdateParams
 }
 
-// configMapContentHash returns a hex-encoded SHA-256 digest of the
+// ConfigMapContentHash returns a hex-encoded SHA-256 digest of the
 // ConfigMap's Data and BinaryData. Using a content hash instead of
 // the Kubernetes ResourceVersion means the annotation only changes
 // when the actual config content changes, preventing spurious
 // deployment rollouts when the ConfigMap is rewritten with identical
 // content (e.g. during componentRoute churn in techpreview tests).
-func configMapContentHash(cm *corev1.ConfigMap) string {
+func ConfigMapContentHash(cm *corev1.ConfigMap) string {
 	h := sha256.New()
 	keys := make([]string, 0, len(cm.Data))
 	for k := range cm.Data {
@@ -249,9 +249,9 @@ func withConsoleAnnotations(
 	infrastructureConfig *configv1.Infrastructure,
 ) {
 	deployment.ObjectMeta.Annotations = map[string]string{
-		configMapResourceVersionAnnotation:            configMapContentHash(consoleConfigMap),
-		serviceCAConfigMapResourceVersionAnnotation:   configMapContentHash(serviceCAConfigMap),
-		trustedCAConfigMapResourceVersionAnnotation:   configMapContentHash(trustedCAConfigMap),
+		configMapResourceVersionAnnotation:            ConfigMapContentHash(consoleConfigMap),
+		serviceCAConfigMapResourceVersionAnnotation:   ConfigMapContentHash(serviceCAConfigMap),
+		trustedCAConfigMapResourceVersionAnnotation:   ConfigMapContentHash(trustedCAConfigMap),
 		proxyConfigResourceVersionAnnotation:          proxyConfig.GetResourceVersion(),
 		infrastructureConfigResourceVersionAnnotation: infrastructureConfig.GetResourceVersion(),
 		secretResourceVersionAnnotation:               oAuthClientSecret.GetResourceVersion(),
@@ -260,7 +260,7 @@ func withConsoleAnnotations(
 	}
 
 	if authServerCAConfigMap != nil {
-		deployment.ObjectMeta.Annotations[authnCATrustConfigMapResourceVersionAnnotation] = configMapContentHash(authServerCAConfigMap)
+		deployment.ObjectMeta.Annotations[authnCATrustConfigMapResourceVersionAnnotation] = ConfigMapContentHash(authServerCAConfigMap)
 	}
 
 	if sessionSecret != nil {
