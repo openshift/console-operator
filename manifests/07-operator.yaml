@@ -17,7 +17,7 @@ spec:
     metadata:
       annotations:
         target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
-        openshift.io/required-scc: restricted-v2
+        openshift.io/required-scc: restricted-v3
       labels:
         name: console-operator
     spec:
@@ -39,6 +39,7 @@ spec:
           operator: "Exists"
           effect: "NoExecute"
           tolerationSeconds: 120
+      hostUsers: false
       priorityClassName: system-cluster-critical
       serviceAccountName: console-operator
       containers:
