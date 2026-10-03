@@ -153,7 +153,7 @@ func TestDefaultDeployment(t *testing.T) {
 		consoleImageAnnotation:                         "",
 		servingCertSecretResourceVersionAnnotation:     "",
 		workloadManagementAnnotation:                   workloadManagementAnnotationValue,
-		requiredSCCAnnotation:                          "restricted-v2",
+		requiredSCCAnnotation:                          "restricted-v3",
 	}
 
 	consoleDeploymentAffinity := &corev1.Affinity{
@@ -259,6 +259,7 @@ func TestDefaultDeployment(t *testing.T) {
 							RestartPolicy:                 corev1.RestartPolicyAlways,
 							SchedulerName:                 corev1.DefaultSchedulerName,
 							TerminationGracePeriodSeconds: &gracePeriod,
+							HostUsers:                     ptr.To(false),
 							SecurityContext: &corev1.PodSecurityContext{
 								RunAsNonRoot: utilpointer.Bool(true),
 								SeccompProfile: &corev1.SeccompProfile{
@@ -351,6 +352,7 @@ func TestDefaultDeployment(t *testing.T) {
 							RestartPolicy:                 corev1.RestartPolicyAlways,
 							SchedulerName:                 corev1.DefaultSchedulerName,
 							TerminationGracePeriodSeconds: &gracePeriod,
+							HostUsers:                     ptr.To(false),
 							SecurityContext: &corev1.PodSecurityContext{
 								RunAsNonRoot: utilpointer.Bool(true),
 								SeccompProfile: &corev1.SeccompProfile{
@@ -432,6 +434,7 @@ func TestDefaultDeployment(t *testing.T) {
 							RestartPolicy:                 corev1.RestartPolicyAlways,
 							SchedulerName:                 corev1.DefaultSchedulerName,
 							TerminationGracePeriodSeconds: &gracePeriod,
+							HostUsers:                     ptr.To(false),
 							SecurityContext: &corev1.PodSecurityContext{
 								RunAsNonRoot: utilpointer.Bool(true),
 								SeccompProfile: &corev1.SeccompProfile{
@@ -509,6 +512,7 @@ func TestDefaultDeployment(t *testing.T) {
 							RestartPolicy:                 corev1.RestartPolicyAlways,
 							SchedulerName:                 corev1.DefaultSchedulerName,
 							TerminationGracePeriodSeconds: &gracePeriod,
+							HostUsers:                     ptr.To(false),
 							SecurityContext: &corev1.PodSecurityContext{
 								RunAsNonRoot: utilpointer.Bool(true),
 								SeccompProfile: &corev1.SeccompProfile{
@@ -1834,6 +1838,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 				TolerationSeconds: &tolerationSeconds,
 			},
 		},
+		HostUsers: ptr.To(false),
 		SecurityContext: &corev1.PodSecurityContext{
 			RunAsNonRoot: utilpointer.Bool(true),
 			SeccompProfile: &corev1.SeccompProfile{
@@ -1965,7 +1970,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 							Labels: labels,
 							Annotations: map[string]string{
 								workloadManagementAnnotation: workloadManagementAnnotationValue,
-								requiredSCCAnnotation:        "restricted-v2",
+								requiredSCCAnnotation:        "restricted-v3",
 							},
 						},
 						Spec: downloadsDeploymentPodSpecSingleReplica,
@@ -2010,7 +2015,7 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 							Labels: labels,
 							Annotations: map[string]string{
 								workloadManagementAnnotation: workloadManagementAnnotationValue,
-								requiredSCCAnnotation:        "restricted-v2",
+								requiredSCCAnnotation:        "restricted-v3",
 							},
 						},
 						Spec: *downloadsDeploymentPodSpecHighAvail,
