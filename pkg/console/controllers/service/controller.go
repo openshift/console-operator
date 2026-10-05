@@ -112,15 +112,15 @@ func (c *ServiceSyncController) Sync(ctx context.Context, controllerContext fact
 
 	ingressConfig, err := c.ingressConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
-		return statusHandler.FlushAndReturn(err)
+		return statusHandler.FlushAndReturn(ctx, err)
 	}
 	infrastructureConfig, err := c.infrastructureConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
-		return statusHandler.FlushAndReturn(err)
+		return statusHandler.FlushAndReturn(ctx, err)
 	}
 	clusterVersionConfig, err := c.clusterVersionLister.Get("version")
 	if err != nil {
-		return statusHandler.FlushAndReturn(err)
+		return statusHandler.FlushAndReturn(ctx, err)
 	}
 
 	// Change the type of the service to NodePort if the ingress capability is disabled.
@@ -136,7 +136,7 @@ func (c *ServiceSyncController) Sync(ctx context.Context, controllerContext fact
 	})
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ServiceSync", "FailedApply", svcErr))
 	if svcErr != nil {
-		return statusHandler.FlushAndReturn(svcErr)
+		return statusHandler.FlushAndReturn(ctx, svcErr)
 	}
 
 	// we are only creating redirect service for the `console` route
@@ -145,7 +145,7 @@ func (c *ServiceSyncController) Sync(ctx context.Context, controllerContext fact
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("RedirectServiceSync", redirectSvcErrReason, svcErr))
 	}
 
-	return statusHandler.FlushAndReturn(svcErr)
+	return statusHandler.FlushAndReturn(ctx, svcErr)
 }
 
 func (c *ServiceSyncController) SyncRedirectService(ctx context.Context, routeConfig *routesub.RouteConfig, controllerContext factory.SyncContext) (string, error) {

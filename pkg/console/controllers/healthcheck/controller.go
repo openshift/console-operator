@@ -96,7 +96,7 @@ func (c *HealthCheckController) Sync(ctx context.Context, controllerContext fact
 	operatorConfig, err := c.operatorConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		klog.Errorf("operator config error: %v", err)
-		return statusHandler.FlushAndReturn(err)
+		return statusHandler.FlushAndReturn(ctx, err)
 	}
 
 	updatedOperatorConfig := operatorConfig.DeepCopy()
@@ -116,12 +116,12 @@ func (c *HealthCheckController) Sync(ctx context.Context, controllerContext fact
 	ingressConfig, err := c.ingressConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		klog.Errorf("ingress config error: %v", err)
-		return statusHandler.FlushAndReturn(err)
+		return statusHandler.FlushAndReturn(ctx, err)
 	}
 	infrastructureConfig, err := c.infrastructureConfigLister.Get(api.ConfigResourceName)
 	if err != nil {
 		klog.Errorf("infrastructure config error: %v", err)
-		return statusHandler.FlushAndReturn(err)
+		return statusHandler.FlushAndReturn(ctx, err)
 	}
 
 	// Disable the health check for external control plane topology (hypershift) and ingress NLB.
@@ -140,7 +140,7 @@ func (c *HealthCheckController) Sync(ctx context.Context, controllerContext fact
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("RouteHealth", "FailedRouteGet", activeRouteErr))
 	if activeRouteErr != nil {
 		klog.V(4).Infof("failed getting %q route for performing health check: %v", activeRouteName, activeRouteErr)
-		return statusHandler.FlushAndReturn(activeRouteErr)
+		return statusHandler.FlushAndReturn(ctx, activeRouteErr)
 	}
 
 	routeHealthCheckErrReason, routeHealthCheckErr := c.CheckRouteHealth(ctx, updatedOperatorConfig, activeRoute)
@@ -150,7 +150,7 @@ func (c *HealthCheckController) Sync(ctx context.Context, controllerContext fact
 	statusHandler.AddCondition(status.HandleDegraded("RouteHealth", routeHealthCheckErrReason, routeHealthCheckErr))
 	statusHandler.AddCondition(status.HandleAvailable("RouteHealth", routeHealthCheckErrReason, routeHealthCheckErr))
 
-	return statusHandler.FlushAndReturn(routeHealthCheckErr)
+	return statusHandler.FlushAndReturn(ctx, routeHealthCheckErr)
 }
 
 func (c *HealthCheckController) CheckRouteHealth(ctx context.Context, operatorConfig *operatorsv1.Console, route *routev1.Route) (string, error) {

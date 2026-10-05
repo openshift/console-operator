@@ -127,20 +127,20 @@ func (c *CLIDownloadsSyncController) Sync(ctx context.Context, controllerContext
 	if len(operatorConfig.Spec.Ingress.ClientDownloadsURL) == 0 {
 		infrastructureConfig, err := c.infrastructureConfigLister.Get(api.ConfigResourceName)
 		if err != nil {
-			return statusHandler.FlushAndReturn(err)
+			return statusHandler.FlushAndReturn(ctx, err)
 		}
 		clusterVersionConfig, err := c.clusterVersionLister.Get(api.VersionResourceName)
 		if err != nil {
-			return statusHandler.FlushAndReturn(err)
+			return statusHandler.FlushAndReturn(ctx, err)
 		}
 		if controllersutil.IsExternalControlPlaneWithIngressDisabled(infrastructureConfig, clusterVersionConfig) {
 			statusHandler.AddCondition(status.HandleDegraded("OCDownloadsSync", "", nil))
-			return statusHandler.FlushAndReturn(nil)
+			return statusHandler.FlushAndReturn(ctx, nil)
 		}
 
 		ingressConfig, err := c.ingressConfigLister.Get(api.ConfigResourceName)
 		if err != nil {
-			return statusHandler.FlushAndReturn(err)
+			return statusHandler.FlushAndReturn(ctx, err)
 		}
 
 		activeRouteName := api.OpenShiftConsoleDownloadsRouteName
@@ -169,10 +169,10 @@ func (c *CLIDownloadsSyncController) Sync(ctx context.Context, controllerContext
 	_, ocCLIDownloadsErrReason, ocCLIDownloadsErr := ApplyCLIDownloads(ctx, c.consoleCliDownloadsClient, ocConsoleCLIDownloads)
 	statusHandler.AddCondition(status.HandleDegraded("OCDownloadsSync", ocCLIDownloadsErrReason, ocCLIDownloadsErr))
 	if ocCLIDownloadsErr != nil {
-		return statusHandler.FlushAndReturn(ocCLIDownloadsErr)
+		return statusHandler.FlushAndReturn(ctx, ocCLIDownloadsErr)
 	}
 
-	return statusHandler.FlushAndReturn(nil)
+	return statusHandler.FlushAndReturn(ctx, nil)
 }
 
 func (c *CLIDownloadsSyncController) removeCLIDownloads(ctx context.Context) error {

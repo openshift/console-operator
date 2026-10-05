@@ -72,7 +72,7 @@ func (c *StorageVersionMigrationController) sync(ctx context.Context, syncContex
 
 	reason, err := c.syncStorageVersionMigration(ctx)
 	statusHandler.AddCondition(status.HandleDegraded("StorageVersionMigration", reason, err))
-	return statusHandler.FlushAndReturn(err)
+	return statusHandler.FlushAndReturn(ctx, err)
 }
 
 func (c *StorageVersionMigrationController) syncStorageVersionMigration(ctx context.Context) (string, error) {

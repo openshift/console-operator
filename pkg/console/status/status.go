@@ -179,7 +179,17 @@ func (c *StatusHandler) AddConditions(conditionUpdates []ConditionUpdate) {
 	}
 }
 
-func (c *StatusHandler) FlushAndReturn(returnErr error) error {
+// FlushAndReturn persists queued status updates unless the reconciliation context is canceled.
+// On cancellation, returnErr takes precedence over the context error. For an active context,
+// an error updating status takes precedence over returnErr.
+func (c *StatusHandler) FlushAndReturn(ctx context.Context, returnErr error) error {
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		if returnErr != nil {
+			return returnErr
+		}
+		return ctxErr
+	}
+
 	allStatusFns := []v1helpers.UpdateStatusFunc{}
 	for i := range c.statusFuncs {
 		allStatusFns = append(allStatusFns, c.statusFuncs[i])
@@ -188,7 +198,14 @@ func (c *StatusHandler) FlushAndReturn(returnErr error) error {
 		allStatusFns = append(allStatusFns, c.conditionUpdates[k])
 	}
 
-	if _, _, updateErr := v1helpers.UpdateStatus(context.TODO(), c.client, allStatusFns...); updateErr != nil {
+	_, _, updateErr := v1helpers.UpdateStatus(ctx, c.client, allStatusFns...)
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		if returnErr != nil {
+			return returnErr
+		}
+		return ctxErr
+	}
+	if updateErr != nil {
 		return updateErr
 	}
 	return returnErr

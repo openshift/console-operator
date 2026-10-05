@@ -124,7 +124,7 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 		// reset all conditions set by this controller
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCClientConfig", "", nil))
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthStatusHandler", "", nil))
-		return statusHandler.FlushAndReturn(nil)
+		return statusHandler.FlushAndReturn(ctx, nil)
 	}
 
 	authnConfig, err := c.authnLister.Get(api.ConfigResourceName)
@@ -153,7 +153,7 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 
 		// reset the other condition set by this controller
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCClientConfig", "", nil))
-		return statusHandler.FlushAndReturn(applyErr)
+		return statusHandler.FlushAndReturn(ctx, applyErr)
 	}
 
 	// we need to keep track of errors during the sync so that we can requeue
@@ -177,9 +177,9 @@ func (c *oidcSetupController) sync(ctx context.Context, syncCtx factory.SyncCont
 	}
 
 	if len(errs) > 0 {
-		return statusHandler.FlushAndReturn(factory.SyntheticRequeueError)
+		return statusHandler.FlushAndReturn(ctx, factory.SyntheticRequeueError)
 	}
-	return statusHandler.FlushAndReturn(nil)
+	return statusHandler.FlushAndReturn(ctx, nil)
 }
 
 func (c *oidcSetupController) syncAuthTypeOIDC(ctx context.Context, authnConfig *configv1.Authentication, operatorConfig *operatorv1.Console, recorder events.Recorder) error {

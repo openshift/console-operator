@@ -102,7 +102,7 @@ func (c *PodDisruptionBudgetController) Sync(ctx context.Context, controllerCont
 		return err
 	})
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("PDBSync", "FailedApply", pdbErr))
-	return statusHandler.FlushAndReturn(pdbErr)
+	return statusHandler.FlushAndReturn(ctx, pdbErr)
 }
 
 // Remove the PDB instance the controller is managing

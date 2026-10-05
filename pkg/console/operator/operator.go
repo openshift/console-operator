@@ -416,5 +416,5 @@ func (c *consoleOperator) removeConsole(ctx context.Context, operatorConfig *ope
 
 	statusHandler := consolestatus.NewStatusHandler(c.operatorClient)
 	statusHandler.AddConditions(statusHandler.ResetConditions(operatorConfig.Status.Conditions))
-	return statusHandler.FlushAndReturn(err)
+	return statusHandler.FlushAndReturn(ctx, err)
 }

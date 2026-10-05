@@ -101,17 +101,17 @@ func (c *DownloadsDeploymentSyncController) Sync(ctx context.Context, controller
 	infrastructureConfig, err := c.infrastructureLister.Get(api.ConfigResourceName)
 	statusHandler.AddCondition(status.HandleDegraded("DownloadsDeploymentSync", "FailedInfrastructureConfigGet", err))
 	if err != nil {
-		return statusHandler.FlushAndReturn(err)
+		return statusHandler.FlushAndReturn(ctx, err)
 	}
 
 	actualDownloadsDownloadsDeployment, _, downloadsDeploymentErr := c.SyncDownloadsDeployment(ctx, operatorConfigCopy, infrastructureConfig, controllerContext)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DownloadsDeploymentSync", "FailedApply", downloadsDeploymentErr))
 	if downloadsDeploymentErr != nil {
-		return statusHandler.FlushAndReturn(downloadsDeploymentErr)
+		return statusHandler.FlushAndReturn(ctx, downloadsDeploymentErr)
 	}
 	statusHandler.UpdateDeploymentGeneration(actualDownloadsDownloadsDeployment)
 
-	return statusHandler.FlushAndReturn(nil)
+	return statusHandler.FlushAndReturn(ctx, nil)
 }
 
 func (c *DownloadsDeploymentSyncController) SyncDownloadsDeployment(ctx context.Context, operatorConfigCopy *operatorv1.Console, infrastructureConfig *configv1.Infrastructure, controllerContext factory.SyncContext) (*appsv1.Deployment, bool, error) {

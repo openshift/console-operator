@@ -95,7 +95,7 @@ func (c *UpgradeNotificationController) Sync(ctx context.Context, controllerCont
 		klog.V(4).Infof("error syncing %s consolenotification custom resource: %s", api.UpgradeConsoleNotification, err)
 	}
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConsoleNotificationSync", reason, err))
-	return statusHandler.FlushAndReturn(err)
+	return statusHandler.FlushAndReturn(ctx, err)
 }
 
 func (c *UpgradeNotificationController) syncClusterUpgradeNotification(ctx context.Context) (string, error) {

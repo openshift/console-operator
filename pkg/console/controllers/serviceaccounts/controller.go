@@ -112,10 +112,10 @@ func (c *ServiceAccountSyncController) Sync(ctx context.Context, controllerConte
 	serviceAccountErr := c.SyncServiceAccount(ctx, operatorConfigCopy, controllerContext)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded(c.conditionType, "FailedApply", serviceAccountErr))
 	if serviceAccountErr != nil {
-		return statusHandler.FlushAndReturn(serviceAccountErr)
+		return statusHandler.FlushAndReturn(ctx, serviceAccountErr)
 	}
 
-	return statusHandler.FlushAndReturn(nil)
+	return statusHandler.FlushAndReturn(ctx, nil)
 }
 
 func (c *ServiceAccountSyncController) removeServiceAccount(ctx context.Context) error {
