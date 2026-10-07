@@ -39,6 +39,7 @@ import (
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
 	"github.com/openshift/console-operator/pkg/console/metrics"
 	"github.com/openshift/console-operator/pkg/console/status"
+	authconfigsub "github.com/openshift/console-operator/pkg/console/subresource/authentication"
 	configmapsub "github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
@@ -46,6 +47,7 @@ import (
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
 	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
 	telemetry "github.com/openshift/console-operator/pkg/console/telemetry"
+	"github.com/openshift/console-operator/pkg/proxyconfig"
 )
 
 // deploymentAvailableGracePeriod is the duration the operator tolerates zero
@@ -115,6 +117,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	var (
 		targetNamespaceAuthServerCA *corev1.ConfigMap
 		sessionSecret               *corev1.Secret
+		authProxy                   *proxyconfig.Config
 	)
 	switch authnConfig.Spec.Type {
 	case configv1.AuthenticationTypeOIDC:
@@ -137,6 +140,15 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 			// from a prior reconciliation that had an OIDC provider with
 			// a CA configured.
 			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCProviderTrustedAuthorityConfigGet", "", nil))
+		}
+
+		// Auth proxy is only rendered into Console config when an OIDC client is configured,
+		// so we perform the same check here to prevent unnecessary creation of resources.
+		if _, oidcClient := authconfigsub.GetOIDCClientConfig(authnConfig, api.TargetNamespace, api.OpenShiftConsoleName); oidcClient != nil {
+			authProxy, err = co.authProxyResolver.ResolveProxy(set.Operator)
+			if err != nil {
+				return statusHandler.FlushAndReturn(ctx, fmt.Errorf("failed to resolve auth proxy: %w", err))
+			}
 		}
 
 	default:
@@ -188,6 +200,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		techPreviewEnabled,
 		olmLifecycleMetadataEnabled,
 		additionalHosts,
+		authProxy,
 	)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
 	if cmErr != nil {
@@ -204,6 +217,12 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("TrustedCASync", trustedCAErrReason, trustedCAErr))
 	if trustedCAErr != nil {
 		return statusHandler.FlushAndReturn(ctx, trustedCAErr)
+	}
+
+	authProxyTrustedCAErrReason, authProxyTrustedCAErr := co.SyncAuthProxyTrustedCAConfigMap(authProxy)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthProxyTrustedCASync", authProxyTrustedCAErrReason, authProxyTrustedCAErr))
+	if authProxyTrustedCAErr != nil {
+		return statusHandler.FlushAndReturn(ctx, authProxyTrustedCAErr)
 	}
 
 	var oauthServingCertConfigMap *corev1.ConfigMap
@@ -245,6 +264,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		consoleServingCertSecret,
 		set.Proxy,
 		set.Infrastructure,
+		authProxy,
 		controllerContext.Recorder(),
 	)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DeploymentSync", depErrReason, depErr))
@@ -338,6 +358,7 @@ func (co *consoleOperator) SyncDeployment(
 	consoleServingCertSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
+	authProxy *proxyconfig.Config,
 	recorder events.Recorder,
 ) (consoleDeployment *appsv1.Deployment, reason string, err error) {
 	updatedOperatorConfig := operatorConfig.DeepCopy()
@@ -353,6 +374,7 @@ func (co *consoleOperator) SyncDeployment(
 		consoleServingCertSecret,
 		proxyConfig,
 		infrastructureConfig,
+		authProxy,
 	)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
@@ -426,6 +448,7 @@ func (co *consoleOperator) SyncConfigMap(
 	techPreviewEnabled bool,
 	olmLifecycleMetadataEnabled bool,
 	additionalHosts []string,
+	authProxy *proxyconfig.Config,
 ) (consoleConfigMap *corev1.ConfigMap, reason string, err error) {
 
 	managedConfig, mcErr := co.managedNSConfigMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName)
@@ -509,6 +532,7 @@ func (co *consoleOperator) SyncConfigMap(
 		additionalHosts,
 		tlsMinVersion,
 		tlsCiphers,
+		authProxy,
 	)
 	if err != nil {
 		return nil, "FailedConsoleConfigBuilder", err

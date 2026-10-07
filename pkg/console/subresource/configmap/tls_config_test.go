@@ -59,6 +59,7 @@ func TestTLSConfigInjection(t *testing.T) {
 				nil,                          // additionalHosts
 				tt.tlsMinVersion,
 				tt.tlsCiphers,
+				nil, // authProxy
 			)
 
 			if err != nil {

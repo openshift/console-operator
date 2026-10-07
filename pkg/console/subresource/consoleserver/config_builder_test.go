@@ -10,6 +10,7 @@ import (
 	consolev1 "github.com/openshift/api/console/v1"
 	v1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/proxyconfig"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1058,6 +1059,101 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					AlertmanagerUserWorkloadHost: "alertmanager-user-workload.openshift-user-workload-monitoring.svc:9094",
 					AlertmanagerTenancyHost:      "alertmanager-user-workload.openshift-user-workload-monitoring.svc:9092",
 				},
+			},
+		},
+		{
+			name: "Config builder should not set authProxy when proxy is nil",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{authType: "oidc"}
+				return b.AuthProxy(nil).Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{},
+				Auth: Auth{
+					AuthType:         "oidc",
+					ClientID:         api.OAuthClientName,
+					ClientSecretFile: clientSecretFilePath,
+				},
+				Session:       Session{},
+				Customization: Customization{Perspectives: []Perspective{{ID: "dev", Visibility: PerspectiveVisibility{State: PerspectiveDisabled}}}},
+				Providers:     Providers{},
+			},
+		},
+		{
+			name: "Config builder should set authProxy URLs without TrustedCAFile when TrustedCAName is empty",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{authType: "oidc"}
+				return b.AuthProxy(&proxyconfig.Config{
+					HTTPProxy:  "http://proxy.example.com:3128",
+					HTTPSProxy: "https://proxy.example.com:3128",
+					NoProxy:    []string{"internal.example.com"},
+				}).Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{},
+				Auth: Auth{
+					AuthType:         "oidc",
+					ClientID:         api.OAuthClientName,
+					ClientSecretFile: clientSecretFilePath,
+					Proxy: &AuthProxy{
+						HTTPProxy:  "http://proxy.example.com:3128",
+						HTTPSProxy: "https://proxy.example.com:3128",
+						NoProxy:    []string{"internal.example.com"},
+					},
+				},
+				Session:       Session{},
+				Customization: Customization{Perspectives: []Perspective{{ID: "dev", Visibility: PerspectiveVisibility{State: PerspectiveDisabled}}}},
+				Providers:     Providers{},
+			},
+		},
+		{
+			name: "Config builder should set TrustedCAFile when TrustedCAName is set",
+			input: func() Config {
+				b := &ConsoleServerCLIConfigBuilder{authType: "oidc"}
+				return b.AuthProxy(&proxyconfig.Config{
+					HTTPProxy:     "http://proxy.example.com:3128",
+					HTTPSProxy:    "https://proxy.example.com:3128",
+					NoProxy:       []string{"internal.example.com"},
+					TrustedCAName: "auth-proxy-ca",
+				}).Config()
+			},
+			output: Config{
+				Kind:       "ConsoleConfig",
+				APIVersion: "console.openshift.io/v1",
+				ServingInfo: ServingInfo{
+					BindAddress: "https://[::]:8443",
+					CertFile:    certFilePath,
+					KeyFile:     keyFilePath,
+				},
+				ClusterInfo: ClusterInfo{},
+				Auth: Auth{
+					AuthType:         "oidc",
+					ClientID:         api.OAuthClientName,
+					ClientSecretFile: clientSecretFilePath,
+					Proxy: &AuthProxy{
+						HTTPProxy:     "http://proxy.example.com:3128",
+						HTTPSProxy:    "https://proxy.example.com:3128",
+						NoProxy:       []string{"internal.example.com"},
+						TrustedCAFile: "/var/auth-proxy-ca/ca-bundle.crt",
+					},
+				},
+				Session:       Session{},
+				Customization: Customization{Perspectives: []Perspective{{ID: "dev", Visibility: PerspectiveVisibility{State: PerspectiveDisabled}}}},
+				Providers:     Providers{},
 			},
 		},
 	}
