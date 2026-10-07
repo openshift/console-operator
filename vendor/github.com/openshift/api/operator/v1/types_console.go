@@ -46,7 +46,7 @@ type ConsoleSpec struct {
 	// proxy is used. Other Console clients retain their existing proxy settings.
 	// +openshift:enable:FeatureGate=AuthenticationComponentProxyExternalOIDC
 	// +optional
-	AuthProxy ConsoleProxyConfig `json:"authProxy,omitzero"`
+	AuthProxy ConsoleAuthProxyConfig `json:"authProxy,omitzero"`
 
 	// customization is used to optionally provide a small set of
 	// customization options to the web console.
@@ -74,14 +74,14 @@ type ConsoleSpec struct {
 	// This field is intended for clusters without ingress capability,
 	// where access to routes is not possible.
 	// +optional
-	Ingress Ingress `json:"ingress"`
+	Ingress ConsoleIngress `json:"ingress"`
 }
 
-// ConsoleProxyConfig holds proxy configuration scoped to Console's OIDC login clients.
+// ConsoleAuthProxyConfig holds proxy configuration scoped to Console's OIDC login clients.
 // At least one of httpProxy or httpsProxy must be specified.
 // +kubebuilder:validation:MinProperties=1
 // +kubebuilder:validation:XValidation:rule="has(self.httpProxy) || has(self.httpsProxy)",message="at least one of httpProxy or httpsProxy must be specified"
-type ConsoleProxyConfig struct {
+type ConsoleAuthProxyConfig struct {
 	// httpProxy is the URL of the proxy for HTTP requests.
 	// Must be a valid URL with http or https scheme, a non-empty
 	// hostname, and no path, query parameters, or fragment.
@@ -136,12 +136,12 @@ type ConsoleProxyConfig struct {
 	// used by Console's OIDC login clients for proxy TLS connections.
 	// When omitted, only the system trust store is used.
 	// +optional
-	TrustedCA ConsoleConfigMapReference `json:"trustedCA,omitzero"`
+	TrustedCA ConsoleAuthProxyTrustedCAConfigMapReference `json:"trustedCA,omitzero"`
 }
 
-// ConsoleConfigMapReference references a ConfigMap in the
+// ConsoleAuthProxyTrustedCAConfigMapReference references a ConfigMap in the
 // openshift-config namespace.
-type ConsoleConfigMapReference struct {
+type ConsoleAuthProxyTrustedCAConfigMapReference struct {
 	// name is the metadata.name of the referenced ConfigMap.
 	// Must be a valid DNS subdomain name (RFC 1123): at most 253
 	// characters, only lowercase alphanumeric characters, '-' or
@@ -658,7 +658,7 @@ const (
 )
 
 // Ingress allows cluster admin to configure alternative ingress for the console.
-type Ingress struct {
+type ConsoleIngress struct {
 	// consoleURL is a URL to be used as the base console address.
 	// If not specified, the console route hostname will be used.
 	// This field is required for clusters without ingress capability,

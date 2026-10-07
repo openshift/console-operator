@@ -3,18 +3,23 @@ package consoleserver
 import (
 	"os"
 	"path"
+	"slices"
 	"strings"
+
+	"gopkg.in/yaml.v2"
+
+	authorizationv1 "k8s.io/api/authorization/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 
 	configv1 "github.com/openshift/api/config/v1"
 	v1 "github.com/openshift/api/console/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
+
 	"github.com/openshift/console-operator/pkg/api"
 	authconfigsub "github.com/openshift/console-operator/pkg/console/subresource/authentication"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
-	"gopkg.in/yaml.v2"
-	authorizationv1 "k8s.io/api/authorization/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
+	"github.com/openshift/console-operator/pkg/proxyconfig"
 )
 
 const (
@@ -81,6 +86,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	oidcIssuerURL                     string
 	oidcOCLoginCommand                string
 	authType                          string
+	authProxy                         *AuthProxy
 	sessionEncryptionFile             string
 	sessionAuthenticationFile         string
 	previousSessionEncryptionFile     string
@@ -239,6 +245,17 @@ func (b *ConsoleServerCLIConfigBuilder) AuthConfig(authnConfig *configv1.Authent
 		}
 	}
 
+	return b
+}
+
+func (b *ConsoleServerCLIConfigBuilder) AuthProxy(proxy *proxyconfig.Config) *ConsoleServerCLIConfigBuilder {
+	b.authProxy = nil
+	if proxy != nil {
+		b.authProxy = &AuthProxy{HTTPProxy: proxy.HTTPProxy, HTTPSProxy: proxy.HTTPSProxy, NoProxy: slices.Clone(proxy.NoProxy)}
+		if proxy.TrustedCAName != "" {
+			b.authProxy.TrustedCAFile = path.Join(api.AuthProxyCAMountDir, api.AuthProxyCAFileName)
+		}
+	}
 	return b
 }
 
@@ -475,6 +492,9 @@ func (b *ConsoleServerCLIConfigBuilder) auth() Auth {
 	}
 	if len(b.logoutRedirectURL) > 0 {
 		conf.LogoutRedirect = b.logoutRedirectURL
+	}
+	if b.authType == "oidc" {
+		conf.AuthProxy = b.authProxy
 	}
 	return conf
 }

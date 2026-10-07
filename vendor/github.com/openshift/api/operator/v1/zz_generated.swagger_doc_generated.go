@@ -277,13 +277,25 @@ func (Console) SwaggerDoc() map[string]string {
 	return map_Console
 }
 
-var map_ConsoleConfigMapReference = map[string]string{
-	"":     "ConsoleConfigMapReference references a ConfigMap in the openshift-config namespace.",
+var map_ConsoleAuthProxyConfig = map[string]string{
+	"":           "ConsoleAuthProxyConfig holds proxy configuration scoped to Console's OIDC login clients. At least one of httpProxy or httpsProxy must be specified.",
+	"httpProxy":  "httpProxy is the URL of the proxy for HTTP requests. Must be a valid URL with http or https scheme, a non-empty hostname, and no path, query parameters, or fragment. Userinfo (e.g. user:password@host) is allowed for proxy authentication. Maximum length is 2048 characters.",
+	"httpsProxy": "httpsProxy is the URL of the proxy for HTTPS requests. Must be a valid URL with http or https scheme, a non-empty hostname, and no path, query parameters, or fragment. Userinfo (e.g. user:password@host) is allowed for proxy authentication. Maximum length is 2048 characters.",
+	"noProxy":    "noProxy is a list of hostnames and/or CIDRs and/or IPs for which the proxy should not be used. Must contain at least one entry when set. Each entry must be between 1 and 253 characters long and at most 64 entries are allowed. Duplicate entries are not permitted. Entries that are not valid hostnames, CIDRs, or IPs are silently ignored. Cluster-internal defaults (.cluster.local, .svc, 127.0.0.1, localhost) are always appended automatically and do not need to be included.",
+	"trustedCA":  "trustedCA is a reference to a ConfigMap in the openshift-config namespace containing a CA certificate bundle under the key \"ca-bundle.crt\". This bundle is appended to the system trust store used by Console's OIDC login clients for proxy TLS connections. When omitted, only the system trust store is used.",
+}
+
+func (ConsoleAuthProxyConfig) SwaggerDoc() map[string]string {
+	return map_ConsoleAuthProxyConfig
+}
+
+var map_ConsoleAuthProxyTrustedCAConfigMapReference = map[string]string{
+	"":     "ConsoleAuthProxyTrustedCAConfigMapReference references a ConfigMap in the openshift-config namespace.",
 	"name": "name is the metadata.name of the referenced ConfigMap. Must be a valid DNS subdomain name (RFC 1123): at most 253 characters, only lowercase alphanumeric characters, '-' or '.', starting and ending with an alphanumeric character.",
 }
 
-func (ConsoleConfigMapReference) SwaggerDoc() map[string]string {
-	return map_ConsoleConfigMapReference
+func (ConsoleAuthProxyTrustedCAConfigMapReference) SwaggerDoc() map[string]string {
+	return map_ConsoleAuthProxyTrustedCAConfigMapReference
 }
 
 var map_ConsoleConfigRoute = map[string]string{
@@ -315,6 +327,16 @@ func (ConsoleCustomization) SwaggerDoc() map[string]string {
 	return map_ConsoleCustomization
 }
 
+var map_ConsoleIngress = map[string]string{
+	"":                   "Ingress allows cluster admin to configure alternative ingress for the console.",
+	"consoleURL":         "consoleURL is a URL to be used as the base console address. If not specified, the console route hostname will be used. This field is required for clusters without ingress capability, where access to routes is not possible. Make sure that appropriate ingress is set up at this URL. The console operator will monitor the URL and may go degraded if it's unreachable for an extended period. Must use the HTTPS scheme.",
+	"clientDownloadsURL": "clientDownloadsURL is a URL to be used as the address to download client binaries. If not specified, the downloads route hostname will be used. This field is required for clusters without ingress capability, where access to routes is not possible. The console operator will monitor the URL and may go degraded if it's unreachable for an extended period. Must use the HTTPS scheme.",
+}
+
+func (ConsoleIngress) SwaggerDoc() map[string]string {
+	return map_ConsoleIngress
+}
+
 var map_ConsoleList = map[string]string{
 	"":         "Compatibility level 1: Stable within a major release for a minimum of 12 months or 3 minor releases (whichever is longer).",
 	"metadata": "metadata is the standard list's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata",
@@ -331,18 +353,6 @@ var map_ConsoleProviders = map[string]string{
 
 func (ConsoleProviders) SwaggerDoc() map[string]string {
 	return map_ConsoleProviders
-}
-
-var map_ConsoleProxyConfig = map[string]string{
-	"":           "ConsoleProxyConfig holds proxy configuration scoped to Console's OIDC login clients. At least one of httpProxy or httpsProxy must be specified.",
-	"httpProxy":  "httpProxy is the URL of the proxy for HTTP requests. Must be a valid URL with http or https scheme, a non-empty hostname, and no path, query parameters, or fragment. Userinfo (e.g. user:password@host) is allowed for proxy authentication. Maximum length is 2048 characters.",
-	"httpsProxy": "httpsProxy is the URL of the proxy for HTTPS requests. Must be a valid URL with http or https scheme, a non-empty hostname, and no path, query parameters, or fragment. Userinfo (e.g. user:password@host) is allowed for proxy authentication. Maximum length is 2048 characters.",
-	"noProxy":    "noProxy is a list of hostnames and/or CIDRs and/or IPs for which the proxy should not be used. Must contain at least one entry when set. Each entry must be between 1 and 253 characters long and at most 64 entries are allowed. Duplicate entries are not permitted. Entries that are not valid hostnames, CIDRs, or IPs are silently ignored. Cluster-internal defaults (.cluster.local, .svc, 127.0.0.1, localhost) are always appended automatically and do not need to be included.",
-	"trustedCA":  "trustedCA is a reference to a ConfigMap in the openshift-config namespace containing a CA certificate bundle under the key \"ca-bundle.crt\". This bundle is appended to the system trust store used by Console's OIDC login clients for proxy TLS connections. When omitted, only the system trust store is used.",
-}
-
-func (ConsoleProxyConfig) SwaggerDoc() map[string]string {
-	return map_ConsoleProxyConfig
 }
 
 var map_ConsoleSpec = map[string]string{
@@ -416,16 +426,6 @@ var map_FileReferenceSource = map[string]string{
 
 func (FileReferenceSource) SwaggerDoc() map[string]string {
 	return map_FileReferenceSource
-}
-
-var map_Ingress = map[string]string{
-	"":                   "Ingress allows cluster admin to configure alternative ingress for the console.",
-	"consoleURL":         "consoleURL is a URL to be used as the base console address. If not specified, the console route hostname will be used. This field is required for clusters without ingress capability, where access to routes is not possible. Make sure that appropriate ingress is set up at this URL. The console operator will monitor the URL and may go degraded if it's unreachable for an extended period. Must use the HTTPS scheme.",
-	"clientDownloadsURL": "clientDownloadsURL is a URL to be used as the address to download client binaries. If not specified, the downloads route hostname will be used. This field is required for clusters without ingress capability, where access to routes is not possible. The console operator will monitor the URL and may go degraded if it's unreachable for an extended period. Must use the HTTPS scheme.",
-}
-
-func (Ingress) SwaggerDoc() map[string]string {
-	return map_Ingress
 }
 
 var map_Logo = map[string]string{

@@ -128,7 +128,7 @@ require (
 )
 
 // branch: external-oidc-proxy-feature-gate
-replace github.com/openshift/api => github.com/tchap/api v0.0.0-20261005132209-47bee4d8e22a
+replace github.com/openshift/api => github.com/tchap/api v0.0.0-20261007163438-e1f2728c7143
 
 // branch: dynamic-http-transport
 replace github.com/openshift/library-go => github.com/tchap/library-go v0.0.0-20261007105843-3f31f20002f6

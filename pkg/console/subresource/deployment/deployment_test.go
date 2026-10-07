@@ -194,12 +194,12 @@ func TestDefaultDeployment(t *testing.T) {
 	withConsoleContainerImage(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
 	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMap{
 		Data: map[string]string{"ca-bundle.crt": "test"},
-	}, nil, trustedCAConfigMapEmpty, nil, &operatorsv1.ConsoleCustomization{})
+	}, nil, trustedCAConfigMapEmpty, nil, &operatorsv1.ConsoleCustomization{}, nil)
 	consoleDeploymentContainer := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumes := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMap{
 		Data: map[string]string{"ca-bundle.crt": "test"},
-	}, nil, trustedCAConfigMapSet, nil, &operatorsv1.ConsoleCustomization{})
+	}, nil, trustedCAConfigMapSet, nil, &operatorsv1.ConsoleCustomization{}, nil)
 	consoleDeploymentContainerTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumesTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 
@@ -555,6 +555,7 @@ func TestDefaultDeployment(t *testing.T) {
 				tt.args.consoleServingCertSecret,
 				tt.args.proxyConfig,
 				tt.args.infrastructureConfig,
+				nil, // authProxy
 			), tt.want); diff != nil {
 				t.Error(diff)
 			}
@@ -1496,6 +1497,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 				tt.args.trustedCAConfigMap,
 				tt.args.sessionSecret,
 				tt.args.customization,
+				nil, // authProxy
 			)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)

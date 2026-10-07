@@ -192,8 +192,8 @@ github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.12.1 h1:EuwCh5fleGS7H32xRwO3wRGT7DxrDhLAT6FF8MpWDWE=
 github.com/stretchr/testify v1.12.1/go.mod h1:MDEgiDPPsNp5cuIrHPPCyornHKgEVbtFUmoNlxoYthg=
-github.com/tchap/api v0.0.0-20261005132209-47bee4d8e22a h1:haOGA/jP5R0NxuZO4Q7DtQwl/kIh2IcIuppJDuYavs0=
-github.com/tchap/api v0.0.0-20261005132209-47bee4d8e22a/go.mod h1:2oI3aXQFDjjl7l4xA9ZPSkB+l+lyfWLg7P2sWg9yEvM=
+github.com/tchap/api v0.0.0-20261007163438-e1f2728c7143 h1:ChoqePw0ZH4c/3ccErbjIsuXiyjErRM02YLMs9ksHNA=
+github.com/tchap/api v0.0.0-20261007163438-e1f2728c7143/go.mod h1:2oI3aXQFDjjl7l4xA9ZPSkB+l+lyfWLg7P2sWg9yEvM=
 github.com/tchap/library-go v0.0.0-20261007105843-3f31f20002f6 h1:6XOTAwtZDVWpIAX7j5zm85d6PKoWLa5i+JKvwbvgsO0=
 github.com/tchap/library-go v0.0.0-20261007105843-3f31f20002f6/go.mod h1:k0EA2kHPdvdKgyV38lWS1u1eIgMBgrpWkCl2ei4A3ug=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20220101234140-673ab2c3ae75 h1:6fotK7otjonDflCTK0BCfls4SPy3NcCVb5dqqmbRknE=

@@ -20,6 +20,7 @@ import (
 	"github.com/openshift/console-operator/bindata"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/console-operator/pkg/proxyconfig"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
 )
 
@@ -41,6 +42,7 @@ const (
 	authnCATrustConfigMapResourceVersionAnnotation = "console.openshift.io/authn-ca-trust-config-version"
 	sessionSecretRVAnnotation                      = "console.openshift.io/session-secret-version"
 	servingCertSecretResourceVersionAnnotation     = "console.openshift.io/serving-cert-secret-version"
+	authProxyCAConfigMapAnnotation                 = "console.openshift.io/auth-proxy-ca"
 )
 
 var (
@@ -54,6 +56,7 @@ var (
 		secretResourceVersionAnnotation,
 		consoleImageAnnotation,
 		servingCertSecretResourceVersionAnnotation,
+		authProxyCAConfigMapAnnotation,
 	}
 )
 
@@ -80,6 +83,7 @@ func DefaultDeployment(
 	consoleServingCertSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
+	authProxy *proxyconfig.Config,
 ) *appsv1.Deployment {
 	authnCATrustConfigMap := localOAuthServingCertConfigMap
 	if authnCATrustConfigMap == nil {
@@ -109,7 +113,13 @@ func DefaultDeployment(
 		trustedCAConfigMap,
 		sessionSecret,
 		&operatorConfig.Spec.Customization,
+		authProxy,
 	)
+	if authProxy != nil && authProxy.TrustedCAName != "" {
+		// Track the source identity, never its contents or resource version.
+		deployment.Annotations[authProxyCAConfigMapAnnotation] = authProxy.TrustedCAName
+		deployment.Spec.Template.Annotations[authProxyCAConfigMapAnnotation] = authProxy.TrustedCAName
+	}
 	withConsoleContainerImage(deployment, operatorConfig, proxyConfig)
 	withNodeSelector(deployment, infrastructureConfig)
 	util.AddOwnerRef(deployment, util.OwnerRefFrom(operatorConfig))
@@ -300,8 +310,12 @@ func withConsoleVolumes(
 	trustedCAConfigMap *corev1.ConfigMap,
 	sessionSecret *corev1.Secret,
 	customization *operatorv1.ConsoleCustomization,
+	authProxy *proxyconfig.Config,
 ) {
 	volumeConfig := defaultVolumeConfig()
+	if authProxy != nil && authProxy.TrustedCAName != "" {
+		volumeConfig = append(volumeConfig, authProxyCAVolume())
+	}
 
 	caBundle, caBundleExists := trustedCAConfigMap.Data["ca-bundle.crt"]
 	if caBundleExists && caBundle != "" {
@@ -610,6 +624,16 @@ func trustedCAVolume() volumeConfig {
 		mappedKeys: map[string]string{
 			api.TrustedCABundleKey: api.TrustedCABundleMountFile,
 		},
+	}
+}
+
+func authProxyCAVolume() volumeConfig {
+	return volumeConfig{
+		name:        api.AuthProxyCAConfigMapName,
+		path:        api.AuthProxyCAMountDir,
+		readOnly:    true,
+		isConfigMap: true,
+		mappedKeys:  map[string]string{api.AuthProxyCAFileName: api.AuthProxyCAFileName},
 	}
 }
 
