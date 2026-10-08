@@ -762,6 +762,7 @@ func TestGetTLSConfigFromObservedConfig(t *testing.T) {
 		operatorConfig    *operatorv1.Console
 		wantMinTLSVersion configv1.TLSProtocolVersion
 		wantCiphers       []string
+		wantGroups        []string
 		wantError         bool
 	}{
 		{
@@ -779,7 +780,7 @@ func TestGetTLSConfigFromObservedConfig(t *testing.T) {
 			wantError: true,
 		},
 		{
-			name: "valid config with both minTLSVersion and cipherSuites",
+			name: "valid config with minTLSVersion, cipherSuites, and groups",
 			operatorConfig: makeOperatorConfigWithObservedConfig(runtime.RawExtension{
 				Raw: mustMarshal(map[string]interface{}{
 					"servingInfo": map[string]interface{}{
@@ -788,11 +789,13 @@ func TestGetTLSConfigFromObservedConfig(t *testing.T) {
 							"TLS_AES_128_GCM_SHA256",
 							"TLS_AES_256_GCM_SHA384",
 						},
+						"groups": []string{"X25519", "secp256r1"},
 					},
 				}),
 			}),
 			wantMinTLSVersion: configv1.VersionTLS12,
 			wantCiphers:       []string{"TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384"},
+			wantGroups:        []string{"X25519", "secp256r1"},
 		},
 		{
 			name: "valid config with only minTLSVersion",
@@ -817,6 +820,17 @@ func TestGetTLSConfigFromObservedConfig(t *testing.T) {
 			wantCiphers: []string{"TLS_AES_128_GCM_SHA256"},
 		},
 		{
+			name: "valid config with only groups",
+			operatorConfig: makeOperatorConfigWithObservedConfig(runtime.RawExtension{
+				Raw: mustMarshal(map[string]interface{}{
+					"servingInfo": map[string]interface{}{
+						"groups": []string{"X25519MLKEM768", "SecP256r1MLKEM768"},
+					},
+				}),
+			}),
+			wantGroups: []string{"X25519MLKEM768", "SecP256r1MLKEM768"},
+		},
+		{
 			name: "empty observedConfig returns empty values",
 			operatorConfig: makeOperatorConfigWithObservedConfig(runtime.RawExtension{
 				Raw: mustMarshal(map[string]interface{}{}),
@@ -834,7 +848,7 @@ func TestGetTLSConfigFromObservedConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			minTLSVersion, ciphers, err := getTLSConfigFromObservedConfig(tt.operatorConfig)
+			minTLSVersion, ciphers, groups, err := getTLSConfigFromObservedConfig(tt.operatorConfig)
 
 			if (err != nil) != tt.wantError {
 				t.Errorf("getTLSConfigFromObservedConfig() error = %v, wantError %v", err, tt.wantError)
@@ -847,6 +861,10 @@ func TestGetTLSConfigFromObservedConfig(t *testing.T) {
 
 			if diff := deep.Equal(ciphers, tt.wantCiphers); diff != nil {
 				t.Errorf("getTLSConfigFromObservedConfig() ciphers diff: %v", diff)
+			}
+
+			if diff := deep.Equal(groups, tt.wantGroups); diff != nil {
+				t.Errorf("getTLSConfigFromObservedConfig() groups diff: %v", diff)
 			}
 		})
 	}

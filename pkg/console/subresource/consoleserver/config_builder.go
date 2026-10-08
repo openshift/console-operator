@@ -93,6 +93,7 @@ type ConsoleServerCLIConfigBuilder struct {
 	additionalHosts                   []string
 	minTLSVersion                     string
 	cipherSuites                      []string
+	groups                            []string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -337,9 +338,10 @@ func (b *ConsoleServerCLIConfigBuilder) AdditionalHosts(hosts []string) *Console
 	return b
 }
 
-func (b *ConsoleServerCLIConfigBuilder) TLSConfig(minVersion configv1.TLSProtocolVersion, ciphers []string) *ConsoleServerCLIConfigBuilder {
+func (b *ConsoleServerCLIConfigBuilder) TLSConfig(minVersion configv1.TLSProtocolVersion, ciphers, groups []string) *ConsoleServerCLIConfigBuilder {
 	b.minTLSVersion = string(minVersion)
 	b.cipherSuites = ciphers
+	b.groups = groups
 	return b
 }
 
@@ -390,6 +392,10 @@ func (b *ConsoleServerCLIConfigBuilder) servingInfo() ServingInfo {
 
 	if len(b.cipherSuites) > 0 {
 		conf.CipherSuites = b.cipherSuites
+	}
+
+	if len(b.groups) > 0 {
+		conf.Groups = b.groups
 	}
 
 	return conf

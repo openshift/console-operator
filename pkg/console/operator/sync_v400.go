@@ -484,7 +484,7 @@ func (co *consoleOperator) SyncConfigMap(
 		}
 	}
 
-	tlsMinVersion, tlsCiphers, tlsErr := getTLSConfigFromObservedConfig(operatorConfig)
+	tlsMinVersion, tlsCiphers, tlsGroups, tlsErr := getTLSConfigFromObservedConfig(operatorConfig)
 	if tlsErr != nil {
 		return nil, "FailedGetTLSConfig", tlsErr
 	}
@@ -509,6 +509,7 @@ func (co *consoleOperator) SyncConfigMap(
 		additionalHosts,
 		tlsMinVersion,
 		tlsCiphers,
+		tlsGroups,
 	)
 	if err != nil {
 		return nil, "FailedConsoleConfigBuilder", err
@@ -992,26 +993,31 @@ func (co *consoleOperator) syncSessionSecret(
 }
 
 // getTLSConfigFromObservedConfig reads TLS configuration from the Console CR's observedConfig field.
-func getTLSConfigFromObservedConfig(operatorConfig *operatorv1.Console) (configv1.TLSProtocolVersion, []string, error) {
+func getTLSConfigFromObservedConfig(operatorConfig *operatorv1.Console) (configv1.TLSProtocolVersion, []string, []string, error) {
 	if operatorConfig == nil || operatorConfig.Spec.ObservedConfig.Raw == nil {
 		// Not an error - the config observer hasn't injected the config yet
-		return "", nil, nil
+		return "", nil, nil, nil
 	}
 
 	observedConfig := map[string]interface{}{}
 	if err := json.Unmarshal(operatorConfig.Spec.ObservedConfig.Raw, &observedConfig); err != nil {
-		return "", nil, fmt.Errorf("failed to unmarshal observedConfig: %w", err)
+		return "", nil, nil, fmt.Errorf("failed to unmarshal observedConfig: %w", err)
 	}
 
 	minTLSVersion, _, err := unstructured.NestedString(observedConfig, "servingInfo", "minTLSVersion")
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to read servingInfo.minTLSVersion: %w", err)
+		return "", nil, nil, fmt.Errorf("failed to read servingInfo.minTLSVersion: %w", err)
 	}
 
 	cipherSuites, _, err := unstructured.NestedStringSlice(observedConfig, "servingInfo", "cipherSuites")
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to read servingInfo.cipherSuites: %w", err)
+		return "", nil, nil, fmt.Errorf("failed to read servingInfo.cipherSuites: %w", err)
 	}
 
-	return configv1.TLSProtocolVersion(minTLSVersion), cipherSuites, nil
+	groups, _, err := unstructured.NestedStringSlice(observedConfig, "servingInfo", "groups")
+	if err != nil {
+		return "", nil, nil, fmt.Errorf("failed to read servingInfo.groups: %w", err)
+	}
+
+	return configv1.TLSProtocolVersion(minTLSVersion), cipherSuites, groups, nil
 }
