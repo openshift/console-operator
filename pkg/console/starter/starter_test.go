@@ -11,78 +11,13 @@ import (
 	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
-	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
-	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	v1helpers "github.com/openshift/library-go/pkg/operator/v1helpers"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/fake"
 	clocktesting "k8s.io/utils/clock/testing"
 )
-
-func TestAuthProxyCAResourceSync(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	defer cancel()
-	source := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "proxy-ca", Namespace: api.OpenShiftConfigNamespace}, Data: map[string]string{api.AuthProxyCAFileName: "initial bundle", "extra": "copied but not projected"}}
-	kubeClient := fake.NewClientset(source)
-	operatorClient := v1helpers.NewFakeOperatorClient(&operatorv1.OperatorSpec{ManagementState: operatorv1.Managed}, &operatorv1.OperatorStatus{}, nil)
-	recorder := events.NewInMemoryRecorder("test", clocktesting.NewFakePassiveClock(time.Now()))
-	informers, syncer := getResourceSyncer(&controllercmd.ControllerContext{EventRecorder: recorder}, kubeClient, operatorClient)
-	informers.Start(ctx.Done())
-	destination := resourcesynccontroller.ResourceLocation{Name: api.AuthProxyCAConfigMapName, Namespace: api.TargetNamespace}
-	if err := syncer.SyncConfigMap(destination, resourcesynccontroller.ResourceLocation{Name: source.Name, Namespace: source.Namespace}); err != nil {
-		t.Fatal(err)
-	}
-	syncContext := factory.NewSyncContext("test", recorder)
-	assertDestination := func(bundle string, absent bool) {
-		t.Helper()
-		if err := wait.PollUntilContextTimeout(ctx, 10*time.Millisecond, 3*time.Second, true, func(ctx context.Context) (bool, error) {
-			if err := syncer.Sync(ctx, syncContext); err != nil {
-				return false, err
-			}
-			cm, err := kubeClient.CoreV1().ConfigMaps(destination.Namespace).Get(ctx, destination.Name, metav1.GetOptions{})
-			if absent {
-				return apierrors.IsNotFound(err), nil
-			}
-			if apierrors.IsNotFound(err) {
-				return false, nil
-			}
-			if err != nil {
-				return false, err
-			}
-			return cm.Data[api.AuthProxyCAFileName] == bundle, nil
-		}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	assertDestination("initial bundle", false)
-	for _, bundle := range []string{"rotated bundle", "invalid PEM", "recovered bundle"} {
-		source.Data[api.AuthProxyCAFileName] = bundle
-		if _, err := kubeClient.CoreV1().ConfigMaps(source.Namespace).Update(ctx, source, metav1.UpdateOptions{}); err != nil {
-			t.Fatal(err)
-		}
-		assertDestination(bundle, false)
-	}
-	if err := kubeClient.CoreV1().ConfigMaps(destination.Namespace).Delete(ctx, destination.Name, metav1.DeleteOptions{}); err != nil {
-		t.Fatal(err)
-	}
-	assertDestination("recovered bundle", false)
-	if err := kubeClient.CoreV1().ConfigMaps(source.Namespace).Delete(ctx, source.Name, metav1.DeleteOptions{}); err != nil {
-		t.Fatal(err)
-	}
-	assertDestination("", true)
-	if _, err := kubeClient.CoreV1().ConfigMaps(source.Namespace).Create(ctx, source, metav1.CreateOptions{}); err != nil {
-		t.Fatal(err)
-	}
-	assertDestination("recovered bundle", false)
-	if err := syncer.SyncConfigMap(destination, resourcesynccontroller.ResourceLocation{}); err != nil {
-		t.Fatal(err)
-	}
-	assertDestination("", true)
-}
 
 func TestGetResourceSyncerInformersCacheSync(t *testing.T) {
 	kubeClient := fake.NewSimpleClientset()

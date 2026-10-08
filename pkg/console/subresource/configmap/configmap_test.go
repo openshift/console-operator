@@ -2,10 +2,13 @@ package configmap
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"strconv"
 	"testing"
 
+	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
+	"github.com/openshift/console-operator/pkg/proxyconfig"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/go-test/deep"
@@ -1819,5 +1822,139 @@ func TestGetPluginsProxyServicesSorting(t *testing.T) {
 				t.Error(diff)
 			}
 		})
+	}
+}
+
+// TestAuthProxyConfigReplacement verifies which auth.proxy block ends up in the
+// rendered console config for a given resolved proxy, authentication mode, and
+// set of unsupported overrides.
+func TestAuthProxyConfigReplacement(t *testing.T) {
+	for _, tc := range []struct {
+		name              string
+		managedAuthProxy  *proxyconfig.Config
+		proxy             *proxyconfig.Config
+		authType          configv1.AuthenticationType
+		disableOIDCClient bool
+		overrides         []byte
+		want              *consoleserver.AuthProxy
+	}{
+		{
+			name:  "HTTP proxy and no-proxy list",
+			proxy: &proxyconfig.Config{HTTPProxy: "http://component.example:3128", NoProxy: []string{".svc", "idp.example"}},
+			want:  &consoleserver.AuthProxy{HTTPProxy: "http://component.example:3128", NoProxy: []string{".svc", "idp.example"}},
+		},
+		{
+			name:  "HTTPS proxy with trusted CA",
+			proxy: &proxyconfig.Config{HTTPSProxy: "https://component.example:3128", TrustedCAName: "proxy-ca"},
+			want:  &consoleserver.AuthProxy{HTTPSProxy: "https://component.example:3128", TrustedCAFile: api.AuthProxyCAMountDir + "/" + api.AuthProxyCAFileName},
+		},
+		{
+			name: "no proxy omits the block",
+		},
+		{
+			name:             "merges onto managed proxy fields",
+			managedAuthProxy: &proxyconfig.Config{HTTPSProxy: "http://managed.example:3128"},
+			proxy:            &proxyconfig.Config{HTTPProxy: "http://component.example:3128"},
+			want:             &consoleserver.AuthProxy{HTTPProxy: "http://component.example:3128", HTTPSProxy: "http://managed.example:3128"},
+		},
+		{
+			name:     "integrated auth omits the block",
+			authType: configv1.AuthenticationTypeIntegratedOAuth,
+			proxy:    &proxyconfig.Config{HTTPProxy: "http://component.example:3128"},
+		},
+		{
+			name:              "disabled OIDC omits the block",
+			disableOIDCClient: true,
+			proxy:             &proxyconfig.Config{HTTPProxy: "http://component.example:3128"},
+		},
+		{
+			name:      "unsupported overrides are applied last",
+			proxy:     &proxyconfig.Config{HTTPProxy: "http://component.example:3128"},
+			overrides: []byte(`{"auth":{"authProxy":{"httpsProxy":"http://unsupported.example:3128"}}}`),
+			want:      &consoleserver.AuthProxy{HTTPProxy: "http://component.example:3128", HTTPSProxy: "http://unsupported.example:3128"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			op := minimalOperatorConfig()
+			op.Spec.UnsupportedConfigOverrides.Raw = tc.overrides
+			auth := minimalAuthConfig()
+			auth.Spec.Type = configv1.AuthenticationTypeOIDC
+			auth.Spec.OIDCProviders = []configv1.OIDCProvider{{
+				Issuer: configv1.TokenIssuer{
+					URL:                  "https://idp.example",
+					CertificateAuthority: configv1.ConfigMapNameReference{Name: "issuer-ca"},
+				},
+				OIDCClients: []configv1.OIDCClientConfig{{
+					ComponentNamespace: api.TargetNamespace,
+					ComponentName:      api.OpenShiftConsoleName,
+					ClientID:           "console"},
+				}},
+			}
+
+			if tc.authType != "" {
+				auth.Spec.Type = tc.authType
+			}
+
+			if tc.disableOIDCClient {
+				auth.Spec.OIDCProviders[0].OIDCClients = nil
+			}
+
+			managed := &corev1.ConfigMap{Data: map[string]string{consoleConfigYamlFile: ""}}
+			if m := tc.managedAuthProxy; m != nil {
+				proxy := &consoleserver.AuthProxy{HTTPProxy: m.HTTPProxy, HTTPSProxy: m.HTTPSProxy, NoProxy: m.NoProxy}
+				data, err := yaml.Marshal(map[string]any{"auth": map[string]any{"authProxy": proxy}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				managed.Data[consoleConfigYamlFile] = string(data)
+			}
+			managedBefore := managed.DeepCopy()
+
+			cm, _, err := DefaultConfigMap(op, minimalConsoleConfig(), auth, managed, &corev1.ConfigMap{}, minimalInfrastructureConfig(), minimalRoute(), 0, nil, nil, nil, false, nil, "console.example", false, false, nil, "", nil, tc.proxy)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var config consoleserver.Config
+			if err := yaml.Unmarshal([]byte(cm.Data[consoleConfigYamlFile]), &config); err != nil {
+				t.Fatal(err)
+			}
+
+			if got := config.Auth.AuthProxy; !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("auth.proxy = %#v, want %#v", got, tc.want)
+			}
+			if !reflect.DeepEqual(managed, managedBefore) {
+				t.Fatal("config generation mutated the managed informer ConfigMap")
+			}
+		})
+	}
+}
+
+// TestAuthProxyBuilderSnapshotsAndClears verifies the builder copies the caller's
+// proxy settings (rather than aliasing them) and clears a previously set block
+// when the builder is reused during reconciliation.
+func TestAuthProxyBuilderSnapshotsAndClears(t *testing.T) {
+	proxy := &proxyconfig.Config{HTTPProxy: "http://component.example:3128", NoProxy: []string{"idp.example"}}
+	auth := &configv1.Authentication{
+		Spec: configv1.AuthenticationSpec{
+			Type: configv1.AuthenticationTypeOIDC,
+			OIDCProviders: []configv1.OIDCProvider{{
+				OIDCClients: []configv1.OIDCClientConfig{{
+					ComponentNamespace: api.TargetNamespace, ComponentName: api.OpenShiftConsoleName,
+				}},
+			}},
+		},
+	}
+
+	builder := &consoleserver.ConsoleServerCLIConfigBuilder{}
+	builder.AuthProxy(proxy)
+	proxy.NoProxy[0] = "changed.example"
+	config := builder.AuthConfig(auth, "").Config()
+	if config.Auth.AuthProxy == nil || config.Auth.AuthProxy.NoProxy[0] != "idp.example" {
+		t.Fatal("builder aliased the caller's proxy settings")
+	}
+
+	if builder.AuthProxy(nil).Config().Auth.AuthProxy != nil {
+		t.Fatal("reused builder retained the previous proxy block")
 	}
 }

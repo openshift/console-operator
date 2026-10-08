@@ -42,7 +42,6 @@ const (
 	authnCATrustConfigMapResourceVersionAnnotation = "console.openshift.io/authn-ca-trust-config-version"
 	sessionSecretRVAnnotation                      = "console.openshift.io/session-secret-version"
 	servingCertSecretResourceVersionAnnotation     = "console.openshift.io/serving-cert-secret-version"
-	authProxyCAConfigMapAnnotation                 = "console.openshift.io/auth-proxy-ca"
 )
 
 var (
@@ -56,7 +55,6 @@ var (
 		secretResourceVersionAnnotation,
 		consoleImageAnnotation,
 		servingCertSecretResourceVersionAnnotation,
-		authProxyCAConfigMapAnnotation,
 	}
 )
 
@@ -115,11 +113,6 @@ func DefaultDeployment(
 		&operatorConfig.Spec.Customization,
 		authProxy,
 	)
-	if authProxy != nil && authProxy.TrustedCAName != "" {
-		// Track the source identity, never its contents or resource version.
-		deployment.Annotations[authProxyCAConfigMapAnnotation] = authProxy.TrustedCAName
-		deployment.Spec.Template.Annotations[authProxyCAConfigMapAnnotation] = authProxy.TrustedCAName
-	}
 	withConsoleContainerImage(deployment, operatorConfig, proxyConfig)
 	withNodeSelector(deployment, infrastructureConfig)
 	util.AddOwnerRef(deployment, util.OwnerRefFrom(operatorConfig))

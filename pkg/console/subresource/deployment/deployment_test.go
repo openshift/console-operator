@@ -19,6 +19,7 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/console-operator/pkg/proxyconfig"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
 )
 
@@ -49,6 +50,7 @@ func TestDefaultDeployment(t *testing.T) {
 		consoleServingCertSecret       *corev1.Secret
 		proxyConfig                    *configv1.Proxy
 		infrastructureConfig           *configv1.Infrastructure
+		authProxy                      *proxyconfig.Config
 	}
 
 	consoleOperatorConfig := &operatorsv1.Console{
@@ -202,6 +204,11 @@ func TestDefaultDeployment(t *testing.T) {
 	}, nil, trustedCAConfigMapSet, nil, &operatorsv1.ConsoleCustomization{}, nil)
 	consoleDeploymentContainerTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumesTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
+	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMap{
+		Data: map[string]string{"ca-bundle.crt": "test"},
+	}, nil, trustedCAConfigMapEmpty, nil, &operatorsv1.ConsoleCustomization{}, &proxyconfig.Config{TrustedCAName: "proxy-ca"})
+	consoleDeploymentContainerWithAuthProxy := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
+	consoleDeploymentVolumesWithAuthProxy := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 
 	tests := []struct {
 		name string
@@ -540,6 +547,80 @@ func TestDefaultDeployment(t *testing.T) {
 				Status: appsv1.DeploymentStatus{},
 			},
 		},
+		{
+			name: "auth proxy with trusted CA",
+			args: args{
+				consoleOperatorConfig: consoleOperatorConfig,
+				consoleConfig:         consoleConfig,
+				serviceCAConfigMap:    &corev1.ConfigMap{},
+				localOAuthServingCertConfigMap: &corev1.ConfigMap{
+					Data: map[string]string{"ca-bundle.crt": "test"},
+				},
+				trustedCAConfigMap:       trustedCAConfigMapEmpty,
+				oAuthClientSecret:        &corev1.Secret{},
+				consoleServingCertSecret: &corev1.Secret{},
+				proxyConfig:              proxyConfig,
+				infrastructureConfig:     infrastructureConfigHighlyAvailable,
+				authProxy:                &proxyconfig.Config{TrustedCAName: "proxy-ca"},
+			},
+			want: &appsv1.Deployment{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "apps/v1",
+				},
+				ObjectMeta: consoleDeploymentObjectMeta,
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &defaultReplicaCount,
+					Selector: &metav1.LabelSelector{
+						MatchLabels: labels,
+					},
+					Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{
+						Name:        api.OpenShiftConsoleName,
+						Labels:      labels,
+						Annotations: consoleDeploymentTemplateAnnotations,
+					},
+						Spec: corev1.PodSpec{
+							DNSPolicy:                corev1.DNSClusterFirst,
+							ServiceAccountName:       "console",
+							DeprecatedServiceAccount: "console",
+							NodeSelector:             map[string]string{"node-role.kubernetes.io/master": ""},
+							Affinity:                 consoleDeploymentAffinity,
+							Tolerations:              consoleDeploymentTolerations,
+							PriorityClassName:        "system-cluster-critical",
+							RestartPolicy:            corev1.RestartPolicyAlways,
+							SchedulerName:            corev1.DefaultSchedulerName,
+							TerminationGracePeriodSeconds: &gracePeriod,
+							SecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: utilpointer.Bool(true),
+								SeccompProfile: &corev1.SeccompProfile{
+									Type: corev1.SeccompProfileTypeRuntimeDefault,
+								},
+							},
+							Containers: []corev1.Container{
+								consoleDeploymentContainerWithAuthProxy,
+							},
+							Volumes: consoleDeploymentVolumesWithAuthProxy,
+						},
+					},
+					Strategy: appsv1.DeploymentStrategy{
+						Type: appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: &appsv1.RollingUpdateDeployment{
+							MaxSurge: &intstr.IntOrString{
+								IntVal: int32(1),
+							},
+							MaxUnavailable: &intstr.IntOrString{
+								IntVal: int32(0),
+							},
+						},
+					},
+					MinReadySeconds:         0,
+					RevisionHistoryLimit:    ptr.To(int32(10)),
+					Paused:                  false,
+					ProgressDeadlineSeconds: ptr.To(int32(600)),
+				},
+				Status: appsv1.DeploymentStatus{},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -555,7 +636,7 @@ func TestDefaultDeployment(t *testing.T) {
 				tt.args.consoleServingCertSecret,
 				tt.args.proxyConfig,
 				tt.args.infrastructureConfig,
-				nil, // authProxy
+				tt.args.authProxy,
 			), tt.want); diff != nil {
 				t.Error(diff)
 			}
@@ -1078,6 +1159,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 		deployment         *appsv1.Deployment
 		trustedCAConfigMap *corev1.ConfigMap
 		sessionSecret      *corev1.Secret
+		authProxy          *proxyconfig.Config
 	}
 
 	trustedCAConfigMap := &corev1.ConfigMap{
@@ -1299,6 +1381,21 @@ func TestWithConsoleVolumes(t *testing.T) {
 	customLogoVolumeMounts := append(defaultVolumeMounts, customLogoVolumeMount)
 	allVolumeMounts := append(defaultVolumeMounts, trustedCAVolumeMount, customLogoVolumeMount)
 
+	authProxyCAVolume := corev1.Volume{
+		Name: api.AuthProxyCAConfigMapName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: api.AuthProxyCAConfigMapName},
+				Items:                []corev1.KeyToPath{{Key: api.AuthProxyCAFileName, Path: api.AuthProxyCAFileName}},
+			},
+		},
+	}
+	authProxyCAVolumeMount := corev1.VolumeMount{
+		Name:      api.AuthProxyCAConfigMapName,
+		ReadOnly:  true,
+		MountPath: api.AuthProxyCAMountDir,
+	}
+
 	tests := []struct {
 		name string
 		args args
@@ -1487,6 +1584,44 @@ func TestWithConsoleVolumes(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "auth proxy without trusted CA does not add a volume",
+			args: args{
+				customization:      &operatorsv1.ConsoleCustomization{},
+				deployment:         consoleDeployment,
+				trustedCAConfigMap: &corev1.ConfigMap{},
+				authProxy:          &proxyconfig.Config{HTTPSProxy: "http://component.example:3128"},
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{Name: "consoleContainer", VolumeMounts: defaultVolumeMounts}},
+							Volumes:    defaultVolumes,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "auth proxy with trusted CA adds a volume and mount",
+			args: args{
+				customization:      &operatorsv1.ConsoleCustomization{},
+				deployment:         consoleDeployment,
+				trustedCAConfigMap: &corev1.ConfigMap{},
+				authProxy:          &proxyconfig.Config{TrustedCAName: "proxy-ca"},
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{Name: "consoleContainer", VolumeMounts: append(defaultVolumeMounts, authProxyCAVolumeMount)}},
+							Volumes:    append(defaultVolumes, authProxyCAVolume),
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1497,7 +1632,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 				tt.args.trustedCAConfigMap,
 				tt.args.sessionSecret,
 				tt.args.customization,
-				nil, // authProxy
+				tt.args.authProxy,
 			)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)

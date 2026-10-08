@@ -14,69 +14,35 @@ func TestFinalize(t *testing.T) {
 		want      Config
 	}{
 		{
-			name:      "HTTP only",
+			name:      "adds internal bypass defaults",
 			component: Config{HTTPProxy: "http://component.example:3128"},
-			want: Config{
-				HTTPProxy: "http://component.example:3128", NoProxy: defaults,
-			},
+			want:      Config{HTTPProxy: "http://component.example:3128", NoProxy: defaults},
 		},
 		{
-			name:      "HTTPS only with service host",
-			component: Config{HTTPSProxy: "http://component.example:3128"},
-			host:      "10.0.0.1",
-			want: Config{
-				HTTPSProxy: "http://component.example:3128",
-				NoProxy:    []string{".cluster.local", ".cluster.local.", ".svc", ".svc.", "10.0.0.1", "127.0.0.1", "localhost", "localhost."},
-			},
-		},
-		{
-			name: "both URLs and administrator bypass entries",
+			name: "merges service host and caller entries, sorted and deduplicated",
 			component: Config{
-				HTTPProxy: "http://http.example:3128", HTTPSProxy: "http://https.example:3128",
-				NoProxy: []string{"idp.example", ".svc", "idp.example", "10.0.0.1"},
+				HTTPSProxy:    "http://component.example:3128",
+				NoProxy:       []string{"idp.example", ".svc", "idp.example", "10.0.0.1"},
+				TrustedCAName: "proxy-ca",
 			},
 			host: "10.0.0.1",
 			want: Config{
-				HTTPProxy: "http://http.example:3128", HTTPSProxy: "http://https.example:3128",
-				NoProxy: []string{".cluster.local", ".cluster.local.", ".svc", ".svc.", "10.0.0.1", "127.0.0.1", "idp.example", "localhost", "localhost."},
+				HTTPSProxy:    "http://component.example:3128",
+				NoProxy:       []string{".cluster.local", ".cluster.local.", ".svc", ".svc.", "10.0.0.1", "127.0.0.1", "idp.example", "localhost", "localhost."},
+				TrustedCAName: "proxy-ca",
 			},
 		},
 		{
-			name: "service host already in defaults", component: Config{HTTPProxy: "http://component.example:3128"},
-			host: "127.0.0.1",
-			want: Config{
-				HTTPProxy: "http://component.example:3128", NoProxy: defaults,
-			},
+			name:      "service host already among defaults is deduplicated",
+			component: Config{HTTPProxy: "http://component.example:3128"},
+			host:      "127.0.0.1",
+			want:      Config{HTTPProxy: "http://component.example:3128", NoProxy: defaults},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("KUBERNETES_SERVICE_HOST", tc.host)
-			got := tc.component.Finalize()
-			if !reflect.DeepEqual(got, tc.want) {
+			if got := tc.component.Finalize(); !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("finalized = %#v, want %#v", got, tc.want)
-			}
-		})
-	}
-}
-
-func TestFinalizeTrustedCA(t *testing.T) {
-	for _, tc := range []struct {
-		name      string
-		component Config
-		wantCA    string
-	}{
-		{
-			name: "component trust", component: Config{HTTPProxy: "http://component.example:3128", TrustedCAName: "component-ca"},
-			wantCA: "component-ca",
-		},
-		{
-			name: "component without trust", component: Config{HTTPProxy: "http://component.example:3128"},
-		},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			got := tc.component.Finalize()
-			if got.TrustedCAName != tc.wantCA {
-				t.Fatalf("finalized = %#v, want CA %q", got, tc.wantCA)
 			}
 		})
 	}
