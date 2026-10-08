@@ -15,13 +15,17 @@ func TestTLSConfigInjection(t *testing.T) {
 		name          string
 		tlsMinVersion configv1.TLSProtocolVersion
 		tlsCiphers    []string
+		tlsGroups     []string
 		wantMinTLS    string
+		wantGroups    []string
 	}{
 		{
-			name:          "TLS 1.2 with ciphers",
+			name:          "TLS 1.2 with ciphers and groups",
 			tlsMinVersion: configv1.VersionTLS12,
 			tlsCiphers:    []string{"TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384"},
+			tlsGroups:     []string{"X25519", "secp256r1"},
 			wantMinTLS:    "VersionTLS12",
+			wantGroups:    []string{"X25519", "secp256r1"},
 		},
 		{
 			name:          "TLS 1.3 with no custom ciphers",
@@ -30,10 +34,12 @@ func TestTLSConfigInjection(t *testing.T) {
 			wantMinTLS:    "VersionTLS13",
 		},
 		{
-			name:          "Intermediate profile ciphers",
+			name:          "Intermediate profile ciphers and groups",
 			tlsMinVersion: configv1.TLSProfiles[configv1.TLSProfileIntermediateType].MinTLSVersion,
 			tlsCiphers:    configv1.TLSProfiles[configv1.TLSProfileIntermediateType].Ciphers,
+			tlsGroups:     []string{"X25519MLKEM768", "X25519", "secp256r1", "secp384r1"},
 			wantMinTLS:    "VersionTLS12",
+			wantGroups:    []string{"X25519MLKEM768", "X25519", "secp256r1", "secp384r1"},
 		},
 	}
 
@@ -59,6 +65,7 @@ func TestTLSConfigInjection(t *testing.T) {
 				nil,                          // additionalHosts
 				tt.tlsMinVersion,
 				tt.tlsCiphers,
+				tt.tlsGroups,
 			)
 
 			if err != nil {
@@ -88,6 +95,17 @@ func TestTLSConfigInjection(t *testing.T) {
 			for i, cipher := range config.ServingInfo.CipherSuites {
 				if i < len(tt.tlsCiphers) && cipher != tt.tlsCiphers[i] {
 					t.Errorf("CipherSuites[%d] = %v, want %v", i, cipher, tt.tlsCiphers[i])
+				}
+			}
+
+			if len(config.ServingInfo.Groups) != len(tt.wantGroups) {
+				t.Errorf("Groups count = %v, want %v. Got: %v",
+					len(config.ServingInfo.Groups), len(tt.wantGroups), config.ServingInfo.Groups)
+			}
+
+			for i, group := range config.ServingInfo.Groups {
+				if i < len(tt.wantGroups) && group != tt.wantGroups[i] {
+					t.Errorf("Groups[%d] = %v, want %v", i, group, tt.wantGroups[i])
 				}
 			}
 		})
