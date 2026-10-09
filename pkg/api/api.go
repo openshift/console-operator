@@ -1,6 +1,9 @@
 package api
 
 const (
+	AuthProxyCAConfigMapName            = "v4-0-config-system-auth-proxy-ca"
+	AuthProxyCAMountDir                 = "/var/auth-proxy-ca"
+	AuthProxyCAFileName                 = "ca-bundle.crt"
 	AuthServerCAMountDir                = "/var/auth-server-ca"
 	AuthServerCAFileName                = "ca-bundle.crt"
 	CLIOIDCClientComponentName          = "cli"

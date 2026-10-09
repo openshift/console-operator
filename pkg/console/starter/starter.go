@@ -25,10 +25,11 @@ import (
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
+	"github.com/openshift/api/features"
 	"github.com/openshift/api/oauth"
 	operatorv1 "github.com/openshift/api/operator/v1"
-	"github.com/openshift/console-operator/pkg/api"
 
+	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/configobservation/configobservercontroller"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/clioidcclientstatus"
@@ -45,6 +46,7 @@ import (
 	"github.com/openshift/console-operator/pkg/console/controllers/storageversionmigration"
 	upgradenotification "github.com/openshift/console-operator/pkg/console/controllers/upgradenotification"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
+	"github.com/openshift/console-operator/pkg/proxyconfig"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
 	"github.com/openshift/library-go/pkg/operator/configobserver/featuregates"
 	"github.com/openshift/library-go/pkg/operator/genericoperatorclient"
@@ -292,6 +294,12 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		versionGetter,
 		recorder,
 		resourceSyncer,
+		proxyconfig.NewGatedProxyResolver(
+			proxyconfig.ConsoleProxyResolver{},
+			featureGateAccessor,
+			features.FeatureGateExternalOIDC,
+			features.FeatureGateAuthenticationComponentProxyExternalOIDC,
+		),
 	)
 
 	apiextensionsClient, err := apiextensionsclient.NewForConfig(controllerContext.KubeConfig)

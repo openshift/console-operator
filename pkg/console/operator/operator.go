@@ -40,6 +40,7 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	consolestatus "github.com/openshift/console-operator/pkg/console/status"
+	"github.com/openshift/console-operator/pkg/proxyconfig"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
@@ -89,7 +90,8 @@ type consoleOperator struct {
 	// lister
 	consolePluginLister listerv1.ConsolePluginLister
 
-	resourceSyncer resourcesynccontroller.ResourceSyncer
+	resourceSyncer    resourcesynccontroller.ResourceSyncer
+	authProxyResolver proxyconfig.ProxyResolver
 
 	trackables trackables
 
@@ -143,6 +145,7 @@ func NewConsoleOperator(
 	versionGetter status.VersionGetter,
 	recorder events.Recorder,
 	resourceSyncer resourcesynccontroller.ResourceSyncer,
+	authProxyResolver proxyconfig.ProxyResolver,
 ) factory.Controller {
 
 	secretsInformer := coreV1.Secrets()
@@ -192,6 +195,7 @@ func NewConsoleOperator(
 		// plugins
 		consolePluginLister: consolePluginInformer.Lister(),
 		resourceSyncer:      resourceSyncer,
+		authProxyResolver:   authProxyResolver,
 
 		monitoringDeploymentLister: monitoringDeploymentInformer.Lister(),
 	}
@@ -398,7 +402,12 @@ func (c *consoleOperator) removeConsole(ctx context.Context, operatorConfig *ope
 	klog.V(2).Info("deleting console resources")
 	defer klog.V(2).Info("finished deleting console resources")
 	var errs []error
+	errs = append(errs, c.resourceSyncer.SyncConfigMap(
+		resourcesynccontroller.ResourceLocation{Namespace: api.TargetNamespace, Name: api.AuthProxyCAConfigMapName},
+		resourcesynccontroller.ResourceLocation{},
+	))
 	// configmaps
+	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(ctx, api.AuthProxyCAConfigMapName, metav1.DeleteOptions{}))
 	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(ctx, configmap.Stub().Name, metav1.DeleteOptions{}))
 	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(ctx, configmap.ServiceCAStub().Name, metav1.DeleteOptions{}))
 	// secret

@@ -17,6 +17,7 @@ import (
 	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
 	infrastructuresub "github.com/openshift/console-operator/pkg/console/subresource/infrastructure"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/console-operator/pkg/proxyconfig"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
 )
 
@@ -53,6 +54,7 @@ func DefaultConfigMap(
 	additionalHosts []string,
 	tlsMinVersion configv1.TLSProtocolVersion,
 	tlsCiphers []string,
+	authProxy *proxyconfig.Config,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	apiServerURL := infrastructuresub.GetAPIServerURL(infrastructureConfig)
@@ -110,6 +112,7 @@ func DefaultConfigMap(
 		NodeArchitectures(nodeArchitectures).
 		NodeOperatingSystems(nodeOperatingSystems).
 		AuthConfig(authConfig, apiServerURL).
+		AuthProxy(authProxy).
 		Capabilities(operatorConfig.Spec.Customization.Capabilities).
 		TechPreviewEnabled(techPreviewEnabled).
 		OLMLifecycleMetadataEnabled(olmLifecycleMetadataEnabled).

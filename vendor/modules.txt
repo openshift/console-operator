@@ -194,7 +194,7 @@ github.com/modern-go/reflect2
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
-# github.com/openshift/api v0.0.0-20261005181437-18d5eb0e5ecb
+# github.com/openshift/api v0.0.0-20261005181437-18d5eb0e5ecb => github.com/tchap/api v0.0.0-20261007163438-e1f2728c7143
 ## explicit; go 1.26.0
 github.com/openshift/api
 github.com/openshift/api/annotations
@@ -222,6 +222,7 @@ github.com/openshift/api/console/v1/zz_generated.crd-manifests
 github.com/openshift/api/etcd
 github.com/openshift/api/etcd/v1
 github.com/openshift/api/etcd/v1alpha1
+github.com/openshift/api/features
 github.com/openshift/api/helm
 github.com/openshift/api/helm/v1beta1
 github.com/openshift/api/helm/v1beta1/zz_generated.crd-manifests
@@ -359,7 +360,7 @@ github.com/openshift/client-go/route/informers/externalversions/internalinterfac
 github.com/openshift/client-go/route/informers/externalversions/route
 github.com/openshift/client-go/route/informers/externalversions/route/v1
 github.com/openshift/client-go/route/listers/route/v1
-# github.com/openshift/library-go v0.0.0-20261001144932-192662696fc7
+# github.com/openshift/library-go v0.0.0-20261001144932-192662696fc7 => github.com/tchap/library-go v0.0.0-20261007105843-3f31f20002f6
 ## explicit; go 1.26.0
 github.com/openshift/library-go/pkg/apiserver/jsonpatch
 github.com/openshift/library-go/pkg/authorization/hardcodedauthorizer
@@ -1578,3 +1579,5 @@ sigs.k8s.io/structured-merge-diff/v6/value
 # sigs.k8s.io/yaml v1.6.0
 ## explicit; go 1.22
 sigs.k8s.io/yaml
+# github.com/openshift/api => github.com/tchap/api v0.0.0-20261007163438-e1f2728c7143
+# github.com/openshift/library-go => github.com/tchap/library-go v0.0.0-20261007105843-3f31f20002f6

@@ -20,6 +20,7 @@ import (
 	"github.com/openshift/console-operator/bindata"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
+	"github.com/openshift/console-operator/pkg/proxyconfig"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
 )
 
@@ -80,6 +81,7 @@ func DefaultDeployment(
 	consoleServingCertSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
+	authProxy *proxyconfig.Config,
 ) *appsv1.Deployment {
 	authnCATrustConfigMap := localOAuthServingCertConfigMap
 	if authnCATrustConfigMap == nil {
@@ -109,6 +111,7 @@ func DefaultDeployment(
 		trustedCAConfigMap,
 		sessionSecret,
 		&operatorConfig.Spec.Customization,
+		authProxy,
 	)
 	withConsoleContainerImage(deployment, operatorConfig, proxyConfig)
 	withNodeSelector(deployment, infrastructureConfig)
@@ -300,8 +303,12 @@ func withConsoleVolumes(
 	trustedCAConfigMap *corev1.ConfigMap,
 	sessionSecret *corev1.Secret,
 	customization *operatorv1.ConsoleCustomization,
+	authProxy *proxyconfig.Config,
 ) {
 	volumeConfig := defaultVolumeConfig()
+	if authProxy != nil && authProxy.TrustedCAName != "" {
+		volumeConfig = append(volumeConfig, authProxyCAVolume())
+	}
 
 	caBundle, caBundleExists := trustedCAConfigMap.Data["ca-bundle.crt"]
 	if caBundleExists && caBundle != "" {
@@ -610,6 +617,16 @@ func trustedCAVolume() volumeConfig {
 		mappedKeys: map[string]string{
 			api.TrustedCABundleKey: api.TrustedCABundleMountFile,
 		},
+	}
+}
+
+func authProxyCAVolume() volumeConfig {
+	return volumeConfig{
+		name:        api.AuthProxyCAConfigMapName,
+		path:        api.AuthProxyCAMountDir,
+		readOnly:    true,
+		isConfigMap: true,
+		mappedKeys:  map[string]string{api.AuthProxyCAFileName: api.AuthProxyCAFileName},
 	}
 }
 
