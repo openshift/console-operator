@@ -204,11 +204,15 @@ func TestDefaultDeployment(t *testing.T) {
 	}, nil, trustedCAConfigMapSet, nil, &operatorsv1.ConsoleCustomization{}, nil)
 	consoleDeploymentContainerTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumesTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
-	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMap{
+
+	// Build auth-proxy fixtures on a deep copy so the shared template is not mutated.
+	// withConsoleVolumes is safe to reuse here because TestWithConsoleVolumes tests it independently.
+	authProxyFixtureTemplate := consoleDeploymentTemplate.DeepCopy()
+	withConsoleVolumes(authProxyFixtureTemplate, &corev1.ConfigMap{
 		Data: map[string]string{"ca-bundle.crt": "test"},
 	}, nil, trustedCAConfigMapEmpty, nil, &operatorsv1.ConsoleCustomization{}, &proxyconfig.Config{TrustedCAName: "proxy-ca"})
-	consoleDeploymentContainerWithAuthProxy := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
-	consoleDeploymentVolumesWithAuthProxy := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
+	consoleDeploymentContainerWithAuthProxy := authProxyFixtureTemplate.Spec.Template.Spec.Containers[0]
+	consoleDeploymentVolumesWithAuthProxy := authProxyFixtureTemplate.Spec.Template.Spec.Volumes
 
 	tests := []struct {
 		name string
@@ -564,59 +568,47 @@ func TestDefaultDeployment(t *testing.T) {
 				authProxy:                &proxyconfig.Config{TrustedCAName: "proxy-ca"},
 			},
 			want: &appsv1.Deployment{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Deployment",
-					APIVersion: "apps/v1",
-				},
+				TypeMeta:   metav1.TypeMeta{Kind: "Deployment", APIVersion: "apps/v1"},
 				ObjectMeta: consoleDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &defaultReplicaCount,
-					Selector: &metav1.LabelSelector{
-						MatchLabels: labels,
-					},
-					Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{
-						Name:        api.OpenShiftConsoleName,
-						Labels:      labels,
-						Annotations: consoleDeploymentTemplateAnnotations,
-					},
+					Selector: &metav1.LabelSelector{MatchLabels: labels},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:        api.OpenShiftConsoleName,
+							Labels:      labels,
+							Annotations: consoleDeploymentTemplateAnnotations,
+						},
 						Spec: corev1.PodSpec{
-							DNSPolicy:                corev1.DNSClusterFirst,
-							ServiceAccountName:       "console",
-							DeprecatedServiceAccount: "console",
-							NodeSelector:             map[string]string{"node-role.kubernetes.io/master": ""},
-							Affinity:                 consoleDeploymentAffinity,
-							Tolerations:              consoleDeploymentTolerations,
-							PriorityClassName:        "system-cluster-critical",
-							RestartPolicy:            corev1.RestartPolicyAlways,
-							SchedulerName:            corev1.DefaultSchedulerName,
+							DNSPolicy:                     corev1.DNSClusterFirst,
+							ServiceAccountName:            "console",
+							DeprecatedServiceAccount:      "console",
+							NodeSelector:                  map[string]string{"node-role.kubernetes.io/master": ""},
+							Affinity:                      consoleDeploymentAffinity,
+							Tolerations:                   consoleDeploymentTolerations,
+							PriorityClassName:             "system-cluster-critical",
+							RestartPolicy:                 corev1.RestartPolicyAlways,
+							SchedulerName:                 corev1.DefaultSchedulerName,
 							TerminationGracePeriodSeconds: &gracePeriod,
 							SecurityContext: &corev1.PodSecurityContext{
-								RunAsNonRoot: utilpointer.Bool(true),
-								SeccompProfile: &corev1.SeccompProfile{
-									Type: corev1.SeccompProfileTypeRuntimeDefault,
-								},
+								RunAsNonRoot:   utilpointer.Bool(true),
+								SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 							},
-							Containers: []corev1.Container{
-								consoleDeploymentContainerWithAuthProxy,
-							},
-							Volumes: consoleDeploymentVolumesWithAuthProxy,
+							Containers: []corev1.Container{consoleDeploymentContainerWithAuthProxy},
+							Volumes:    consoleDeploymentVolumesWithAuthProxy,
 						},
 					},
 					Strategy: appsv1.DeploymentStrategy{
 						Type: appsv1.RollingUpdateDeploymentStrategyType,
 						RollingUpdate: &appsv1.RollingUpdateDeployment{
-							MaxSurge: &intstr.IntOrString{
-								IntVal: int32(1),
-							},
-							MaxUnavailable: &intstr.IntOrString{
-								IntVal: int32(0),
-							},
+							MaxSurge:       &intstr.IntOrString{IntVal: int32(1)},
+							MaxUnavailable: &intstr.IntOrString{IntVal: int32(0)},
 						},
 					},
 					MinReadySeconds:         0,
-					RevisionHistoryLimit:    ptr.To(int32(10)),
+					RevisionHistoryLimit:    new(int32(10)),
 					Paused:                  false,
-					ProgressDeadlineSeconds: ptr.To(int32(600)),
+					ProgressDeadlineSeconds: new(int32(600)),
 				},
 				Status: appsv1.DeploymentStatus{},
 			},
