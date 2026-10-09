@@ -12,11 +12,11 @@ spec:
   description: |
     Helm 4 is a package manager for Kubernetes. You can use it to define,
     install, and upgrade applications packaged as Helm charts.
-    Use Helm 4 with OpenShift Container Platform (OCP).
+    Use Helm 4 unless you need Helm 3 for existing workflows.
   displayName: helm - Helm 4 CLI
   links:
     - href: 'https://mirror.openshift.com/pub/cgw/helm/4.3.0'
-      text: Download Helm v4
+      text: Download Helm 4
 ---
 apiVersion: console.openshift.io/v1
 kind: ConsoleCLIDownload
@@ -33,9 +33,9 @@ spec:
     Helm 3 is a package manager for Kubernetes. You can use it to define,
     install, and upgrade applications packaged as Helm charts. Helm 3
     remains available for existing workflows, but future OpenShift Container Platform
-    (OCP) releases do not support it. To keep your applications compatible, upgrade to
-    Helm 4.
+    (OCP) releases do not support it. To keep using Helm with future OCP releases,
+    upgrade to Helm 4.
   displayName: helm - Helm 3 CLI
   links:
     - href: 'https://mirror.openshift.com/pub/openshift-v4/clients/helm/latest'
-      text: Download Helm v3
+      text: Download Helm 3
