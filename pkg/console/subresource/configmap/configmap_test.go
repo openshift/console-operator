@@ -2,6 +2,7 @@ package configmap
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"strconv"
 	"testing"
@@ -19,6 +20,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
 )
 
 const (
@@ -1718,6 +1720,139 @@ func TestAggregateCSPDirectives(t *testing.T) {
 				t.Errorf("Want: %v \n", tt.output)
 			}
 		})
+	}
+}
+
+func TestAggregateObjectSrcDirectives(t *testing.T) {
+	pluginA := &consolev1.ConsolePlugin{Spec: consolev1.ConsolePluginSpec{
+		ContentSecurityPolicy: []consolev1.ConsolePluginCSP{{
+			Directive: consolev1.ObjectSrc,
+			Values: []consolev1.CSPDirectiveValue{
+				"https://objects2.example.com", "https://objects.example.com",
+			},
+		}},
+	}}
+	pluginB := &consolev1.ConsolePlugin{Spec: consolev1.ConsolePluginSpec{
+		ContentSecurityPolicy: []consolev1.ConsolePluginCSP{{
+			Directive: consolev1.ObjectSrc,
+			Values:    []consolev1.CSPDirectiveValue{"https://objects.example.com"},
+		}},
+	}}
+	scriptPlugin := &consolev1.ConsolePlugin{Spec: consolev1.ConsolePluginSpec{
+		ContentSecurityPolicy: []consolev1.ConsolePluginCSP{{
+			Directive: consolev1.ScriptSrc,
+			Values:    []consolev1.CSPDirectiveValue{"https://scripts.example.com"},
+		}},
+	}}
+	tests := []struct {
+		name    string
+		plugins []*consolev1.ConsolePlugin
+		want    map[consolev1.DirectiveType][]string
+	}{
+		{
+			name:    "sorted deduplicated object sources with existing script sources",
+			plugins: []*consolev1.ConsolePlugin{pluginA, pluginB, scriptPlugin},
+			want: map[consolev1.DirectiveType][]string{
+				consolev1.ObjectSrc: {"https://objects.example.com", "https://objects2.example.com"},
+				consolev1.ScriptSrc: {"https://scripts.example.com"},
+			},
+		},
+		{
+			name:    "shared object source remains after one declaring plugin is removed",
+			plugins: []*consolev1.ConsolePlugin{pluginB, scriptPlugin},
+			want: map[consolev1.DirectiveType][]string{
+				consolev1.ObjectSrc: {"https://objects.example.com"},
+				consolev1.ScriptSrc: {"https://scripts.example.com"},
+			},
+		},
+		{
+			name:    "last object declaration removed while other directives remain",
+			plugins: []*consolev1.ConsolePlugin{scriptPlugin},
+			want: map[consolev1.DirectiveType][]string{
+				consolev1.ScriptSrc: {"https://scripts.example.com"},
+			},
+		},
+		{name: "no plugins", plugins: nil, want: nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := aggregateCSPDirectives(tt.plugins)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("aggregated CSP = %#v, want %#v", got, tt.want)
+			}
+			builder := &consoleserver.ConsoleServerCLIConfigBuilder{}
+			content, err := builder.ContentSecurityPolicies(got).ConfigYAML()
+			if err != nil {
+				t.Fatal(err)
+			}
+			var config consoleserver.Config
+			if err := yaml.Unmarshal(content, &config); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(config.ContentSecurityPolicy, tt.want) {
+				t.Fatalf("serialized CSP = %#v, want %#v", config.ContentSecurityPolicy, tt.want)
+			}
+		})
+	}
+}
+
+func TestDefaultConfigMapSerializesObjectSrcFromPlugins(t *testing.T) {
+	t.Setenv("OPERATOR_IMAGE_VERSION", testReleaseVersion)
+	plugins := []*consolev1.ConsolePlugin{
+		testPlugins("objects-a", "objects-a", "openshift-console"),
+		testPlugins("objects-b", "objects-b", "openshift-console"),
+		testPlugins("scripts", "scripts", "openshift-console"),
+	}
+	plugins[0].Spec.ContentSecurityPolicy = []consolev1.ConsolePluginCSP{{
+		Directive: consolev1.ObjectSrc,
+		Values:    []consolev1.CSPDirectiveValue{"https://objects2.example.com", "https://objects.example.com"},
+	}}
+	plugins[1].Spec.ContentSecurityPolicy = []consolev1.ConsolePluginCSP{{
+		Directive: consolev1.ObjectSrc,
+		Values:    []consolev1.CSPDirectiveValue{"https://objects.example.com"},
+	}}
+	plugins[2].Spec.ContentSecurityPolicy = []consolev1.ConsolePluginCSP{{
+		Directive: consolev1.ScriptSrc,
+		Values:    []consolev1.CSPDirectiveValue{"https://scripts.example.com"},
+	}}
+	configMap, _, err := DefaultConfigMap(
+		&operatorv1.Console{},
+		&configv1.Console{},
+		&configv1.Authentication{},
+		&corev1.ConfigMap{},
+		&corev1.ConfigMap{},
+		&configv1.Infrastructure{Status: configv1.InfrastructureStatus{
+			APIServerURL:         mockAPIServer,
+			ControlPlaneTopology: configv1.HighlyAvailableTopologyMode,
+		}},
+		&routev1.Route{Spec: routev1.RouteSpec{Host: host}},
+		0,
+		plugins,
+		nil,
+		nil,
+		false,
+		nil,
+		host,
+		false,
+		false,
+		nil,
+		"",
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var config consoleserver.Config
+	if err := yaml.Unmarshal([]byte(configMap.Data[configKey]), &config); err != nil {
+		t.Fatal(err)
+	}
+	want := map[consolev1.DirectiveType][]string{
+		consolev1.ObjectSrc: {"https://objects.example.com", "https://objects2.example.com"},
+		consolev1.ScriptSrc: {"https://scripts.example.com"},
+	}
+	if !reflect.DeepEqual(config.ContentSecurityPolicy, want) {
+		t.Fatalf("ConsoleConfig CSP = %#v, want %#v", config.ContentSecurityPolicy, want)
 	}
 }
 
