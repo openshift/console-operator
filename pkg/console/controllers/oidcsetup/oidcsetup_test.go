@@ -3,6 +3,7 @@ package oidcsetup
 import (
 	"context"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -114,6 +115,7 @@ func TestValidateOIDCIssuer(t *testing.T) {
 		discoveryURL string
 		caBundle     []byte
 		wantErr      bool
+		wantReachErr bool // true when the error should be a *reachabilityError
 		errSubstr    string
 	}{
 		{
@@ -121,24 +123,6 @@ func TestValidateOIDCIssuer(t *testing.T) {
 			issuerURL: "",
 			wantErr:   true,
 			errSubstr: "issuer URL is empty",
-		},
-		{
-			name:      "non-HTTPS scheme",
-			issuerURL: "http://example.com",
-			wantErr:   true,
-			errSubstr: "must use HTTPS",
-		},
-		{
-			name:      "missing host",
-			issuerURL: "https://",
-			wantErr:   true,
-			errSubstr: "has no host",
-		},
-		{
-			name:      "malformed URL",
-			issuerURL: "://bad-url",
-			wantErr:   true,
-			errSubstr: "malformed",
 		},
 		{
 			name:      "valid OIDC discovery",
@@ -153,24 +137,27 @@ func TestValidateOIDCIssuer(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name:      "discovery returns 404",
-			issuerURL: notFoundServer.URL,
-			caBundle:  notFoundServerCAPEM,
-			wantErr:   true,
-			errSubstr: "HTTP 404",
+			name:         "discovery returns 404",
+			issuerURL:    notFoundServer.URL,
+			caBundle:     notFoundServerCAPEM,
+			wantErr:      true,
+			wantReachErr: true,
+			errSubstr:    "HTTP 404",
 		},
 		{
-			name:      "discovery returns 500",
-			issuerURL: errorServer.URL,
-			caBundle:  errorServerCAPEM,
-			wantErr:   true,
-			errSubstr: "HTTP 500",
+			name:         "discovery returns 500",
+			issuerURL:    errorServer.URL,
+			caBundle:     errorServerCAPEM,
+			wantErr:      true,
+			wantReachErr: true,
+			errSubstr:    "HTTP 500",
 		},
 		{
-			name:      "unreachable host",
-			issuerURL: "https://192.0.2.1:1",
-			wantErr:   true,
-			errSubstr: "not reachable",
+			name:         "unreachable host",
+			issuerURL:    "https://192.0.2.1:1",
+			wantErr:      true,
+			wantReachErr: true,
+			errSubstr:    "not reachable",
 		},
 		{
 			name:      "custom CA bundle succeeds",
@@ -179,11 +166,12 @@ func TestValidateOIDCIssuer(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name:      "missing CA bundle for self-signed cert fails",
-			issuerURL: validServer.URL,
-			caBundle:  nil,
-			wantErr:   true,
-			errSubstr: "not reachable",
+			name:         "missing CA bundle for self-signed cert fails",
+			issuerURL:    validServer.URL,
+			caBundle:     nil,
+			wantErr:      true,
+			wantReachErr: true,
+			errSubstr:    "not reachable",
 		},
 		{
 			name:      "invalid CA bundle PEM",
@@ -191,18 +179,6 @@ func TestValidateOIDCIssuer(t *testing.T) {
 			caBundle:  []byte("not-a-valid-pem"),
 			wantErr:   true,
 			errSubstr: "failed to parse CA bundle",
-		},
-		{
-			name:      "URL with query component",
-			issuerURL: "https://example.com?foo=bar",
-			wantErr:   true,
-			errSubstr: "must not contain a query",
-		},
-		{
-			name:      "URL with fragment component",
-			issuerURL: "https://example.com#frag",
-			wantErr:   true,
-			errSubstr: "must not contain a fragment",
 		},
 		{
 			name:      "discovery returns non-JSON content type",
@@ -247,11 +223,12 @@ func TestValidateOIDCIssuer(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name:      "discoveryURL not set falls back to default path which 404s",
-			issuerURL: customDiscoveryServer.URL,
-			caBundle:  customDiscoveryServerCAPEM,
-			wantErr:   true,
-			errSubstr: "HTTP 404",
+			name:         "discoveryURL not set falls back to default path which 404s",
+			issuerURL:    customDiscoveryServer.URL,
+			caBundle:     customDiscoveryServerCAPEM,
+			wantErr:      true,
+			wantReachErr: true,
+			errSubstr:    "HTTP 404",
 		},
 	}
 
@@ -266,6 +243,15 @@ func TestValidateOIDCIssuer(t *testing.T) {
 				}
 				if tt.errSubstr != "" && !strings.Contains(err.Error(), tt.errSubstr) {
 					t.Fatalf("expected error containing %q, got: %v", tt.errSubstr, err)
+				}
+
+				var reachErr *reachabilityError
+				isReachErr := errors.As(err, &reachErr)
+				if tt.wantReachErr && !isReachErr {
+					t.Errorf("expected *reachabilityError, got %T", err)
+				}
+				if !tt.wantReachErr && isReachErr {
+					t.Errorf("expected permanent error, got *reachabilityError")
 				}
 			} else {
 				if err != nil {

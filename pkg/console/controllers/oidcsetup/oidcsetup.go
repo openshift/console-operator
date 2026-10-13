@@ -2,14 +2,15 @@ package oidcsetup
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -43,6 +44,27 @@ import (
 	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
+// reachabilityError wraps errors caused by transient network issues (DNS,
+// TLS handshake, timeouts, non-200 responses) as opposed to permanent
+// configuration mistakes. The caller uses this to choose Degraded (retry)
+// over DegradedNotAvailable (component unavailable).
+type reachabilityError struct {
+	err error
+}
+
+func (e *reachabilityError) Error() string { return e.err.Error() }
+func (e *reachabilityError) Unwrap() error { return e.err }
+
+// issuerValidationCache caches the result of the last OIDC issuer probe
+// so that the synchronous HTTP call is not repeated on every sync when
+// the issuer configuration has not changed.
+type issuerValidationCache struct {
+	issuerURL    string
+	discoveryURL string
+	caBundleHash [32]byte
+	err          error
+}
+
 // oidcSetupController:
 //
 //	writes:
@@ -72,7 +94,8 @@ type oidcSetupController struct {
 
 	externalOIDCFeatureEnabled bool
 
-	authStatusHandler *status.AuthStatusHandler
+	authStatusHandler    *status.AuthStatusHandler
+	lastIssuerValidation *issuerValidationCache
 }
 
 func NewOIDCSetupController(
@@ -221,9 +244,11 @@ func (c *oidcSetupController) syncAuthTypeOIDC(ctx context.Context, authnConfig 
 			return fmt.Errorf("failed to get the CA configMap %q configured for the OIDC provider %q: %w", caCMName, oidcProvider.Name, err)
 		}
 
-		if data, ok := caCM.Data["ca-bundle.crt"]; ok {
-			caBundle = []byte(data)
+		data, ok := caCM.Data["ca-bundle.crt"]
+		if !ok {
+			return fmt.Errorf("CA configMap %q for OIDC provider %q does not contain the expected %q key", caCMName, oidcProvider.Name, "ca-bundle.crt")
 		}
+		caBundle = []byte(data)
 
 		_, _, err = resourceapply.SyncPartialConfigMap(ctx,
 			c.configMapClient,
@@ -237,8 +262,16 @@ func (c *oidcSetupController) syncAuthTypeOIDC(ctx context.Context, authnConfig 
 		}
 	}
 
-	if err := validateOIDCIssuer(ctx, oidcProvider.Issuer.URL, oidcProvider.Issuer.DiscoveryURL, caBundle); err != nil {
-		c.authStatusHandler.DegradedNotAvailable("OIDCIssuerURLInvalid", err.Error())
+	if err := c.validateOIDCIssuerCached(ctx, oidcProvider.Issuer.URL, oidcProvider.Issuer.DiscoveryURL, caBundle); err != nil {
+		var reachErr *reachabilityError
+		if errors.As(err, &reachErr) {
+			// Transient reachability failures use Degraded so the operator
+			// retries on the next sync; Available is left unchanged because
+			// operator-pod reachability does not reflect end-user reachability.
+			c.authStatusHandler.Degraded("OIDCIssuerNotReachable", err.Error())
+		} else {
+			c.authStatusHandler.DegradedNotAvailable("OIDCIssuerURLInvalid", err.Error())
+		}
 		return err
 	}
 
@@ -317,33 +350,39 @@ func (c *oidcSetupController) handleManaged() (bool, error) {
 	}
 }
 
-// validateOIDCIssuer checks that the OIDC issuer URL is well-formed and that
-// the OIDC discovery endpoint is reachable. It returns an error describing the
-// problem when the URL is invalid or the discovery probe fails.
+// validateOIDCIssuerCached wraps validateOIDCIssuer with a cache keyed on the
+// issuer configuration (URL, discovery URL, CA bundle). The probe is only
+// executed when the configuration changes, avoiding a synchronous HTTP request
+// on every sync triggered by unrelated informer events.
+func (c *oidcSetupController) validateOIDCIssuerCached(ctx context.Context, issuerURL, discoveryURLOverride string, caBundle []byte) error {
+	bundleHash := sha256.Sum256(caBundle)
+	if c.lastIssuerValidation != nil &&
+		c.lastIssuerValidation.issuerURL == issuerURL &&
+		c.lastIssuerValidation.discoveryURL == discoveryURLOverride &&
+		c.lastIssuerValidation.caBundleHash == bundleHash {
+		return c.lastIssuerValidation.err
+	}
+
+	err := validateOIDCIssuer(ctx, issuerURL, discoveryURLOverride, caBundle)
+	c.lastIssuerValidation = &issuerValidationCache{
+		issuerURL:    issuerURL,
+		discoveryURL: discoveryURLOverride,
+		caBundleHash: bundleHash,
+		err:          err,
+	}
+	return err
+}
+
+// validateOIDCIssuer probes the OIDC discovery endpoint and validates the
+// response. It returns a *reachabilityError for transient network/HTTP
+// failures and a plain error for permanent configuration problems.
+//
+// Structural URL checks (scheme, host, query, fragment) are omitted because
+// the API server's XValidation rules on issuerURL already enforce them before
+// the config is persisted.
 func validateOIDCIssuer(ctx context.Context, issuerURL string, discoveryURLOverride string, caBundle []byte) error {
 	if len(issuerURL) == 0 {
 		return fmt.Errorf("issuer URL is empty")
-	}
-
-	parsed, err := url.Parse(issuerURL)
-	if err != nil {
-		return fmt.Errorf("issuer URL is malformed: %w", err)
-	}
-
-	if !strings.EqualFold(parsed.Scheme, "https") {
-		return fmt.Errorf("issuer URL must use HTTPS scheme, got %q", parsed.Scheme)
-	}
-
-	if len(parsed.Host) == 0 {
-		return fmt.Errorf("issuer URL has no host")
-	}
-
-	if parsed.RawQuery != "" {
-		return fmt.Errorf("issuer URL must not contain a query component")
-	}
-
-	if parsed.Fragment != "" {
-		return fmt.Errorf("issuer URL must not contain a fragment component")
 	}
 
 	// Probe the OIDC discovery endpoint. When the API specifies an explicit
@@ -369,6 +408,8 @@ func validateOIDCIssuer(ctx context.Context, issuerURL string, discoveryURLOverr
 		TLSClientConfig: tlsConfig,
 		Proxy:           http.ProxyFromEnvironment,
 	}
+	defer transport.CloseIdleConnections()
+
 	client := &http.Client{
 		Transport: transport,
 		Timeout:   10 * time.Second,
@@ -381,7 +422,7 @@ func validateOIDCIssuer(ctx context.Context, issuerURL string, discoveryURLOverr
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("OIDC issuer URL %q is not reachable: %w", issuerURL, err)
+		return &reachabilityError{err: fmt.Errorf("OIDC issuer URL %q is not reachable: %w", issuerURL, err)}
 	}
 	defer func() {
 		if closeErr := resp.Body.Close(); closeErr != nil {
@@ -390,7 +431,7 @@ func validateOIDCIssuer(ctx context.Context, issuerURL string, discoveryURLOverr
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("OIDC discovery endpoint returned HTTP %d for issuer %q", resp.StatusCode, issuerURL)
+		return &reachabilityError{err: fmt.Errorf("OIDC discovery endpoint returned HTTP %d for issuer %q", resp.StatusCode, issuerURL)}
 	}
 
 	// Per OpenID Connect Discovery 1.0 §4.2, the response MUST use
@@ -408,7 +449,7 @@ func validateOIDCIssuer(ctx context.Context, issuerURL string, discoveryURLOverr
 	// Decode and validate the discovery document
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1 MiB limit
 	if err != nil {
-		return fmt.Errorf("failed to read OIDC discovery response: %w", err)
+		return &reachabilityError{err: fmt.Errorf("failed to read OIDC discovery response: %w", err)}
 	}
 
 	var discovery struct {
@@ -419,7 +460,8 @@ func validateOIDCIssuer(ctx context.Context, issuerURL string, discoveryURLOverr
 	}
 
 	// Per OpenID Connect Discovery 1.0, the issuer value in the discovery
-	// document MUST exactly match the issuer URL used to retrieve it.
+	// document must match the configured issuer URL. Trailing slashes are
+	// normalized because the CRD itself normalizes them on write.
 	normalizedIssuer := strings.TrimRight(issuerURL, "/")
 	normalizedDiscovery := strings.TrimRight(discovery.Issuer, "/")
 	if normalizedDiscovery != normalizedIssuer {
