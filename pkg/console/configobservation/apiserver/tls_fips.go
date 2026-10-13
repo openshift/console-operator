@@ -1,7 +1,8 @@
 package apiserver
 
 import (
-	"crypto/fips140"
+	"os"
+	"strconv"
 
 	configv1 "github.com/openshift/api/config/v1"
 )
@@ -25,8 +26,30 @@ var fipsTLSGroups = map[configv1.TLSGroup]struct{}{
 	configv1.TLSGroupSecP521r1: {},
 }
 
+// lookupEnv and readFile are package variables so tests can override the FIPS
+// detection sources without mutating the process environment or procfs.
+var (
+	lookupEnv = os.LookupEnv
+	readFile  = os.ReadFile
+)
+
 func isFIPSEnabled() bool {
-	return fips140.Enabled()
+	return detectFIPS()
+}
+
+func detectFIPS() bool {
+	if value, ok := lookupEnv("FIPS_ENABLED"); ok {
+		if enabled, err := strconv.ParseBool(value); err == nil {
+			return enabled
+		}
+	}
+
+	data, err := readFile("/proc/sys/crypto/fips_enabled")
+	if err != nil || len(data) == 0 {
+		return false
+	}
+
+	return data[0] == '1'
 }
 
 func fipsApprovedTLSGroups(groups []configv1.TLSGroup) []configv1.TLSGroup {
