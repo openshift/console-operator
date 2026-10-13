@@ -5,6 +5,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -109,6 +110,17 @@ func TestValidateOIDCIssuer(t *testing.T) {
 	defer customDiscoveryServer.Close()
 	customDiscoveryServerCAPEM := certPEM(customDiscoveryServer)
 
+	// Start a local listener and close it immediately to obtain an address
+	// that always refuses connections.  Using a loopback address avoids
+	// HTTPS_PROXY interference (Go exempts loopback from proxy) which
+	// would make the "unreachable host" assertion flaky with 192.0.2.1.
+	unreachableLn, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to create listener for unreachable-host test: %v", err)
+	}
+	unreachableAddr := unreachableLn.Addr().String()
+	unreachableLn.Close()
+
 	tests := []struct {
 		name         string
 		issuerURL    string
@@ -137,12 +149,11 @@ func TestValidateOIDCIssuer(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name:         "discovery returns 404",
-			issuerURL:    notFoundServer.URL,
-			caBundle:     notFoundServerCAPEM,
-			wantErr:      true,
-			wantReachErr: true,
-			errSubstr:    "HTTP 404",
+			name:      "discovery returns 404",
+			issuerURL: notFoundServer.URL,
+			caBundle:  notFoundServerCAPEM,
+			wantErr:   true,
+			errSubstr: "HTTP 404",
 		},
 		{
 			name:         "discovery returns 500",
@@ -154,7 +165,7 @@ func TestValidateOIDCIssuer(t *testing.T) {
 		},
 		{
 			name:         "unreachable host",
-			issuerURL:    "https://192.0.2.1:1",
+			issuerURL:    "https://" + unreachableAddr,
 			wantErr:      true,
 			wantReachErr: true,
 			errSubstr:    "not reachable",
@@ -223,12 +234,11 @@ func TestValidateOIDCIssuer(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name:         "discoveryURL not set falls back to default path which 404s",
-			issuerURL:    customDiscoveryServer.URL,
-			caBundle:     customDiscoveryServerCAPEM,
-			wantErr:      true,
-			wantReachErr: true,
-			errSubstr:    "HTTP 404",
+			name:      "discoveryURL not set falls back to default path which 404s",
+			issuerURL: customDiscoveryServer.URL,
+			caBundle:  customDiscoveryServerCAPEM,
+			wantErr:   true,
+			errSubstr: "HTTP 404",
 		},
 	}
 

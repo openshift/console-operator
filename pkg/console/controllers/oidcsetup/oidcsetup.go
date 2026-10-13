@@ -45,7 +45,7 @@ import (
 )
 
 // reachabilityError wraps errors caused by transient network issues (DNS,
-// TLS handshake, timeouts, non-200 responses) as opposed to permanent
+// TLS handshake, timeouts, server errors) as opposed to permanent
 // configuration mistakes. The caller uses this to choose Degraded (retry)
 // over DegradedNotAvailable (component unavailable).
 type reachabilityError struct {
@@ -55,14 +55,29 @@ type reachabilityError struct {
 func (e *reachabilityError) Error() string { return e.err.Error() }
 func (e *reachabilityError) Unwrap() error { return e.err }
 
+const (
+	// issuerCacheSuccessTTL is the maximum age of a successful issuer
+	// validation before a fresh probe is required.  This ensures that
+	// later-invalid discovery responses are detected without a
+	// configuration change or controller restart.
+	issuerCacheSuccessTTL = 5 * time.Minute
+
+	// issuerCacheFailureTTL is the maximum age of a failed issuer
+	// validation.  A shorter TTL allows transient failures (DNS,
+	// network) to clear without waiting for the full success interval.
+	issuerCacheFailureTTL = 1 * time.Minute
+)
+
 // issuerValidationCache caches the result of the last OIDC issuer probe
 // so that the synchronous HTTP call is not repeated on every sync when
-// the issuer configuration has not changed.
+// the issuer configuration has not changed.  Results expire after a TTL
+// so that recovered issuers and later-invalid responses are detected.
 type issuerValidationCache struct {
 	issuerURL    string
 	discoveryURL string
 	caBundleHash [32]byte
 	err          error
+	validatedAt  time.Time
 }
 
 // oidcSetupController:
@@ -360,7 +375,13 @@ func (c *oidcSetupController) validateOIDCIssuerCached(ctx context.Context, issu
 		c.lastIssuerValidation.issuerURL == issuerURL &&
 		c.lastIssuerValidation.discoveryURL == discoveryURLOverride &&
 		c.lastIssuerValidation.caBundleHash == bundleHash {
-		return c.lastIssuerValidation.err
+		ttl := issuerCacheSuccessTTL
+		if c.lastIssuerValidation.err != nil {
+			ttl = issuerCacheFailureTTL
+		}
+		if time.Since(c.lastIssuerValidation.validatedAt) < ttl {
+			return c.lastIssuerValidation.err
+		}
 	}
 
 	err := validateOIDCIssuer(ctx, issuerURL, discoveryURLOverride, caBundle)
@@ -369,6 +390,7 @@ func (c *oidcSetupController) validateOIDCIssuerCached(ctx context.Context, issu
 		discoveryURL: discoveryURLOverride,
 		caBundleHash: bundleHash,
 		err:          err,
+		validatedAt:  time.Now(),
 	}
 	return err
 }
@@ -431,7 +453,15 @@ func validateOIDCIssuer(ctx context.Context, issuerURL string, discoveryURLOverr
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return &reachabilityError{err: fmt.Errorf("OIDC discovery endpoint returned HTTP %d for issuer %q", resp.StatusCode, issuerURL)}
+		msg := fmt.Errorf("OIDC discovery endpoint returned HTTP %d for issuer %q", resp.StatusCode, issuerURL)
+		// Server errors (5xx) are transient — the endpoint may recover.
+		// Client errors (4xx, e.g. 404) indicate invalid configuration
+		// because the discovery document does not exist at the configured
+		// location per OpenID Connect Discovery 1.0.
+		if resp.StatusCode >= 500 {
+			return &reachabilityError{err: msg}
+		}
+		return msg
 	}
 
 	// Per OpenID Connect Discovery 1.0 §4.2, the response MUST use
