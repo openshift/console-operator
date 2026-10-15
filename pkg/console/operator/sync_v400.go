@@ -1001,22 +1001,22 @@ func getTLSConfigFromObservedConfig(operatorConfig *operatorv1.Console) (configv
 
 	observedConfig := map[string]interface{}{}
 	if err := json.Unmarshal(operatorConfig.Spec.ObservedConfig.Raw, &observedConfig); err != nil {
-		return "", nil, nil, fmt.Errorf("failed to unmarshal observedConfig: %w", err)
+		return "", nil, nil, fmt.Errorf("failed to parse the operator observedConfig: %w; inspect spec.observedConfig on console.operator.openshift.io/cluster", err)
 	}
 
 	minTLSVersion, _, err := unstructured.NestedString(observedConfig, "servingInfo", "minTLSVersion")
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("failed to read servingInfo.minTLSVersion: %w", err)
+		return "", nil, nil, fmt.Errorf("failed to read servingInfo.minTLSVersion from observedConfig: %w; inspect spec.observedConfig on console.operator.openshift.io/cluster", err)
 	}
 
 	cipherSuites, _, err := unstructured.NestedStringSlice(observedConfig, "servingInfo", "cipherSuites")
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("failed to read servingInfo.cipherSuites: %w", err)
+		return "", nil, nil, fmt.Errorf("failed to read servingInfo.cipherSuites from observedConfig: %w; inspect spec.observedConfig on console.operator.openshift.io/cluster", err)
 	}
 
-	groups, _, err := unstructured.NestedStringSlice(observedConfig, "servingInfo", "groups")
+	groups, _, err := unstructured.NestedStringSlice(observedConfig, "servingInfo", "tlsGroups")
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("failed to read servingInfo.groups: %w", err)
+		return "", nil, nil, fmt.Errorf("failed to read servingInfo.tlsGroups from observedConfig: %w; inspect spec.observedConfig on console.operator.openshift.io/cluster", err)
 	}
 
 	return configv1.TLSProtocolVersion(minTLSVersion), cipherSuites, groups, nil

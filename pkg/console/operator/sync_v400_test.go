@@ -789,7 +789,7 @@ func TestGetTLSConfigFromObservedConfig(t *testing.T) {
 							"TLS_AES_128_GCM_SHA256",
 							"TLS_AES_256_GCM_SHA384",
 						},
-						"groups": []string{"X25519", "secp256r1"},
+						"tlsGroups": []string{"X25519", "secp256r1"},
 					},
 				}),
 			}),
@@ -824,7 +824,7 @@ func TestGetTLSConfigFromObservedConfig(t *testing.T) {
 			operatorConfig: makeOperatorConfigWithObservedConfig(runtime.RawExtension{
 				Raw: mustMarshal(map[string]interface{}{
 					"servingInfo": map[string]interface{}{
-						"groups": []string{"X25519MLKEM768", "SecP256r1MLKEM768"},
+						"tlsGroups": []string{"X25519MLKEM768", "SecP256r1MLKEM768"},
 					},
 				}),
 			}),

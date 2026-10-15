@@ -98,12 +98,12 @@ func TestTLSConfigInjection(t *testing.T) {
 				}
 			}
 
-			if len(config.ServingInfo.Groups) != len(tt.wantGroups) {
-				t.Errorf("Groups count = %v, want %v. Got: %v",
-					len(config.ServingInfo.Groups), len(tt.wantGroups), config.ServingInfo.Groups)
+			if len(config.ServingInfo.TLSGroups) != len(tt.wantGroups) {
+				t.Errorf("TLSGroups count = %v, want %v. Got: %v",
+					len(config.ServingInfo.TLSGroups), len(tt.wantGroups), config.ServingInfo.TLSGroups)
 			}
 
-			for i, group := range config.ServingInfo.Groups {
+			for i, group := range config.ServingInfo.TLSGroups {
 				if i < len(tt.wantGroups) && group != tt.wantGroups[i] {
 					t.Errorf("Groups[%d] = %v, want %v", i, group, tt.wantGroups[i])
 				}
