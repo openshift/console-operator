@@ -126,3 +126,6 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.2 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
+
+// branch: external-oidc-proxy-feature-gate
+replace github.com/openshift/api => github.com/tchap/api v0.0.0-20261012082330-99cb5bc34259
