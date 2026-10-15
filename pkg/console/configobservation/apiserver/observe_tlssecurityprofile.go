@@ -20,7 +20,7 @@ type APIServerLister interface {
 }
 
 // ObserveTLSSecurityProfile observes APIServer.Spec.TLSSecurityProfile and writes
-// servingInfo.minTLSVersion, servingInfo.cipherSuites, and servingInfo.groups.
+// servingInfo.minTLSVersion, servingInfo.cipherSuites, and servingInfo.tlsGroups.
 func ObserveTLSSecurityProfile(listers configobserver.Listers, recorder events.Recorder, existingConfig map[string]interface{}) (map[string]interface{}, []error) {
 	return innerTLSSecurityProfileObservations(
 		listers,
@@ -28,7 +28,7 @@ func ObserveTLSSecurityProfile(listers configobserver.Listers, recorder events.R
 		existingConfig,
 		[]string{"servingInfo", "minTLSVersion"},
 		[]string{"servingInfo", "cipherSuites"},
-		[]string{"servingInfo", "groups"},
+		[]string{"servingInfo", "tlsGroups"},
 	)
 }
 
@@ -47,22 +47,22 @@ func innerTLSSecurityProfileObservations(
 
 	currentMinTLSVersion, _, versionErr := unstructured.NestedString(existingConfig, minTLSVersionPath...)
 	if versionErr != nil {
-		errList = append(errList, fmt.Errorf("failed to retrieve spec.servingInfo.minTLSVersion: %v", versionErr))
+		errList = append(errList, fmt.Errorf("failed to read servingInfo.minTLSVersion from the existing observed config: %w; inspect spec.observedConfig on console.operator.openshift.io/cluster for malformed values", versionErr))
 	}
 
 	currentCipherSuites, _, suitesErr := unstructured.NestedStringSlice(existingConfig, cipherSuitesPath...)
 	if suitesErr != nil {
-		errList = append(errList, fmt.Errorf("failed to retrieve spec.servingInfo.cipherSuites: %v", suitesErr))
+		errList = append(errList, fmt.Errorf("failed to read servingInfo.cipherSuites from the existing observed config: %w; inspect spec.observedConfig on console.operator.openshift.io/cluster for malformed values", suitesErr))
 	}
 
 	currentGroups, _, groupsErr := unstructured.NestedStringSlice(existingConfig, groupsPath...)
 	if groupsErr != nil {
-		errList = append(errList, fmt.Errorf("failed to retrieve spec.servingInfo.groups: %v", groupsErr))
+		errList = append(errList, fmt.Errorf("failed to read servingInfo.tlsGroups from the existing observed config: %w; inspect spec.observedConfig on console.operator.openshift.io/cluster for malformed values", groupsErr))
 	}
 
 	apiServer, err := apiServerListers.APIServerLister().Get("cluster")
 	if apierrors.IsNotFound(err) {
-		klog.Warningf("apiserver.config.openshift.io/cluster: not found")
+		klog.Warningf("apiserver.config.openshift.io/cluster not found; applying the default TLS security profile (%s). Create the APIServer config resource to customize TLS settings.", crypto.DefaultTLSProfileType)
 		apiServer = &configv1.APIServer{}
 	} else if err != nil {
 		return existingConfig, append(errList, err)
@@ -84,13 +84,13 @@ func innerTLSSecurityProfileObservations(
 	}
 
 	if observedMinTLSVersion != currentMinTLSVersion {
-		recorder.Eventf("ObserveTLSSecurityProfile", "minTLSVersion changed to %s", observedMinTLSVersion)
+		recorder.Eventf("ObserveTLSSecurityProfile", "minTLSVersion changed from %q to %q", currentMinTLSVersion, observedMinTLSVersion)
 	}
 	if !reflect.DeepEqual(observedCipherSuites, currentCipherSuites) {
-		recorder.Eventf("ObserveTLSSecurityProfile", "cipherSuites changed to %q", observedCipherSuites)
+		recorder.Eventf("ObserveTLSSecurityProfile", "cipherSuites changed from %q to %q", currentCipherSuites, observedCipherSuites)
 	}
 	if !slices.Equal(observedGroups, currentGroups) {
-		recorder.Eventf("ObserveTLSSecurityProfile", "groups changed to %q", observedGroups)
+		recorder.Eventf("ObserveTLSSecurityProfile", "tlsGroups changed from %q to %q", currentGroups, observedGroups)
 	}
 
 	return observedConfig, errList
@@ -116,8 +116,12 @@ func getSecurityProfileSettings(profile *configv1.TLSSecurityProfile) (string, [
 	}
 
 	srcGroups := profileSpec.Groups
-	if isFIPSEnabled() {
-		srcGroups = fipsApprovedTLSGroups(srcGroups)
+	if isFIPSEnabled() && len(srcGroups) > 0 {
+		approved := fipsApprovedTLSGroups(srcGroups)
+		if len(approved) != len(srcGroups) {
+			klog.Warningf("FIPS mode is enabled; restricting the configured TLS groups %v to the FIPS-approved set %v. Non-approved groups are ignored and the console falls back to the Go runtime default FIPS curves when the set is empty. To avoid this, configure only FIPS-approved NIST curves (secp256r1, secp384r1, secp521r1) in the APIServer TLSSecurityProfile.", srcGroups, approved)
+		}
+		srcGroups = approved
 	}
 
 	groups := make([]string, 0, len(srcGroups))

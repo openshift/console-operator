@@ -130,7 +130,7 @@ func TestObserveTLSSecurityProfile(t *testing.T) {
 			t.Fatalf("unexpected errors: %v", errs)
 		}
 
-		gotGroups, _, err := unstructured.NestedStringSlice(observed, "servingInfo", "groups")
+		gotGroups, _, err := unstructured.NestedStringSlice(observed, "servingInfo", "tlsGroups")
 		if err != nil {
 			t.Fatalf("failed to read observed groups: %v", err)
 		}

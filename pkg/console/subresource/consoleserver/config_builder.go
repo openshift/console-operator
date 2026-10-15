@@ -395,7 +395,7 @@ func (b *ConsoleServerCLIConfigBuilder) servingInfo() ServingInfo {
 	}
 
 	if len(b.groups) > 0 {
-		conf.Groups = b.groups
+		conf.TLSGroups = b.groups
 	}
 
 	return conf
