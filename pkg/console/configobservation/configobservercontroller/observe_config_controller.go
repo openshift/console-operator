@@ -5,9 +5,9 @@ import (
 
 	configinformers "github.com/openshift/client-go/config/informers/externalversions"
 	"github.com/openshift/console-operator/pkg/console/configobservation"
+	consoleapiserver "github.com/openshift/console-operator/pkg/console/configobservation/apiserver"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/configobserver"
-	libgoapiserver "github.com/openshift/library-go/pkg/operator/configobserver/apiserver"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
@@ -46,7 +46,7 @@ func NewConfigObserver(
 			},
 			informers,
 			// Observer functions
-			libgoapiserver.ObserveTLSSecurityProfile,
+			consoleapiserver.ObserveTLSSecurityProfile,
 		),
 	}
 

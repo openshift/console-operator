@@ -53,6 +53,7 @@ func DefaultConfigMap(
 	additionalHosts []string,
 	tlsMinVersion configv1.TLSProtocolVersion,
 	tlsCiphers []string,
+	tlsGroups []string,
 ) (consoleConfigMap *corev1.ConfigMap, unsupportedOverridesHaveMerged bool, err error) {
 
 	apiServerURL := infrastructuresub.GetAPIServerURL(infrastructureConfig)
@@ -114,10 +115,10 @@ func DefaultConfigMap(
 		TechPreviewEnabled(techPreviewEnabled).
 		OLMLifecycleMetadataEnabled(olmLifecycleMetadataEnabled).
 		AdditionalHosts(additionalHosts).
-		TLSConfig(tlsMinVersion, tlsCiphers).
+		TLSConfig(tlsMinVersion, tlsCiphers, tlsGroups).
 		ConfigYAML()
 	if err != nil {
-		klog.Errorf("failed to generate user-defined console-config: %v", err)
+		klog.Errorf("failed to generate the user-defined console config: %v. Inspect the console.operator.openshift.io/cluster spec and its unsupportedConfigOverrides for invalid values.", err)
 		return nil, false, err
 	}
 
