@@ -34,6 +34,7 @@ import (
 
 	// operator
 	"github.com/openshift/console-operator/pkg/api"
+	controllersutil "github.com/openshift/console-operator/pkg/console/controllers/util"
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
 	"github.com/openshift/console-operator/pkg/console/metrics"
 	"github.com/openshift/console-operator/pkg/console/status"
@@ -61,6 +62,15 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	)
 
 	if len(set.Operator.Spec.Ingress.ConsoleURL) == 0 {
+		clusterVersionConfig, err := co.clusterVersionLister.Get(api.VersionResourceName)
+		if err != nil {
+			return statusHandler.FlushAndReturn(err)
+		}
+		if controllersutil.IsExternalControlPlaneWithIngressDisabled(set.Infrastructure, clusterVersionConfig) {
+			statusHandler.AddConditions(status.HandleProgressingOrDegraded("WaitingForConsoleURL", "", nil))
+			return statusHandler.FlushAndReturn(nil)
+		}
+
 		routeName := api.OpenShiftConsoleRouteName
 		routeConfig := routesub.NewRouteConfig(updatedOperatorConfig, set.Ingress, routeName)
 		if routeConfig.IsCustomHostnameSet() {
