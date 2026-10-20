@@ -1034,3 +1034,34 @@ func TestSyncDeploymentGenerationCache(t *testing.T) {
 		}
 	})
 }
+
+func TestRedactURLUserinfo(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   map[string]string
+		want map[string]string
+	}{
+		{
+			name: "redacts user and password",
+			in:   map[string]string{"console-config.yaml": "httpProxy: http://user:pass@proxy.example.com:3128"},
+			want: map[string]string{"console-config.yaml": "httpProxy: http://redacted@proxy.example.com:3128"},
+		},
+		{
+			name: "redacts user only",
+			in:   map[string]string{"console-config.yaml": "httpsProxy: https://user@proxy.example.com:3128"},
+			want: map[string]string{"console-config.yaml": "httpsProxy: https://redacted@proxy.example.com:3128"},
+		},
+		{
+			name: "leaves URLs without userinfo untouched",
+			in:   map[string]string{"console-config.yaml": "httpProxy: http://proxy.example.com:3128"},
+			want: map[string]string{"console-config.yaml": "httpProxy: http://proxy.example.com:3128"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := redactURLUserinfo(tc.in)
+			if diff := deep.Equal(got, tc.want); diff != nil {
+				t.Errorf("redactURLUserinfo() mismatch: %v", diff)
+			}
+		})
+	}
+}

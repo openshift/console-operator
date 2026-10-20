@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -550,9 +551,23 @@ func (co *consoleOperator) SyncConfigMap(
 	}
 	if cmChanged {
 		klog.V(4).Infoln("new console config yaml:")
-		klog.V(4).Infof("%s", cm.Data)
+		klog.V(4).Infof("%s", redactURLUserinfo(cm.Data))
 	}
 	return cm, "ConsoleConfigBuilder", cmErr
+}
+
+// urlUserinfoPattern matches the userinfo component of a URL (e.g. "user:pass@" or "user@"),
+// which the auth proxy URLs configured on AuthProxy.HTTPProxy/HTTPSProxy may embed.
+var urlUserinfoPattern = regexp.MustCompile(`://[^/\s@]+@`)
+
+// redactURLUserinfo returns a copy of data with any URL userinfo (credentials) redacted,
+// so console-config.yaml contents can be logged without leaking auth proxy credentials.
+func redactURLUserinfo(data map[string]string) map[string]string {
+	redacted := make(map[string]string, len(data))
+	for key, value := range data {
+		redacted[key] = urlUserinfoPattern.ReplaceAllString(value, "://redacted@")
+	}
+	return redacted
 }
 
 // Build telemetry configuration in following order:
