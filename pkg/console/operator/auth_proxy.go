@@ -18,6 +18,16 @@ func (c *consoleOperator) SyncAuthProxyTrustedCAConfigMap(proxy *proxyconfig.Con
 	destination := resourcesynccontroller.ResourceLocation{Namespace: api.TargetNamespace, Name: api.AuthProxyCAConfigMapName}
 	source := resourcesynccontroller.ResourceLocation{}
 	if proxy != nil && proxy.TrustedCAName != "" {
+		sourceConfigMap, err := c.configNSConfigMapLister.ConfigMaps(api.OpenShiftConfigNamespace).Get(proxy.TrustedCAName)
+		if apierrors.IsNotFound(err) {
+			return "SourceNotFound", fmt.Errorf("authentication proxy trustedCA ConfigMap %s/%s not found", api.OpenShiftConfigNamespace, proxy.TrustedCAName)
+		}
+		if err != nil {
+			return "FailedGetSource", fmt.Errorf("getting authentication proxy trustedCA ConfigMap %s/%s: %w", api.OpenShiftConfigNamespace, proxy.TrustedCAName, err)
+		}
+		if _, ok := sourceConfigMap.Data[api.AuthProxyCAFileName]; !ok {
+			return "InvalidSource", fmt.Errorf("authentication proxy trustedCA ConfigMap %s/%s is missing required key %q", api.OpenShiftConfigNamespace, proxy.TrustedCAName, api.AuthProxyCAFileName)
+		}
 		source = resourcesynccontroller.ResourceLocation{Namespace: api.OpenShiftConfigNamespace, Name: proxy.TrustedCAName}
 	}
 	if err := c.resourceSyncer.SyncConfigMap(destination, source); err != nil {
@@ -30,9 +40,9 @@ func (c *consoleOperator) SyncAuthProxyTrustedCAConfigMap(proxy *proxyconfig.Con
 	if source.Name != "" {
 		if _, err := c.targetNSConfigMapLister.ConfigMaps(destination.Namespace).Get(destination.Name); err != nil {
 			if apierrors.IsNotFound(err) {
-				return "AwaitingConfigMapSync", errors.NewSyncError(fmt.Sprintf("waiting for authentication proxy CA ConfigMap %s/%s", destination.Namespace, destination.Name))
+				return "AwaitingLocalConfigMapSync", errors.NewSyncError(fmt.Sprintf("waiting for authentication proxy CA ConfigMap %s/%s", destination.Namespace, destination.Name))
 			}
-			return "FailedGetConfigMap", fmt.Errorf("getting authentication proxy CA ConfigMap %s/%s: %v", destination.Namespace, destination.Name, err)
+			return "FailedGetLocalConfigMap", fmt.Errorf("getting authentication proxy CA ConfigMap %s/%s: %v", destination.Namespace, destination.Name, err)
 		}
 	}
 	return "", nil
