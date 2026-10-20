@@ -403,10 +403,10 @@ func (c *consoleOperator) removeConsole(ctx context.Context, operatorConfig *ope
 	klog.V(2).Info("deleting console resources")
 	defer klog.V(2).Info("finished deleting console resources")
 	var errs []error
-	errs = append(errs, c.resourceSyncer.SyncConfigMap(
-		resourcesynccontroller.ResourceLocation{Namespace: api.TargetNamespace, Name: api.AuthProxyCAConfigMapName},
-		resourcesynccontroller.ResourceLocation{},
-	))
+
+	if _, err := c.SyncAuthProxyTrustedCAConfigMap(nil); err != nil {
+		errs = append(errs, err)
+	}
 	// configmaps
 	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(ctx, api.AuthProxyCAConfigMapName, metav1.DeleteOptions{}))
 	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(ctx, configmap.Stub().Name, metav1.DeleteOptions{}))
