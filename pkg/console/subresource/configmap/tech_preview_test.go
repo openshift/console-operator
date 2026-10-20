@@ -62,6 +62,7 @@ func TestTechPreviewEnabled(t *testing.T) {
 				nil,        // additionalHosts
 				"",         // tlsMinVersion - empty for legacy tests
 				[]string{}, // tlsCiphers
+				nil,        // tlsGroups
 			)
 
 			if err != nil {
@@ -130,6 +131,7 @@ func TestOLMLifecycleMetadataEnabled(t *testing.T) {
 				nil,        // additionalHosts
 				"",         // tlsMinVersion - empty for legacy tests
 				[]string{}, // tlsCiphers
+				nil,        // tlsGroups
 			)
 
 			if err != nil {
