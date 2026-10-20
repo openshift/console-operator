@@ -38,11 +38,26 @@ const (
 	copiedCALookupFails                      // reading the copy returns an unexpected error
 )
 
+// sourceCAState describes the state of the administrator-supplied proxy CA
+// ConfigMap in the openshift-config namespace that SyncAuthProxyTrustedCAConfigMap
+// must validate before registering the sync rule. It only matters when a custom
+// trust is configured (sourceCAIrrelevant otherwise).
+type sourceCAState int
+
+const (
+	sourceCAIrrelevant  sourceCAState = iota // the operator does not look up a source in this scenario
+	sourceCAValid                            // the source ConfigMap exists and has the required key
+	sourceCAMissingKey                       // the source ConfigMap exists but lacks the required key
+	sourceCAPending                          // the source ConfigMap does not exist yet (NotFound)
+	sourceCALookupFails                      // reading the source ConfigMap returns an unexpected error
+)
+
 // TestSyncAuthProxyTrustedCAConfigMap covers the sync rule that copies the
 // administrator's proxy CA into the console namespace and the condition reasons
 // the operator reports while that copy is pending or failing.
 func TestSyncAuthProxyTrustedCAConfigMap(t *testing.T) {
 	const caLookupMessage = "the copied CA could not be read"
+	const sourceLookupMessage = "the source CA could not be read"
 	wantDestination := resourcesynccontroller.ResourceLocation{Namespace: api.TargetNamespace, Name: api.AuthProxyCAConfigMapName}
 	configSource := resourcesynccontroller.ResourceLocation{Namespace: api.OpenShiftConfigNamespace, Name: "proxy-ca"}
 	withCustomTrust := &proxyconfig.Config{TrustedCAName: "proxy-ca"}
@@ -52,6 +67,7 @@ func TestSyncAuthProxyTrustedCAConfigMap(t *testing.T) {
 
 		// inputs
 		proxy        *proxyconfig.Config // resolved component proxy; nil means no override
+		sourceCA     sourceCAState       // state of the admin-supplied source CA, once a custom trust is configured
 		syncRejected bool                // the resource syncer rejects the sync rule
 		copiedCA     copiedCAState       // state of the copied CA, once a custom trust is configured
 
@@ -60,16 +76,19 @@ func TestSyncAuthProxyTrustedCAConfigMap(t *testing.T) {
 		wantReason      string
 		wantErrContains string // substring the returned error must contain; "" means no error
 		wantSyncError   bool   // the error is a retriable sync error
+		wantSyncCalls   int    // number of times SyncConfigMap is expected to be called
 	}{
 		{
-			name:       "no override clears the source",
-			proxy:      nil,
-			wantSource: resourcesynccontroller.ResourceLocation{},
+			name:          "no override clears the source",
+			proxy:         nil,
+			wantSource:    resourcesynccontroller.ResourceLocation{},
+			wantSyncCalls: 1,
 		},
 		{
-			name:       "proxy without custom trust clears the source",
-			proxy:      &proxyconfig.Config{HTTPProxy: "http://component.example:3128"},
-			wantSource: resourcesynccontroller.ResourceLocation{},
+			name:          "proxy without custom trust clears the source",
+			proxy:         &proxyconfig.Config{HTTPProxy: "http://component.example:3128"},
+			wantSource:    resourcesynccontroller.ResourceLocation{},
+			wantSyncCalls: 1,
 		},
 		{
 			name:            "clearing the source fails",
@@ -78,37 +97,67 @@ func TestSyncAuthProxyTrustedCAConfigMap(t *testing.T) {
 			wantSource:      resourcesynccontroller.ResourceLocation{},
 			wantReason:      "FailedResourceSyncUpdate",
 			wantErrContains: "registering authentication proxy CA sync",
+			wantSyncCalls:   1,
 		},
 		{
-			name:       "copied CA is already present",
-			proxy:      withCustomTrust,
-			copiedCA:   copiedCAPresent,
-			wantSource: configSource,
+			name:          "copied CA is already present",
+			proxy:         withCustomTrust,
+			sourceCA:      sourceCAValid,
+			copiedCA:      copiedCAPresent,
+			wantSource:    configSource,
+			wantSyncCalls: 1,
 		},
 		{
 			name:            "waiting for the copied CA",
 			proxy:           withCustomTrust,
+			sourceCA:        sourceCAValid,
 			copiedCA:        copiedCAPending,
 			wantSource:      configSource,
-			wantReason:      "AwaitingConfigMapSync",
+			wantReason:      "AwaitingLocalConfigMapSync",
 			wantErrContains: "waiting for authentication proxy CA ConfigMap",
 			wantSyncError:   true,
+			wantSyncCalls:   1,
 		},
 		{
 			name:            "registering the sync rule fails",
 			proxy:           withCustomTrust,
+			sourceCA:        sourceCAValid,
 			syncRejected:    true,
 			wantSource:      configSource,
 			wantReason:      "FailedResourceSyncUpdate",
 			wantErrContains: "registering authentication proxy CA sync",
+			wantSyncCalls:   1,
 		},
 		{
 			name:            "reading the copied CA fails",
 			proxy:           withCustomTrust,
+			sourceCA:        sourceCAValid,
 			copiedCA:        copiedCALookupFails,
 			wantSource:      configSource,
-			wantReason:      "FailedGetConfigMap",
+			wantReason:      "FailedGetLocalConfigMap",
 			wantErrContains: caLookupMessage,
+			wantSyncCalls:   1,
+		},
+		{
+			name:            "source CA ConfigMap is not found",
+			proxy:           withCustomTrust,
+			sourceCA:        sourceCAPending,
+			wantReason:      "SourceNotFound",
+			wantErrContains: "not found",
+		},
+		{
+			name:            "source CA ConfigMap lookup fails",
+			proxy:           withCustomTrust,
+			sourceCA:        sourceCALookupFails,
+			wantReason:      "FailedGetSource",
+			wantErrContains: sourceLookupMessage,
+		},
+		{
+			name:            "source CA ConfigMap is missing the required key",
+			proxy:           withCustomTrust,
+			sourceCA:        sourceCAMissingKey,
+			wantReason:      "InvalidSource",
+			wantErrContains: "missing required key",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -119,6 +168,7 @@ func TestSyncAuthProxyTrustedCAConfigMap(t *testing.T) {
 			co := &consoleOperator{
 				resourceSyncer:          syncer,
 				targetNSConfigMapLister: destinationLister(t, tc.copiedCA, caLookupMessage),
+				configNSConfigMapLister: sourceLister(t, tc.sourceCA, "proxy-ca", sourceLookupMessage),
 			}
 
 			reason, err := co.SyncAuthProxyTrustedCAConfigMap(tc.proxy)
@@ -135,10 +185,10 @@ func TestSyncAuthProxyTrustedCAConfigMap(t *testing.T) {
 			if consoleerrors.IsSyncError(err) != tc.wantSyncError {
 				t.Errorf("IsSyncError = %t, want %t (err: %v)", consoleerrors.IsSyncError(err), tc.wantSyncError, err)
 			}
-			if syncer.calls != 1 {
-				t.Errorf("SyncConfigMap called %d times, want exactly 1", syncer.calls)
+			if syncer.calls != tc.wantSyncCalls {
+				t.Errorf("SyncConfigMap called %d times, want %d", syncer.calls, tc.wantSyncCalls)
 			}
-			if syncer.destination != wantDestination || syncer.source != tc.wantSource {
+			if tc.wantSyncCalls > 0 && (syncer.destination != wantDestination || syncer.source != tc.wantSource) {
 				t.Errorf("registered sync rule = {dest: %v, source: %v}, want {dest: %v, source: %v}", syncer.destination, syncer.source, wantDestination, tc.wantSource)
 			}
 		})
@@ -156,6 +206,27 @@ func destinationLister(t *testing.T, state copiedCAState, lookupErrorMessage str
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	if state == copiedCAPresent {
 		if err := indexer.Add(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: api.TargetNamespace, Name: api.AuthProxyCAConfigMapName}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return corelisters.NewConfigMapLister(indexer)
+}
+
+// sourceLister returns a ConfigMap lister for the openshift-config namespace
+// seeded to match the requested state of the administrator-supplied proxy CA.
+func sourceLister(t *testing.T, state sourceCAState, name, lookupErrorMessage string) corelisters.ConfigMapLister {
+	t.Helper()
+	if state == sourceCALookupFails {
+		return &failingConfigMapLister{err: errors.New(lookupErrorMessage)}
+	}
+
+	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	if state == sourceCAValid || state == sourceCAMissingKey {
+		cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: api.OpenShiftConfigNamespace, Name: name}}
+		if state == sourceCAValid {
+			cm.Data = map[string]string{api.AuthProxyCAFileName: "test-ca-data"}
+		}
+		if err := indexer.Add(cm); err != nil {
 			t.Fatal(err)
 		}
 	}
