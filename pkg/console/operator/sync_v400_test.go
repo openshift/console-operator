@@ -30,6 +30,7 @@ import (
 
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/telemetry"
+	"github.com/openshift/console-operator/pkg/proxyconfig"
 )
 
 func TestGetNodeComputeEnvironments(t *testing.T) {
@@ -872,6 +873,7 @@ func TestGetTLSConfigFromObservedConfig(t *testing.T) {
 
 // syncDeploymentInputs holds the minimal inputs needed to call SyncDeployment.
 type syncDeploymentInputs struct {
+	authProxy            *proxyconfig.Config
 	operatorConfig       *operatorv1.Console
 	cm                   *v1.ConfigMap
 	serviceCAConfigMap   *v1.ConfigMap
@@ -923,6 +925,7 @@ func (in syncDeploymentInputs) callSyncDeployment(co *consoleOperator, recorder 
 		in.servingCertSecret,
 		in.proxyConfig,
 		in.infrastructureConfig,
+		in.authProxy,
 		recorder,
 	)
 }
@@ -1030,4 +1033,35 @@ func TestSyncDeploymentGenerationCache(t *testing.T) {
 			t.Errorf("expected cache to remain 5 after failure, got %d", co.lastAppliedDeploymentGeneration)
 		}
 	})
+}
+
+func TestRedactURLUserinfo(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   map[string]string
+		want map[string]string
+	}{
+		{
+			name: "redacts user and password",
+			in:   map[string]string{"console-config.yaml": "httpProxy: http://user:pass@proxy.example.com:3128"},
+			want: map[string]string{"console-config.yaml": "httpProxy: http://redacted@proxy.example.com:3128"},
+		},
+		{
+			name: "redacts user only",
+			in:   map[string]string{"console-config.yaml": "httpsProxy: https://user@proxy.example.com:3128"},
+			want: map[string]string{"console-config.yaml": "httpsProxy: https://redacted@proxy.example.com:3128"},
+		},
+		{
+			name: "leaves URLs without userinfo untouched",
+			in:   map[string]string{"console-config.yaml": "httpProxy: http://proxy.example.com:3128"},
+			want: map[string]string{"console-config.yaml": "httpProxy: http://proxy.example.com:3128"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := redactURLUserinfo(tc.in)
+			if diff := deep.Equal(got, tc.want); diff != nil {
+				t.Errorf("redactURLUserinfo() mismatch: %v", diff)
+			}
+		})
+	}
 }

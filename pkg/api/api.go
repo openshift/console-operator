@@ -1,6 +1,15 @@
 package api
 
 const (
+	// AuthProxyCAConfigMapName is the destination name used for the auth proxy trustedCA ConfigMap
+	// when copying it into local namespaces.
+	AuthProxyCAConfigMapName = "v4-0-config-system-auth-proxy-ca"
+	// AuthProxyCAMountDir is the mount point where the auth proxy trustedCA ConfigMap is mounted in containers.
+	AuthProxyCAMountDir = "/var/auth-proxy-ca"
+	// AuthProxyCAFileName is the auth proxy trustedCA ConfigMap key that is expected to contain the CA bundle.
+	// It's also the local filename that the bundle is accessible as under AuthProxyCAMountDir.
+	AuthProxyCAFileName = "ca-bundle.crt"
+
 	AuthServerCAMountDir                = "/var/auth-server-ca"
 	AuthServerCAFileName                = "ca-bundle.crt"
 	CLIOIDCClientComponentName          = "cli"

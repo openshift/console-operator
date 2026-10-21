@@ -7,6 +7,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-test/deep"
+
 	// kube
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -25,10 +27,21 @@ import (
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
+	"github.com/openshift/api/features"
 	"github.com/openshift/api/oauth"
 	operatorv1 "github.com/openshift/api/operator/v1"
-	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/library-go/pkg/controller/controllercmd"
+	"github.com/openshift/library-go/pkg/operator/configobserver/featuregates"
+	"github.com/openshift/library-go/pkg/operator/genericoperatorclient"
+	"github.com/openshift/library-go/pkg/operator/loglevel"
+	"github.com/openshift/library-go/pkg/operator/managementstatecontroller"
+	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
+	"github.com/openshift/library-go/pkg/operator/staleconditions"
+	"github.com/openshift/library-go/pkg/operator/status"
+	"github.com/openshift/library-go/pkg/operator/unsupportedconfigoverridescontroller"
+	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
+	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/configobservation/configobservercontroller"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
 	"github.com/openshift/console-operator/pkg/console/controllers/clioidcclientstatus"
@@ -43,17 +56,11 @@ import (
 	"github.com/openshift/console-operator/pkg/console/controllers/service"
 	"github.com/openshift/console-operator/pkg/console/controllers/serviceaccounts"
 	"github.com/openshift/console-operator/pkg/console/controllers/storageversionmigration"
-	upgradenotification "github.com/openshift/console-operator/pkg/console/controllers/upgradenotification"
+	"github.com/openshift/console-operator/pkg/console/controllers/upgradenotification"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
-	"github.com/openshift/library-go/pkg/controller/controllercmd"
-	"github.com/openshift/library-go/pkg/operator/configobserver/featuregates"
-	"github.com/openshift/library-go/pkg/operator/genericoperatorclient"
-	"github.com/openshift/library-go/pkg/operator/managementstatecontroller"
-	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
-	"github.com/openshift/library-go/pkg/operator/staleconditions"
-	"github.com/openshift/library-go/pkg/operator/status"
-	"github.com/openshift/library-go/pkg/operator/unsupportedconfigoverridescontroller"
-	"github.com/openshift/library-go/pkg/operator/v1helpers"
+	consoleoperator "github.com/openshift/console-operator/pkg/console/operator"
+	"github.com/openshift/console-operator/pkg/console/telemetry"
+	"github.com/openshift/console-operator/pkg/proxyconfig"
 
 	// clients
 	configclient "github.com/openshift/client-go/config/clientset/versioned"
@@ -71,12 +78,6 @@ import (
 	consoleinformers "github.com/openshift/client-go/console/informers/externalversions"
 
 	applyoperatorv1 "github.com/openshift/client-go/operator/applyconfigurations/operator/v1"
-
-	telemetry "github.com/openshift/console-operator/pkg/console/telemetry"
-
-	"github.com/go-test/deep"
-	consoleoperator "github.com/openshift/console-operator/pkg/console/operator"
-	"github.com/openshift/library-go/pkg/operator/loglevel"
 )
 
 const (
@@ -292,6 +293,12 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		versionGetter,
 		recorder,
 		resourceSyncer,
+		proxyconfig.NewGatedProxyResolver(
+			proxyconfig.ConsoleProxyResolver{},
+			featureGateAccessor,
+			features.FeatureGateExternalOIDC,
+			features.FeatureGateAuthenticationComponentProxyExternalOIDC,
+		),
 	)
 
 	apiextensionsClient, err := apiextensionsclient.NewForConfig(controllerContext.KubeConfig)
