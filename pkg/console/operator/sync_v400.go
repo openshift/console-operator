@@ -186,6 +186,16 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(ctx, olmLifecycleMetadataErr)
 	}
 
+	// Must run before SyncConfigMap: it confirms the auth proxy CA copy exists (if
+	// configured) so we never publish a console-config.yaml referencing a CA file
+	// that no Pod's volume mounts, which would otherwise persist indefinitely while
+	// the copy is pending.
+	authProxyTrustedCAErrReason, authProxyTrustedCAErr := co.SyncAuthProxyTrustedCAConfigMap(authProxy)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthProxyTrustedCASync", authProxyTrustedCAErrReason, authProxyTrustedCAErr))
+	if authProxyTrustedCAErr != nil {
+		return statusHandler.FlushAndReturn(ctx, authProxyTrustedCAErr)
+	}
+
 	additionalHosts := routesub.GetAdditionalRouteHostnames(set.Ingress)
 
 	cm, cmErrReason, cmErr := co.SyncConfigMap(
@@ -218,12 +228,6 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("TrustedCASync", trustedCAErrReason, trustedCAErr))
 	if trustedCAErr != nil {
 		return statusHandler.FlushAndReturn(ctx, trustedCAErr)
-	}
-
-	authProxyTrustedCAErrReason, authProxyTrustedCAErr := co.SyncAuthProxyTrustedCAConfigMap(authProxy)
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthProxyTrustedCASync", authProxyTrustedCAErrReason, authProxyTrustedCAErr))
-	if authProxyTrustedCAErr != nil {
-		return statusHandler.FlushAndReturn(ctx, authProxyTrustedCAErr)
 	}
 
 	var oauthServingCertConfigMap *corev1.ConfigMap
