@@ -17,7 +17,7 @@ import (
 	clocktesting "k8s.io/utils/clock/testing"
 )
 
-func newAPIServerListers(t *testing.T, apiServer *configv1.APIServer) configobservation.Listers {
+func newAPIServerListers(t *testing.T, apiServer *configv1.APIServer, tlsGroupsEnabled bool) configobservation.Listers {
 	t.Helper()
 	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	if apiServer != nil {
@@ -27,6 +27,8 @@ func newAPIServerListers(t *testing.T, apiServer *configv1.APIServer) configobse
 	}
 	return configobservation.Listers{
 		APIServerLister_: configlistersv1.NewAPIServerLister(indexer),
+		TLSGroupsEnabled: tlsGroupsEnabled,
+		FIPSEnabled:      false,
 	}
 }
 
@@ -92,13 +94,7 @@ func TestGetSecurityProfileSettings(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Guard: this exercises the non-FIPS path. If the test binary were
-			// ever run under FIPS the expected group sets would differ.
-			if isFIPSEnabled() {
-				t.Skip("skipping: expectations assume non-FIPS runtime")
-			}
-
-			gotVersion, _, gotGroups := getSecurityProfileSettings(tt.profile)
+			gotVersion, _, gotGroups := getSecurityProfileSettings(tt.profile, false)
 			if gotVersion != tt.wantVersion {
 				t.Errorf("minTLSVersion = %q, want %q", gotVersion, tt.wantVersion)
 			}
@@ -114,16 +110,12 @@ func TestObserveTLSSecurityProfile(t *testing.T) {
 	intermediate := configv1.TLSProfiles[configv1.TLSProfileIntermediateType]
 
 	t.Run("writes groups from the configured profile", func(t *testing.T) {
-		if isFIPSEnabled() {
-			t.Skip("skipping: expectations assume non-FIPS runtime")
-		}
-
 		listers := newAPIServerListers(t, &configv1.APIServer{
 			ObjectMeta: metav1.ObjectMeta{Name: "cluster"},
 			Spec: configv1.APIServerSpec{
 				TLSSecurityProfile: &configv1.TLSSecurityProfile{Type: configv1.TLSProfileIntermediateType},
 			},
-		})
+		}, true)
 
 		observed, errs := ObserveTLSSecurityProfile(listers, recorder, map[string]interface{}{})
 		if len(errs) != 0 {
@@ -148,7 +140,7 @@ func TestObserveTLSSecurityProfile(t *testing.T) {
 	})
 
 	t.Run("missing apiserver falls back to default profile without error", func(t *testing.T) {
-		listers := newAPIServerListers(t, nil)
+		listers := newAPIServerListers(t, nil, true)
 
 		observed, errs := ObserveTLSSecurityProfile(listers, recorder, map[string]interface{}{})
 		if len(errs) != 0 {
@@ -165,7 +157,7 @@ func TestObserveTLSSecurityProfile(t *testing.T) {
 			Spec: configv1.APIServerSpec{
 				TLSSecurityProfile: &configv1.TLSSecurityProfile{Type: configv1.TLSProfileIntermediateType},
 			},
-		})
+		}, true)
 
 		existing := map[string]interface{}{
 			"servingInfo": map[string]interface{}{
@@ -179,6 +171,27 @@ func TestObserveTLSSecurityProfile(t *testing.T) {
 		}
 		if _, found, _ := unstructured.NestedString(observed, "servingInfo", "unmanaged"); found {
 			t.Errorf("expected unmanaged field to be pruned from observed config")
+		}
+	})
+
+	t.Run("omits tlsGroups when the feature gate is disabled", func(t *testing.T) {
+		listers := newAPIServerListers(t, &configv1.APIServer{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster"},
+			Spec: configv1.APIServerSpec{
+				TLSSecurityProfile: &configv1.TLSSecurityProfile{Type: configv1.TLSProfileIntermediateType},
+			},
+		}, false)
+
+		observed, errs := ObserveTLSSecurityProfile(listers, recorder, map[string]interface{}{})
+		if len(errs) != 0 {
+			t.Fatalf("unexpected errors: %v", errs)
+		}
+		if _, found, _ := unstructured.NestedStringSlice(observed, "servingInfo", "tlsGroups"); found {
+			t.Errorf("expected tlsGroups to be omitted when TLSGroupPreferences is disabled")
+		}
+		// minTLSVersion and cipherSuites are not gated and must still be observed.
+		if _, found, _ := unstructured.NestedString(observed, "servingInfo", "minTLSVersion"); !found {
+			t.Errorf("expected minTLSVersion to be observed even when tlsGroups is disabled")
 		}
 	})
 }
