@@ -33,7 +33,10 @@ var (
 	readFile  = os.ReadFile
 )
 
-func isFIPSEnabled() bool {
+// IsFIPSEnabled reports whether the operator runs in FIPS mode. FIPS mode is an
+// immutable property of the node's kernel, so callers should resolve it once at
+// startup rather than per reconciliation.
+func IsFIPSEnabled() bool {
 	return detectFIPS()
 }
 
