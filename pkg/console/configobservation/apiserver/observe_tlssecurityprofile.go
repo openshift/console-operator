@@ -19,6 +19,14 @@ type APIServerLister interface {
 	APIServerLister() configlistersv1.APIServerLister
 }
 
+// TLSFeatureFlags exposes the startup-resolved feature state the TLS observer
+// depends on: whether the TLSGroupPreferences gate is enabled and whether the
+// operator runs in FIPS mode.
+type TLSFeatureFlags interface {
+	TLSGroupPreferencesEnabled() bool
+	FIPSModeEnabled() bool
+}
+
 // ObserveTLSSecurityProfile observes APIServer.Spec.TLSSecurityProfile and writes
 // servingInfo.minTLSVersion, servingInfo.cipherSuites, and servingInfo.tlsGroups.
 func ObserveTLSSecurityProfile(listers configobserver.Listers, recorder events.Recorder, existingConfig map[string]interface{}) (map[string]interface{}, []error) {
@@ -43,6 +51,9 @@ func innerTLSSecurityProfileObservations(
 	}()
 
 	apiServerListers := listers.(APIServerLister)
+	featureFlags := listers.(TLSFeatureFlags)
+	tlsGroupsEnabled := featureFlags.TLSGroupPreferencesEnabled()
+	fipsEnabled := featureFlags.FIPSModeEnabled()
 	errList := []error{}
 
 	currentMinTLSVersion, _, versionErr := unstructured.NestedString(existingConfig, minTLSVersionPath...)
@@ -68,7 +79,13 @@ func innerTLSSecurityProfileObservations(
 		return existingConfig, append(errList, err)
 	}
 
-	observedMinTLSVersion, observedCipherSuites, observedGroups := getSecurityProfileSettings(apiServer.Spec.TLSSecurityProfile)
+	observedMinTLSVersion, observedCipherSuites, observedGroups := getSecurityProfileSettings(apiServer.Spec.TLSSecurityProfile, fipsEnabled)
+	if !tlsGroupsEnabled {
+		// The TLSGroupPreferences gate is disabled: do not manage tlsGroups.
+		// Leaving observedGroups empty removes any previously observed value
+		// from the Console CR's observedConfig.
+		observedGroups = nil
+	}
 	observedConfig := map[string]interface{}{}
 
 	if err = unstructured.SetNestedField(observedConfig, observedMinTLSVersion, minTLSVersionPath...); err != nil {
@@ -96,7 +113,7 @@ func innerTLSSecurityProfileObservations(
 	return observedConfig, errList
 }
 
-func getSecurityProfileSettings(profile *configv1.TLSSecurityProfile) (string, []string, []string) {
+func getSecurityProfileSettings(profile *configv1.TLSSecurityProfile, fipsEnabled bool) (string, []string, []string) {
 	profileType := crypto.DefaultTLSProfileType
 	if profile != nil {
 		profileType = profile.Type
@@ -116,7 +133,7 @@ func getSecurityProfileSettings(profile *configv1.TLSSecurityProfile) (string, [
 	}
 
 	srcGroups := profileSpec.Groups
-	if isFIPSEnabled() && len(srcGroups) > 0 {
+	if fipsEnabled && len(srcGroups) > 0 {
 		approved := fipsApprovedTLSGroups(srcGroups)
 		if len(approved) != len(srcGroups) {
 			klog.Warningf("FIPS mode is enabled; restricting the configured TLS groups %v to the FIPS-approved set %v. Console ignores non-approved groups and falls back to the Go runtime default FIPS curves when the set is empty. To avoid this, configure only FIPS-approved NIST curves (secp256r1, secp384r1, secp521r1) in the APIServer TLSSecurityProfile.", srcGroups, approved)

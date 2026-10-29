@@ -25,6 +25,8 @@ func NewConfigObserver(
 	configInformer configinformers.SharedInformerFactory,
 	resourceSyncer resourcesynccontroller.ResourceSyncer,
 	eventRecorder events.Recorder,
+	tlsGroupsEnabled bool,
+	fipsEnabled bool,
 ) *ConfigObserver {
 	informers := []factory.Informer{
 		operatorClient.Informer(),
@@ -43,6 +45,8 @@ func NewConfigObserver(
 					operatorClient.Informer().HasSynced,
 					configInformer.Config().V1().APIServers().Informer().HasSynced,
 				},
+				TLSGroupsEnabled: tlsGroupsEnabled,
+				FIPSEnabled:      fipsEnabled,
 			},
 			informers,
 			// Observer functions
