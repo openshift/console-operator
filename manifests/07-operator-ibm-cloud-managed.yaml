@@ -35,7 +35,7 @@ spec:
         - name: CONSOLE_IMAGE
           value: registry.svc.ci.openshift.org/openshift:console
         - name: DOWNLOADS_IMAGE
-          value: registry.svc.ci.openshift.org/openshift:console-downloads
+          value: registry.svc.ci.openshift.org/openshift:cli-artifacts
         - name: OPERATOR_IMAGE_VERSION
           value: 0.0.1-snapshot
         - name: OPERATOR_NAME
