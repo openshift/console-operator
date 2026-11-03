@@ -1,0 +1,249 @@
+apiVersion: console.openshift.io/v1
+kind: ConsoleQuickStart
+metadata:
+  annotations:
+    capability.openshift.io/name: Console
+    include.release.openshift.io/ibm-cloud-managed: "true"
+    include.release.openshift.io/self-managed-high-availability: "true"
+    include.release.openshift.io/single-node-developer: "true"
+  name: configure-additional-console-routes
+spec:
+  accessReviewResources:
+    - group: config.openshift.io
+      resource: ingresses
+      verb: patch
+  displayName: Adding custom routes for the web console
+  durationMinutes: 10
+  description: >-
+    Expose the web console at additional addresses with independent hostnames
+    and TLS certificates by using the Ingress componentRoutes API.
+  icon: >-
+    data:image/svg+xml;base64,77u/PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/Pgo8c3ZnIGNsYXNzPSJwZi12NS1zdmciIHZpZXdCb3g9IjAgMCA0OTYgNTEyIiBmaWxsPSJjdXJyZW50Q29sb3IiIGFyaWEtaGlkZGVuPSJ0cnVlIiByb2xlPSJpbWciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGNvbG9yPSJ2YXIoLS1wZi12NS1nbG9iYWwtLUNvbG9yLS0xMDApIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0zMzYuNSAxNjBDMzIyIDcwLjcgMjg3LjggOCAyNDggOHMtNzQgNjIuNy04OC41IDE1MmgxNzd6TTE1MiAyNTZjMCAyMi4yIDEuMiA0My41IDMuMyA2NGgxODUuM2MyLjEtMjAuNSAzLjMtNDEuOCAzLjMtNjRzLTEuMi00My41LTMuMy02NEgxNTUuM2MtMi4xIDIwLjUtMy4zIDQxLjgtMy4zIDY0em0zMjQuNy05NmMtMjguNi02Ny45LTg2LjUtMTIwLjQtMTU4LTE0MS42IDI0LjQgMzMuOCA0MS4yIDg0LjcgNTAgMTQxLjZoMTA4ek0xNzcuMiAxOC40QzEwNS44IDM5LjYgNDcuOCA5Mi4xIDE5LjMgMTYwaDEwOGM4LjctNTYuOSAyNS41LTEwNy44IDQ5LjktMTQxLjZ6TTQ4Ny40IDE5MkgzNzIuN2MyLjEgMjEgMy4zIDQyLjUgMy4zIDY0cy0xLjIgNDMtMy4zIDY0aDExNC42YzUuNS0yMC41IDguNi00MS44IDguNi02NHMtMy4xLTQzLjUtOC41LTY0ek0xMjAgMjU2YzAtMjEuNSAxLjItNDMgMy4zLTY0SDguNkMzLjIgMjEyLjUgMCAyMzMuOCAwIDI1NnMzLjIgNDMuNSA4LjYgNjRoMTE0LjZjLTItMjEtMy4yLTQyLjUtMy4yLTY0em0zOS41IDk2YzE0LjUgODkuMyA0OC43IDE1MiA4OC41IDE1MnM3NC02Mi43IDg4LjUtMTUyaC0xNzd6bTE1OS4zIDE0MS42YzcxLjQtMjEuMiAxMjkuNC03My43IDE1OC0xNDEuNmgtMTA4Yy04LjggNTYuOS0yNS42IDEwNy44LTUwIDE0MS42ek0xOS4zIDM1MmMyOC42IDY3LjkgODYuNSAxMjAuNCAxNTggMTQxLjYtMjQuNC0zMy44LTQxLjItODQuNy01MC0xNDEuNmgtMTA4eiI+PC9wYXRoPjwvc3ZnPg==
+  tags:
+    - console
+    - networking
+    - routes
+    - ingress
+    - administrator
+  prerequisites:
+    - You have access to an OpenShift cluster as a user with the **cluster-admin** role.
+    - Your cluster runs OpenShift Container Platform 5.0 or later.
+    - 'Optional: If you plan to use a hostname outside the cluster''s default domain,
+      you have created a DNS record that points the hostname to the cluster router.'
+    - 'Optional: If you plan to serve a custom TLS certificate, you have a certificate
+      and key pair in PEM format.'
+  introduction: |-
+    ### In this quick start, you will make the web console available at an additional address.
+
+    By default, the web console is available at a single URL, such as
+    `console-openshift-console.apps.example.com`, that is derived from the cluster's
+    ingress domain.
+
+    As a cluster administrator, you can expose the console at more addresses by adding
+    entries to the `spec.componentRoutes` list of the cluster Ingress configuration.
+    Each entry creates an additional console route with its own hostname and, optionally,
+    its own TLS certificate.
+
+    After you add an entry, the console operator automatically:
+
+    - Creates a route for the hostname in the `openshift-console` namespace
+    - Registers the new address with the cluster OAuth server so that single sign-on works
+    - Configures the console so that users who log in at the new address are returned to it
+
+    The default console URL continues to work alongside every additional address.
+  tasks:
+    - title: Understand when to use additional console routes
+      description: |-
+        ### Additional console routes let different audiences reach the console through different hostnames.
+
+        Common use cases include:
+
+        - **Network segmentation**: Serve the console to administrators on a hostname that is reachable only from an internal network, while the default address serves a wider audience.
+        - **Separate addresses for user groups**: Give internal teams and external partners distinct, easy-to-recognize addresses for the same console.
+        - **DNS migrations**: Keep the console available under a new domain while the old address is still in use.
+
+        All addresses point to the same console, so there are no extra pods to run or manage.
+
+        ### Decide on the values for your new endpoint:
+
+        1. **Name**: A unique name for the route, such as `console-internal`. The name must begin with `console`.
+        2. **Hostname**: The address where the console will be reachable. Hostnames that use the cluster's default domain, such as `console-2-openshift-console.apps.example.com`, are routed automatically. Any other hostname requires a DNS record that points to the cluster router.
+        3. **TLS certificate**: Optional. Hostnames under the cluster's default domain are covered by the default ingress certificate. Hostnames outside the cluster domain need their own certificate to avoid browser warnings.
+      review:
+        instructions: |-
+          #### Verify that you are ready to configure the route:
+
+          1. You have chosen a name that begins with `console`.
+          2. You know which hostname to use, and whether it is under the cluster's default domain.
+        failedTaskHelp: >-
+          This task isn't verified yet. Review the requirements for the name, the
+          hostname, and the TLS certificate, and try again.
+      summary:
+        success: You know when to use additional console routes and what each endpoint requires.
+        failed: Review the requirements and try again.
+    - title: Navigate to the Ingress configuration
+      description: |-
+        ### The cluster Ingress configuration controls component routes, including the console routes.
+
+        1. In the [Administration]{{highlight qs-nav-administration}} section of the navigation, click **Cluster Settings**.
+
+        2. Select the **Configuration** tab.
+
+        3. In the list of configuration resources, click **Ingress** to open its details page.
+
+        The Ingress resource is named `cluster`. Its `spec.componentRoutes` list is where additional console endpoints are defined.
+      review:
+        instructions: |-
+          To verify that you are in the right place:
+
+          1. You should see **Ingress details** as the page title.
+          2. The name of the resource should be **cluster**.
+        failedTaskHelp: >-
+          This task isn't verified yet. Make sure you selected the **Configuration**
+          tab on the **Cluster Settings** page, then click the **Ingress** resource.
+      summary:
+        success: Great work!
+        failed: Try the steps again.
+    - title: Add a componentRoutes entry for the console
+      description: |-
+        ### Additional console endpoints are entries in the `spec.componentRoutes` list.
+
+        1. On the **Ingress details** page, click the **YAML** tab to open the editor.
+
+        2. Locate the `spec` section and find the `componentRoutes` list. If the list does not exist yet, add it.
+
+        3. Add an entry for your endpoint:
+
+           ```
+           spec:
+             componentRoutes:
+               - name: console-2
+                 namespace: openshift-console
+                 hostname: console-2-openshift-console.apps.example.com
+           ```{{copy}}
+
+        4. Replace `console-2` and the hostname with your own values:
+
+           - `name` must begin with `console` and must not be `console` or `console-custom`.
+           - `namespace` must be `openshift-console`.
+           - `hostname` must be unique in the cluster.
+
+        5. Click **Save**.
+
+        ### Using the CLI
+
+        To edit the Ingress configuration from a terminal, run:
+
+        `oc edit ingress.config.openshift.io cluster`{{execute}}
+
+        ### What happens next
+
+        Within about a minute, the console operator:
+
+        - Creates a route named after your entry in the `openshift-console` namespace
+        - Registers `https://<hostname>/auth/callback` with the cluster OAuth server
+        - Adds the hostname to the console configuration so that logins complete on the same address
+      review:
+        instructions: |-
+          #### Verify that the entry was saved:
+
+          1. On the **Ingress details** page, open the **YAML** tab.
+
+          2. Confirm that your entry appears under `spec.componentRoutes` with the name, namespace, and hostname you chose.
+        failedTaskHelp: >-
+          This task isn't verified yet. Make sure the entry is indented correctly
+          under `spec.componentRoutes`, and that the name begins with `console`. For
+          reference, see the [OpenShift documentation on customizing the console
+          route](https://docs.redhat.com/en/documentation/openshift_container_platform/5.0/observability/web_console/web-console#customizing-the-console-route_customizing-web-console).
+      summary:
+        success: The Ingress configuration now contains an entry for your new console endpoint.
+        failed: Try the steps again.
+    - title: Add a custom TLS certificate (optional)
+      description: |-
+        ### Hostnames outside the cluster domain need their own certificate.
+
+        Skip this task if your hostname is under the cluster's default domain. The default ingress certificate already covers it.
+
+        For any other hostname, provide a TLS certificate so that browsers trust the new console address. The certificate and key are stored in a secret of type `kubernetes.io/tls` in the `openshift-config` namespace.
+
+        1. If you have not already done so, create a secret that contains your certificate and key:
+
+        `oc create secret tls console-2-certs --cert=certificate.crt --key=private.key -n openshift-config`{{execute}}
+
+        2. On the **Ingress details** page, open the **YAML** tab and reference the secret in your entry:
+
+           ```
+           spec:
+             componentRoutes:
+               - name: console-2
+                 namespace: openshift-console
+                 hostname: console.example.com
+                 servingCertKeyPairSecret:
+                   name: console-2-certs
+           ```{{copy}}
+
+        3. Click **Save**.
+
+        The certificate must be valid and must cover the hostname you configured. After you save, the console operator applies the certificate to the route.
+      review:
+        instructions: |-
+          #### Verify that the certificate is configured:
+
+          1. If you created a secret, confirm that it exists:
+
+          `oc get secret console-2-certs -n openshift-config`
+
+          2. Confirm that your `componentRoutes` entry includes `servingCertKeyPairSecret.name`.
+        failedTaskHelp: >-
+          This task isn't verified yet. Confirm that the secret exists in the
+          `openshift-config` namespace, that it is of type `kubernetes.io/tls`, and
+          that it is referenced by `servingCertKeyPairSecret.name` in your entry.
+      summary:
+        success: Your new console endpoint serves the certificate you provided.
+        failed: Try the steps again.
+    - title: Verify the route is created and accessible
+      description: |-
+        ### The console operator creates a route for each additional console endpoint.
+
+        1. In the navigation, go to **Networking** → **Routes**.
+
+        2. In the **Project** dropdown menu, select **openshift-console**.
+
+        3. Find the route named after your entry, such as `console-2`. The **Hostname** column shows the address you configured.
+
+        To list the additional console routes from a terminal, run:
+
+        `oc get routes -n openshift-console -l console.openshift.io/additional-route=true`{{execute}}
+
+        4. Open `https://<hostname>` in a browser and log in with your usual credentials.
+
+        After logging in, you are returned to the same address, not to the original console URL.
+
+        **Note**: It can take up to a minute after you save the Ingress configuration for the route to appear.
+      review:
+        instructions: |-
+          #### Verify that the new console endpoint works:
+
+          1. Open `https://<your-hostname>` in a browser.
+
+          2. Log in with your usual credentials.
+
+          3. Confirm that the console loads and that the address bar still shows your hostname after login.
+        failedTaskHelp: >-
+          This task isn't verified yet. If the route does not appear, wait a minute
+          and refresh the **Routes** page. Check that the `componentRoutes` entry uses
+          the `openshift-console` namespace and that the name begins with `console`.
+          For a hostname outside the cluster domain, confirm the DNS record and the
+          `servingCertKeyPairSecret` reference. For more information, see the
+          [OpenShift documentation on customizing the console
+          route](https://docs.redhat.com/en/documentation/openshift_container_platform/5.0/observability/web_console/web-console#customizing-the-console-route_customizing-web-console).
+      summary:
+        success: The web console is now available at your additional address.
+        failed: Try the steps again.
+  conclusion: |-
+    You have made the web console available at an additional address. The console now serves both the original URL and every hostname you configured, and logins complete on the address where they started.
+
+    To remove an endpoint later, delete its entry from `spec.componentRoutes` in the Ingress configuration. The console operator removes the corresponding route.
+
+    For more information, see the [OpenShift documentation on customizing the console route](https://docs.redhat.com/en/documentation/openshift_container_platform/5.0/observability/web_console/web-console#customizing-the-console-route_customizing-web-console).
+  nextQuickStart: []
