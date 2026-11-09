@@ -84,7 +84,7 @@ func TestDefaultDeployment(t *testing.T) {
 		BinaryData: nil,
 	}
 
-	expectedConfigHash := configMapContentHash(consoleConfig)
+	expectedConfigHash := ConfigMapContentHash(consoleConfig)
 
 	trustedCAConfigMapEmpty := configmap.TrustedCAStub()
 	trustedCAConfigMapSet := configmap.TrustedCAStub()
@@ -92,10 +92,10 @@ func TestDefaultDeployment(t *testing.T) {
 
 	commonServiceCA := &corev1.ConfigMap{}
 	commonOAuthServingCert := &corev1.ConfigMap{Data: map[string]string{"ca-bundle.crt": "test"}}
-	expectedServiceCAHash := configMapContentHash(commonServiceCA)
-	expectedOAuthCertHash := configMapContentHash(commonOAuthServingCert)
-	expectedTrustedCAEmptyHash := configMapContentHash(trustedCAConfigMapEmpty)
-	expectedTrustedCASetHash := configMapContentHash(trustedCAConfigMapSet)
+	expectedServiceCAHash := ConfigMapContentHash(commonServiceCA)
+	expectedOAuthCertHash := ConfigMapContentHash(commonOAuthServingCert)
+	expectedTrustedCAEmptyHash := ConfigMapContentHash(trustedCAConfigMapEmpty)
+	expectedTrustedCASetHash := ConfigMapContentHash(trustedCAConfigMapSet)
 
 	consoleDeploymentObjectMeta := metav1.ObjectMeta{
 		Name:                       api.OpenShiftConsoleName,
@@ -664,10 +664,10 @@ func TestWithConsoleAnnotations(t *testing.T) {
 			want: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						configMapResourceVersionAnnotation:             configMapContentHash(consoleConfigMap),
-						serviceCAConfigMapResourceVersionAnnotation:    configMapContentHash(serviceCAConfigMap),
-						authnCATrustConfigMapResourceVersionAnnotation: configMapContentHash(oauthServingCertConfigMap),
-						trustedCAConfigMapResourceVersionAnnotation:    configMapContentHash(trustedCAConfigMap),
+						configMapResourceVersionAnnotation:             ConfigMapContentHash(consoleConfigMap),
+						serviceCAConfigMapResourceVersionAnnotation:    ConfigMapContentHash(serviceCAConfigMap),
+						authnCATrustConfigMapResourceVersionAnnotation: ConfigMapContentHash(oauthServingCertConfigMap),
+						trustedCAConfigMapResourceVersionAnnotation:    ConfigMapContentHash(trustedCAConfigMap),
 						proxyConfigResourceVersionAnnotation:           proxyConfig.GetResourceVersion(),
 						infrastructureConfigResourceVersionAnnotation:  infrastructureConfig.GetResourceVersion(),
 						secretResourceVersionAnnotation:                oAuthClientSecret.GetResourceVersion(),
@@ -680,10 +680,10 @@ func TestWithConsoleAnnotations(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Annotations: map[string]string{
 								workloadManagementAnnotation:                   workloadManagementAnnotationValue,
-								configMapResourceVersionAnnotation:             configMapContentHash(consoleConfigMap),
-								serviceCAConfigMapResourceVersionAnnotation:    configMapContentHash(serviceCAConfigMap),
-								authnCATrustConfigMapResourceVersionAnnotation: configMapContentHash(oauthServingCertConfigMap),
-								trustedCAConfigMapResourceVersionAnnotation:    configMapContentHash(trustedCAConfigMap),
+								configMapResourceVersionAnnotation:             ConfigMapContentHash(consoleConfigMap),
+								serviceCAConfigMapResourceVersionAnnotation:    ConfigMapContentHash(serviceCAConfigMap),
+								authnCATrustConfigMapResourceVersionAnnotation: ConfigMapContentHash(oauthServingCertConfigMap),
+								trustedCAConfigMapResourceVersionAnnotation:    ConfigMapContentHash(trustedCAConfigMap),
 								proxyConfigResourceVersionAnnotation:           proxyConfig.GetResourceVersion(),
 								infrastructureConfigResourceVersionAnnotation:  infrastructureConfig.GetResourceVersion(),
 								secretResourceVersionAnnotation:                oAuthClientSecret.GetResourceVersion(),
@@ -2329,9 +2329,9 @@ func infrastructureConfigWithTopology(controlPlaneTopologyMode, infrastructureTo
 	}
 }
 
-// TestConfigMapContentHash verifies that configMapContentHash produces
+// TestConfigMapContentHash verifies that ConfigMapContentHash produces
 // stable, content-only digests.  Expected hex strings were computed
-// independently (outside configMapContentHash) so these assertions are
+// independently (outside ConfigMapContentHash) so these assertions are
 // not self-referential.
 func TestConfigMapContentHash(t *testing.T) {
 	tests := []struct {
@@ -2416,9 +2416,9 @@ func TestConfigMapContentHash(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := configMapContentHash(tt.cm)
+			got := ConfigMapContentHash(tt.cm)
 			if got != tt.wantHash {
-				t.Errorf("configMapContentHash() = %q, want %q", got, tt.wantHash)
+				t.Errorf("ConfigMapContentHash() = %q, want %q", got, tt.wantHash)
 			}
 		})
 	}
@@ -2436,7 +2436,7 @@ func TestConfigMapContentHash(t *testing.T) {
 			Data:       map[string]string{"a": "1", "b": "2"},
 			BinaryData: map[string][]byte{"c": {0x03}},
 		}
-		if configMapContentHash(cmA) != configMapContentHash(cmB) {
+		if ConfigMapContentHash(cmA) != ConfigMapContentHash(cmB) {
 			t.Error("identical Data+BinaryData with different ResourceVersion produced different hashes")
 		}
 	})
@@ -2446,8 +2446,8 @@ func TestConfigMapContentHash(t *testing.T) {
 		// two maps with keys inserted in different order exercises this.
 		cm1 := &corev1.ConfigMap{Data: map[string]string{"a": "1", "b": "2", "c": "3"}}
 		cm2 := &corev1.ConfigMap{Data: map[string]string{"c": "3", "a": "1", "b": "2"}}
-		h1 := configMapContentHash(cm1)
-		h2 := configMapContentHash(cm2)
+		h1 := ConfigMapContentHash(cm1)
+		h2 := ConfigMapContentHash(cm2)
 		if h1 != h2 {
 			t.Errorf("map-order variation produced different hashes: %q vs %q", h1, h2)
 		}
@@ -2466,11 +2466,11 @@ func TestConfigMapContentHash(t *testing.T) {
 			Data:       map[string]string{"a": "1", "b": "2"},
 			BinaryData: map[string][]byte{"c": {0xFF}},
 		}
-		baseHash := configMapContentHash(base)
-		if configMapContentHash(mutatedData) == baseHash {
+		baseHash := ConfigMapContentHash(base)
+		if ConfigMapContentHash(mutatedData) == baseHash {
 			t.Error("changing Data value did not change hash")
 		}
-		if configMapContentHash(mutatedBinary) == baseHash {
+		if ConfigMapContentHash(mutatedBinary) == baseHash {
 			t.Error("changing BinaryData value did not change hash")
 		}
 	})
