@@ -8,6 +8,7 @@ import (
 	"time"
 
 	// kube
+	kubecorev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -79,6 +80,7 @@ type consoleOperator struct {
 	managedNSConfigMapLister corev1listers.ConfigMapLister // for openshift-config-managed namespace
 	nodeLister               corev1listers.NodeLister
 	deploymentClient         appsclientv1.DeploymentsGetter
+	deploymentLister         appsv1listers.DeploymentLister
 	// openshift
 	operatorNSConfigMapLister corev1listers.ConfigMapLister //for openshift-console-operator namespace
 	configNSConfigMapLister   corev1listers.ConfigMapLister //for openshift-config namespace
@@ -100,6 +102,9 @@ type consoleOperator struct {
 
 	lastDeploymentAvailableTime     time.Time
 	lastAppliedDeploymentGeneration int64
+	// lastAppliedConsoleConfig is the Console configuration this process applied
+	// last. Like lastAppliedDeploymentGeneration, it bridges the informer cache gap.
+	lastAppliedConsoleConfig *kubecorev1.ConfigMap
 }
 
 type trackables struct {
@@ -187,6 +192,7 @@ func NewConsoleOperator(
 
 		nodeLister:       nodeInformer.Lister(),
 		deploymentClient: deploymentClient,
+		deploymentLister: deploymentInformer.Lister(),
 		dynamicClient:    dynamicClient,
 		// openshift
 		oauthClientLister: oauthClientSwitchedInformer.Lister(),

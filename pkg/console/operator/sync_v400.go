@@ -186,19 +186,29 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(ctx, olmLifecycleMetadataErr)
 	}
 
-	// Must run before SyncConfigMap: it confirms the auth proxy CA copy exists (if
-	// configured) so we never publish a console-config.yaml referencing a CA file
-	// that no Pod's volume mounts, which would otherwise persist indefinitely while
-	// the copy is pending.
-	authProxyTrustedCAErrReason, authProxyTrustedCAErr := co.SyncAuthProxyTrustedCAConfigMap(authProxy)
+	// The proxy CA is rolled out in stages, see authProxyCAPlan.
+	authProxyCASyncPlan, err := co.planAuthProxyCA(authProxy)
+	if err != nil {
+		return statusHandler.FlushAndReturn(ctx, err)
+	}
+	// While the CA is being removed, the copy is kept until no Pod can mount it, so
+	// there is nothing to sync. The condition is reported regardless, so that what an
+	// earlier sync reported (e.g. the missing source that led to the removal) is cleared.
+	var authProxyTrustedCAErrReason string
+	var authProxyTrustedCAErr error
+	if authProxyCASyncPlan.syncCopy || authProxyCASyncPlan.removeCopy {
+		authProxyTrustedCAErrReason, authProxyTrustedCAErr = co.SyncAuthProxyTrustedCAConfigMap(authProxy)
+	}
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthProxyTrustedCASync", authProxyTrustedCAErrReason, authProxyTrustedCAErr))
+	// Returning on error here is what keeps the mount (and the config) from being
+	// published before the CA copy exists.
 	if authProxyTrustedCAErr != nil {
 		return statusHandler.FlushAndReturn(ctx, authProxyTrustedCAErr)
 	}
 
 	additionalHosts := routesub.GetAdditionalRouteHostnames(set.Ingress)
 
-	cm, cmErrReason, cmErr := co.SyncConfigMap(
+	cm, cmErrReason, cmErr := co.BuildConfigMap(
 		ctx,
 		set.Operator,
 		set.Console,
@@ -206,12 +216,11 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		set.OAuth,
 		authnConfig,
 		consoleRoute,
-		controllerContext.Recorder(),
 		consoleURL.Hostname(),
 		techPreviewEnabled,
 		olmLifecycleMetadataEnabled,
 		additionalHosts,
-		authProxy,
+		authProxyCASyncPlan.configProxy,
 	)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
 	if cmErr != nil {
@@ -256,6 +265,12 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(ctx, servingCertErr)
 	}
 
+	cm, cmErrReason, cmErr = co.SyncConfigMap(ctx, controllerContext.Recorder(), cm)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
+	if cmErr != nil {
+		return statusHandler.FlushAndReturn(ctx, cmErr)
+	}
+
 	actualDeployment, depErrReason, depErr := co.SyncDeployment(
 		ctx,
 		set.Operator,
@@ -269,7 +284,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		consoleServingCertSecret,
 		set.Proxy,
 		set.Infrastructure,
-		authProxy,
+		authProxyCASyncPlan.mount,
 		controllerContext.Recorder(),
 	)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DeploymentSync", depErrReason, depErr))
@@ -363,7 +378,7 @@ func (co *consoleOperator) SyncDeployment(
 	consoleServingCertSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
-	authProxy *proxyconfig.Config,
+	mountAuthProxyCA bool,
 	recorder events.Recorder,
 ) (consoleDeployment *appsv1.Deployment, reason string, err error) {
 	updatedOperatorConfig := operatorConfig.DeepCopy()
@@ -379,7 +394,7 @@ func (co *consoleOperator) SyncDeployment(
 		consoleServingCertSecret,
 		proxyConfig,
 		infrastructureConfig,
-		authProxy,
+		mountAuthProxyCA,
 	)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
@@ -437,10 +452,8 @@ func (co *consoleOperator) evaluateDeploymentAvailability(deployment *appsv1.Dep
 	return prefix, "InsufficientReplicas", fmt.Errorf("%v replicas available for console deployment", deployment.Status.ReadyReplicas)
 }
 
-// apply configmap (needs route)
-// by the time we get to the configmap, we can assume the route exits & is configured properly
-// therefore no additional error handling is needed here.
-func (co *consoleOperator) SyncConfigMap(
+// BuildConfigMap renders desired configuration without publishing it.
+func (co *consoleOperator) BuildConfigMap(
 	ctx context.Context,
 	operatorConfig *operatorv1.Console,
 	consoleConfig *configv1.Console,
@@ -448,7 +461,6 @@ func (co *consoleOperator) SyncConfigMap(
 	oauthConfig *configv1.OAuth,
 	authConfig *configv1.Authentication,
 	activeConsoleRoute *routev1.Route,
-	recorder events.Recorder,
 	consoleHost string,
 	techPreviewEnabled bool,
 	olmLifecycleMetadataEnabled bool,
@@ -543,21 +555,28 @@ func (co *consoleOperator) SyncConfigMap(
 	if err != nil {
 		return nil, "FailedConsoleConfigBuilder", err
 	}
+	return defaultConfigmap, "ConsoleConfigBuilder", nil
+}
+
+// SyncConfigMap applies the Console configuration built by BuildConfigMap. It is
+// called right before SyncDeployment, so that both are published together.
+func (co *consoleOperator) SyncConfigMap(ctx context.Context, recorder events.Recorder, required *corev1.ConfigMap) (*corev1.ConfigMap, string, error) {
 	var cm *corev1.ConfigMap
-	var cmChanged bool
-	cmErr := controllersutil.RetryOnTransientError(func() error {
-		var e error
-		cm, cmChanged, e = resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, defaultConfigmap)
-		return e
+	var changed bool
+	err := controllersutil.RetryOnTransientError(func() error {
+		var err error
+		cm, changed, err = co.applyConsoleConfigMap(ctx, recorder, required)
+		return err
 	})
-	if cmErr != nil {
-		return nil, "FailedApply", cmErr
+	if err != nil {
+		return nil, "FailedApply", err
 	}
-	if cmChanged {
+	co.lastAppliedConsoleConfig = cm
+	if changed {
 		klog.V(4).Infoln("new console config yaml:")
 		klog.V(4).Infof("%s", redactURLUserinfo(cm.Data))
 	}
-	return cm, "ConsoleConfigBuilder", cmErr
+	return cm, "ConsoleConfigBuilder", nil
 }
 
 // urlUserinfoPattern matches the userinfo component of a URL (e.g. "user:pass@" or "user@"),

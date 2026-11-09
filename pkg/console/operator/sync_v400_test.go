@@ -30,7 +30,6 @@ import (
 
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/telemetry"
-	"github.com/openshift/console-operator/pkg/proxyconfig"
 )
 
 func TestGetNodeComputeEnvironments(t *testing.T) {
@@ -873,7 +872,6 @@ func TestGetTLSConfigFromObservedConfig(t *testing.T) {
 
 // syncDeploymentInputs holds the minimal inputs needed to call SyncDeployment.
 type syncDeploymentInputs struct {
-	authProxy            *proxyconfig.Config
 	operatorConfig       *operatorv1.Console
 	cm                   *v1.ConfigMap
 	serviceCAConfigMap   *v1.ConfigMap
@@ -885,6 +883,7 @@ type syncDeploymentInputs struct {
 	servingCertSecret    *v1.Secret
 	proxyConfig          *configv1.Proxy
 	infrastructureConfig *configv1.Infrastructure
+	mountAuthProxyCA     bool
 }
 
 func newSyncDeploymentInputs() syncDeploymentInputs {
@@ -925,7 +924,7 @@ func (in syncDeploymentInputs) callSyncDeployment(co *consoleOperator, recorder 
 		in.servingCertSecret,
 		in.proxyConfig,
 		in.infrastructureConfig,
-		in.authProxy,
+		in.mountAuthProxyCA,
 		recorder,
 	)
 }
