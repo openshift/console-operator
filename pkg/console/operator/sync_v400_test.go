@@ -883,6 +883,7 @@ type syncDeploymentInputs struct {
 	servingCertSecret    *v1.Secret
 	proxyConfig          *configv1.Proxy
 	infrastructureConfig *configv1.Infrastructure
+	mountAuthProxyCA     bool
 }
 
 func newSyncDeploymentInputs() syncDeploymentInputs {
@@ -923,6 +924,7 @@ func (in syncDeploymentInputs) callSyncDeployment(co *consoleOperator, recorder 
 		in.servingCertSecret,
 		in.proxyConfig,
 		in.infrastructureConfig,
+		in.mountAuthProxyCA,
 		recorder,
 	)
 }
@@ -1030,4 +1032,40 @@ func TestSyncDeploymentGenerationCache(t *testing.T) {
 			t.Errorf("expected cache to remain 5 after failure, got %d", co.lastAppliedDeploymentGeneration)
 		}
 	})
+}
+
+func TestRedactURLUserinfo(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   map[string]string
+		want map[string]string
+	}{
+		{
+			name: "redacts user and password",
+			in:   map[string]string{"console-config.yaml": "httpProxy: http://user:pass@proxy.example.com:3128"},
+			want: map[string]string{"console-config.yaml": "httpProxy: http://redacted@proxy.example.com:3128"},
+		},
+		{
+			name: "redacts password containing an at sign",
+			in:   map[string]string{"console-config.yaml": "httpsProxy: https://user:pa@ss@proxy.example.com:3128"},
+			want: map[string]string{"console-config.yaml": "httpsProxy: https://redacted@proxy.example.com:3128"},
+		},
+		{
+			name: "redacts user only",
+			in:   map[string]string{"console-config.yaml": "httpsProxy: https://user@proxy.example.com:3128"},
+			want: map[string]string{"console-config.yaml": "httpsProxy: https://redacted@proxy.example.com:3128"},
+		},
+		{
+			name: "leaves URLs without userinfo untouched",
+			in:   map[string]string{"console-config.yaml": "httpProxy: http://proxy.example.com:3128"},
+			want: map[string]string{"console-config.yaml": "httpProxy: http://proxy.example.com:3128"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := redactURLUserinfo(tc.in)
+			if diff := deep.Equal(got, tc.want); diff != nil {
+				t.Errorf("redactURLUserinfo() mismatch: %v", diff)
+			}
+		})
+	}
 }

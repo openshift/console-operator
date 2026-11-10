@@ -15,11 +15,12 @@ import (
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
+	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
+
 	"github.com/openshift/console-operator/bindata"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
-	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
 )
 
 const (
@@ -49,6 +50,7 @@ func TestDefaultDeployment(t *testing.T) {
 		consoleServingCertSecret       *corev1.Secret
 		proxyConfig                    *configv1.Proxy
 		infrastructureConfig           *configv1.Infrastructure
+		mountAuthProxyCA               bool
 	}
 
 	consoleOperatorConfig := &operatorsv1.Console{
@@ -194,14 +196,23 @@ func TestDefaultDeployment(t *testing.T) {
 	withConsoleContainerImage(consoleDeploymentTemplate, consoleOperatorConfig, proxyConfig)
 	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMap{
 		Data: map[string]string{"ca-bundle.crt": "test"},
-	}, nil, trustedCAConfigMapEmpty, nil, &operatorsv1.ConsoleCustomization{})
+	}, nil, trustedCAConfigMapEmpty, nil, &operatorsv1.ConsoleCustomization{}, false)
 	consoleDeploymentContainer := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumes := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
 	withConsoleVolumes(consoleDeploymentTemplate, &corev1.ConfigMap{
 		Data: map[string]string{"ca-bundle.crt": "test"},
-	}, nil, trustedCAConfigMapSet, nil, &operatorsv1.ConsoleCustomization{})
+	}, nil, trustedCAConfigMapSet, nil, &operatorsv1.ConsoleCustomization{}, false)
 	consoleDeploymentContainerTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Containers[0]
 	consoleDeploymentVolumesTrusted := consoleDeploymentTemplate.Spec.Template.Spec.Volumes
+
+	// Build auth-proxy fixtures on a deep copy so the shared template is not mutated.
+	// withConsoleVolumes is safe to reuse here because TestWithConsoleVolumes tests it independently.
+	authProxyFixtureTemplate := consoleDeploymentTemplate.DeepCopy()
+	withConsoleVolumes(authProxyFixtureTemplate, &corev1.ConfigMap{
+		Data: map[string]string{"ca-bundle.crt": "test"},
+	}, nil, trustedCAConfigMapEmpty, nil, &operatorsv1.ConsoleCustomization{}, true)
+	consoleDeploymentContainerWithAuthProxy := authProxyFixtureTemplate.Spec.Template.Spec.Containers[0]
+	consoleDeploymentVolumesWithAuthProxy := authProxyFixtureTemplate.Spec.Template.Spec.Volumes
 
 	tests := []struct {
 		name string
@@ -540,6 +551,68 @@ func TestDefaultDeployment(t *testing.T) {
 				Status: appsv1.DeploymentStatus{},
 			},
 		},
+		{
+			name: "auth proxy with trusted CA",
+			args: args{
+				consoleOperatorConfig: consoleOperatorConfig,
+				consoleConfig:         consoleConfig,
+				serviceCAConfigMap:    &corev1.ConfigMap{},
+				localOAuthServingCertConfigMap: &corev1.ConfigMap{
+					Data: map[string]string{"ca-bundle.crt": "test"},
+				},
+				trustedCAConfigMap:       trustedCAConfigMapEmpty,
+				oAuthClientSecret:        &corev1.Secret{},
+				consoleServingCertSecret: &corev1.Secret{},
+				proxyConfig:              proxyConfig,
+				infrastructureConfig:     infrastructureConfigHighlyAvailable,
+				mountAuthProxyCA:         true,
+			},
+			want: &appsv1.Deployment{
+				TypeMeta:   metav1.TypeMeta{Kind: "Deployment", APIVersion: "apps/v1"},
+				ObjectMeta: consoleDeploymentObjectMeta,
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &defaultReplicaCount,
+					Selector: &metav1.LabelSelector{MatchLabels: labels},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:        api.OpenShiftConsoleName,
+							Labels:      labels,
+							Annotations: consoleDeploymentTemplateAnnotations,
+						},
+						Spec: corev1.PodSpec{
+							DNSPolicy:                     corev1.DNSClusterFirst,
+							ServiceAccountName:            "console",
+							DeprecatedServiceAccount:      "console",
+							NodeSelector:                  map[string]string{"node-role.kubernetes.io/master": ""},
+							Affinity:                      consoleDeploymentAffinity,
+							Tolerations:                   consoleDeploymentTolerations,
+							PriorityClassName:             "system-cluster-critical",
+							RestartPolicy:                 corev1.RestartPolicyAlways,
+							SchedulerName:                 corev1.DefaultSchedulerName,
+							TerminationGracePeriodSeconds: &gracePeriod,
+							SecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot:   utilpointer.Bool(true),
+								SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+							},
+							Containers: []corev1.Container{consoleDeploymentContainerWithAuthProxy},
+							Volumes:    consoleDeploymentVolumesWithAuthProxy,
+						},
+					},
+					Strategy: appsv1.DeploymentStrategy{
+						Type: appsv1.RollingUpdateDeploymentStrategyType,
+						RollingUpdate: &appsv1.RollingUpdateDeployment{
+							MaxSurge:       &intstr.IntOrString{IntVal: int32(1)},
+							MaxUnavailable: &intstr.IntOrString{IntVal: int32(0)},
+						},
+					},
+					MinReadySeconds:         0,
+					RevisionHistoryLimit:    new(int32(10)),
+					Paused:                  false,
+					ProgressDeadlineSeconds: new(int32(600)),
+				},
+				Status: appsv1.DeploymentStatus{},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -555,6 +628,7 @@ func TestDefaultDeployment(t *testing.T) {
 				tt.args.consoleServingCertSecret,
 				tt.args.proxyConfig,
 				tt.args.infrastructureConfig,
+				tt.args.mountAuthProxyCA,
 			), tt.want); diff != nil {
 				t.Error(diff)
 			}
@@ -1077,6 +1151,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 		deployment         *appsv1.Deployment
 		trustedCAConfigMap *corev1.ConfigMap
 		sessionSecret      *corev1.Secret
+		mountAuthProxyCA   bool
 	}
 
 	trustedCAConfigMap := &corev1.ConfigMap{
@@ -1298,6 +1373,21 @@ func TestWithConsoleVolumes(t *testing.T) {
 	customLogoVolumeMounts := append(defaultVolumeMounts, customLogoVolumeMount)
 	allVolumeMounts := append(defaultVolumeMounts, trustedCAVolumeMount, customLogoVolumeMount)
 
+	authProxyCAVolume := corev1.Volume{
+		Name: api.AuthProxyCAConfigMapName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: api.AuthProxyCAConfigMapName},
+				Items:                []corev1.KeyToPath{{Key: api.AuthProxyCAFileName, Path: api.AuthProxyCAFileName}},
+			},
+		},
+	}
+	authProxyCAVolumeMount := corev1.VolumeMount{
+		Name:      api.AuthProxyCAConfigMapName,
+		ReadOnly:  true,
+		MountPath: api.AuthProxyCAMountDir,
+	}
+
 	tests := []struct {
 		name string
 		args args
@@ -1486,6 +1576,43 @@ func TestWithConsoleVolumes(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "no auth proxy CA mount does not add a volume",
+			args: args{
+				customization:      &operatorsv1.ConsoleCustomization{},
+				deployment:         consoleDeployment,
+				trustedCAConfigMap: &corev1.ConfigMap{},
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{Name: "consoleContainer", VolumeMounts: defaultVolumeMounts}},
+							Volumes:    defaultVolumes,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "auth proxy CA mount adds a volume and mount",
+			args: args{
+				customization:      &operatorsv1.ConsoleCustomization{},
+				deployment:         consoleDeployment,
+				trustedCAConfigMap: &corev1.ConfigMap{},
+				mountAuthProxyCA:   true,
+			},
+			want: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{Name: "consoleContainer", VolumeMounts: append(defaultVolumeMounts, authProxyCAVolumeMount)}},
+							Volumes:    append(defaultVolumes, authProxyCAVolume),
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1496,6 +1623,7 @@ func TestWithConsoleVolumes(t *testing.T) {
 				tt.args.trustedCAConfigMap,
 				tt.args.sessionSecret,
 				tt.args.customization,
+				tt.args.mountAuthProxyCA,
 			)
 			if diff := deep.Equal(tt.args.deployment, tt.want); diff != nil {
 				t.Error(diff)
@@ -2474,4 +2602,177 @@ func TestConfigMapContentHash(t *testing.T) {
 			t.Error("changing BinaryData value did not change hash")
 		}
 	})
+}
+
+func TestRolledOutWithVolume(t *testing.T) {
+	const volume = "ca-volume"
+	build := func(mutate func(d *appsv1.Deployment)) *appsv1.Deployment {
+		replicas := int32(2)
+		d := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Generation: 3},
+			Spec: appsv1.DeploymentSpec{
+				Replicas: &replicas,
+				Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{
+					Volumes:    []corev1.Volume{{Name: volume}},
+					Containers: []corev1.Container{{VolumeMounts: []corev1.VolumeMount{{Name: volume}}}},
+				}},
+			},
+			Status: appsv1.DeploymentStatus{ObservedGeneration: 3, Replicas: 2, UpdatedReplicas: 2},
+		}
+		if mutate != nil {
+			mutate(d)
+		}
+		return d
+	}
+	tests := []struct {
+		name string
+		dep  *appsv1.Deployment
+		want bool
+	}{
+		{
+			name: "nil deployment",
+			dep:  nil,
+			want: false,
+		},
+		{
+			name: "fully rolled out with the volume",
+			dep:  build(nil),
+			want: true,
+		},
+		{
+			name: "readiness is not required",
+			dep: build(func(d *appsv1.Deployment) {
+				d.Status.ReadyReplicas = 0
+				d.Status.AvailableReplicas = 0
+			}),
+			want: true,
+		},
+		{
+			name: "generation not observed",
+			dep: build(func(d *appsv1.Deployment) {
+				d.Status.ObservedGeneration = 2
+			}),
+			want: false,
+		},
+		{
+			name: "old replicas remain",
+			dep: build(func(d *appsv1.Deployment) {
+				d.Status.UpdatedReplicas = 1
+			}),
+			want: false,
+		},
+		{
+			name: "surge replica present",
+			dep: build(func(d *appsv1.Deployment) {
+				d.Status.Replicas = 3
+			}),
+			want: false,
+		},
+		{
+			name: "volume missing",
+			dep: build(func(d *appsv1.Deployment) {
+				d.Spec.Template.Spec.Volumes = nil
+			}),
+			want: false,
+		},
+		{
+			name: "volume not mounted",
+			dep: build(func(d *appsv1.Deployment) {
+				d.Spec.Template.Spec.Containers[0].VolumeMounts = nil
+			}),
+			want: false,
+		},
+		{
+			name: "no containers",
+			dep: build(func(d *appsv1.Deployment) {
+				d.Spec.Template.Spec.Containers = nil
+			}),
+			want: false,
+		},
+		{
+			name: "nil replicas defaults to one",
+			dep: build(func(d *appsv1.Deployment) {
+				d.Spec.Replicas = nil
+				d.Status.Replicas = 1
+				d.Status.UpdatedReplicas = 1
+			}),
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := RolledOutWithVolume(tt.dep, volume); got != tt.want {
+				t.Errorf("RolledOutWithVolume() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRolledOutWithoutVolume(t *testing.T) {
+	const volume = "ca-volume"
+	build := func(mutate func(d *appsv1.Deployment)) *appsv1.Deployment {
+		replicas := int32(2)
+		d := &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Generation: 3},
+			Spec: appsv1.DeploymentSpec{
+				Replicas: &replicas,
+			},
+			Status: appsv1.DeploymentStatus{ObservedGeneration: 3, Replicas: 2, UpdatedReplicas: 2},
+		}
+		if mutate != nil {
+			mutate(d)
+		}
+		return d
+	}
+	tests := []struct {
+		name string
+		dep  *appsv1.Deployment
+		want bool
+	}{
+		{
+			name: "nil deployment",
+			dep:  nil,
+			want: false,
+		},
+		{
+			name: "fully rolled out without the volume",
+			dep:  build(nil),
+			want: true,
+		},
+		{
+			name: "volume still in the template",
+			dep: build(func(d *appsv1.Deployment) {
+				d.Spec.Template.Spec.Volumes = []corev1.Volume{{Name: volume}}
+			}),
+			want: false,
+		},
+		{
+			name: "generation not observed",
+			dep: build(func(d *appsv1.Deployment) {
+				d.Status.ObservedGeneration = 2
+			}),
+			want: false,
+		},
+		{
+			name: "old replicas remain",
+			dep: build(func(d *appsv1.Deployment) {
+				d.Status.UpdatedReplicas = 1
+			}),
+			want: false,
+		},
+		{
+			name: "surge replica present",
+			dep: build(func(d *appsv1.Deployment) {
+				d.Status.Replicas = 3
+			}),
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := RolledOutWithoutVolume(tt.dep, volume); got != tt.want {
+				t.Errorf("RolledOutWithoutVolume() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

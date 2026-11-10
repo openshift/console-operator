@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	appsclientv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
@@ -80,6 +81,7 @@ func DefaultDeployment(
 	consoleServingCertSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
+	mountAuthProxyCA bool,
 ) *appsv1.Deployment {
 	authnCATrustConfigMap := localOAuthServingCertConfigMap
 	if authnCATrustConfigMap == nil {
@@ -109,6 +111,7 @@ func DefaultDeployment(
 		trustedCAConfigMap,
 		sessionSecret,
 		&operatorConfig.Spec.Customization,
+		mountAuthProxyCA,
 	)
 	withConsoleContainerImage(deployment, operatorConfig, proxyConfig)
 	withNodeSelector(deployment, infrastructureConfig)
@@ -300,8 +303,12 @@ func withConsoleVolumes(
 	trustedCAConfigMap *corev1.ConfigMap,
 	sessionSecret *corev1.Secret,
 	customization *operatorv1.ConsoleCustomization,
+	mountAuthProxyCA bool,
 ) {
 	volumeConfig := defaultVolumeConfig()
+	if mountAuthProxyCA {
+		volumeConfig = append(volumeConfig, authProxyCAVolumeConfig())
+	}
 
 	caBundle, caBundleExists := trustedCAConfigMap.Data["ca-bundle.crt"]
 	if caBundleExists && caBundle != "" {
@@ -613,6 +620,16 @@ func trustedCAVolume() volumeConfig {
 	}
 }
 
+func authProxyCAVolumeConfig() volumeConfig {
+	return volumeConfig{
+		name:        api.AuthProxyCAConfigMapName,
+		path:        api.AuthProxyCAMountDir,
+		readOnly:    true,
+		isConfigMap: true,
+		mappedKeys:  map[string]string{api.AuthProxyCAFileName: api.AuthProxyCAFileName},
+	}
+}
+
 func customLogoVolume(name string) volumeConfig {
 	return volumeConfig{
 		name:        name,
@@ -645,4 +662,42 @@ func sessionSecretVolumeConfig() volumeConfig {
 		readOnly: true,
 		isSecret: true,
 	}
+}
+
+// RolledOutWithVolume returns true when the Deployment has been fully rolled out
+// and its template mounts the named volume into the first container, so every
+// Pod has the volume mounted.
+func RolledOutWithVolume(d *appsv1.Deployment, volumeName string) bool {
+	if !rolledOut(d) || !hasVolume(d, volumeName) || len(d.Spec.Template.Spec.Containers) == 0 {
+		return false
+	}
+	return slices.ContainsFunc(d.Spec.Template.Spec.Containers[0].VolumeMounts, func(m corev1.VolumeMount) bool {
+		return m.Name == volumeName
+	})
+}
+
+// RolledOutWithoutVolume returns true when the Deployment has been fully rolled out
+// and its template no longer has the named volume, so no Pod references its source.
+// Unlike RolledOutWithVolume, this looks at the volumes rather than the mounts:
+// a volume that is defined but not mounted still references its source.
+func RolledOutWithoutVolume(d *appsv1.Deployment, volumeName string) bool {
+	return rolledOut(d) && !hasVolume(d, volumeName)
+}
+
+// rolledOut returns true when the Deployment controller has observed the latest
+// generation and every Pod comes from the current template, with no old Pods left.
+// Readiness is deliberately not required: it says nothing about the template the
+// Pods were created from and would block on unrelated Pod problems.
+func rolledOut(d *appsv1.Deployment) bool {
+	if d == nil || d.Status.ObservedGeneration < d.Generation {
+		return false
+	}
+	replicas := ptr.Deref(d.Spec.Replicas, 1)
+	return d.Status.Replicas == replicas && d.Status.UpdatedReplicas == replicas
+}
+
+func hasVolume(d *appsv1.Deployment, volumeName string) bool {
+	return slices.ContainsFunc(d.Spec.Template.Spec.Volumes, func(v corev1.Volume) bool {
+		return v.Name == volumeName
+	})
 }
