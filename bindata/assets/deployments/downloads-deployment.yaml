@@ -157,7 +157,8 @@ spec:
               print('Creating license symlink...', flush=True)
               os.symlink('/usr/share/openshift/LICENSE', 'oc-license')
 
-              def create_archives(arch, operating_system, path, basename, archive_path_root):
+              # Function to create archives in background
+              def create_archives_async(arch, operating_system, path, basename, archive_path_root):
                 try:
                   print('  [Background] Creating archives for {} {}...'.format(arch, operating_system), flush=True)
                   
@@ -172,24 +173,9 @@ spec:
                   print('  [Background] Done with archives for {} {}'.format(arch, operating_system), flush=True)
                 except Exception as e:
                   print('  [Background] ERROR creating archives for {} {}: {}'.format(arch, operating_system, str(e)), flush=True)
-                finally:
-                  # Both archive formats read the source. Drop its clean cached
-                  # pages only after both reads, leaving the archives cached.
-                  # This is advisory: unsupported filesystems must not prevent
-                  # the remaining archives from being created.
-                  try:
-                    with open(path, 'rb') as source:
-                      os.posix_fadvise(source.fileno(), 0, 0, os.POSIX_FADV_DONTNEED)
-                  except (OSError, AttributeError) as e:
-                    print('  [Background] WARNING: Failed to release source cache for {}: {}'.format(path, str(e)), flush=True)
-
-              def create_all_archives(archives):
-                # One worker bounds concurrent I/O without delaying HTTP startup.
-                for archive in archives:
-                  create_archives(*archive)
 
               print('Creating oc binary symlinks (archives will be created asynchronously)...', flush=True)
-              archives = []
+              archive_threads = []
               
               for arch, operating_system, path in [
                   ('amd64', 'linux', '/usr/share/openshift/linux_amd64/oc'),
@@ -235,7 +221,14 @@ spec:
                     base_root = basename
                   archive_path_root = os.path.join(arch, operating_system, base_root)
                   
-                  archives.append((arch, operating_system, path, basename, archive_path_root))
+                  # Start background thread to create archives
+                  archive_thread = threading.Thread(
+                    target=create_archives_async,
+                    args=(arch, operating_system, path, basename, archive_path_root),
+                    daemon=True
+                  )
+                  archive_thread.start()
+                  archive_threads.append(archive_thread)
                   
                   content.append(
                     '<a href="{0}">oc ({1} {2})</a> (<a href="{3}.tar">tar</a> <a href="{3}.zip">zip</a>)'.format(
@@ -246,8 +239,7 @@ spec:
                 except Exception as e:
                   print('  ERROR processing {} {}: {}'.format(arch, operating_system, str(e)), flush=True)
               
-              print('All symlinks created. Creating archives serially in one background thread...', flush=True)
-              threading.Thread(target=create_all_archives, args=(archives,), daemon=True).start()
+              print('All symlinks created. {} background threads creating archives...'.format(len(archive_threads)), flush=True)
 
               for root, directories, filenames in os.walk(temp_dir):
                 root_link = os.path.relpath(temp_dir, os.path.join(root, 'child')).replace(os.path.sep, '/')
