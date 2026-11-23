@@ -86,7 +86,7 @@ spec:
                   fieldPath: metadata.name
           resources:
             requests:
-              memory: "100Mi"
+              memory: "140Mi"
               cpu: "10m"
           livenessProbe:
             httpGet:
