@@ -1928,6 +1928,9 @@ func TestDefaultDownloadsDeployment(t *testing.T) {
 						corev1.ResourceCPU:    resource.MustParse("10m"),
 						corev1.ResourceMemory: resource.MustParse("50Mi"),
 					},
+					Limits: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("200Mi"),
+					},
 				},
 				Args: downloadsDeploymentTemplate.Spec.Template.Spec.Containers[0].Args,
 				SecurityContext: &corev1.SecurityContext{
