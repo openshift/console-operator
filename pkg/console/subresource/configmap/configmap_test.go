@@ -1390,6 +1390,7 @@ providers: {}
 				"",         // tlsMinVersion - empty for legacy tests
 				[]string{}, // tlsCiphers - empty for legacy tests
 				nil,        // tlsGroups - empty for legacy tests
+				nil,        // authProxy
 			)
 
 			// marshall the exampleYaml to map[string]interface{} so we can use it in diff below

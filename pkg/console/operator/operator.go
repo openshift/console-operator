@@ -8,6 +8,7 @@ import (
 	"time"
 
 	// kube
+	kubecorev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -40,6 +41,7 @@ import (
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
 	consolestatus "github.com/openshift/console-operator/pkg/console/status"
+	"github.com/openshift/console-operator/pkg/proxyconfig"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
@@ -78,6 +80,7 @@ type consoleOperator struct {
 	managedNSConfigMapLister corev1listers.ConfigMapLister // for openshift-config-managed namespace
 	nodeLister               corev1listers.NodeLister
 	deploymentClient         appsclientv1.DeploymentsGetter
+	deploymentLister         appsv1listers.DeploymentLister
 	// openshift
 	operatorNSConfigMapLister corev1listers.ConfigMapLister //for openshift-console-operator namespace
 	configNSConfigMapLister   corev1listers.ConfigMapLister //for openshift-config namespace
@@ -91,12 +94,17 @@ type consoleOperator struct {
 
 	resourceSyncer resourcesynccontroller.ResourceSyncer
 
+	authProxyResolver proxyconfig.ProxyResolver
+
 	trackables trackables
 
 	monitoringDeploymentLister appsv1listers.DeploymentLister
 
 	lastDeploymentAvailableTime     time.Time
 	lastAppliedDeploymentGeneration int64
+	// lastAppliedConsoleConfig is the Console configuration this process applied
+	// last. Like lastAppliedDeploymentGeneration, it bridges the informer cache gap.
+	lastAppliedConsoleConfig *kubecorev1.ConfigMap
 }
 
 type trackables struct {
@@ -143,6 +151,7 @@ func NewConsoleOperator(
 	versionGetter status.VersionGetter,
 	recorder events.Recorder,
 	resourceSyncer resourcesynccontroller.ResourceSyncer,
+	authProxyResolver proxyconfig.ProxyResolver,
 ) factory.Controller {
 
 	secretsInformer := coreV1.Secrets()
@@ -183,6 +192,7 @@ func NewConsoleOperator(
 
 		nodeLister:       nodeInformer.Lister(),
 		deploymentClient: deploymentClient,
+		deploymentLister: deploymentInformer.Lister(),
 		dynamicClient:    dynamicClient,
 		// openshift
 		oauthClientLister: oauthClientSwitchedInformer.Lister(),
@@ -192,6 +202,7 @@ func NewConsoleOperator(
 		// plugins
 		consolePluginLister: consolePluginInformer.Lister(),
 		resourceSyncer:      resourceSyncer,
+		authProxyResolver:   authProxyResolver,
 
 		monitoringDeploymentLister: monitoringDeploymentInformer.Lister(),
 	}
@@ -398,7 +409,12 @@ func (c *consoleOperator) removeConsole(ctx context.Context, operatorConfig *ope
 	klog.V(2).Info("deleting console resources")
 	defer klog.V(2).Info("finished deleting console resources")
 	var errs []error
+
+	if _, err := c.SyncAuthProxyTrustedCAConfigMap(nil); err != nil {
+		errs = append(errs, err)
+	}
 	// configmaps
+	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(ctx, api.AuthProxyCAConfigMapName, metav1.DeleteOptions{}))
 	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(ctx, configmap.Stub().Name, metav1.DeleteOptions{}))
 	errs = append(errs, c.configMapClient.ConfigMaps(api.TargetNamespace).Delete(ctx, configmap.ServiceCAStub().Name, metav1.DeleteOptions{}))
 	// secret

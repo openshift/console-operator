@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -39,6 +40,7 @@ import (
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
 	"github.com/openshift/console-operator/pkg/console/metrics"
 	"github.com/openshift/console-operator/pkg/console/status"
+	authconfigsub "github.com/openshift/console-operator/pkg/console/subresource/authentication"
 	configmapsub "github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	deploymentsub "github.com/openshift/console-operator/pkg/console/subresource/deployment"
 	oauthsub "github.com/openshift/console-operator/pkg/console/subresource/oauthclient"
@@ -46,6 +48,7 @@ import (
 	secretsub "github.com/openshift/console-operator/pkg/console/subresource/secret"
 	utilsub "github.com/openshift/console-operator/pkg/console/subresource/util"
 	telemetry "github.com/openshift/console-operator/pkg/console/telemetry"
+	"github.com/openshift/console-operator/pkg/proxyconfig"
 )
 
 // deploymentAvailableGracePeriod is the duration the operator tolerates zero
@@ -115,6 +118,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	var (
 		targetNamespaceAuthServerCA *corev1.ConfigMap
 		sessionSecret               *corev1.Secret
+		authProxy                   *proxyconfig.Config
 	)
 	switch authnConfig.Spec.Type {
 	case configv1.AuthenticationTypeOIDC:
@@ -137,6 +141,15 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 			// from a prior reconciliation that had an OIDC provider with
 			// a CA configured.
 			statusHandler.AddConditions(status.HandleProgressingOrDegraded("OIDCProviderTrustedAuthorityConfigGet", "", nil))
+		}
+
+		// Auth proxy is only rendered into Console config when an OIDC client is configured,
+		// so we perform the same check here to prevent unnecessary creation of resources.
+		if _, oidcClient := authconfigsub.GetOIDCClientConfig(authnConfig, api.TargetNamespace, api.OpenShiftConsoleName); oidcClient != nil {
+			authProxy, err = co.authProxyResolver.ResolveProxy(set.Operator)
+			if err != nil {
+				return statusHandler.FlushAndReturn(ctx, fmt.Errorf("failed to resolve auth proxy: %w", err))
+			}
 		}
 
 	default:
@@ -173,9 +186,29 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(ctx, olmLifecycleMetadataErr)
 	}
 
+	// The proxy CA is rolled out in stages, see authProxyCAPlan.
+	authProxyCASyncPlan, err := co.planAuthProxyCA(authProxy)
+	if err != nil {
+		return statusHandler.FlushAndReturn(ctx, err)
+	}
+	// While the CA is being removed, the copy is kept until no Pod can mount it, so
+	// there is nothing to sync. The condition is reported regardless, so that what an
+	// earlier sync reported (e.g. the missing source that led to the removal) is cleared.
+	var authProxyTrustedCAErrReason string
+	var authProxyTrustedCAErr error
+	if authProxyCASyncPlan.syncCopy || authProxyCASyncPlan.removeCopy {
+		authProxyTrustedCAErrReason, authProxyTrustedCAErr = co.SyncAuthProxyTrustedCAConfigMap(authProxy)
+	}
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("AuthProxyTrustedCASync", authProxyTrustedCAErrReason, authProxyTrustedCAErr))
+	// Returning on error here is what keeps the mount (and the config) from being
+	// published before the CA copy exists.
+	if authProxyTrustedCAErr != nil {
+		return statusHandler.FlushAndReturn(ctx, authProxyTrustedCAErr)
+	}
+
 	additionalHosts := routesub.GetAdditionalRouteHostnames(set.Ingress)
 
-	cm, cmErrReason, cmErr := co.SyncConfigMap(
+	cm, cmErrReason, cmErr := co.BuildConfigMap(
 		ctx,
 		set.Operator,
 		set.Console,
@@ -183,11 +216,11 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		set.OAuth,
 		authnConfig,
 		consoleRoute,
-		controllerContext.Recorder(),
 		consoleURL.Hostname(),
 		techPreviewEnabled,
 		olmLifecycleMetadataEnabled,
 		additionalHosts,
+		authProxyCASyncPlan.configProxy,
 	)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
 	if cmErr != nil {
@@ -232,6 +265,12 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(ctx, servingCertErr)
 	}
 
+	cm, cmErrReason, cmErr = co.SyncConfigMap(ctx, controllerContext.Recorder(), cm)
+	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
+	if cmErr != nil {
+		return statusHandler.FlushAndReturn(ctx, cmErr)
+	}
+
 	actualDeployment, depErrReason, depErr := co.SyncDeployment(
 		ctx,
 		set.Operator,
@@ -245,6 +284,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		consoleServingCertSecret,
 		set.Proxy,
 		set.Infrastructure,
+		authProxyCASyncPlan.mount,
 		controllerContext.Recorder(),
 	)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DeploymentSync", depErrReason, depErr))
@@ -338,6 +378,7 @@ func (co *consoleOperator) SyncDeployment(
 	consoleServingCertSecret *corev1.Secret,
 	proxyConfig *configv1.Proxy,
 	infrastructureConfig *configv1.Infrastructure,
+	mountAuthProxyCA bool,
 	recorder events.Recorder,
 ) (consoleDeployment *appsv1.Deployment, reason string, err error) {
 	updatedOperatorConfig := operatorConfig.DeepCopy()
@@ -353,6 +394,7 @@ func (co *consoleOperator) SyncDeployment(
 		consoleServingCertSecret,
 		proxyConfig,
 		infrastructureConfig,
+		mountAuthProxyCA,
 	)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
@@ -410,10 +452,8 @@ func (co *consoleOperator) evaluateDeploymentAvailability(deployment *appsv1.Dep
 	return prefix, "InsufficientReplicas", fmt.Errorf("%v replicas available for console deployment", deployment.Status.ReadyReplicas)
 }
 
-// apply configmap (needs route)
-// by the time we get to the configmap, we can assume the route exits & is configured properly
-// therefore no additional error handling is needed here.
-func (co *consoleOperator) SyncConfigMap(
+// BuildConfigMap renders desired configuration without publishing it.
+func (co *consoleOperator) BuildConfigMap(
 	ctx context.Context,
 	operatorConfig *operatorv1.Console,
 	consoleConfig *configv1.Console,
@@ -421,11 +461,11 @@ func (co *consoleOperator) SyncConfigMap(
 	oauthConfig *configv1.OAuth,
 	authConfig *configv1.Authentication,
 	activeConsoleRoute *routev1.Route,
-	recorder events.Recorder,
 	consoleHost string,
 	techPreviewEnabled bool,
 	olmLifecycleMetadataEnabled bool,
 	additionalHosts []string,
+	authProxy *proxyconfig.Config,
 ) (consoleConfigMap *corev1.ConfigMap, reason string, err error) {
 
 	managedConfig, mcErr := co.managedNSConfigMapLister.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName)
@@ -510,25 +550,47 @@ func (co *consoleOperator) SyncConfigMap(
 		tlsMinVersion,
 		tlsCiphers,
 		tlsGroups,
+		authProxy,
 	)
 	if err != nil {
 		return nil, "FailedConsoleConfigBuilder", err
 	}
+	return defaultConfigmap, "ConsoleConfigBuilder", nil
+}
+
+// SyncConfigMap applies the Console configuration built by BuildConfigMap. It is
+// called right before SyncDeployment, so that both are published together.
+func (co *consoleOperator) SyncConfigMap(ctx context.Context, recorder events.Recorder, required *corev1.ConfigMap) (*corev1.ConfigMap, string, error) {
 	var cm *corev1.ConfigMap
-	var cmChanged bool
-	cmErr := controllersutil.RetryOnTransientError(func() error {
-		var e error
-		cm, cmChanged, e = resourceapply.ApplyConfigMap(ctx, co.configMapClient, recorder, defaultConfigmap)
-		return e
+	var changed bool
+	err := controllersutil.RetryOnTransientError(func() error {
+		var err error
+		cm, changed, err = co.applyConsoleConfigMap(ctx, recorder, required)
+		return err
 	})
-	if cmErr != nil {
-		return nil, "FailedApply", cmErr
+	if err != nil {
+		return nil, "FailedApply", err
 	}
-	if cmChanged {
+	co.lastAppliedConsoleConfig = cm
+	if changed {
 		klog.V(4).Infoln("new console config yaml:")
-		klog.V(4).Infof("%s", cm.Data)
+		klog.V(4).Infof("%s", redactURLUserinfo(cm.Data))
 	}
-	return cm, "ConsoleConfigBuilder", cmErr
+	return cm, "ConsoleConfigBuilder", nil
+}
+
+// urlUserinfoPattern matches the userinfo component of a URL (e.g. "user:pass@" or "user@"),
+// which the auth proxy URLs configured on AuthProxy.HTTPProxy/HTTPSProxy may embed.
+var urlUserinfoPattern = regexp.MustCompile(`://[^/\s]+@`)
+
+// redactURLUserinfo returns a copy of data with any URL userinfo (credentials) redacted,
+// so console-config.yaml contents can be logged without leaking auth proxy credentials.
+func redactURLUserinfo(data map[string]string) map[string]string {
+	redacted := make(map[string]string, len(data))
+	for key, value := range data {
+		redacted[key] = urlUserinfoPattern.ReplaceAllString(value, "://redacted@")
+	}
+	return redacted
 }
 
 // Build telemetry configuration in following order:

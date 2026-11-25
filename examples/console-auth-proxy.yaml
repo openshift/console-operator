@@ -1,0 +1,18 @@
+# Requires ExternalOIDC and AuthenticationComponentProxyExternalOIDC,
+# authentication.config.openshift.io/cluster.spec.type: OIDC, and a Console
+# OIDC client. The Console image must support auth.proxy and proxy CA reload.
+# Set the Authentication operator's spec.proxy separately for webhook egress.
+apiVersion: operator.openshift.io/v1
+kind: Console
+metadata:
+  name: cluster
+spec:
+  managementState: Managed
+  authProxy:
+    httpsProxy: http://auth-proxy.example.com:3128
+    noProxy:
+      - idp.internal.example.com
+    # Optional: create this ConfigMap in openshift-config with the PEM bundle
+    # under ca-bundle.crt before enabling the reference.
+    # trustedCA:
+    #   name: auth-proxy-ca
