@@ -511,6 +511,38 @@ spec:
                                     x-kubernetes-validations:
                                     - message: eipAllocations cannot contain duplicates
                                       rule: self.all(x, self.exists_one(y, x == y))
+                                  protocol:
+                                    description: |-
+                                      protocol specifies whether the Network Load Balancer uses PROXY
+                                      protocol to forward connections to the IngressController.
+
+                                      When set to "TCP", the NLB uses AWS's native client IP preservation.
+                                      This may cause hairpin connection failures for internal load
+                                      balancers when connections are made from pods to router pods on
+                                      the same node.
+
+                                      When set to "PROXY", the NLB disables native client IP preservation
+                                      and uses PROXY protocol v2. The IngressController enables PROXY
+                                      protocol on HAProxy so that it can parse PROXY protocol headers to
+                                      obtain the original client IP. This avoids hairpin connection
+                                      failures.
+
+                                      The following values are valid for this field:
+
+                                      * "TCP".
+                                      * "PROXY".
+
+                                      When omitted, this means the user has no opinion and the value is
+                                      left to the platform to choose a reasonable default, which is subject to
+                                      change over time. The current default is "PROXY".
+
+                                      Note that changing this field may cause brief connection failures
+                                      during the transition as the NLB attribute change and router rollout
+                                      occur independently.
+                                    enum:
+                                    - TCP
+                                    - PROXY
+                                    type: string
                                   subnets:
                                     description: |-
                                       subnets specifies the subnets to which the load balancer will
@@ -891,6 +923,26 @@ spec:
                 required:
                 - type
                 type: object
+              haproxyVersion:
+                description: |-
+                  haproxyVersion specifies the HAProxy version to use for this
+                  IngressController.
+
+                  This field is available in OpenShift 4.22 as an API-only backport with no
+                  operator implementation. Setting this field on OpenShift 4.22 allows
+                  administrators to pin HAProxy 2.8 before upgrading to OpenShift 5.0, where
+                  the operator will honor this setting.
+
+                  Valid values for OpenShift 4.22:
+                  - Unset (default): Uses HAProxy 2.8 (the default for OpenShift 4.22)
+                  - "2.8": Explicitly pins HAProxy 2.8 for preservation during cluster
+                    upgrade to OpenShift 5.0
+
+                  On OpenShift 4.22, this field has no effect on the running IngressController.
+                  It only preserves the administrator's intent for the OpenShift 5.0 upgrade.
+                enum:
+                - "2.8"
+                type: string
               httpCompression:
                 description: |-
                   httpCompression defines a policy for HTTP traffic compression.
@@ -2154,6 +2206,37 @@ spec:
                       If unset, the default timeout is 30s
                     format: duration
                     type: string
+                  configurationManagement:
+                    description: |-
+                      configurationManagement specifies how OpenShift router should update
+                      the HAProxy configuration.  The following values are valid for this
+                      field:
+
+                      * "ForkAndReload".
+                      * "Dynamic".
+
+                      Omitting this field means that the user has no opinion and the
+                      platform may choose a reasonable default. This default is subject to
+                      change over time.  The current default is "ForkAndReload".
+
+                      "ForkAndReload" means that OpenShift router should rewrite the
+                      HAProxy configuration file and instruct HAProxy to fork and reload.
+                      This is OpenShift router's traditional approach.
+
+                      "Dynamic" means that OpenShift router may use HAProxy's control
+                      socket for some configuration updates and fall back to fork and
+                      reload for other configuration updates.  This is a newer approach,
+                      which may be less mature than ForkAndReload.  This setting can
+                      improve load-balancing fairness and metrics accuracy and reduce CPU
+                      and memory usage if HAProxy has frequent configuration updates for
+                      route and endpoints updates.
+
+                      Note: The "Dynamic" option is currently experimental and should not
+                      be enabled on production clusters.
+                    enum:
+                    - Dynamic
+                    - ForkAndReload
+                    type: string
                   connectTimeout:
                     description: |-
                       connectTimeout defines the maximum time to wait for
@@ -2752,6 +2835,38 @@ spec:
                                     x-kubernetes-validations:
                                     - message: eipAllocations cannot contain duplicates
                                       rule: self.all(x, self.exists_one(y, x == y))
+                                  protocol:
+                                    description: |-
+                                      protocol specifies whether the Network Load Balancer uses PROXY
+                                      protocol to forward connections to the IngressController.
+
+                                      When set to "TCP", the NLB uses AWS's native client IP preservation.
+                                      This may cause hairpin connection failures for internal load
+                                      balancers when connections are made from pods to router pods on
+                                      the same node.
+
+                                      When set to "PROXY", the NLB disables native client IP preservation
+                                      and uses PROXY protocol v2. The IngressController enables PROXY
+                                      protocol on HAProxy so that it can parse PROXY protocol headers to
+                                      obtain the original client IP. This avoids hairpin connection
+                                      failures.
+
+                                      The following values are valid for this field:
+
+                                      * "TCP".
+                                      * "PROXY".
+
+                                      When omitted, this means the user has no opinion and the value is
+                                      left to the platform to choose a reasonable default, which is subject to
+                                      change over time. The current default is "PROXY".
+
+                                      Note that changing this field may cause brief connection failures
+                                      during the transition as the NLB attribute change and router rollout
+                                      occur independently.
+                                    enum:
+                                    - TCP
+                                    - PROXY
+                                    type: string
                                   subnets:
                                     description: |-
                                       subnets specifies the subnets to which the load balancer will
